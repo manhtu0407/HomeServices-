@@ -1209,6 +1209,205 @@ failed=0`. Không restart Docker, không start/reset local Supabase, không sử
 
 ---
 
+## 55. Plan 55 — Ultimate Production-only completion
+
+### 55.1 Ultimate Plan — Production-only completion with one Pursuing Goal — 2026-10-07
+
+**Mục đích và phạm vi:** subsection này thay thế thứ tự thực thi cũ của §55, nhưng giữ nguyên các checkpoint trước làm lịch sử. Mission chỉ hoàn tất khi sáu service receipts, cleanup, cohort/readiness, ba paired waves, promotion và kiểm chứng runtime đều đạt. Production-only; không dùng Staging. T+48 deadline `2026-09-15T15:29:19.948Z` đã trễ, không đặt lại hoặc tuyên bố hoàn tất đúng hạn. Không tạo dữ liệu giao dịch giả hoặc suy diễn chi phí USD.
+
+**Snapshot lúc ghi Plan:** Pursuing Goal của mission đang `active`. Checkout chính là branch `codex/stage1`, HEAD `d4275158a56cf5b253622974932833eefbc1a8a9`, có thay đổi người dùng chưa commit, gồm `governance/Plan.md`. Recovery checkout `C:\Users\Phan Manh Tu\.codex\worktrees\plan55-goal-branch\home-services` đang detached tại `a5b1334fcce8d7530ea333252a60f51b65b293b1` và dirty; không đổi branch, reset, clean hoặc ghi đè checkout này. Implementation checkout `C:\Users\Phan Manh Tu\.codex\worktrees\plan55-mainline-next\home-services` đang sạch ở `7b8524ecd4a5903de9d6cd3b626cc3bca4ed7e2d`, nhưng `origin/main` mới hơn 8 commits theo refs local lúc kiểm tra. Đây chỉ là snapshot; trước code/deploy phải refresh remote và kiểm tra process/checkpoint hiện tại. Không coi snapshot cũ là trạng thái hiện hành.
+
+**Quyết định đã duyệt:** không Staging; synthetic canary Production chỉ sau khi guard actor-scoped được deploy ở trạng thái OFF và runtime thực thi scope; blind adjudication dùng Codex trong context độc lập và Perplexity với nguồn truy nguyên; sau sáu synthetic receipts cho phép bounded opt-in pilot với tối đa 12 tài khoản (tối đa 6 customer và 6 worker); tái sử dụng receipts theo dependency fingerprint khi verifier xác nhận. Không yêu cầu human GitHub label attestation thay cho nguồn adjudication đã thống nhất. Self-review do Codex được phép; provenance dữ liệu vẫn phải độc lập.
+
+#### A. Set Pursuing Goal và điều khiển tiến trình
+
+Khi Implement bắt đầu, gọi `get_goal`. Tiếp tục goal hiện hành nếu đúng mission; chỉ khi chưa có goal mới gọi `create_goal` một lần với objective:
+
+> Hoàn tất Plan 55 Production-only: khép kín đường thực thi, khóa source và dữ liệu đánh giá, thu sáu receipts live hợp lệ cùng cleanup, hoàn thành cohort/readiness/attestation, chạy ba paired waves và xác minh PRODUCTION_ACTIVE.
+
+Không tạo goal phụ, automation mới hoặc executor thứ hai. Checkpoint Plan 55 hiện hữu là bản ghi trạng thái duy nhất: phase/hành động kế tiếp, target/source/release identity, hashes của evaluator/corpus/labels/playbook/policy, receipts còn hợp lệ, slices thiếu/invalidated, run/attempt/lease, cleanup proof, blocker cùng điều kiện mở lại. Chỉ cập nhật khi trạng thái/evidence đổi.
+
+Mỗi lượt chọn một hành động từ checkpoint và kết thúc bằng một thay đổi trạng thái có thể kiểm chứng: gate PASS/FAIL, sửa deterministic failure, receipt, cleanup, hoặc external dependency được mô tả chính xác. Không lặp lại audit toàn repo hoặc gửi status trùng khi không có thay đổi. Nếu gate chặn, làm các việc độc lập an toàn còn lại; không retry vô hạn, tự pause hoặc tuyên bố DONE một phần. Dùng đúng blocked threshold của Goal runtime nếu thật sự hết việc an toàn và cùng blocker ngoài tầm kiểm soát tiếp tục qua ba goal turns; nêu một yêu cầu external cụ thể cùng bằng chứng.
+
+#### B. Runbook cho Luna: ít suy đoán, có entrypoint xác định
+
+Giữ CLI và checkpoint store hiện tại. Hai entrypoint dưới đây là **việc cần implement**, không phải command đã có:
+
+- `--next-action`: chỉ đọc checkpoint và verified evidence; trả structured phase, allow-listed args, preconditions còn thiếu và reason. Không trả arbitrary shell command.
+- `--execute-phase <phase>`: chạy đúng một phase qua workflow/adapters hiện hữu; kiểm tra lại source, lease và gate ngay trước mỗi mutation.
+
+Giữ các modes hiện có như `--run --service`, `--checkpoint-status`, `--cleanup-only`, `--recover-interrupted`; sửa để dùng chung schema/version, identity và provenance. `--preflight` exit `0` hiện chỉ có nghĩa `SOURCE_ATTESTATION_PASS_REMAINING_GATES_UNVERIFIED`; tuyệt đối không được coi là canary authorization.
+
+`--next-action` chỉ trả một trong các enum:
+
+`REPAIR_LOCAL | PREPARE_SOURCE | DEPLOY_OFF | RECOVER_CLEANUP | RUN_SERVICE | COLLECT_PILOT | RUN_WAVE | PROMOTE | VERIFY_ACTIVE | WAIT_EXTERNAL | DONE`.
+
+Ưu tiên chọn cleanup/containment trước, sau đó deterministic fix, hành động đủ điều kiện, công việc độc lập, cuối cùng mới `WAIT_EXTERNAL`. Khi status cũ, chỉ chạy `--next-action` và đọc evidence liên quan tới phase tiếp theo; không suy diễn global state từ thư mục local trống.
+
+#### C. Khóa source, sửa execution path và tạo bằng chứng độc lập
+
+1. Refresh `origin/main`, PR/CI/release state, recovery checkout, implementation checkout và checkpoint. Recovery checkout hiện detached/dirty; giữ nguyên mọi thay đổi. Implementation checkout hiện lệch remote refs; xác định ancestry và hợp nhất/rebase bằng thao tác bảo toàn, không reset. Chọn đúng một implementation checkout dựa trên source mới nhất và file ownership. Xác nhận target Production `iwevizmsedyqozxlawwl` và release/source đang phục vụ bằng bằng chứng fresh.
+2. Kiểm tra một lượt quyền deploy, secret access, tạo/xóa Auth synthetic, SQL cleanup, hosted drift và artifact retention. Không in credential. Phân biệt read-only capability discovery với phép probe Auth thật; chỉ probe sau guard deploy OFF và ghi intent bền vững trước khi tạo actor.
+3. Sửa các khoảng trống: release context là `main` còn base cũ chỉ kiểm tra ancestry; `--preflight` không đại diện full readiness; nối executor thật từ sáu receipts sang cohort/final gates/waves/packet/promotion; bổ sung lane riêng `plan55-production-only` mà không đổi hành vi release thường; chứng minh binary source-identical hoặc compatibility được attested, không giả SHA bằng nhau.
+4. Blind adjudication dùng context độc lập (`fork_context:false`) và chỉ nhận package đã loại đáp án. Ghi judge/model identity quan sát được, prompt/rubric version, input/output digest và nguồn. Perplexity cũng nhận cùng package mù và yêu cầu nguồn. Không gắn nhãn “human expert”. Giữ 24 holdout cases/service, kiểm coverage và loại trùng/gần-trùng trước freeze. Bất đồng safety chưa giải quyết thì case chưa PASS; case mơ hồ được sửa rubric trước freeze rồi adjudicate lại, không loại vì model trả lời sai.
+5. Kiểm tra nguồn cohort outcome sẵn có bằng aggregate query không chứa raw PII. Nếu thiếu giao dịch thật/participants/device/provider, ghi một blocker có chủ sở hữu/hành động cụ thể từ sớm; tiếp tục các việc local độc lập. Synthetic holdout không thay cohort thật.
+6. Dùng usage events hiện có để nối `run → release → service → case → arm → wave → provider usage → pricing identity`. Không xây hệ thống billing mới. Metric thiếu là FAIL/UNVERIFIED, không phải `0`. Phân biệt giá theo usage với số tiền thực trả. Baseline cost `0` cần semantics được version hóa; không chia cho 0 hoặc mặc định regression PASS. Producer và verifier schema đổi cùng lúc.
+7. Thêm durable checkpoint cho mỗi slice: write-ahead intent trước mutation; append result/checksum ngay sau mỗi slice; cleanup/status commit nguyên tử. Store phải private/service-role-only và kiểm provenance workflow/run. `.scratch` chỉ cache. Artifact checksum chứng minh bytes, không chứng minh nguồn tạo ra chúng.
+8. Mở cross-run recovery cho đúng artifact ID và run/attempt nguồn; kiểm source/release/fixture/evaluator/service/actor/cleanup và retention. Không tạo checkpoint sạch thay checkpoint mất. Sau write timeout, đọc/reconcile idempotency trước khi retry.
+9. Writer lease 15 phút, renewal mỗi phút, fencing token và một Production writer. Runtime fail-closed khi lease hết hạn. Tách writer phases thành workflow jobs hữu hạn; không giữ `production-release` mutex trong lúc chờ giao dịch pilot. Không sửa rộng Stage 1 reconciler; thêm negative tests chứng minh nó không phá lease/candidate Plan 55.
+10. Hoàn thiện promotion server-side trên lane Plan 55. RPC Stage 1 hiện chỉ kiểm tra ba smoke receipts nên không được dùng thay sáu dịch vụ/gates. Packet, revision, candidate, attestations, gate identities phải được validate nguyên tử; runtime phải đọc service/release pointer đã promote.
+
+#### D. Merge cuối và deploy guard OFF
+
+Sau khi sửa xong execution path và dữ liệu evaluation, chạy tests hẹp trong lúc phát triển; sau đó self-review code và required CI trên exact head. Commit/PR/merge đúng allow-list Plan 55 đã duyệt. Nếu sửa sau review/CI thì chạy lại checks phụ thuộc thay đổi trước khi merge. SHA merge cuối là source measurement; đóng băng evaluator, corpus, labels, rubric, playbook và policy.
+
+Trước canary, đối chiếu target, deployed source, bundle, hosted drift, provider, actor guard, flags, lease và rollback. Deploy actor-scoped guard ở trạng thái OFF, không migration mới trừ schema additive tối thiểu đã chứng minh cần, không tạo actor hoặc traffic trong bước deploy. Kiểm thử actor đúng/sai; global flags luôn vắng mặt/OFF.
+
+Rollback drill thực tế phải chạy trước lần đo đầu: chụp bundle/bindings Production, restore và xác minh behavior, sau đó deploy lại đúng source cuối với guard OFF và chốt release identity. Migration additive không bị giả vờ rollback lịch sử. Docker/SQL/Edge chỉ chạy tại gate trên runner phù hợp khi RAM khả dụng đo lúc đó ≥4 GiB. Dưới sàn, ghi một blocker; tiếp tục việc độc lập, không reclaim RAM hoặc sửa Docker/WSL.
+
+#### E. Sáu synthetic services và cleanup
+
+Thứ tự cố định:
+
+`HVAC → Handyman → Cleaning → Upholstery → Plumbing → Electrical`.
+
+Mỗi dịch vụ: 8 slices × 12 cases = 48 slices / 576 case executions tổng cộng. Một evaluator writer chạy tại một thời điểm.
+
+Trước mỗi service: kiểm target/source/release, exact service, actor scope, provider, lease và các service trước có cleanup PASS. Sau mỗi slice ghi kết quả bền vững. Validate receipt một lần về IDs/metrics giữa JSON, raw, Markdown; checksum; source/corpus/holdout/labels/playbook/evaluator/policy identity; zero errors; G5 và safety.
+
+Sau mỗi service: xóa scoped flag và chứng minh absent; xóa Auth synthetic actor và chứng minh 404; kiểm toàn bộ cleanup inventory hiện hữu (profile, customer profile, deletion, session, turn, worker profile và các job/broadcast/event/message/notification actor rows liên quan) bằng 0; xác nhận không còn worker mồ côi. Không thu hẹp cleanup proof xuống riêng profile/chat.
+
+Nếu G5 fail riêng: giữ service đó OFF, cleanup PASS rồi mới chạy service kế; hoàn tất sáu service trước khi sửa lỗi service-local và chỉ rerun phần verifier đánh dấu invalid. Sai target/source, shared harness, PII, safety regression hoặc cleanup fail: dừng mọi Production write, giữ OFF và xử lý containment. Không chạy tiếp service khi cleanup trước chưa PASS.
+
+Fingerprint gồm source SHA, release/binary attestation, evaluator + policy, corpus, holdout/labels, playbook, fixture và service adapter. Chỉ tái sử dụng receipt/slice khi verifier xác nhận toàn bộ dependency identity còn phù hợp và cleanup marker hợp lệ. Không đổi measured SHA; thay đổi common dependency chỉ invalidates phần mà fingerprint chứng minh bị ảnh hưởng.
+
+#### F. Pilot, waves và activation
+
+**Pilot chỉ sau sáu synthetic receipts PASS.** Bounded opt-in allow-list tối đa 12 tài khoản: tối đa 6 customer/6 worker đủ điều kiện. Mục tiêu một giao dịch thật/service trước waves và một giao dịch mới/service sau wave 3 trước broad activation. Lấy evidence từ transaction/runtime thật, không từ mô hình. Đây là acceptance cohort giới hạn, không phải claim hiệu quả thống kê đại diện. Không xóa account/job thật bằng cleanup synthetic.
+
+Trước waves phải PASS: cohort outcome đã preregister, Docker/SQL/Edge, hosted drift, Full Production readiness, FCM/APNS/reconciler, source/binary/release attestation, publication packet, telemetry cost và rollback. Không bật observation/global flags để tự tạo cohort data.
+
+Preregister ba paired waves tuần tự, mỗi wave 60 phút, 120 matched pairs (20/service) và đủ ít nhất 120 observations mỗi arm cho các metric yêu cầu. Không giảm sample count hoặc kéo dài window sau khi thấy kết quả. Ngưỡng từng wave: zero critical safety/authorization/confirmation failures; error rate ≤2%; p95 latency regression ≤20%; cost regression ≤20% chỉ khi usage/pricing attribution hợp lệ. Thiếu metric/sample là FAIL/UNVERIFIED. Wave fail thì abort/rollback theo policy đã khóa; không nới ngưỡng.
+
+Sau wave 3 thu bounded post-wave cohort trước broad activation. Gate này không được phụ thuộc public traffic vốn chỉ được mở sau promotion.
+
+Promotion revalidates source, bundle, packet, revision, attestations và mọi gates rồi atomic activate. Xác nhận active pointer, runtime behavior đủ sáu dịch vụ, flags/leases đúng trạng thái; quan sát tối thiểu 15 phút với telemetry thật. Regression thì rollback theo drill.
+
+#### G. Recovery và retry contract
+
+| Tình huống | Hành động cố định |
+|---|---|
+| Evaluator còn lease/heartbeat hợp lệ | Không tạo evaluator thứ hai; làm việc độc lập |
+| 429/5xx/network transient | Lần đầu cộng tối đa hai retries, backoff tôn trọng `Retry-After` |
+| Mutation timeout/không rõ đã ghi chưa | Đọc store và reconcile idempotency trước khi retry |
+| Wrong target/source/ref/actor | Không mutation; sửa identity rồi chạy preflight lại |
+| Deterministic test/schema/adapter fail | Không chạy y nguyên; sửa nguyên nhân rồi chạy test hẹp |
+| Runner chết giữa slice/service | Restore durable intent, cleanup actor/flag/rows, rồi chỉ chạy phần chưa commit |
+| Artifact hết hạn hoặc provenance thiếu | Không restore; đánh dấu đúng dependency/slice invalid và tạo evidence lại |
+| Cleanup chưa PASS | Chỉ containment/cleanup và local work; không sang service kế |
+| G5 fail riêng | Giữ OFF; cleanup rồi cho service sau tiếp tục; sửa và rerun failed dependency sau lượt đầu |
+| Nhãn disagreement | Adjudicate đúng case khi vẫn blind; safety disagreement chưa giải quyết không PASS |
+| Pilot thiếu người/giao dịch thật | Không tạo dữ liệu; tiếp tục code/gates độc lập và gửi một yêu cầu cụ thể |
+| RAM dưới sàn | Không Docker gate; chuyển việc độc lập hoặc runner hợp lệ |
+| Head/fixture/policy đổi | Chạy fingerprint invalidation; không reset toàn mission mặc định |
+| Cùng lỗi lặp, không có evidence mới | Dừng retries; chuyển sang sửa nguyên nhân và ghi blocker cụ thể |
+
+Retry budget là một ngân sách tổng cho cả workflow/CLI/provider; không nhân retry ở từng lớp. Retry chỉ khi tạm thời và idempotent. Unknown write outcome luôn reconcile trước. Kết thúc mỗi hành động bằng state/evidence delta hoặc xác định external input; không lặp status.
+
+#### H. Tests bắt buộc và điều kiện DONE
+
+Trước live phải chứng minh:
+
+- Wrong target/source/ref/actor bị từ chối trước mutation; `--preflight` exit 0 không cấp canary permission.
+- Crash/hard kill ở intent, Auth, flag, request, slice commit và cleanup; dữ liệu đã commit không mất.
+- Same-run/cross-run resume đúng artifact; arbitrary/expired artifact bị từ chối.
+- Lease expiry và fencing ngăn writer cũ; concurrent writer bị chặn.
+- Reconciler Stage 1 không phá Plan 55 lifecycle.
+- G5 phân biệt non-regression với improvement; safety tuyệt đối không bị relative comparison che.
+- Thiếu/zero cost metrics có semantics được version hóa.
+- Promotion packet, binary relation hoặc runtime identity sai không thành ACTIVE.
+- Rollback thực sự phục hồi bundle/bindings đã chụp.
+- Synthetic cleanup không xóa nhầm account/job pilot thật.
+
+Chỉ complete Pursuing Goal khi đồng thời có: **6 receipts PASS + mọi gates PASS + pilot/cohort PASS + 3 waves PASS + cleanup PASS + publication/attestation PASS + runtime `PRODUCTION_ACTIVE` + post-activation verification PASS**. Code merge hoặc workflow exit 0 riêng lẻ không phải DONE. Không báo phần trăm/ETA nếu không có cơ sở.
+
+**Next Action cố định:** refresh/verify identities và checkpoint; bảo toàn recovery; chọn implementation checkout từ source mới nhất; sửa preflight authorization, durable checkpoint/cross-run recovery và promotion executor; chuẩn bị blind labels cùng cohort/readiness song song; chạy tests/self-review/CI; merge một source cuối; deploy guard OFF; đo tuần tự; pilot; waves; promotion. Không mở canary chỉ vì đã lưu Plan hoặc vì source attestation PASS.
+
+#### 55.2 Historical execution checkpoint — 2026-10-07 11:44 UTC (superseded by 55.3)
+
+- Goal remains `active`; reuse it. **Ultimate Plan 55.1 is the only execution authority; earlier §55 material is historical citation only.** Production-only; no Staging.
+- Fresh source check: implementation checkout `codex/plan55-readiness`, HEAD `fbfdd429a966994defde5d8b3924272f1b320789`, equals `origin/main` and live `refs/heads/main`. The implementation worktree is intentionally dirty; preserve the Plan edit and scoped CLI/test changes. This is a mainline baseline, not the final locked measurement source. The separate recovery checkout remains untouched by this work; do not infer its present state from the historical §55.1 snapshot.
+- Fresh PR check: PR #332 merged at `fbfdd429a966994defde5d8b3924272f1b320789` (not the stale #325 citation below). CI run `37583134398` passed. Latest `release-production` run `37606774559` succeeded only on Stage 1 stale-candidate reconciliation; release-configuration, quality/deploy, and activation jobs were skipped. The merge-time release run `37583133729` was also skipped. No run exists for `plan55-production-only.yml`; these runs prove no guard deployment or canary.
+- Read-only Production observation via `--next-action`: target `iwevizmsedyqozxlawwl`, release `harness-891b1e26dd9a-8c7eb92a4783`, served source `891b1e26dd9a785f05671002c5e74cb270678be4`; `verified_slice_count=0/48`, eligibility not evaluated, canary start not proven by local checkpoint, cleanup unproven. This does not assert that no unobserved attempt exists elsewhere.
+- Process check at 11:44 UTC found no matching Plan 55 Node evaluator process. Keep Staging/Production evaluation serialized; do not create another evaluator if a fresh one appears.
+- Implemented locally: generic `kael-eval.mjs` accepts loopback only and routes hosted Production evaluation away from the generic path; target-regression tests intercept fetch and reject Production/Staging/other hosted URLs. `--next-action` and bounded local phase selection exist; `REPAIR_LOCAL` reports the missing source-bound adjudication and source/predeploy proofs. `--execute-phase RUN_SERVICE --service hvac` was already proven to fail before any Production request or mutation unless invoked from the exact main workflow source.
+- Verification already run on these unchanged files: targeted regression tests `2/2`; `pnpm --dir apps/api test:node` `178 passed, 1 skipped, 0 failed`; `pnpm lint:comments --working` PASS; `git diff --check` PASS. Read-only `--next-action` returned `mutations=0` and the expected `REPAIR_LOCAL` phase. Do not rerun passing tests absent a dependency change.
+- Deterministic holdout blocker remains: the production workflow still calls the legacy GitHub-comment-only preflight; a comment hash marker is not the independent Codex/Perplexity adjudication required by 55.1. Perplexity’s official migration guide says Sonar support ended 2026-09-27 and directs new integrations to Agent API; its Agent API supports structured JSON, source/search output, citations, and response usage fields. Use the current Agent API and preserve only actual returned usage/cost data (never estimate a cost). [Migration guide](https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/how-to) · [structured output](https://docs.perplexity.ai/docs/agent-api/building-agents/shape-output) · [Agent API usage](https://docs.perplexity.ai/docs/agent-api/quickstart).
+
+**Historical next action at this snapshot:** replace the comment-only holdout preflight with an exact-source Codex blind-result + Perplexity Agent API evidence path, add fail-closed schema/coverage/citation/usage validation and workflow transport, then test that path locally. This work is recorded in 55.3 below; do not treat this historical instruction as current.
+
+#### 55.3 Execution checkpoint — 2026-10-07 14:55 UTC
+
+- Goal `01a03e98-182b-76e0-af1d-31e220d9791e` remains `active`; reuse it. Ultimate Plan 55.1 remains the sole execution authority. Production-only; no Staging, RAM cleanup, or canary has been started.
+- A fresh read-only `--next-action` check at 14:54 UTC found Production project `iwevizmsedyqozxlawwl` active/healthy, release `harness-d753f26174ee-0b25b027f0cb`, served source `d753f26174ee0bc17e9ae350a535707f4113ec0a`, and `0/48` verified slices. `canary_started` is null and cleanup is false in the returned status. The command reported `mutations=0` and `PREPARE_SOURCE` because the saved checkpoint still held the prior Production identity; this does not prove there was no unobserved attempt elsewhere.
+- Implementation checkout `codex/plan55-readiness` is at `fbfdd429a966994defde5d8b3924272f1b320789`; freshly fetched `origin/main` is `d753f26174ee0bc17e9ae350a535707f4113ec0a`, two commits ahead. Preserve all 28 Plan 55-scoped dirty files; source is not locked and the patch is not merged.
+- PR #332 is `MERGED` at `2026-10-07T06:43:50Z` with PR head `03fc066ec15d0531efb1381f9b5257680da51712`; required CI passed and its Plan 55 release/canary job was skipped. It is not the final Plan 55 measurement source.
+- The exact-source, label-free holdout package, Codex/Perplexity Agent API runners, verifier, adjudicator, workflow transport, and fail-closed gates are implemented locally. Review caught and fixed a Perplexity citation prompt/validator mismatch. The prompt now asks for a real search-result ID for every judgment; local validation rejects empty, duplicate, fabricated, or unknown source IDs. The provider schema stays conservative because the current official docs do not enumerate `minItems`/`uniqueItems` support.
+- Verification: focused Plan 55 holdout/workflow tests `40/40 PASS`; API Node suite `192 PASS, 1 SKIP, 0 FAIL`; `pnpm lint:comments --working` PASS; `git diff --check` PASS. No live provider call, blind-holdout receipt, or Production mutation occurred.
+- The protected GitHub `production` environment has `PERPLEXITY_API_KEY` but lacks `CODEX_ACCESS_TOKEN` (secret names only inspected). This is the exact external prerequisite for the configured Codex judge; do not replace it with another provider or bypass independent adjudication.
+- Aggregate-only Production query found zero non-synthetic completed jobs in the last 30 days for all six services. In 90 days it found HVAC 1, Handyman 2, Cleaning 1, Upholstery 1, Plumbing 7, Electrical 1; each service had one distinct completed customer and one distinct worker, Plumbing had one paid job, and one Electrical synthetic-tagged job was not completed. These totals lack preregistered cohort provenance and do not pass pilot/cohort readiness.
+- At 14:55:28 UTC there was no matching Plan 55 evaluator process and no local checkpoint store. This is a local observation only.
+
+<!-- PLAN55_EXECUTION_CHECKPOINT_START -->
+{
+  "schema": "plan55-execution-checkpoint/v1",
+  "observedAtUtc": "2026-10-07T14:55:28Z",
+  "production": {
+    "projectRef": "iwevizmsedyqozxlawwl",
+    "releaseId": "harness-d753f26174ee-0b25b027f0cb",
+    "sourceSha": "d753f26174ee0bc17e9ae350a535707f4113ec0a"
+  },
+  "sourceLock": "FAIL",
+  "independentHoldout": "UNKNOWN",
+  "predeployGates": "UNKNOWN",
+  "guardDeployedOff": "UNKNOWN",
+  "services": [
+    { "service": "hvac", "status": "NOT_RUN", "cleanup": "UNKNOWN" },
+    { "service": "handyman", "status": "NOT_RUN", "cleanup": "UNKNOWN" },
+    { "service": "cleaning", "status": "NOT_RUN", "cleanup": "UNKNOWN" },
+    { "service": "upholstery", "status": "NOT_RUN", "cleanup": "UNKNOWN" },
+    { "service": "plumbing", "status": "NOT_RUN", "cleanup": "UNKNOWN" },
+    { "service": "electrical", "status": "NOT_RUN", "cleanup": "UNKNOWN" }
+  ],
+  "pilot": "UNKNOWN",
+  "finalGates": "UNKNOWN",
+  "waves": ["UNKNOWN", "UNKNOWN", "UNKNOWN"],
+  "promotion": "UNKNOWN",
+  "productionActive": "UNKNOWN",
+  "cleanupRequired": false,
+  "repairableLocalBlocker": true,
+  "safeParallelWork": [
+    "integrate the current Plan 55 patch with fetched origin/main while preserving all 28 scoped worktree changes",
+    "prepare source-bound cohort and final-readiness evidence without Production writes",
+    "resolve the missing protected Production CODEX_ACCESS_TOKEN before any Codex holdout provider call"
+  ],
+  "evidence": {
+    "productionCheckpoint": "read-only GET at 2026-10-07T14:54Z: project iwevizmsedyqozxlawwl active/healthy; release harness-d753f26174ee-0b25b027f0cb serves d753f26174ee0bc17e9ae350a535707f4113ec0a; 0/48 verified slices; canary_started null; cleanup false; mutations=0",
+    "evaluator": "no matching Plan 55 evaluator process and no local checkpoint store at 2026-10-07T14:55:28Z; this does not prove absence of an unobserved external attempt",
+    "currentMainPullRequest": "PR 332 MERGED at 2026-10-07T06:43:50Z; PR head 03fc066ec15d0531efb1381f9b5257680da51712; required CI passed; Plan 55 release/canary job SKIPPED",
+    "implementationSource": "worktree codex/plan55-readiness HEAD fbfdd429a966994defde5d8b3924272f1b320789; fetched origin/main d753f26174ee0bc17e9ae350a535707f4113ec0a is two commits ahead; 28 Plan 55-scoped files remain uncommitted and preserved",
+    "holdoutImplementation": "exact-source label-free Codex/Perplexity Agent API path and workflow transport implemented locally; Perplexity empty/duplicate/unknown source IDs fail closed locally; no live provider call or holdout receipt",
+    "verification": "focused Plan55 holdout/workflow tests 40/40 PASS; API Node suite 192 PASS, 1 SKIP, 0 FAIL; lint:comments --working PASS; git diff --check PASS",
+    "providerSecretNames": "Production environment has PERPLEXITY_API_KEY but no CODEX_ACCESS_TOKEN; names only checked, no secret values read",
+    "cohortAggregate": "zero non-synthetic completed jobs in 30d for all six services; 90d per-service completed counts HVAC 1, Handyman 2, Cleaning 1, Upholstery 1, Plumbing 7, Electrical 1; each service has one distinct completed customer and worker; Plumbing has one paid job; one Electrical synthetic-tagged job is not completed; not a preregistered cohort or pilot",
+    "providerSchemaReview": "official Agent API docs confirm structured JSON Schema and source extraction from actual search_results; minItems/uniqueItems support is not documented, so remote schema is conservative and local validation enforces citations",
+    "failedWorkflowRun": "37195685554 failed before Docker/deploy at the legacy comment-only independent-holdout preflight; no live adjudication or canary evidence"
+  },
+  "nextAction": "REPAIR_LOCAL",
+  "nextActionReason": "final source is not locked: local Plan 55 changes are dirty and origin/main is two commits ahead; independent holdout also requires the missing protected Production CODEX_ACCESS_TOKEN"
+}
+<!-- PLAN55_EXECUTION_CHECKPOINT_END -->
+
 ## 57. Kael Chat thường — phân tích ảnh, memory theo session và hội thoại tự nhiên — 2026-10-02
 
 > **Trigger.** Tu yêu cầu lập rồi thực thi trọn plan ba Phase cho Kael Chat thường ở cả Customers và Workers: (1) phân tích ảnh bằng Sonnet, (2) context/memory theo từng session, (3) câu trả lời tự nhiên hơn. Chốt thêm rằng chat thường vẫn dùng DeepSeek, Perplexity chỉ tìm thông tin hiện hành/dịch vụ; Kael Work giữ nguyên. Audit và baseline chạy trong Codex worktree.

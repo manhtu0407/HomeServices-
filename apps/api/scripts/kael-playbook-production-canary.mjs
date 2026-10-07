@@ -18,6 +18,11 @@ import {
   readPlan55CleanupStartMarker,
 } from './lib/plan55-production-canary-operations.mjs'
 import {
+  PLAN55_NEXT_ACTIONS,
+  buildPlan55NextAction,
+  parsePlan55ExecutionCheckpoint,
+} from './lib/plan55-next-action.mjs'
+import {
   PRODUCTION_MOBILE_API_URL,
   sanitizeProductionAttestationFailureReason,
   validateProductionHealthPayload,
@@ -31,6 +36,8 @@ function main(argv) {
   if (args.help) return printHelp()
   if (args.plan) return printPlan(args.service ? [args.service] : PLAN55_SERVICE_ORDER)
   if (args.preflight) return runReadOnlyPreflight()
+  if (args.nextAction) return runReadOnlyNextAction()
+  if (args.executePhase) return executePlan55Phase(args)
   if (args.run) return runProductionCanary(args.service ? [args.service] : PLAN55_SERVICE_ORDER)
   if (args.cleanupOnly) return runCleanupOnly(args.service, args.actorId)
   if (args.recoverInterrupted) return runRecoverInterrupted(args.service)
@@ -47,6 +54,13 @@ function parseArguments(argv) {
     if (token === '--help' || token === '-h') args.help = true
     else if (token === '--plan') args.plan = true
     else if (token === '--preflight') args.preflight = true
+    else if (token === '--next-action') args.nextAction = true
+    else if (token === '--execute-phase') {
+      const value = argv[index + 1]
+      if (!value || value.startsWith('--')) throw new Error('plan55_phase_missing')
+      args.executePhase = value
+      index += 1
+    }
     else if (token === '--run') args.run = true
     else if (token === '--cleanup-only') args.cleanupOnly = true
     else if (token === '--recover-interrupted') args.recoverInterrupted = true
@@ -65,8 +79,11 @@ function parseArguments(argv) {
       throw new Error('plan55_canary_unknown_argument')
     }
   }
-  if ([args.plan, args.preflight, args.run, args.cleanupOnly, args.recoverInterrupted, args.checkpointStatus].filter(Boolean).length > 1) {
+  if ([args.plan, args.preflight, args.nextAction, args.executePhase, args.run, args.cleanupOnly, args.recoverInterrupted, args.checkpointStatus].filter(Boolean).length > 1) {
     throw new Error('plan55_canary_choose_one_mode')
+  }
+  if (args.executePhase && !PLAN55_NEXT_ACTIONS.includes(args.executePhase)) {
+    throw new Error('plan55_phase_unsupported')
   }
   if (args.service && !PLAN55_SERVICE_ORDER.includes(args.service)) {
     throw new Error('plan55_canary_unsupported_service')
@@ -77,7 +94,15 @@ function parseArguments(argv) {
   if (args.recoverInterrupted && !args.service) {
     throw new Error('plan55_canary_recovery_service_required')
   }
-  if (!args.cleanupOnly && args.actorId) throw new Error('plan55_canary_actor_id_requires_cleanup_mode')
+  if (args.executePhase && args.executePhase === 'RUN_SERVICE' && !args.service) {
+    throw new Error('plan55_phase_service_required')
+  }
+  if (args.executePhase && args.executePhase === 'RECOVER_CLEANUP' && (!args.service || !args.actorId)) {
+    throw new Error('plan55_phase_cleanup_identity_required')
+  }
+  if (!args.cleanupOnly && !(args.executePhase === 'RECOVER_CLEANUP') && args.actorId) {
+    throw new Error('plan55_canary_actor_id_requires_cleanup_mode')
+  }
   return args
 }
 
@@ -132,7 +157,7 @@ function runReadOnlyPreflight() {
   }, null, 2)}\n`)
 }
 
-async function runReadOnlyCheckpointStatus(services) {
+async function readProductionCheckpointStatus(services) {
   const response = await fetch(`${PRODUCTION_MOBILE_API_URL}/harness/health`, {
     method: 'GET',
     headers: { accept: 'application/json' },
@@ -156,7 +181,91 @@ async function runReadOnlyCheckpointStatus(services) {
     statuses.push(await store.readVerifiedServiceStatus({ service, deployment }))
   }
 
-  process.stdout.write(`${JSON.stringify(buildPlan55CheckpointStatus({ deployment, statuses }), null, 2)}\n`)
+  return buildPlan55CheckpointStatus({ deployment, statuses })
+}
+
+async function runReadOnlyCheckpointStatus(services) {
+  const checkpointStatus = await readProductionCheckpointStatus(services)
+  process.stdout.write(`${JSON.stringify(checkpointStatus, null, 2)}\n`)
+}
+
+async function readNextAction() {
+  const plan = readFileSync(resolve(REPO_ROOT, 'governance/Plan.md'), 'utf8')
+  const checkpoint = parsePlan55ExecutionCheckpoint(plan)
+  const production = await readProductionCheckpointStatus(PLAN55_SERVICE_ORDER)
+  const productionIdentityMatches = production.deployment.project_ref === checkpoint.production.projectRef &&
+    production.deployment.release_id === checkpoint.production.releaseId &&
+    production.deployment.source_sha === checkpoint.production.sourceSha
+  const action = buildPlan55NextAction(checkpoint, { productionIdentityMatches })
+  return { checkpoint, production, action }
+}
+
+async function runReadOnlyNextAction() {
+  const { checkpoint, production, action } = await readNextAction()
+  const currentSource = runGit(['rev-parse', 'HEAD'])
+  const branch = runGit(['branch', '--show-current'])
+  const workingTree = runGit(['status', '--porcelain=v1', '--untracked-files=all'])
+  process.stdout.write(`${JSON.stringify({
+    ...action,
+    safe_parallel_work: checkpoint.safeParallelWork,
+    checkpoint_observed_at_utc: checkpoint.observedAtUtc,
+    production_checkpoint: production,
+    local_source: {
+      branch,
+      head_sha: currentSource,
+      working_tree_clean: workingTree.length === 0,
+    },
+    mutations: 0,
+  }, null, 2)}\n`)
+}
+
+async function executePlan55Phase(args) {
+  if (args.executePhase === 'RUN_SERVICE') {
+    assertProtectedPlan55WorkflowContext()
+    return runProductionCanary([args.service])
+  }
+
+  const { action, checkpoint } = await readNextAction()
+  if (action.action !== args.executePhase) throw new Error('plan55_phase_not_current_next_action')
+  if (args.executePhase === 'RECOVER_CLEANUP') return runCleanupOnly(args.service, args.actorId)
+  if (args.executePhase === 'PREPARE_SOURCE') return runReadOnlyPreflight()
+  if (args.executePhase === 'REPAIR_LOCAL') {
+    process.stdout.write(`${JSON.stringify({
+      schema: 'plan55-phase-execution/v1',
+      phase: 'REPAIR_LOCAL',
+      status: 'AGENT_IMPLEMENTATION_REQUIRED',
+      safe_parallel_work: checkpoint.safeParallelWork,
+      mutations: 0,
+    })}\n`)
+    return
+  }
+  throw new Error('plan55_phase_requires_workflow_adapter')
+}
+
+function assertProtectedPlan55WorkflowContext() {
+  const runId = process.env.GITHUB_RUN_ID ?? ''
+  const attempt = Number(process.env.GITHUB_RUN_ATTEMPT)
+  const workflowSha = String(process.env.GITHUB_SHA ?? '').toLowerCase()
+  const sourceSha = String(process.env.PLAN55_SOURCE_SHA ?? '').toLowerCase()
+  const checkoutSha = runGit(['rev-parse', 'HEAD']).toLowerCase()
+  if (process.env.GITHUB_ACTIONS !== 'true' || process.env.GITHUB_REF !== 'refs/heads/main' ||
+      !/^\d+$/u.test(runId) || !Number.isSafeInteger(attempt) || attempt < 1 ||
+      !/^[a-f0-9]{40}$/u.test(workflowSha) || workflowSha !== sourceSha || workflowSha !== checkoutSha) {
+    throw new Error('plan55_phase_requires_exact_main_workflow_source')
+  }
+}
+
+function runGit(args) {
+  const result = spawnSync('git', args, {
+    cwd: REPO_ROOT,
+    encoding: 'utf8',
+    timeout: 15000,
+    maxBuffer: 8192,
+    shell: false,
+    windowsHide: true,
+  })
+  if (result.error || result.status !== 0) throw new Error('plan55_checkpoint_git_identity_unavailable')
+  return String(result.stdout).trim()
 }
 
 async function runProductionCanary(services) {
@@ -267,12 +376,16 @@ function printHelp() {
     '',
     '  node apps/api/scripts/kael-playbook-production-canary.mjs --plan [--service <service>]',
     '  node apps/api/scripts/kael-playbook-production-canary.mjs --preflight',
+    '  node apps/api/scripts/kael-playbook-production-canary.mjs --next-action',
+    '  node apps/api/scripts/kael-playbook-production-canary.mjs --execute-phase <phase> [--service <service>]',
     '  node apps/api/scripts/kael-playbook-production-canary.mjs --checkpoint-status [--service <service>]',
     '  PLAN55_PRODUCTION_CANARY_OPT_IN=RUN_ONE_SYNTHETIC_ACTOR_SERVICE node apps/api/scripts/kael-playbook-production-canary.mjs --run [--service <service>]',
     '  PLAN55_PRODUCTION_CANARY_OPT_IN=RUN_ONE_SYNTHETIC_ACTOR_SERVICE node apps/api/scripts/kael-playbook-production-canary.mjs --cleanup-only --service <service> --actor-id <uuid>',
     '  PLAN55_PRODUCTION_CANARY_OPT_IN=RUN_ONE_SYNTHETIC_ACTOR_SERVICE node apps/api/scripts/kael-playbook-production-canary.mjs --recover-interrupted --service <service> < recovery-input.json',
     '',
-    'Plan mode is local-only. Preflight attests source; checkpoint status reads Production health and local receipts.',
+    'Plan and next-action modes are read-only. Next-action reads the bounded checkpoint in governance/Plan.md and rechecks the exact served Production identity.',
+    'Execute-phase accepts only the current planned phase; supported live adapters revalidate identity and lease before mutation.',
+    'RUN_SERVICE is accepted only from the exact-source main-branch GitHub Actions workflow; local execution is rejected before Production access.',
     'Run mode is Production-mutating, one synthetic actor and one service at a time; it requires the exact opt-in, exact source, and all preceding service receipts.',
     'Cleanup-only mode removes only the exact marked disposable Auth actor and that service-scoped flag, then proves cleanup; it never evaluates traffic.',
     'Interrupted recovery cleans only actors from validated start markers and revalidates persisted slice artifacts before retaining receipts.',

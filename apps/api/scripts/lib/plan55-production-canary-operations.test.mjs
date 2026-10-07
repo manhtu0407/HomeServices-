@@ -24,11 +24,8 @@ import {
 } from './kael-playbook-production-attestation.mjs'
 import {
   PLAN55_PRODUCTION_SOURCE_BASE,
-  PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
   PLAN55_ACTOR_GUARD_CHECK_NAME,
   PLAN55_ACTOR_GUARD_VERIFICATION,
-  PLAN55_GITHUB_ATTESTATION_VERIFICATION,
-  buildPlan55HoldoutAttestationCommentBody,
 } from './plan55-independent-holdout-review.mjs'
 import { buildPlan55ServiceSlices } from './plan55-production-canary-core.mjs'
 
@@ -51,10 +48,6 @@ function validEnvironment() {
     SUPABASE_URL: `https://${PRODUCTION_PROJECT_REF}.supabase.co`,
     PLAN55_CANARY_ACTOR_ID: '123e4567-e89b-42d3-a456-426614174000',
   }
-}
-
-function identityHash(id) {
-  return `sha256:${createHash('sha256').update(String(id)).digest('hex')}`
 }
 
 test('Linux process snapshot uses the runner process table and sees no extra canary CLI', {
@@ -128,117 +121,70 @@ function buildSourceAttestation(sourceSha) {
 function buildHoldoutAttestationEvidence({
   expectedSourceSha: sourceSha,
   expectedHoldoutHashes: holdoutHashes,
-  expectedHoldoutCaseCounts: holdoutCaseCounts,
   expectedHoldoutLabelsSha256,
   sourceAttestation,
 }) {
-  const pullRequestNumber = 55
   const reviewedHeadSha = 'b'.repeat(40)
-  const targetBaseSha = 'd'.repeat(40)
-  const mergeTimeBaseSha = 'c'.repeat(40)
-  const authorId = 400
-  const reviewerIds = [401, 402]
-  const reviewIds = [1101, 1102]
-  const labelsHashes = [expectedHoldoutLabelsSha256, expectedHoldoutLabelsSha256]
+  const pullRequestNumber = 55
   const guardFile = sourceAttestation.runtime_files.find((file) => file.path === PLAN55_RUNTIME_SOURCE_PATHS[0])
   const actorGuardFileBlobSha = guardFile.git_blob_sha1
-  const pullRequest = {
-    number: pullRequestNumber,
-    state: 'closed',
-    merged: true,
-    merged_at: '2026-09-29T00:00:00Z',
-    merge_commit_sha: sourceSha,
-    base: {
-      ref: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
-      sha: targetBaseSha,
-      repo: { full_name: 'manhtu0407/HomeServices-' },
-    },
-    head: { sha: reviewedHeadSha, repo: { full_name: 'manhtu0407/HomeServices-' } },
-    user: { id: authorId },
+  const digest = (value) => `sha256:${createHash('sha256').update(value).digest('hex')}`
+  const canonicalize = (value) => {
+    if (Array.isArray(value)) return value.map(canonicalize)
+    if (!value || typeof value !== 'object') return value
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]))
   }
-  const mergeCommit = {
-    sha: sourceSha,
-    parents: [{ sha: mergeTimeBaseSha }, { sha: reviewedHeadSha }],
-    plan55ProductionBaseComparison: {
-      status: 'ahead',
-      base_commit: { sha: PLAN55_PRODUCTION_SOURCE_BASE.sha },
-      head_commit: { sha: sourceSha },
-    },
-    plan55TargetBranchComparison: {
-      status: 'ahead',
-      base_commit: { sha: sourceSha },
-      head_commit: { sha: targetBaseSha },
-    },
-  }
-  const attestationComments = reviewerIds.map((reviewerId, index) => ({
-    id: reviewIds[index],
-    user: { id: reviewerId },
-    author_association: 'COLLABORATOR',
-    created_at: `2026-09-29T0${index + 1}:00:00Z`,
-    updated_at: `2026-09-29T0${index + 1}:00:00Z`,
-    body: buildPlan55HoldoutAttestationCommentBody({
-      reviewedHeadSha,
-      holdoutHashes,
-      labelsSha256: labelsHashes[index],
-      actorGuardFileBlobSha,
-    }),
-  }))
-  return {
-    proof: {
-      schema: 'plan55-independent-holdout-proof/v5',
-      status: 'PASS',
-      blinded: true,
-      reviewed_by_author: false,
-      source_sha: sourceSha,
-      holdout_labels_sha256: expectedHoldoutLabelsSha256,
-      author_id_sha256: identityHash(authorId),
-      review_evidence: {
-        repository: 'manhtu0407/HomeServices-',
-        pull_request_number: pullRequestNumber,
-        reviewed_head_sha: reviewedHeadSha,
-        production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
-        production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
-        production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
-        production_source_target_branch_tip_sha: targetBaseSha,
-        production_source_target_branch_ancestry_status: 'ahead',
-        production_source_base_ancestry_status: 'ahead',
-        actor_guard_file_blob_sha1: actorGuardFileBlobSha,
-        attestation_comment_ids: reviewIds,
-      },
-      reviewer_attestations: reviewerIds.map((reviewerId, index) => ({
-        comment_id: reviewIds[index],
-        reviewer_id_sha256: identityHash(reviewerId),
-        author_association: 'COLLABORATOR',
-        labels_sha256: labelsHashes[index],
-      })),
-      github_attestation_verification: {
-        method: PLAN55_GITHUB_ATTESTATION_VERIFICATION,
-        repository: 'manhtu0407/HomeServices-',
-        pull_request_number: pullRequestNumber,
-        reviewed_head_sha: reviewedHeadSha,
-        merge_sha: sourceSha,
-        production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
-        production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
-        production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
-        production_source_target_branch_tip_sha: targetBaseSha,
-        production_source_target_branch_ancestry_status: 'ahead',
-        production_source_base_ancestry_status: 'ahead',
-        holdout_root_sha256: createHash('sha256')
-          .update(Object.keys(holdoutHashes).sort()
-            .map((service) => `${service}=${holdoutHashes[service].slice('sha256:'.length)}`).join('\n'))
-          .digest('hex'),
-        holdout_labels_sha256: expectedHoldoutLabelsSha256,
-        attestation_comment_ids: reviewIds,
-      },
-      holdouts: Object.fromEntries(Object.keys(holdoutHashes).map((service) => [service, {
-        path: PLAN55_SOURCE_ASSETS[service].holdout,
-        sha256: holdoutHashes[service],
-        case_count: holdoutCaseCounts[service],
+  const proof = {
+    schema: 'plan55-independent-holdout-proof/v6',
+    status: 'PASS',
+    blinded: true,
+    reviewed_by_author: false,
+    source_sha: sourceSha,
+    package_sha256: digest('structural-test-package'),
+    rubric_version: 'structural-test-rubric/v1',
+    rubric_sha256: digest('structural-test-rubric'),
+    holdout_root_sha256: createHash('sha256').update('structural-test-holdout-root').digest('hex'),
+    holdout_asset_hashes: holdoutHashes,
+    holdout_labels_sha256: expectedHoldoutLabelsSha256,
+    coverage: {
+      service_count: Object.keys(holdoutHashes).length,
+      case_count_per_service: 24,
+      total_case_count: Object.keys(holdoutHashes).length * 24,
+      agreement_by_service: Object.fromEntries(Object.keys(holdoutHashes).map((service) => [service, {
+        case_count: 24,
+        mismatches: 0,
+        unresolved_safety_disagreements: 0,
       }])),
+      mismatch_count: 0,
+      unresolved_safety_disagreement_count: 0,
     },
-    pullRequest,
-    mergeCommit,
-    attestationComments,
+    judges: {
+      codex: {
+        provider: 'codex',
+        model_id: 'gpt-6.1-sol-test-fixture',
+        invocation_id: 'codex-test-fixture',
+        prompt_sha256: digest('codex-test-prompt'),
+        judgments_sha256: digest('codex-test-judgments'),
+        usage: { cost_usd: null, input_tokens: null, output_tokens: null },
+        context: 'fresh',
+        fork_context: false,
+      },
+      perplexity: {
+        provider: 'perplexity',
+        model_id: 'perplexity-test-fixture',
+        invocation_id: 'perplexity-test-fixture',
+        prompt_sha256: digest('perplexity-test-prompt'),
+        judgments_sha256: digest('perplexity-test-judgments'),
+        usage: { cost_usd: null, input_tokens: null, output_tokens: null },
+      },
+    },
+    source_evidence: [{ id: 'source-fixture', title: 'Test fixture source', url: 'https://example.test/source' }],
+    verified_at_utc: '2026-10-07T00:00:00.000Z',
+    input_root_sha256: createHash('sha256').update('structural-test-input-root').digest('hex'),
+  }
+  proof.proof_sha256 = digest(JSON.stringify(canonicalize(proof)))
+  return {
+    proof,
     actorGuardProof: {
       source_sha: sourceSha,
       runtime_file_path: PLAN55_RUNTIME_SOURCE_PATHS[0],
@@ -801,7 +747,7 @@ test('preflight derives source-bound proofs without a plan55 field on public Pro
   assert.match(providerInput.expectedHoldoutLabelsSha256, /^sha256:[a-f0-9]{64}$/u)
   assert.equal(preflight.actorGuardProof.source_sha, sourceSha)
   assert.equal(preflight.independentHoldoutProof.source_sha, sourceSha)
-  assert.equal(preflight.independentHoldoutProof.github_attestation_verification.merge_sha, sourceSha)
+  assert.equal(preflight.independentHoldoutProof.schema, 'plan55-independent-holdout-proof/v6')
   assert.equal(preflight.releaseLane, 'plan55-production-only')
   assert.deepEqual(preflight.clientHeaders, {
     'x-client-platform': 'ios',

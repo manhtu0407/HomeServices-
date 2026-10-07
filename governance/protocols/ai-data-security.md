@@ -36,7 +36,13 @@ Use when a task touches AI providers, prompts, prompt routing, price synthesis, 
 - Price estimates MUST be structured data before prose.
 - Price estimates MUST include the required disclaimer.
 - No hardcoded VND price values in source code.
-- Perplexity is for market pricing only.
+- Perplexity is for market pricing only in product/runtime behavior. The sole non-product exception
+  is `apps/api/scripts/plan55-independent-holdout-perplexity.mjs` for the Plan 55 independent blind
+  holdout: it may send only the exact-source, synthetic, label-free v3 package after rebuilding and
+  matching the full request contract before network access. Never send labels, rationales, PII, real
+  user/Production data, credentials, or secrets. Keep the API key server-side; require schema-bound
+  output, actual provider citations/usage, bounded response size/time, and safe errors. Do not route
+  product calls through this exception or broaden Perplexity beyond market lookup.
 - Anthropic handles vision/problem identification/synthesis.
 - DeepSeek handles classification, simple FAQ, and lightweight pre-screening.
 - Raw AI output MUST NOT be shown to users.

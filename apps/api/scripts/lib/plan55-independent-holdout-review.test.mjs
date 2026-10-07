@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 
 import {
@@ -11,6 +14,7 @@ import {
   buildPlan55HoldoutAttestationCommentBody,
   createPlan55GithubHoldoutAttestationEvidenceProvider,
   createPlan55GithubIndependentHoldoutPreflightProvider,
+  createPlan55GithubProductionCanaryHoldoutEvidenceProvider,
   isPlan55PredeploymentHoldoutContextValid,
   plan55HoldoutLabelsSha256,
   verifyPlan55IndependentHoldoutAttestationProof,
@@ -234,7 +238,7 @@ function buildGithubProviderFixture(overrides = {}) {
   }
 }
 
-test('independent holdout proof is tied to the merged Production source and current nonauthor attestation comments', () => {
+test('legacy GitHub holdout comments stay source-bound but cannot pass the v6 adjudication gate', () => {
   const fixture = buildFixture()
   const verified = verifyPlan55IndependentHoldoutAttestationProof({
     proof: fixture.proof,
@@ -246,9 +250,10 @@ test('independent holdout proof is tied to the merged Production source and curr
     attestationComments: fixture.attestationComments,
   })
 
-  assert.equal(assertPlan55IndependentHoldoutProof(
+  assert.equal(verified.schema, 'plan55-independent-holdout-proof/v5')
+  assert.throws(() => assertPlan55IndependentHoldoutProof(
     verified, sourceSha, fixture.holdoutHashes, fixture.holdoutLabelsSha256,
-  ), true)
+  ), { message: 'plan55_preflight_independent_holdout_unverified' })
   assert.deepEqual(verified.github_attestation_verification.attestation_comment_ids, fixture.reviewIds)
 })
 
@@ -663,6 +668,81 @@ test('GitHub provider fails closed when attestation comments, merge source, or g
   await assert.rejects(runProvider({ contentBlobRef: sourceSha }), {
     message: 'plan55_preflight_actor_guard_unverified',
   })
+})
+
+test('Production canary holdout provider binds a local proof artifact and actor guard evidence to main SHA', async (t) => {
+  const fixture = buildGithubProviderFixture()
+  const root = await mkdtemp(join(tmpdir(), 'plan55-holdout-provider-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const proofRelativePath = 'artifacts/release/plan55-independent-holdout-proof.json'
+  const proofPath = join(root, proofRelativePath)
+  await mkdir(join(root, 'artifacts', 'release'), { recursive: true })
+  const proof = {
+    schema: 'plan55-independent-holdout-proof/v6',
+    status: 'PASS',
+    source_sha: sourceSha,
+    package_sha256: `sha256:${hash('package-bytes')}`,
+    proof_sha256: `sha256:${hash('proof-bytes')}`,
+  }
+  await writeFile(proofPath, JSON.stringify(proof), { flag: 'wx' })
+
+  const api = createGithubReviewApiFixture(fixture)
+  const provider = createPlan55GithubProductionCanaryHoldoutEvidenceProvider({
+    cwd: root,
+    env: {
+      GITHUB_SHA: sourceSha,
+      GITHUB_REF: 'refs/heads/main',
+      GH_TOKEN: 'test-only-token',
+    },
+    execFileSyncImpl: api.execFileSyncImpl,
+    proofPath: proofRelativePath,
+  })
+  const evidence = await provider({
+    expectedSourceSha: sourceSha,
+    sourceAttestation: fixture.sourceAttestation,
+  })
+
+  assert.equal(evidence.proof.source_sha, sourceSha)
+  assert.equal(evidence.actorGuardProof.source_sha, sourceSha)
+  assert.equal(evidence.actorGuardProof.verified_auth_context, true)
+  assert.ok(api.calls.length > 0)
+  assert.ok(api.calls.every((call) => call.command === 'gh' && call.options.shell === false))
+  assert.ok(!api.calls.some((call) => call.args[1].includes('/issues/55/comments?')))
+
+  await writeFile(proofPath, JSON.stringify({ ...proof, source_sha: 'e'.repeat(40) }))
+  const mismatchedSourceApi = createGithubReviewApiFixture(fixture)
+  const mismatchedSourceProvider = createPlan55GithubProductionCanaryHoldoutEvidenceProvider({
+    cwd: root,
+    env: {
+      GITHUB_SHA: sourceSha,
+      GITHUB_REF: 'refs/heads/main',
+      GH_TOKEN: 'test-only-token',
+    },
+    execFileSyncImpl: mismatchedSourceApi.execFileSyncImpl,
+    proofPath: proofRelativePath,
+  })
+  await assert.rejects(mismatchedSourceProvider({
+    expectedSourceSha: sourceSha,
+    sourceAttestation: fixture.sourceAttestation,
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.equal(mismatchedSourceApi.calls.length, 0)
+
+  const wrongTargetApi = createGithubReviewApiFixture(fixture)
+  const wrongTargetProvider = createPlan55GithubProductionCanaryHoldoutEvidenceProvider({
+    cwd: root,
+    env: {
+      GITHUB_SHA: sourceSha,
+      GITHUB_REF: 'refs/heads/release',
+      GH_TOKEN: 'test-only-token',
+    },
+    execFileSyncImpl: wrongTargetApi.execFileSyncImpl,
+    proofPath: proofRelativePath,
+  })
+  await assert.rejects(wrongTargetProvider({
+    expectedSourceSha: sourceSha,
+    sourceAttestation: fixture.sourceAttestation,
+  }), { message: 'plan55_preflight_independent_holdout_unverified' })
+  assert.equal(wrongTargetApi.calls.length, 0)
 })
 
 function createGithubReviewApiFixture(fixture, {

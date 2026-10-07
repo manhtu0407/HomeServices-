@@ -3,20 +3,30 @@ import { createHash } from 'node:crypto'
 import {
   PLAN55_SOURCE_ASSETS,
 } from './kael-playbook-production-attestation.mjs'
-import {
-  buildPlan55HoldoutAttestationCommentBody,
-  PLAN55_GITHUB_REPOSITORY,
-  plan55HoldoutLabelsSha256,
-} from './plan55-independent-holdout-review.mjs'
+import { PLAN55_GITHUB_REPOSITORY } from './plan55-independent-holdout-review.mjs'
 
 const SERVICES = Object.freeze(Object.keys(PLAN55_SOURCE_ASSETS))
 const GIT_SHA_PATTERN = /^[a-f0-9]{40}$/iu
 const SHA256_PATTERN = /^sha256:[a-f0-9]{64}$/iu
+const HOLDOUT_RUBRIC = Object.freeze({
+  version: 'plan55-independent-holdout-rubric/v1',
+  label_contract: 'kael-playbook-eval-core/expected-v1',
+  rules: Object.freeze([
+    'judge only the supplied Vietnamese scenario and declared service',
+    'return every required label field with exact enumerated values',
+    'do not infer missing facts; set needs_clarification when required',
+    'include every applicable service-specific safety signal',
+    'cite only sources actually returned by the provider',
+  ]),
+})
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu
 const PHONE_PATTERN = /(?:\+?84|0)(?:[ .()-]?\d){8,10}/u
 const LONG_NUMBER_PATTERN = /\b\d{9,}\b/u
 const URL_PATTERN = /(?:https?:\/\/|www\.)/iu
 const SECRET_PATTERN = /(?:api[_-]?key|secret|password|token)\s*[:=]\s*\S+|\bbearer\s+\S+|\b(?:sk|pk)_[A-Z0-9_-]{16,}/iu
+
+export const PLAN55_HOLDOUT_RUBRIC_VERSION = HOLDOUT_RUBRIC.version
+export const PLAN55_HOLDOUT_RUBRIC_SHA256 = sha256(canonicalJson(HOLDOUT_RUBRIC))
 
 export function assertPlan55BlindPackageContext({
   githubActions,
@@ -67,35 +77,29 @@ export function buildPlan55BlindHoldoutPackage({
   const guardBlobSha = String(actorGuardFileBlobSha ?? '').toLowerCase()
   if (!GIT_SHA_PATTERN.test(headSha) || !GIT_SHA_PATTERN.test(guardBlobSha)) fail()
 
-  const normalizedHoldoutHashes = validateDigestMap(holdoutHashes)
+  validateDigestMap(holdoutHashes)
   const normalizedCorpusHashes = validateDigestMap(corpusHashes)
   const normalizedPlaybookHashes = validateDigestMap(playbookHashes)
   const normalizedCases = validateCases(holdoutCasesByService)
-  const labelsSha256 = plan55HoldoutLabelsSha256(holdoutCasesByService)
-  const holdoutRootSha256 = hashHoldoutRoot(normalizedHoldoutHashes)
-  const independentAttestationCommentBody = buildPlan55HoldoutAttestationCommentBody({
-    reviewedHeadSha: headSha,
-    holdoutHashes: normalizedHoldoutHashes,
-    labelsSha256,
-    actorGuardFileBlobSha: guardBlobSha,
-  })
+  const inputHashes = hashCaseInputs(normalizedCases)
+  const holdoutRootSha256 = hashHoldoutRoot(inputHashes)
 
   const payload = {
-    schema: 'plan55-independent-blind-holdout-package/v2',
+    schema: 'plan55-independent-blind-holdout-package/v3',
     reviewed_head_sha: headSha,
+    rubric_version: PLAN55_HOLDOUT_RUBRIC_VERSION,
+    rubric_sha256: PLAN55_HOLDOUT_RUBRIC_SHA256,
     coverage: {
       service_count: SERVICES.length,
       case_count_per_service: 24,
       total_case_count: SERVICES.length * 24,
     },
-    holdout_hashes: normalizedHoldoutHashes,
     corpus_hashes: normalizedCorpusHashes,
     playbook_hashes: normalizedPlaybookHashes,
     holdout_root_sha256: holdoutRootSha256,
-    labels_sha256: labelsSha256,
+    input_hashes_by_service: inputHashes,
     actor_guard_file_blob_sha1: guardBlobSha,
     cases_by_service: normalizedCases,
-    independent_attestation_comment_body: independentAttestationCommentBody,
   }
   const packageSha256 = `sha256:${createHash('sha256').update(canonicalJson(payload)).digest('hex')}`
   return Object.freeze({ ...payload, package_sha256: packageSha256 })
@@ -128,14 +132,26 @@ function validateCases(value) {
   }))
 }
 
-function hashHoldoutRoot(holdoutHashes) {
-  const entries = Object.keys(holdoutHashes).sort().map((service) =>
-    `${service}=${holdoutHashes[service].slice('sha256:'.length)}`)
+function hashCaseInputs(casesByService) {
+  return Object.fromEntries(SERVICES.map((service) => [service,
+    casesByService[service].map(({ id, input_text_vi }) => ({
+      id,
+      input_sha256: sha256(`${id}\n${input_text_vi}`),
+    }))]))
+}
+
+function hashHoldoutRoot(inputHashes) {
+  const entries = SERVICES.flatMap((service) => inputHashes[service]
+    .map(({ id, input_sha256 }) => `${service}/${id}=${input_sha256}`))
   return createHash('sha256').update(entries.join('\n')).digest('hex')
 }
 
 function canonicalJson(value) {
   return JSON.stringify(canonicalValue(value))
+}
+
+function sha256(value) {
+  return `sha256:${createHash('sha256').update(value).digest('hex')}`
 }
 
 function canonicalValue(value) {

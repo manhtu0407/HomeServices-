@@ -28,7 +28,9 @@ const sourceAttestation = readFileSync('apps/api/scripts/lib/kael-playbook-produ
 const canaryCore = readFileSync('apps/api/scripts/lib/plan55-production-canary-core.mjs', 'utf8')
 const canaryCli = readFileSync('apps/api/scripts/kael-playbook-production-canary.mjs', 'utf8')
 const checkpointStore = readFileSync('apps/api/scripts/lib/plan55-production-canary-checkpoint-store.mjs', 'utf8')
-const holdoutPreflight = readFileSync('apps/api/scripts/plan55-independent-holdout-preflight.mjs', 'utf8')
+const holdoutVerifier = readFileSync('apps/api/scripts/plan55-independent-holdout-verify.mjs', 'utf8')
+const aiRules = readFileSync('governance/RULES.md', 'utf8')
+const aiDataSecurity = readFileSync('governance/protocols/ai-data-security.md', 'utf8')
 const releaseGateProofs = readFileSync('scripts/harness/plan55-release-gate-proofs.mjs', 'utf8')
 const blindHoldoutCli = readFileSync('apps/api/scripts/plan55-independent-holdout-package.mjs', 'utf8')
 const blindHoldoutBuilder = readFileSync('apps/api/scripts/lib/plan55-independent-holdout-package.mjs', 'utf8')
@@ -294,14 +296,19 @@ test('release-stage gate proofs bind the pinned hosted baseline and rollback bef
 test('independent holdout attestation gates the OFF-only guard deployment before any Production mutation', () => {
   const quality = jobBlock(release, 'quality-and-preflight')
   const deploy = jobBlock(release, 'deploy_guard_off')
+  const packageJob = jobBlock(release, 'independent_holdout_package')
+  const judges = jobBlock(release, 'independent_holdout_judges')
   const holdout = jobBlock(release, 'independent_holdout_attestation')
-  const holdoutIndex = holdout.indexOf('node apps/api/scripts/plan55-independent-holdout-preflight.mjs')
+  const holdoutIndex = holdout.indexOf('node apps/api/scripts/plan55-independent-holdout-verify.mjs')
+  const sourceCheckIndex = holdout.indexOf('id: verify_source')
+  const packageDownloadIndex = holdout.indexOf('Restore the exact blind package')
+  const judgmentDownloadIndex = holdout.indexOf('Restore only the structured blind judgments')
   const proofIndex = holdout.indexOf('plan55-preflight-gate-evidence.mjs --holdout-only')
   const uploadIndex = holdout.indexOf('name: plan55-independent-holdout-')
 
-  assert.doesNotMatch(quality, /plan55-independent-holdout-preflight\.mjs/u,
+  assert.doesNotMatch(quality, /plan55-independent-holdout-(?:preflight|verify)\.mjs/u,
     'independent adjudication must not block source-bound local quality and SQL checks')
-  assert.doesNotMatch(deploy, /plan55-independent-holdout-preflight\.mjs/u,
+  assert.doesNotMatch(deploy, /plan55-independent-holdout-(?:preflight|verify)\.mjs/u,
     'the deployment job must consume the separate read-only attestation job, not rerun adjudication')
   assert.match(quality, /preflight_artifact_id: \$\{\{ steps\.preflight-artifact\.outputs\.artifact-id \}\}/u,
     'the quality job must expose its immutable pre-deploy proof artifact')
@@ -310,8 +317,13 @@ test('independent holdout attestation gates the OFF-only guard deployment before
   assert.match(deploy,
     /actions\/download-artifact@[a-f0-9]+[\s\S]*?artifact-ids: \$\{\{ needs\.quality-and-preflight\.outputs\.preflight_artifact_id \}\}[\s\S]*?path: artifacts\/release\/plan55-gate-evidence/u,
     'the release artifact must preserve the exact quality proof artifact for final receipt packaging')
-  assert.deepEqual(needsFor('independent_holdout_attestation'), ['quality-and-preflight'],
-    'independent attestation must complete after local quality checks and before deployment')
+  assert.deepEqual(needsFor('independent_holdout_package'), ['quality-and-preflight'],
+    'blind inputs must be packaged from the exact source only after local quality checks')
+  assert.deepEqual(needsFor('independent_holdout_judges'), ['independent_holdout_package'],
+    'the isolated judge runner may receive only the label-free package artifact')
+  assert.deepEqual(needsFor('independent_holdout_attestation'),
+    ['independent_holdout_package', 'independent_holdout_judges'],
+    'proof construction must wait for both blind judgments and the exact-source package')
   assert.deepEqual(needsFor('deploy_guard_off'), ['quality-and-preflight', 'independent_holdout_attestation'],
     'Production deployment must wait for both local quality and the independent exact-source attestation')
   assert.match(deploy,
@@ -319,14 +331,66 @@ test('independent holdout attestation gates the OFF-only guard deployment before
     'a failed or skipped pre-deploy attestation must fail closed before Production mutation')
   assert.ok(holdoutIndex >= 0 && proofIndex > holdoutIndex && uploadIndex > proofIndex,
     'the holdout result must be validated, converted to gate evidence, then uploaded')
-  assert.match(holdout, /GH_TOKEN: \$\{\{ github\.token \}\}/u,
-    'the review check must use only the workflow-scoped read-only token')
-  assert.match(holdout, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
-    'the review check must stay bound to the exact requested source')
-  assert.match(holdout, /PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: \$\{\{ steps\.holdout_preflight\.outcome \}\}/u,
+  assert.ok(sourceCheckIndex >= 0 && sourceCheckIndex < packageDownloadIndex &&
+    packageDownloadIndex < judgmentDownloadIndex && judgmentDownloadIndex < holdoutIndex,
+  'the source checkout must be verified clean before artifact downloads make it dirty')
+  assert.match(packageJob, /PLAN55_SOURCE_SHA: \$\{\{ inputs\.source_sha \}\}/u,
+    'blind package generation must stay bound to the exact requested source')
+  assert.match(packageJob, /actions\/upload-artifact@[a-f0-9]+[\s\S]*?path: artifacts\/plan55-blind-holdout\//u,
+    'the immutable exact-source package and its tested runner must be passed as an artifact')
+  assert.match(judges, /artifact-ids: \$\{\{ needs\.independent_holdout_package\.outputs\.package_artifact_id \}\}/u,
+    'both judges must receive the exact package artifact rather than a source checkout')
+  assert.match(judges, /^    environment: production$/mu,
+    'judge credentials must be drawn from the protected Production environment')
+  assert.match(judges,
+    /result_artifact_id: \$\{\{ steps\.judgments-artifact\.outputs\.artifact-id \}\}/u,
+    'the verifier must consume one immutable artifact with the two structured judgments')
+  assert.match(judges,
+    /path: \|\r?\n\s+artifacts\/release\/plan55-codex-holdout-output\.json\r?\n\s+artifacts\/release\/plan55-perplexity-holdout-result\.json/u,
+    'only structured judgment files may leave the isolated judge job')
+  assert.match(judges, /actions\/setup-node@[a-f0-9]+[\s\S]*?node-version: 22/u,
+    'the isolated judge job must pin Node before running either provider adapter')
+  assert.doesNotMatch(judges, /actions\/checkout@/u,
+    'the judge job must not have repository files or expected holdout labels')
+  assert.match(judges, /cd "\$judge_dir"[\s\S]*?--sandbox read-only[\s\S]*?--ephemeral/u,
+    'Codex must run from its isolated temp directory in a fresh read-only context')
+  assert.match(judges, /CODEX_ACCESS_TOKEN: \$\{\{ secrets\.CODEX_ACCESS_TOKEN \}\}/u,
+    'only the Codex judge step receives the Codex credential')
+  assert.match(judges, /id: codex-cli[\s\S]*?npm exec --yes --package=@openai\/codex@0\.160\.1/u,
+    'the pinned CLI must be installed before the token is exposed to the Codex process')
+  assert.match(judges, /CODEX_CLI_PATH: \$\{\{ steps\.codex-cli\.outputs\.path \}\}/u,
+    'the authenticated step must execute the pre-resolved CLI directly without npm')
+  const codexInstallStep = judges.slice(judges.indexOf('- id: codex-cli'), judges.indexOf('- id: codex_judge'))
+  assert.doesNotMatch(codexInstallStep, /CODEX_ACCESS_TOKEN|PERPLEXITY_API_KEY/u,
+    'the CLI installation step must run before either provider credential is exposed')
+  const codexStep = judges.slice(judges.indexOf('- id: codex_judge'), judges.indexOf('- id: perplexity_judge'))
+  assert.match(codexStep, /CODEX_ACCESS_TOKEN: \$\{\{ secrets\.CODEX_ACCESS_TOKEN \}\}/u)
+  assert.doesNotMatch(codexStep, /PERPLEXITY_API_KEY|SUPABASE_(?:ACCESS_TOKEN|SERVICE_ROLE_KEY)/u,
+    'the Codex process must not receive Perplexity or Production database credentials')
+  const perplexityStep = judges.slice(judges.indexOf('- id: perplexity_judge'), judges.indexOf('- id: judgments-artifact'))
+  assert.match(perplexityStep, /PERPLEXITY_API_KEY: \$\{\{ secrets\.PERPLEXITY_API_KEY \}\}/u)
+  assert.doesNotMatch(perplexityStep, /CODEX_ACCESS_TOKEN|SUPABASE_(?:ACCESS_TOKEN|SERVICE_ROLE_KEY)/u,
+    'the Perplexity process must not receive Codex or Production database credentials')
+  assert.ok(judges.indexOf('id: codex-secret-preflight') < judges.indexOf('id: perplexity-secret-preflight') &&
+    judges.indexOf('id: perplexity-secret-preflight') < judges.indexOf('id: codex-cli') &&
+    judges.indexOf('id: codex-cli') < judges.indexOf('id: codex_judge') &&
+    judges.indexOf('id: codex_judge') < judges.indexOf('id: perplexity_judge'),
+  'both credentials must be checked before network calls and each provider must run in its isolated step')
+  assert.match(judges, /plan55_codex_access_token_missing/u)
+  assert.match(judges, /plan55_perplexity_api_key_missing/u)
+  assert.doesNotMatch(release.slice(0, release.indexOf('\npermissions:')),
+    /^      CODEX_ACCESS_TOKEN:/mu,
+    'the access token must come only from the protected Production environment, not reusable-workflow caller secrets')
+  assert.doesNotMatch(packageJob, /CODEX_ACCESS_TOKEN|PERPLEXITY_API_KEY/u,
+    'package generation must not receive provider credentials')
+  assert.doesNotMatch(holdout, /CODEX_ACCESS_TOKEN|PERPLEXITY_API_KEY|SUPABASE_(?:ACCESS_TOKEN|SERVICE_ROLE_KEY)/u,
+    'the exact-source proof builder must not receive provider or Production credentials')
+  assert.match(holdout, /PLAN55_INDEPENDENT_HOLDOUT_PREFLIGHT_OUTCOME: \$\{\{ steps\.holdout_verify\.outcome \}\}/u,
     'the gate proof must consume the actual successful review-check outcome')
-  assert.doesNotMatch(holdout, /SUPABASE_(?:ACCESS_TOKEN|SERVICE_ROLE_KEY)|PLAN55_PRODUCTION_CANARY_OPT_IN/u,
+  assert.doesNotMatch(holdout, /PLAN55_PRODUCTION_CANARY_OPT_IN/u,
     'the holdout job must not create an actor, change flags, or call the database')
+  assert.match(holdoutVerifier, /function assertExactSource/u,
+    'the final independent-holdout verifier must revalidate exact source identity')
   assert.ok(needsFor('hvac').includes('independent_holdout_attestation'),
     'no first-service actor can be created before independent holdout attestation succeeds')
 })
@@ -336,11 +400,12 @@ test('guard deployment stays OFF-only and cannot precede independent holdout att
   const assembleIndex = deploy.indexOf('name: Assemble exact Production release and prove rollback source')
   const deployIndex = deploy.indexOf('functions deploy mobile-api')
 
-  assert.doesNotMatch(deploy, /plan55-independent-holdout-preflight\.mjs/u,
+  assert.doesNotMatch(deploy, /plan55-independent-holdout-(?:preflight|verify)\.mjs/u,
     'deployment consumes the separate read-only attestation result and must not rerun adjudication')
   assert.ok(assembleIndex >= 0, 'the guard-off deploy must still assemble the exact Production release')
   assert.ok(deployIndex > assembleIndex, 'release assembly must precede the actual Edge deployment')
-  assert.deepEqual(needsFor('independent_holdout_attestation'), ['quality-and-preflight'])
+  assert.deepEqual(needsFor('independent_holdout_attestation'),
+    ['independent_holdout_package', 'independent_holdout_judges'])
   assert.deepEqual(needsFor('deploy_guard_off'), ['quality-and-preflight', 'independent_holdout_attestation'])
   assert.match(deploy,
     /if: needs\.quality-and-preflight\.result == 'success' && needs\.independent_holdout_attestation\.result == 'success'/u)
@@ -355,24 +420,24 @@ test('guard deployment stays OFF-only and cannot precede independent holdout att
     'the workflow token must keep pull-request metadata access read-only')
   assert.match(release, /checks: read/u,
     'the workflow token must keep guard-check access read-only')
-  assert.match(holdoutPreflight, /isPlan55PredeploymentHoldoutContextValid/u,
-    'the holdout CLI must use the tested workflow context guard')
-  assert.doesNotMatch(holdoutPreflight, /PLAN55_PRODUCTION_SOURCE_BASE/u,
-    'the CLI must not treat the pinned ancestry base as the workflow dispatch ref')
+  assert.match(holdoutVerifier, /sourceSha !== git\(\['rev-parse', 'HEAD'\]\)/u,
+    'the verifier must bind results to the exact checked-out source')
 })
 
 test('holdout review is revalidated before any service actor or scoped flag mutation', () => {
   const operations = readFileSync('apps/api/scripts/lib/plan55-production-canary-operations.mjs', 'utf8')
   const preflightMethod = operations.indexOf('async preflight(service')
-  const proofCheck = operations.indexOf('verifyPlan55IndependentHoldoutAttestationProof', preflightMethod)
+  const evidenceFetch = operations.indexOf('holdoutAttestationEvidenceProvider({', preflightMethod)
+  const proofCheck = operations.indexOf('assertPlan55IndependentHoldoutProof(', evidenceFetch)
   const actorCreation = operations.indexOf('async createSyntheticActor(service)')
   const sequencePreflight = canaryCore.indexOf(
     'const preflight = assertPlan55CanaryPreflight(await operations.preflight(service))')
   const sequenceActorCreation = canaryCore.indexOf('actor = await operations.createSyntheticActor(service)', sequencePreflight)
   const scopedFlagEnable = canaryCore.indexOf('await operations.enableActorCanary(service, actor)', sequenceActorCreation)
 
-  assert.ok(preflightMethod >= 0 && proofCheck > preflightMethod && actorCreation > proofCheck,
-    'the independent review proof must be re-fetched before the actor-creation operation')
+  assert.ok(preflightMethod >= 0 && evidenceFetch > preflightMethod &&
+    proofCheck > evidenceFetch && actorCreation > proofCheck,
+  'the independent holdout evidence must be fetched and verified before actor creation')
   assert.ok(sequencePreflight >= 0 && sequenceActorCreation > sequencePreflight && scopedFlagEnable > sequenceActorCreation,
     'every service run must complete its exact-source preflight before actor creation and scoped flag enablement')
   assert.match(release, /needs: \[deploy_guard_off, independent_holdout_attestation\]/u,
@@ -525,6 +590,27 @@ test('release workflows are covered by the deployed evaluator source attestation
     'blind holdout package CLI must be included in the evaluator attestation')
   expectWorkflowMatch(sourceAttestation, /'apps\/api\/scripts\/lib\/plan55-independent-holdout-package\.mjs'/u,
     'blind holdout package builder must be included in the evaluator attestation')
+  for (const file of [
+    'apps/api/scripts/lib/plan55-independent-holdout-agent.mjs',
+    'apps/api/scripts/lib/plan55-independent-holdout-adjudication.mjs',
+    'apps/api/scripts/plan55-independent-holdout-perplexity.mjs',
+    'apps/api/scripts/plan55-independent-holdout-verify.mjs',
+    'governance/RULES.md',
+    'governance/protocols/ai-data-security.md',
+  ]) {
+    assert.ok(sourceAttestation.includes(`'${file}'`),
+      `${file} must be included in the evaluator attestation`)
+  }
+})
+
+test('Perplexity exception remains limited to the synthetic blind Plan 55 holdout', () => {
+  for (const policy of [aiRules, aiDataSecurity]) {
+    assert.match(policy, /plan55-independent-holdout-perplexity\.mjs/u)
+    assert.match(policy, /synthetic[\s\S]*label-free|synthetic,?\s*label-free/u)
+    assert.match(policy, /labels/u)
+    assert.match(policy, /PII/u)
+    assert.match(policy, /product routes|product calls/u)
+  }
 })
 
 test('blind holdout review packaging is source-bound, read-only, and excludes label sources', () => {

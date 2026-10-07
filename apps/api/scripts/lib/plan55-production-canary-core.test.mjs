@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
@@ -31,6 +32,22 @@ import {
   PLAN55_GITHUB_ATTESTATION_VERIFICATION,
 } from './plan55-independent-holdout-review.mjs'
 import { createRunManifest } from './kael-playbook-eval-core.mjs'
+
+function canonicalProofJson(value) {
+  if (Array.isArray(value)) return JSON.stringify(value.map((item) => JSON.parse(canonicalProofJson(item))))
+  if (!value || typeof value !== 'object') return JSON.stringify(value)
+  return JSON.stringify(Object.fromEntries(Object.keys(value).sort().map((key) => [
+    key,
+    JSON.parse(canonicalProofJson(value[key])),
+  ])))
+}
+
+function signProofFixture(value) {
+  return {
+    ...value,
+    proof_sha256: `sha256:${createHash('sha256').update(canonicalProofJson(value)).digest('hex')}`,
+  }
+}
 
 const productionHealth = {
   service: 'mobile-api',
@@ -340,75 +357,69 @@ test('G5 hard-fails when deterministic fallback share shifts by more than 20 per
   assert.ok(Object.values(result.deltas).every((delta) => delta.provider_fallback.within_20pp === false))
 })
 
-test('independent holdout proof requires blinded non-author reviewers and the frozen six holdouts', () => {
+test('independent holdout proof requires exact-source blind Codex and Perplexity evidence', () => {
   const sourceSha = 'a'.repeat(40)
   const digest = (char) => `sha256:${char.repeat(64)}`
-  const proof = {
-    schema: 'plan55-independent-holdout-proof/v5',
+  const canonical = (value) => JSON.stringify(Array.isArray(value)
+    ? value.map((item) => JSON.parse(canonical(item)))
+    : value && typeof value === 'object'
+      ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, JSON.parse(canonical(value[key]))]))
+      : value)
+  const signFixture = (unsigned) => ({
+    ...unsigned,
+    proof_sha256: `sha256:${createHash('sha256').update(canonical(unsigned)).digest('hex')}`,
+  })
+  const expectedHoldoutHashes = Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, digest('6')]))
+  const proof = signFixture({
+    schema: 'plan55-independent-holdout-proof/v6',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
     source_sha: sourceSha,
+    package_sha256: digest('8'),
+    rubric_version: 'plan55-independent-holdout-rubric/v1',
+    rubric_sha256: digest('9'),
+    holdout_root_sha256: 'f'.repeat(64),
+    holdout_asset_hashes: expectedHoldoutHashes,
     holdout_labels_sha256: digest('7'),
-    author_id_sha256: digest('1'),
-    review_evidence: {
-      repository: 'manhtu0407/HomeServices-',
-      pull_request_number: 55,
-      reviewed_head_sha: 'b'.repeat(40),
-      production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
-      production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
-      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
-      production_source_target_branch_tip_sha: 'd'.repeat(40),
-      production_source_target_branch_ancestry_status: 'ahead',
-      production_source_base_ancestry_status: 'ahead',
-      attestation_comment_ids: [101, 102],
+    coverage: {
+      service_count: PLAN55_SERVICE_ORDER.length,
+      case_count_per_service: 24,
+      total_case_count: PLAN55_SERVICE_ORDER.length * 24,
+      agreement_by_service: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
+        case_count: 24,
+        mismatches: 0,
+        unresolved_safety_disagreements: 0,
+      }])),
+      mismatch_count: 0,
+      unresolved_safety_disagreement_count: 0,
     },
-    reviewer_attestations: [
-      { comment_id: 101, reviewer_id_sha256: digest('2'), author_association: 'COLLABORATOR', labels_sha256: digest('7') },
-      { comment_id: 102, reviewer_id_sha256: digest('4'), author_association: 'MEMBER', labels_sha256: digest('7') },
-    ],
-    github_attestation_verification: {
-      method: 'github-pull-request-issue-comment-api/v1',
-      repository: 'manhtu0407/HomeServices-',
-      pull_request_number: 55,
-      reviewed_head_sha: 'b'.repeat(40),
-      merge_sha: sourceSha,
-      production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
-      production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
-      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
-      production_source_target_branch_tip_sha: 'd'.repeat(40),
-      production_source_target_branch_ancestry_status: 'ahead',
-      production_source_base_ancestry_status: 'ahead',
-      holdout_labels_sha256: digest('7'),
-      attestation_comment_ids: [101, 102],
+    judges: {
+      codex: {
+        provider: 'codex', model_id: 'gpt-6.1-sol', invocation_id: 'codex-run-1',
+        prompt_sha256: digest('1'), judgments_sha256: digest('2'),
+        usage: { cost_usd: null, input_tokens: null, output_tokens: null },
+        context: 'fresh', fork_context: false,
+      },
+      perplexity: {
+        provider: 'perplexity', model_id: 'openai/gpt-5.6-sol', invocation_id: 'pplx-run-1',
+        prompt_sha256: digest('3'), judgments_sha256: digest('4'),
+        usage: { cost_usd: 0.017, input_tokens: 2000, output_tokens: 1200 },
+      },
     },
-    holdouts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
-      path: PLAN55_SOURCE_ASSETS[service].holdout,
-      sha256: digest('6'),
-      case_count: 24,
-    }])),
-  }
-  const expectedHoldoutHashes = Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, digest('6')]))
+    source_evidence: [{ id: 'safety-source-1', url: 'https://example.test/safety', title: 'Safety reference' }],
+    verified_at_utc: '2026-10-07T11:00:00.000Z',
+    input_root_sha256: 'e'.repeat(64),
+  })
   assert.equal(assertPlan55IndependentHoldoutProof(proof, sourceSha, expectedHoldoutHashes, digest('7')), true)
-  assert.throws(() => assertPlan55IndependentHoldoutProof({ ...proof, reviewed_by_author: true }, sourceSha))
-  assert.throws(() => assertPlan55IndependentHoldoutProof({
+  assert.throws(() => assertPlan55IndependentHoldoutProof(signFixture({ ...proof, source_sha: 'b'.repeat(40) }), sourceSha,
+    expectedHoldoutHashes, digest('7')))
+  assert.throws(() => assertPlan55IndependentHoldoutProof(signFixture({
     ...proof,
-    github_attestation_verification: { ...proof.github_attestation_verification, merge_sha: 'c'.repeat(40) },
-  }, sourceSha))
-  assert.throws(() => assertPlan55IndependentHoldoutProof({
-    ...proof,
-    reviewer_attestations: [
-      proof.reviewer_attestations[0],
-      { reviewer_id_sha256: proof.author_id_sha256, labels_sha256: digest('7') },
-    ],
-  }, sourceSha))
-  assert.throws(() => assertPlan55IndependentHoldoutProof({
-    ...proof,
-    reviewer_attestations: proof.reviewer_attestations.map((attestation) => ({
-      ...attestation,
-      author_association: 'CONTRIBUTOR',
-    })),
-  }, sourceSha))
+    coverage: { ...proof.coverage, mismatch_count: 1 },
+  }), sourceSha, expectedHoldoutHashes, digest('7')))
+  assert.throws(() => assertPlan55IndependentHoldoutProof({ ...proof, proof_sha256: digest('0') }, sourceSha,
+    expectedHoldoutHashes, digest('7')))
 })
 
 test('slice artifacts must be confined to the exact release/service/slice folder', () => {
@@ -504,7 +515,7 @@ test('canary preflight accepts only the dedicated Production-only release lane',
   }), /plan55_preflight_client_identity_unverified/u)
 })
 
-test('canary preflight requires source-bound GitHub proof for both guard tests and holdout review', () => {
+test('canary preflight requires source-bound blind holdout evidence and actor-guard CI proof', () => {
   const sourceSha = productionHealth.release.git_sha
   const digest = (char) => `sha256:${char.repeat(64)}`
   const gitBlobSha = '1'.repeat(40)
@@ -570,52 +581,47 @@ test('canary preflight requires source-bound GitHub proof for both guard tests a
   const pullRequestNumber = 55
   const reviewedHeadSha = 'b'.repeat(40)
   const reviewIds = [101, 102]
-  const holdoutProof = {
-    schema: 'plan55-independent-holdout-proof/v5',
+  const holdoutProof = signProofFixture({
+    schema: 'plan55-independent-holdout-proof/v6',
     status: 'PASS',
     blinded: true,
     reviewed_by_author: false,
     source_sha: sourceSha,
+    package_sha256: digest('c'),
+    rubric_version: 'plan55-independent-holdout-rubric/v1',
+    rubric_sha256: digest('d'),
+    holdout_root_sha256: 'e'.repeat(64),
+    holdout_asset_hashes: holdoutHashes,
     holdout_labels_sha256: digest('a'),
-    author_id_sha256: digest('6'),
-    review_evidence: {
-      repository: 'manhtu0407/HomeServices-',
-      pull_request_number: pullRequestNumber,
-      reviewed_head_sha: reviewedHeadSha,
-      production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
-      production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
-      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
-      production_source_target_branch_tip_sha: 'd'.repeat(40),
-      production_source_target_branch_ancestry_status: 'ahead',
-      production_source_base_ancestry_status: 'ahead',
-      actor_guard_file_blob_sha1: gitBlobSha,
-      attestation_comment_ids: reviewIds,
+    coverage: {
+      service_count: PLAN55_SERVICE_ORDER.length,
+      case_count_per_service: 24,
+      total_case_count: PLAN55_SERVICE_ORDER.length * 24,
+      agreement_by_service: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
+        case_count: 24,
+        mismatches: 0,
+        unresolved_safety_disagreements: 0,
+      }])),
+      mismatch_count: 0,
+      unresolved_safety_disagreement_count: 0,
     },
-    reviewer_attestations: [
-      { comment_id: reviewIds[0], reviewer_id_sha256: digest('7'), author_association: 'COLLABORATOR', labels_sha256: digest('a') },
-      { comment_id: reviewIds[1], reviewer_id_sha256: digest('9'), author_association: 'MEMBER', labels_sha256: digest('a') },
-    ],
-    github_attestation_verification: {
-      method: PLAN55_GITHUB_ATTESTATION_VERIFICATION,
-      repository: 'manhtu0407/HomeServices-',
-      pull_request_number: pullRequestNumber,
-      reviewed_head_sha: reviewedHeadSha,
-      merge_sha: sourceSha,
-      production_source_base_branch: PLAN55_PRODUCTION_SOURCE_BASE.branch,
-      production_source_base_sha: PLAN55_PRODUCTION_SOURCE_BASE.sha,
-      production_source_target_branch: PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH,
-      production_source_target_branch_tip_sha: 'd'.repeat(40),
-      production_source_target_branch_ancestry_status: 'ahead',
-      production_source_base_ancestry_status: 'ahead',
-      holdout_labels_sha256: digest('a'),
-      attestation_comment_ids: reviewIds,
+    judges: {
+      codex: {
+        provider: 'codex', model_id: 'gpt-6.1-sol', invocation_id: 'codex-run-1',
+        prompt_sha256: digest('1'), judgments_sha256: digest('2'),
+        usage: { cost_usd: null, input_tokens: null, output_tokens: null },
+        context: 'fresh', fork_context: false,
+      },
+      perplexity: {
+        provider: 'perplexity', model_id: 'openai/gpt-5.6-sol', invocation_id: 'pplx-run-1',
+        prompt_sha256: digest('3'), judgments_sha256: digest('4'),
+        usage: { cost_usd: 0.017, input_tokens: 2000, output_tokens: 1200 },
+      },
     },
-    holdouts: Object.fromEntries(PLAN55_SERVICE_ORDER.map((service) => [service, {
-      path: PLAN55_SOURCE_ASSETS[service].holdout,
-      sha256: holdoutHashes[service],
-      case_count: 24,
-    }])),
-  }
+    source_evidence: [{ id: 'source-1', url: 'https://example.test/safety', title: 'Safety source' }],
+    verified_at_utc: '2026-10-07T11:00:00.000Z',
+    input_root_sha256: 'f'.repeat(64),
+  })
   const actorGuardProof = {
     source_sha: sourceSha,
     runtime_file_path: PLAN55_RUNTIME_SOURCE_PATHS[0],

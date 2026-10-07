@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { lstatSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { resolve } from 'node:path'
 
@@ -140,6 +140,64 @@ export function createPlan55GithubHoldoutAttestationEvidenceProvider({
   }
 }
 
+export function createPlan55GithubProductionCanaryHoldoutEvidenceProvider({
+  cwd = REPO_ROOT,
+  env = process.env,
+  execFileSyncImpl = execFileSync,
+  proofPath = env.PLAN55_HOLDOUT_PROOF_PATH,
+} = {}) {
+  return async ({ expectedSourceSha, sourceAttestation } = {}) => {
+    const sourceSha = String(expectedSourceSha ?? '').toLowerCase()
+    const expectedPath = resolve(cwd, 'artifacts/release/plan55-independent-holdout-proof.json')
+    const actualPath = resolve(cwd, String(proofPath ?? ''))
+    if (!GIT_SHA_PATTERN.test(sourceSha) || actualPath !== expectedPath ||
+        !isPlan55PredeploymentHoldoutContextValid({
+          sourceSha,
+          githubSha: env.GITHUB_SHA,
+          githubRef: env.GITHUB_REF,
+          githubToken: env.GH_TOKEN,
+        })) {
+      throw new Error('plan55_preflight_independent_holdout_unverified')
+    }
+
+    let proof
+    try {
+      const stat = lstatSync(actualPath)
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 8 * 1024 * 1024) {
+        throw new Error('invalid')
+      }
+      proof = JSON.parse(readFileSync(actualPath, 'utf8'))
+    } catch {
+      throw new Error('plan55_preflight_independent_holdout_unverified')
+    }
+    if (proof?.source_sha !== sourceSha || !SHA256_PATTERN.test(proof.package_sha256 ?? '') ||
+        !SHA256_PATTERN.test(proof.proof_sha256 ?? '')) {
+      throw new Error('plan55_preflight_independent_holdout_unverified')
+    }
+
+    const evidence = await readVerifiedPlan55GithubActorGuardEvidence({
+      cwd,
+      execFileSyncImpl,
+      expectedSourceSha: sourceSha,
+    })
+    const actorGuardProof = buildVerifiedActorGuardProof({
+      expectedSourceSha: evidence.sourceSha,
+      pullRequest: evidence.pullRequest,
+      checkRuns: evidence.checkRuns,
+      actorGuardWorkflow: evidence.actorGuardWorkflow,
+      sourceAttestation,
+      sourceFiles: evidence.sourceFiles,
+    })
+    return Object.freeze({
+      proof,
+      actorGuardProof,
+      pullRequest: evidence.pullRequest,
+      mergeCommit: evidence.mergeCommit,
+      actorGuardWorkflow: evidence.actorGuardWorkflow,
+    })
+  }
+}
+
 export function createPlan55GithubIndependentHoldoutPreflightProvider({
   cwd = REPO_ROOT,
   execFileSyncImpl = execFileSync,
@@ -274,6 +332,80 @@ async function readVerifiedPlan55GithubHoldoutEvidence({
     checkRuns: Object.freeze(checkRuns),
     sourceFiles: Object.freeze(sourceFiles),
     verifiedProof,
+    actorGuardWorkflow,
+  })
+}
+
+async function readVerifiedPlan55GithubActorGuardEvidence({ cwd, execFileSyncImpl, expectedSourceSha }) {
+  const sourceSha = String(expectedSourceSha ?? '').toLowerCase()
+  if (!GIT_SHA_PATTERN.test(sourceSha)) {
+    throw new Error('plan55_preflight_actor_guard_unverified')
+  }
+  const associatedPullRequests = await readGithubPages(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/commits/${sourceSha}/pulls`,
+  )
+  const matchingPullRequests = associatedPullRequests.filter((pullRequest) =>
+    String(pullRequest?.merge_commit_sha ?? '').toLowerCase() === sourceSha)
+  if (matchingPullRequests.length !== 1 || !Number.isSafeInteger(matchingPullRequests[0]?.number)) {
+    throw new Error('plan55_preflight_actor_guard_unverified')
+  }
+  const pullRequestNumber = matchingPullRequests[0].number
+  const pullRequest = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/pulls/${pullRequestNumber}`,
+  )
+  const sourceMergeCommit = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/commits/${sourceSha}`,
+  )
+  const targetBranch = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/branches/${PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH}`,
+  )
+  const targetBranchTipSha = String(targetBranch?.commit?.sha ?? '').toLowerCase()
+  if (!GIT_SHA_PATTERN.test(targetBranchTipSha)) {
+    throw new Error('plan55_preflight_actor_guard_unverified')
+  }
+  const productionBaseComparison = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/compare/${PLAN55_PRODUCTION_SOURCE_BASE.sha}...${sourceSha}`,
+  )
+  const targetBranchComparison = readGithubJson(
+    execFileSyncImpl,
+    cwd,
+    `repos/${PLAN55_GITHUB_REPOSITORY}/compare/${sourceSha}...${targetBranchTipSha}`,
+  )
+  const mergeCommit = Object.freeze({
+    ...sourceMergeCommit,
+    plan55ProductionBaseComparison: productionBaseComparison,
+    plan55TargetBranchComparison: targetBranchComparison,
+  })
+  if (!isVerifiedMergedProductionPullRequest(pullRequest, pullRequestNumber, sourceSha, mergeCommit)) {
+    throw new Error('plan55_preflight_actor_guard_unverified')
+  }
+  const [checkRuns, sourceFiles] = await Promise.all([
+    readGithubCheckRuns(execFileSyncImpl, cwd, pullRequest.head.sha),
+    readGuardSourceFiles(execFileSyncImpl, cwd, pullRequest.head.sha, sourceSha),
+  ])
+  const actorGuardWorkflow = await readActorGuardWorkflowEvidence(
+    execFileSyncImpl,
+    cwd,
+    checkRuns,
+    pullRequest.head.sha,
+  )
+  assertVerifiedActorGuardWorkflow({ pullRequest, checkRuns, actorGuardWorkflow })
+  return Object.freeze({
+    sourceSha,
+    pullRequest,
+    mergeCommit,
+    checkRuns: Object.freeze(checkRuns),
+    sourceFiles: Object.freeze(sourceFiles),
     actorGuardWorkflow,
   })
 }
