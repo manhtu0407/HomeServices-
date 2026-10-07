@@ -53,6 +53,7 @@ Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated 
 ## Agent tooling
 
 - [`ops/agent-tooling.md`](ops/agent-tooling.md) — OCR review over one worktree snapshot (pinned version, Windows notes, what OCR does not scan, Stop hook, rollback) and the Headroom evaluation record.
+- [`ops/production-preview.md`](ops/production-preview.md) — opening the Production web preview in the Claude Code Preview pane: local vs cloud sessions, `.env.local` setup, the trigger phrase, launcher guards, troubleshooting.
 
 ## Release operations references
 
