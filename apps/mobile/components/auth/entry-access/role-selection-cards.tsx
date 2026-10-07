@@ -110,7 +110,7 @@ export const RoleSelectionCards = memo(function RoleSelectionCards({
   reduceMotion = false,
   reduceTransparency = false,
   selectedRole = null,
-  worker = { title: 'Đối tác thợ' },
+  worker = { title: 'Đối tác' },
   workerImage = defaultWorkerImage,
   workerTestID = 'role-card-worker',
 }: RoleSelectionCardsProps) {

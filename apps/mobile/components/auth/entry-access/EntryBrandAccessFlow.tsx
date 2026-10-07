@@ -51,8 +51,10 @@ export function EntryBrandAccessFlow({
   actions,
   featureFlags,
   initialRole = 'customer',
+  initialState,
   initialStep = 'splash',
   restoreRememberedRole = true,
+  resume,
   onRoleChange,
   onStepChange,
   splashDurationMs = NESTSCOUT_LOGO_MOTION_DURATION_MS,
@@ -61,8 +63,8 @@ export function EntryBrandAccessFlow({
   const language = useAppLanguage()
   const copy = entryAccessCopy[language]
   const features = useMemo(() => ({ ...defaultFeatures, ...featureFlags }), [featureFlags])
-  const [notice, setNotice] = useState<string | null>(null)
-  const entryAccessState = useEntryAccessState(initialRole, initialStep)
+  const [notice, setNotice] = useState<string | null>(initialState?.notice ?? null)
+  const entryAccessState = useEntryAccessState(initialRole, initialStep, initialState)
   const {
     acceptedTerms,
     busy,
@@ -85,6 +87,22 @@ export function EntryBrandAccessFlow({
   const localizedError = error
     ? localizeIdentifierAvailabilityError(error, language) ?? localizeEntryAuthError(error, language, 'connectionFailed')
     : null
+  // Adjusting state while rendering (React's documented alternative to a syncing effect): the mount
+  // value comes from initialState, so only a later change of `resume` is applied here.
+  const [seenResume, setSeenResume] = useState(resume)
+  if (resume !== seenResume) {
+    setSeenResume(resume)
+    if (resume) {
+      updateState({
+        busy: false,
+        error: resume.error ?? null,
+        step: resume.step,
+        ...(resume.identifier ? { identifier: resume.identifier } : {}),
+      })
+      setNotice(resume.notice ?? null)
+    }
+  }
+
   useEffect(() => {
     StatusBar.setStyle('dark')
     return () => {
@@ -204,6 +222,7 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
           language={props.language}
           error={props.error}
           features={props.features}
+          notice={props.notice}
           onBack={() => props.go('role-gate')}
           onIdentifierChange={props.setIdentifier}
           onForgotPassword={() => props.go('password-recovery')}
@@ -318,7 +337,7 @@ function FormHeader({ lead, singleLineTitle = false, title }: { lead: string; si
     <View style={styles.formHead}>
       <View style={styles.formHeadRow}>
         <View style={{ flex: 1 }}>
-          <Text numberOfLines={singleLineTitle ? 1 : undefined} style={styles.formTitle}>{normalizeTitleBreaks(title)}</Text>
+          <Text adjustsFontSizeToFit={singleLineTitle} minimumFontScale={0.8} numberOfLines={singleLineTitle ? 1 : undefined} style={styles.formTitle}>{normalizeTitleBreaks(title)}</Text>
           {lead ? <Text style={[styles.lead, { marginTop: 6 }]}>{lead}</Text> : null}
         </View>
       </View>
@@ -327,7 +346,7 @@ function FormHeader({ lead, singleLineTitle = false, title }: { lead: string; si
 }
 
 function LoginScreen(props: {
-  busy: boolean; canRegister: boolean; error: string | null; remember: boolean
+  busy: boolean; canRegister: boolean; error: string | null; notice: string | null; remember: boolean
   copy: EntryAccessCopy; features: EntryAccessFeatureFlags
   identifier: string; language: AppLanguage; password: string; role: EntryRole
   onApple: () => void; onBack: () => void; onForgotPassword: () => void; onGoogle: () => void
@@ -349,6 +368,7 @@ function LoginScreen(props: {
               <CheckRow checked={props.remember} label={props.copy.login.remember} onPress={props.onRemember} testID="auth-login-remember" />
               {props.role === 'customer' ? <Pressable accessibilityRole="link" hitSlop={8} onPress={props.onForgotPassword} testID="auth-customer-forgot-password"><Text style={styles.link}>{props.copy.login.forgotPassword}</Text></Pressable> : <View />}
             </View>
+            {props.notice ? <Text accessibilityLiveRegion="polite" style={styles.notice} testID="auth-login-notice">{props.notice}</Text> : null}
             {props.error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{props.error}</Text> : null}
             <PrimaryButton disabled={props.busy} label={props.busy ? props.copy.login.busy : props.copy.login.submit} onPress={props.onSubmit} testID="auth-login-submit" />
             {showProviders ? (

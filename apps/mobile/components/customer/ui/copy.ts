@@ -44,6 +44,8 @@ type CustomerV21BookingServiceCardCopy = {
   details: readonly [string, string]
   label: string
   note: string
+  // The home grid title is one line in a ~112pt tile, so a long label gets a short twin here.
+  tileLabel?: string
 }
 
 export const customerV21BookingServiceCopy: Localized<Record<CustomerServiceId, CustomerV21BookingServiceCardCopy>> = {
@@ -51,9 +53,9 @@ export const customerV21BookingServiceCopy: Localized<Record<CustomerServiceId, 
     electrical: { ...customerV21ServiceCopy.en.electrical, details: ['Outlets & breakers', 'Lighting'] },
     plumbing: { ...customerV21ServiceCopy.en.plumbing, details: ['Leaks', 'Pipes'] },
     home_cleaning: { details: ['Size', 'Condition & priority'], label: 'Home cleaning', note: 'Scope by size, condition and priority areas' },
-    hvac_basic_maintenance: { details: ['Cleaning & checks', 'Safety'], label: 'Air conditioning & air care', note: 'Cleaning, basic checks and safety review' },
-    upholstery_care: { details: ['Material & stains', 'Odor & drying'], label: 'Sofa, mattress, curtain & carpet care', note: 'Material, stain, odor and drying scope' },
-    handyman_minor_installation: { details: ['Materials & tools', 'Task boundaries'], label: 'Minor repairs & installation', note: 'Small task bundles, tools and materials' },
+    hvac_basic_maintenance: { details: ['Cleaning & checks', 'Safety'], label: 'Air conditioning & air care', tileLabel: 'Air conditioning', note: 'Cleaning, basic checks and safety review' },
+    upholstery_care: { details: ['Material & stains', 'Odor & drying'], label: 'Sofa, mattress, curtain & carpet care', tileLabel: 'Sofa & carpet care', note: 'Material, stain, odor and drying scope' },
+    handyman_minor_installation: { details: ['Materials & tools', 'Task boundaries'], label: 'Minor repairs & installation', tileLabel: 'Repairs & install', note: 'Small task bundles, tools and materials' },
   },
   vi: {
     electrical: { ...customerV21ServiceCopy.vi.electrical, details: ['Ổ cắm · cầu dao', 'Đèn'] },

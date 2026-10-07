@@ -277,15 +277,17 @@ export function ServiceTile({
                   testID={`${serviceTestID}-workart-fade`}
                 />
               </View>
-              <Text
-                adjustsFontSizeToFit
-                minimumFontScale={0.72}
-                numberOfLines={2}
-                style={[styles.homeV4ServiceTitle, { color: tokens.text }]}
-                testID={`${serviceTestID}-title`}
-              >
-                {copy.label}
-              </Text>
+              <View style={styles.homeV4ServiceTitleSlot}>
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.72}
+                  numberOfLines={1}
+                  style={[styles.homeV4ServiceTitle, { color: tokens.text }]}
+                  testID={`${serviceTestID}-title`}
+                >
+                  {copy.tileLabel ?? copy.label}
+                </Text>
+              </View>
             </View>
           ) : (
             <>

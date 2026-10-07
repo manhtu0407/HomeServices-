@@ -413,10 +413,17 @@ export const customerV21SharedStyles = StyleSheet.create({
     overflow: 'hidden',
     padding: 0,
   },
+  // The slot takes what the artwork leaves, so a one-line title sits centred in the strip instead of
+  // hugging the tile edge or spilling past it.
+  homeV4ServiceTitleSlot: {
+    flex: 1,
+    justifyContent: 'center',
+    minHeight: 0,
+    minWidth: 0,
+  },
   homeV4ServiceTitle: {
     ...typography.caption1,
     fontWeight: '700',
-    minHeight: 26,
     paddingBottom: 0,
     paddingHorizontal: 4,
     textAlign: 'center',

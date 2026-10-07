@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
+import * as WebBrowser from 'expo-web-browser'
 import { Linking } from 'react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
@@ -6,6 +7,11 @@ import {
   NESTSCOUT_PRIVACY_POLICY_URL,
   PublicPrivacyPolicyLink,
 } from '@/components/ui/public-privacy-policy-link'
+
+jest.mock('expo-web-browser', () => ({
+  WebBrowserPresentationStyle: { FULL_SCREEN: 'fullScreen' },
+  openBrowserAsync: jest.fn(async () => ({ type: 'dismiss' })),
+}))
 
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react')
@@ -49,23 +55,38 @@ describe('PublicPrivacyPolicyLink', () => {
   })
 
   afterEach(() => {
+    jest.mocked(WebBrowser.openBrowserAsync).mockClear()
     jest.restoreAllMocks()
   })
 
   it.each([
     ['vi', 'Mở Chính sách quyền riêng tư'],
     ['en', 'Open Privacy Policy'],
-  ] as const)('opens the official policy in %s mode', (language, label) => {
+  ] as const)('opens the official policy in the in-app browser in %s mode', async (language, label) => {
     render(<PublicPrivacyPolicyLink language={language} testID={`policy-${language}`} />)
 
     const link = screen.getByRole('link', { name: label })
     fireEvent.press(link)
 
+    await waitFor(() => expect(WebBrowser.openBrowserAsync).toHaveBeenCalled())
     withPillarContext(PILLAR, () => {
       expect(link).toHaveStyle({ minHeight: 44 })
-      expect(Linking.openURL).toHaveBeenCalledWith(NESTSCOUT_PRIVACY_POLICY_URL)
+      expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(
+        NESTSCOUT_PRIVACY_POLICY_URL,
+        expect.objectContaining({ dismissButtonStyle: 'done' }),
+      )
+      expect(Linking.openURL).not.toHaveBeenCalled()
       expect(NESTSCOUT_PRIVACY_POLICY_URL).toBe('https://manhtu0407.github.io/nestscout-privacy-policy/')
     }, `${language} policy access must expose the same public destination as store metadata`)
+  })
+
+  it('falls back to the system browser when the in-app browser cannot open', async () => {
+    jest.mocked(WebBrowser.openBrowserAsync).mockRejectedValueOnce(new Error('native module missing'))
+    render(<PublicPrivacyPolicyLink language="vi" testID="policy-fallback" />)
+
+    fireEvent.press(screen.getByRole('link', { name: 'Mở Chính sách quyền riêng tư' }))
+
+    await waitFor(() => expect(Linking.openURL).toHaveBeenCalledWith(NESTSCOUT_PRIVACY_POLICY_URL))
   })
 
   it('wires the public policy link into registration and both role profiles', () => {

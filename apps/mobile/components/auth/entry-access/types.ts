@@ -32,7 +32,8 @@ type PasswordRecoveryInput = {
 export type EntryActionResult = {
   success: boolean
   error?: string
-  nextStep?: Extract<EntryAccessStep, 'email-confirmation' | 'onboarding'>
+  notice?: string
+  nextStep?: Extract<EntryAccessStep, 'email-confirmation' | 'login' | 'onboarding'>
 }
 
 export type EntryAccessFeatureFlags = {
@@ -57,6 +58,10 @@ export type EntryBrandAccessFlowProps = {
   actions: EntryAccessActions
   featureFlags?: Partial<EntryAccessFeatureFlags>
   initialRole?: EntryRole
+  initialState?: Readonly<{ error?: string | null; identifier?: string; notice?: string | null }>
+  // Applied whenever it changes, so a screen rebuilt mid-flow can still receive the outcome of an
+  // action that was started by the screen it replaced.
+  resume?: Readonly<{ error?: string | null; identifier?: string; notice?: string | null; step: EntryAccessStep }> | null
   initialStep?: EntryAccessStep
   restoreRememberedRole?: boolean
   onStepChange?: (step: EntryAccessStep) => void
