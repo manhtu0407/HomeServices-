@@ -10,19 +10,24 @@ export const SIGNUP_CONFIRMATION_REQUIRED_MESSAGE = 'Đăng ký chưa sẵn sàn
 const SIGNUP_RATE_LIMIT_MESSAGE = 'Yêu cầu đang bị giới hạn. Vui lòng thử lại sau.'
 const INVALID_SIGNUP_EMAIL_MESSAGE = 'Địa chỉ thư điện tử chưa đúng định dạng.'
 const INVALID_CONFIRMATION_LINK_MESSAGE = 'Dịch vụ đăng nhập chưa sẵn sàng. Vui lòng thử lại sau.'
+const SIGNUP_ACCOUNT_EXISTS_MESSAGE = 'Tài khoản này đã tồn tại. Hãy đăng nhập hoặc dùng thông tin khác.'
 const GENERIC_SIGNUP_MESSAGE = 'Không thể tạo tài khoản. Vui lòng thử lại sau.'
 
 function readAuthError(error: unknown) {
-  if (typeof error === 'string') return { message: error, status: null }
-  if (typeof error !== 'object' || error === null) return { message: '', status: null }
+  if (typeof error === 'string') return { code: '', message: error, status: null }
+  if (typeof error !== 'object' || error === null) return { code: '', message: '', status: null }
 
   const message = 'message' in error && typeof error.message === 'string' ? error.message : ''
   const status = 'status' in error && typeof error.status === 'number' ? error.status : null
-  return { message, status }
+  const code = 'code' in error && typeof error.code === 'string' ? error.code : ''
+  return { code, message, status }
 }
 
 export function getSafeSignupErrorMessage(error: unknown) {
-  const { message, status } = readAuthError(error)
+  const { code, message, status } = readAuthError(error)
+  if (code === 'user_already_exists' || /user already registered/i.test(message)) {
+    return SIGNUP_ACCOUNT_EXISTS_MESSAGE
+  }
   if (status === 429 || /rate limit|too many requests|security purposes/i.test(message)) {
     return SIGNUP_RATE_LIMIT_MESSAGE
   }

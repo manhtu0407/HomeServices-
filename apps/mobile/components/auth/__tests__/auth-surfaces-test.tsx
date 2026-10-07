@@ -110,10 +110,12 @@ jest.mock('@/lib/app-language', () => {
   }
 })
 
+import { setWorkerRegistrationHandoff } from '@/lib/worker-registration-handoff'
 import { LoginRoleSurface } from '../auth-surfaces'
 import { EntryBrandAccessFlow } from '../entry-access/EntryBrandAccessFlow'
 
 beforeEach(() => {
+  setWorkerRegistrationHandoff(null)
   jest.useFakeTimers()
   mockAuthOverride = {}
   mockLanguage = 'vi'
@@ -416,7 +418,7 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByText('Continue as Customer')).toBeNull()
     expect(screen.queryByTestId('auth-role-continue')).toBeNull()
     expect(screen.queryByText('Khách hàng')).toBeNull()
-    expect(screen.queryByText('Đối tác thợ')).toBeNull()
+    expect(screen.queryByText('Đối tác')).toBeNull()
 
     fireEvent.press(screen.getByTestId('auth-entry-role-customer'))
 
@@ -500,8 +502,8 @@ describe('LoginRoleSurface', () => {
 
     mockRouteParams = { stage: '1.5' }
     const registration = render(<LoginRoleSurface />)
-    expect(screen.getByText('Create your account.')).toBeOnTheScreen()
-    expect(screen.getByText('Create your account.')).toHaveProp('numberOfLines', 1)
+    expect(screen.getByText('Create account.')).toBeOnTheScreen()
+    expect(screen.getByText('Create account.')).toHaveProp('numberOfLines', 1)
     expect(screen.getByText('Email/phone')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'email@example.com or 090 123 4567')
     expect(screen.getByText('Confirm password')).toBeOnTheScreen()
@@ -534,8 +536,8 @@ describe('LoginRoleSurface', () => {
     mockRouteParams = { stage: '1.5' }
     render(<LoginRoleSurface />)
 
-    expect(screen.getByText('Tạo tài khoản của bạn.')).toBeOnTheScreen()
-    expect(screen.getByText('Tạo tài khoản của bạn.')).toHaveProp('numberOfLines', 1)
+    expect(screen.getByText('Tạo tài khoản.')).toBeOnTheScreen()
+    expect(screen.getByText('Tạo tài khoản.')).toHaveProp('numberOfLines', 1)
     expect(screen.getByTestId('auth-register-password-confirmation-input')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-register-password-confirmation-input')).toHaveProp('placeholder', 'Xác nhận mật khẩu')
     expect(screen.queryByText('Chỉ mất chưa đến một phút.')).toBeNull()
@@ -548,8 +550,8 @@ describe('LoginRoleSurface', () => {
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
 
-    expect(screen.getByText('Tạo hồ sơ đối tác.')).toBeOnTheScreen()
-    expect(screen.getByText('Tạo hồ sơ đối tác.')).toHaveProp('numberOfLines', 1)
+    expect(screen.getByText('Tạo hồ sơ.')).toBeOnTheScreen()
+    expect(screen.getByText('Tạo hồ sơ.')).toHaveProp('numberOfLines', 1)
     expect(screen.queryByText('Tạo tài khoản trước khi gửi hồ sơ xác thực.')).toBeNull()
     expect(screen.getByText('Xác nhận mật khẩu')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-register-password-confirmation-input')).toHaveProp('placeholder', 'Xác nhận mật khẩu')
@@ -787,6 +789,18 @@ describe('LoginRoleSurface', () => {
     expect(mockRequestPasswordRecovery).not.toHaveBeenCalled()
   })
 
+  it('opens the password-reset screen even while a worker registration handoff is still set', () => {
+    setWorkerRegistrationHandoff({ phase: 'login-notice', identifier: 'worker@example.com', notice: 'Hồ sơ đang được xem xét.' })
+    mockAuthOverride = {
+      passwordRecoveryPending: true,
+      session: { user: { app_metadata: {}, id: 'customer_test_1', user_metadata: {} } },
+    }
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-password-reset-screen')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-login-submit')).toBeNull()
+  })
+
   it('keeps a recovery session on the password-reset screen until the new password is saved', async () => {
     mockAuthOverride = {
       passwordRecoveryPending: true,
@@ -943,7 +957,7 @@ describe('LoginRoleSurface', () => {
     fireEvent.press(screen.getByTestId('auth-entry-role-worker'))
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
-    expect(screen.getByText('Thư điện tử')).toBeOnTheScreen()
+    expect(screen.getByText('Gmail')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'ten@vidu.vn')
     fireEvent.changeText(screen.getByTestId('auth-register-email-input'), 'worker@example.com')
     fireEvent.changeText(screen.getByTestId('auth-register-password-input'), 'secret123')
@@ -994,7 +1008,7 @@ describe('LoginRoleSurface', () => {
     expect(screen.queryByTestId('auth-client-facebook-secondary')).toBeNull()
 
     fireEvent.press(screen.getByTestId('auth-client-register-email'))
-    expect(screen.getByText('Thư điện tử')).toBeOnTheScreen()
+    expect(screen.getByText('Gmail')).toBeOnTheScreen()
     expect(screen.getByTestId('auth-register-email-input')).toHaveProp('placeholder', 'ten@vidu.vn')
     expect(screen.getByTestId('auth-register-password-confirmation-input')).toHaveProp('placeholder', 'Xác nhận mật khẩu')
     fireEvent.changeText(screen.getByTestId('auth-register-name-input'), 'Worker One')
@@ -1031,13 +1045,13 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-login-submit'))
 
-    await waitFor(() => expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen())
+    await waitFor(() => expect(screen.getByTestId('auth-login-notice')).toHaveTextContent('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.'))
     expect(mockSubmitWorkerApplication).toHaveBeenCalledWith({
       contact: 'worker@example.com',
       language: 'vi',
     })
-    expect(screen.getByText('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.')).toBeOnTheScreen()
-    expect(screen.queryByText('Tài khoản đã được xác nhận, nhưng hồ sơ thợ chưa được gửi. Vui lòng thử lại sau.')).toBeNull()
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+    expect(mockSignOut).toHaveBeenCalled()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
@@ -1061,21 +1075,25 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-login-submit'))
 
-    await waitFor(() => expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen())
-    expect(screen.getByText('Hồ sơ ứng tuyển cần được bổ sung. Chỉ gửi lại khi bạn chủ động xác nhận.')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-worker-application-reason')).toHaveTextContent('Bổ sung khu vực phục vụ.')
+    await waitFor(() => expect(screen.getByTestId('auth-login-notice')).toHaveTextContent('Hồ sơ ứng tuyển cần được bổ sung. Chỉ gửi lại khi bạn chủ động xác nhận. Bổ sung khu vực phục vụ.'))
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+    expect(mockSignOut).toHaveBeenCalled()
     expect(screen.getByText('Gửi lại hồ sơ xét duyệt')).toBeOnTheScreen()
     expect(mockSubmitWorkerApplication).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalled()
 
-    fireEvent.press(screen.getByTestId('auth-onboarding-start'))
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
 
     await waitFor(() => expect(mockSubmitWorkerApplication).toHaveBeenCalledWith({
       contact: 'worker@example.com',
       language: 'vi',
       revisionOfApplicationId: '11111111-1111-4111-8111-111111111111',
     }))
-    expect(screen.getByText('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.')).toBeOnTheScreen()
-    expect(screen.getByText('Kiểm tra trạng thái')).toBeOnTheScreen()
+    await waitFor(() => expect(screen.getByTestId('auth-login-notice')).toHaveTextContent('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.'))
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('does not duplicate a worker application when the resolved account is already a worker', async () => {
@@ -1156,9 +1174,9 @@ describe('LoginRoleSurface', () => {
     expect(mockSignUpWithIdentifier.mock.invocationCallOrder[0]).toBeLessThan(
       mockSubmitWorkerApplication.mock.invocationCallOrder[0]!,
     )
-    expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
-
-    expect(screen.getByText('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.')).toBeOnTheScreen()
+    await waitFor(() => expect(screen.getByTestId('auth-login-notice')).toHaveTextContent('Đã tạo tài khoản và gửi hồ sơ thợ. Hãy đăng nhập bằng tài khoản thợ để theo dõi xét duyệt.'))
+    expect(screen.getByTestId('auth-login-submit')).toBeOnTheScreen()
+    expect(mockSignOut).toHaveBeenCalled()
     expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/home')
     expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/home')
   })
@@ -1197,7 +1215,10 @@ describe('LoginRoleSurface', () => {
       resolveSignup({ success: true })
     })
     await waitFor(() => expect(mockSubmitWorkerApplication).toHaveBeenCalledTimes(1))
-    expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen()
+    await waitFor(() => expect(screen.getByTestId('auth-login-notice')).toHaveTextContent('Đã tạo tài khoản và gửi hồ sơ thợ. Hãy đăng nhập bằng tài khoản thợ để theo dõi xét duyệt.'))
+    expect(mockSignOut).toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/home')
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/(tabs)/home')
   })
 
   it('redirects ready authenticated profiles outside review mode', () => {

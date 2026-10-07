@@ -276,9 +276,6 @@ function RoleCard({
                 hidden
               />
             ))}
-            <View style={rectStyle(card.arrow, scale, card.rect[0], card.rect[1])}>
-              <Asset name={`${card.id}-arrow`} />
-            </View>
           </View>
           {(selected || pressed || disabled) && (
             <View

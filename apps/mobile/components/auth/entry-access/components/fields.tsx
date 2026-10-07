@@ -129,7 +129,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 30,
   },
-  input: { ...entryTheme.typography.footnote, color: entryTheme.color.text.primary, flex: 1, height: '100%', paddingVertical: 0 },
+  // No lineHeight: on iOS a single-line TextInput with a fixed line box sits below the vertical centre of its shell.
+  input: { ...entryTheme.typography.footnote, color: entryTheme.color.text.primary, flex: 1, height: '100%', lineHeight: undefined, paddingVertical: 0 },
   label: { ...entryTheme.typography.caption1, color: entryTheme.color.text.strong, fontWeight: '600', paddingLeft: 2 },
 })
 
