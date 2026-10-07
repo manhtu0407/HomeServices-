@@ -3,7 +3,17 @@ import type { Session } from '@supabase/supabase-js'
 import { USER_ROLES, type UserRole } from '@nestscout/shared'
 
 import type { AuthSnapshot } from './auth-context'
+import { readResource, removeResource, writeResource } from './resource-cache/resource-cache'
+import { hydrateResourceOwner } from './resource-cache/resource-cache-persistence'
+import { isConnectivityOffline } from './connectivity'
 import { supabase } from './supabase'
+
+const ROLE_RESOURCE_KEY = 'auth.role'
+
+function cachedRoleFor(userId: string): UserRole | null {
+  const cached = readResource<unknown>(userId, ROLE_RESOURCE_KEY)?.data
+  return typeof cached === 'string' && USER_ROLES.includes(cached as UserRole) ? cached as UserRole : null
+}
 
 type AuthRoleLookupOptions = {
   localVisualAuditRole: UserRole | null
@@ -42,6 +52,16 @@ export function useAuthRoleLookup({
         roleLookupSequenceRef.current === lookupSequence &&
         sessionRef.current?.user.id === userId
       )
+      // An unreachable profile read on 3G is not evidence the role changed; keep routing on the last known role.
+      const keepCachedRole = (cachedRole: UserRole) => {
+        patchAuth({ role: cachedRole, profileStatus: 'ready', loading: false, authError: null })
+        return cachedRole
+      }
+      // With no role to fall back on, an unreachable server still is not a sign-out; the session stays and the shell waits.
+      const reportUnreachable = () => {
+        patchAuth({ role: null, profileStatus: 'network_unavailable', authError: null, loading: false })
+        return null
+      }
 
       if (localVisualAuditRole) {
         if (!isCurrentLookup()) return null
@@ -56,8 +76,14 @@ export function useAuthRoleLookup({
       }
 
       if (!isCurrentLookup()) return null
+      await hydrateResourceOwner(userId)
+      if (!isCurrentLookup()) return null
+      // The cached role only routes the shell; every Edge route still enforces its own role guard.
+      const cachedRole = cachedRoleFor(userId)
       const softRoleRefresh = sessionRef.current?.user.id === userId && roleRef.current !== null
-      if (softRoleRefresh) {
+      if (cachedRole && !softRoleRefresh) {
+        patchAuth({ role: cachedRole, profileStatus: 'ready', loading: false, authError: null })
+      } else if (softRoleRefresh) {
         patchAuth({ profileStatus: 'loading', authError: null })
       } else {
         patchAuth({ loading: true, profileStatus: 'loading', authError: null })
@@ -66,7 +92,7 @@ export function useAuthRoleLookup({
       try {
         // The post-I/O owner check prevents an older account lookup from committing into a newer session.
         // react-doctor-disable-next-line react-doctor/async-defer-await
-        const { data, error } = await supabase
+        const { data, error, status } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', userId)
@@ -74,6 +100,8 @@ export function useAuthRoleLookup({
 
         if (!isCurrentLookup()) return null
         if (error) {
+          if (cachedRole) return keepCachedRole(cachedRole)
+          if (status === 0) return reportUnreachable()
           patchAuth({
             role: null,
             profileStatus: 'profile_error',
@@ -83,6 +111,7 @@ export function useAuthRoleLookup({
           return null
         }
 
+        if (!data?.role || !USER_ROLES.includes(data.role as UserRole)) removeResource(userId, ROLE_RESOURCE_KEY)
         if (!data?.role) {
           patchAuth({
             role: null,
@@ -104,10 +133,13 @@ export function useAuthRoleLookup({
         }
 
         const nextRole = data.role as UserRole
+        writeResource(userId, ROLE_RESOURCE_KEY, nextRole)
         patchAuth({ role: nextRole, profileStatus: 'ready', loading: false })
         return nextRole
       } catch {
         if (!isCurrentLookup()) return null
+        if (cachedRole) return keepCachedRole(cachedRole)
+        if (isConnectivityOffline()) return reportUnreachable()
         patchAuth({
           role: null,
           profileStatus: 'profile_error',

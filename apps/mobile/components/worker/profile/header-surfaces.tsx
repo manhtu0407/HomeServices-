@@ -16,6 +16,7 @@ import type { WorkerProfileResponse } from '@/lib/api-types'
 import { textByLanguage } from '../ui/format'
 import { useWorkerThemeMode } from '../worker-theme'
 import { styles } from './header-styles'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 type WorkerV5ProfileHeaderProfile = WorkerProfileResponse | null | undefined
 type WorkerV5HeaderAura = ComponentType<{ testID: string }>
@@ -84,7 +85,7 @@ export function WorkerV5ProfileHeader({
         ) : profile?.avatar_url ? (
           <Image
             contentFit="cover"
-            source={{ uri: profile.avatar_url }}
+            source={stableImageSource(profile.avatar_url)}
             style={styles.profileAvatarImage}
             testID="worker-v5-profile-avatar-image"
           />

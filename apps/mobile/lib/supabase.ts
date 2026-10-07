@@ -5,13 +5,16 @@ import type { Database } from '@nestscout/shared'
 import { getLocalVisualAuditRole } from './auth-visual-audit'
 import { mobileRuntimeConfig } from './runtime-config'
 import { withSecureStoreDeadline } from './secure-store-deadline'
+import { reportTransportFailure, reportTransportSuccess } from './connectivity'
+import { requestBodyBytes, uploadDeadlineMs } from './upload-deadline'
 
 const supabaseUrl = mobileRuntimeConfig.supabaseUrl
 const supabaseKey = mobileRuntimeConfig.supabasePublishableKey
 
 const isSupabaseConfigured = supabaseUrl.length > 0 && supabaseKey.length > 0
 const SUPABASE_API_TIMEOUT_MS = 20_000
-const SUPABASE_STORAGE_TIMEOUT_MS = 65_000
+// Storage requests outlive the upload wrapper's own deadline by this margin, so the wrapper reports first.
+const SUPABASE_STORAGE_TIMEOUT_MARGIN_MS = 5_000
 
 type BrowserStorage = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>
 
@@ -136,7 +139,7 @@ export async function supabaseFetch(
   upstreamSignal?.addEventListener('abort', relayAbort, { once: true })
   const timeout = setTimeout(
     () => controller.abort(supabaseAbortError('SUPABASE_REQUEST_TIMEOUT')),
-    supabaseRequestTimeout(input),
+    supabaseRequestTimeout(input, init?.body),
   )
   let rejectOnAbort: ((error: Error) => void) | undefined
   const aborted = new Promise<never>((_resolve, reject) => {
@@ -149,11 +152,14 @@ export async function supabaseFetch(
   controller.signal.addEventListener('abort', onAbort, { once: true })
 
   try {
-    return await Promise.race([
+    const response = await Promise.race([
       globalThis.fetch(input, { ...init, redirect: 'error', signal: controller.signal }),
       aborted,
     ])
+    reportTransportSuccess()
+    return response
   } catch (error) {
+    if (!upstreamSignal?.aborted) reportTransportFailure()
     // Keep auth-js on its retryable HTTP-error path so a browser transport failure does not become a raw dev overlay.
     if (isSupabaseAuthTransportError(input, error)) return createSupabaseAuthUnavailableResponse()
     throw error
@@ -164,9 +170,9 @@ export async function supabaseFetch(
   }
 }
 
-function supabaseRequestTimeout(input: Parameters<typeof fetch>[0]) {
+function supabaseRequestTimeout(input: Parameters<typeof fetch>[0], body: unknown) {
   return /\/storage\/v1\//i.test(supabaseRequestUrl(input))
-    ? SUPABASE_STORAGE_TIMEOUT_MS
+    ? uploadDeadlineMs(requestBodyBytes(body)) + SUPABASE_STORAGE_TIMEOUT_MARGIN_MS
     : SUPABASE_API_TIMEOUT_MS
 }
 

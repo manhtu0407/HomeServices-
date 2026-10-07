@@ -140,7 +140,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'nestscout',
   ios: {
     supportsTablet: false,
-    buildNumber: '51',
+    buildNumber: '52',
     bundleIdentifier: 'com.phanmanhtu.homeservices',
     config: {
       usesNonExemptEncryption: false,

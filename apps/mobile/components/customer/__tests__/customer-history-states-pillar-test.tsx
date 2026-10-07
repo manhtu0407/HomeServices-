@@ -15,7 +15,7 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P221-admin-activation-audit-isolation'],
   mutation:
-    'drop the `localVisualAuditSession` guard in `load` so audit mode reads the network again — the audit case turns red; or make `load_failure` render the empty card — the unavailable case turns red',
+    'drop `enabled: !localVisualAuditSession` from the history resource so audit mode reads the network again — the audit case turns red; or make `load_failure` render the empty card — the unavailable case turns red',
 } as const satisfies PillarManifest
 
 let mockSession: { access_token: string; user: { app_metadata?: { provider?: string }; id: string } }

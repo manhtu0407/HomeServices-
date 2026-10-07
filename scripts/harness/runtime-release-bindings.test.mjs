@@ -461,6 +461,9 @@ test('rollback preflight accepts only a complete exact hosted Production binding
   assert.equal(result.bindingCount, 25)
   assert.equal(result.bindings.HARNESS_RELEASE_ID, hosted.releaseId)
   assert.equal(result.bindings.HARNESS_GIT_SHA, hosted.gitSha)
+  const verification = assertHostedRuntimeBindingsRestorable({ ...hosted, releaseLane: 'verification' })
+  assert.equal(verification.bindingCount, 26)
+  assert.equal(verification.bindings.HARNESS_RELEASE_LANE, 'verification')
   assert.throws(() => assertHostedRuntimeBindingsRestorable({ ...hosted, edgeBundleSha256: null }),
     /exact hosted release metadata/u)
   assert.throws(() => assertHostedRuntimeBindingsRestorable({

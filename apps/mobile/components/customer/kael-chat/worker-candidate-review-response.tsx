@@ -12,6 +12,7 @@ import { buildCaseWorkResponseModel } from './case-work-response-model'
 import type { SavedWorkerSummary, SavedWorkersStatus } from './customer-saved-workers'
 import { SavedWorkerConfirmationList } from './saved-worker-confirmation-list'
 import { CandidatePriceReceipt } from './worker-candidate-review-price-receipt'
+import { stableImageSource } from '@/lib/stable-image-source'
 
 const VND_FORMATTER = new Intl.NumberFormat('vi-VN')
 
@@ -175,7 +176,7 @@ function WorkerCandidateReviewContent({
                       accessibilityIgnoresInvertColors
                       accessibilityLabel={language === 'vi' ? `Ảnh đại diện của ${displayName}` : `${displayName}'s profile photo`}
                       contentFit="cover"
-                      source={{ uri: candidate.avatar_url }}
+                      source={stableImageSource(candidate.avatar_url)}
                       style={styles.avatar}
                       testID="customer-v21-worker-candidate-avatar"
                     />

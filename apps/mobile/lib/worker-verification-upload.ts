@@ -2,6 +2,7 @@ import type { LocalMediaUploadDraft } from './media-upload'
 import { generateClientRequestId } from './client-request-id'
 import { readResponseBytesBounded, withNetworkDeadline } from './response-guard'
 import { supabase } from './supabase'
+import { reencodeUploadImage } from './vision-image-reencode'
 
 type WorkerVerificationDrafts = {
   cccdFront?: LocalMediaUploadDraft
@@ -87,7 +88,10 @@ export async function uploadWorkerVerificationDrafts(files: WorkerVerificationDr
     ['cccd_back_url', 'cccd-back', files.cccdBack],
     ['selfie_url', 'selfie', files.selfie],
   ] as const
-  const preparedEntries = entries.flatMap(([field, folder, item]) => {
+  const resizedEntries = await Promise.all(entries.map(async ([field, folder, item]) => (
+    [field, folder, item ? await reencodeUploadImage(item) : item] as const
+  )))
+  const preparedEntries = resizedEntries.flatMap(([field, folder, item]) => {
     if (!item) return []
     const mimeType = workerVerificationMimeType(item)
     return [{

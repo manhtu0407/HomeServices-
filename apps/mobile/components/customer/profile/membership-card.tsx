@@ -6,6 +6,7 @@ import { KaelTextInput } from '@/components/ui/kael-primitives'
 import { typography } from '@/design/theme'
 import { useAppLanguage, type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
+import { useCachedResource } from '@/lib/resource-cache/use-cached-resource'
 import {
   inviteCodeHasNeverIssuedCharacter,
   normalizeInviteCode,
@@ -107,23 +108,24 @@ export function CustomerMembershipCard() {
   const glass = useGlassAccessibility()
   const base = getCustomerThemeTokens(mode)
   const tokens = glass.reduceTransparency ? getReducedTransparencyCustomerTokens(base) : base
-  const [membership, setMembership] = useState<CustomerMembership | null>(null)
-  const [loadFailed, setLoadFailed] = useState(false)
+  const fetchMembership = useCallback(() => membershipService.getMembership(accessToken), [accessToken])
+  const membershipResource = useCachedResource<CustomerMembership>({
+    enabled: Boolean(accessToken),
+    fetcher: fetchMembership,
+    key: 'customer.membership',
+    ownerId: session?.user.id ?? null,
+  })
+  const membership = membershipResource.data
+  const loadFailed = membershipResource.status === 'error'
+  const { refresh: refreshMembership } = membershipResource
+  const load = useCallback(async () => {
+    await refreshMembership()
+  }, [refreshMembership])
   const [code, setCode] = useState('')
   const [claiming, setClaiming] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [linkClaimOutcome, setLinkClaimOutcome] = useState<ReferralClaimOutcome | null>(null)
-
-  const load = useCallback(async () => {
-    const result = await membershipService.getMembership(accessToken)
-    if (result.success) {
-      setMembership(result.data)
-      setLoadFailed(false)
-    } else {
-      setLoadFailed(true)
-    }
-  }, [accessToken])
 
   useEffect(() => {
     let active = true
@@ -140,10 +142,6 @@ export function CustomerMembershipCard() {
       active = false
       unsubscribe()
     }
-  }, [load])
-
-  useEffect(() => {
-    void load()
   }, [load])
 
   const normalized = normalizeInviteCode(code)

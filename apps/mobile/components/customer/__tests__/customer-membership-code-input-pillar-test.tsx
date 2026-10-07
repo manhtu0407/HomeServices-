@@ -25,7 +25,7 @@ export const PILLAR = {
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
 
 jest.mock('@/lib/auth-provider', () => ({
-  useAuth: () => ({ session: { access_token: 'customer-token' } }),
+  useAuth: () => ({ session: { access_token: 'customer-token', user: { id: 'owner-customer-token' } } }),
 }))
 
 jest.mock('@/lib/services/membership-service', () => ({

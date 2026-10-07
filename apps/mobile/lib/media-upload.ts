@@ -6,7 +6,8 @@ import type { ApiResponseMetadata, JobMediaAttachInput, JobMediaStage } from './
 import { createClientDiagnosticMetadata } from './api'
 import { appendWorkflowSupportCode } from './frontend-workflow/errors'
 import { readResponseBytesBounded, withNetworkDeadline } from './response-guard'
-import { reencodeVisionImage } from './vision-image-reencode'
+import { reencodeUploadImage, reencodeVisionImage } from './vision-image-reencode'
+import { uploadDeadlineMs } from './upload-deadline'
 
 export { uploadWorkerVerificationDrafts } from './worker-verification-upload'
 
@@ -29,7 +30,6 @@ type MediaUploadFailure = {
 const MAX_JOB_MEDIA_BYTES = 26_214_400
 const MAX_KAEL_CHAT_MEDIA_BYTES = 50 * 1024 * 1024
 const LOCAL_MEDIA_READ_TIMEOUT_MS = 15_000
-const JOB_MEDIA_UPLOAD_TIMEOUT_MS = 60_000
 const JOB_MEDIA_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
@@ -106,7 +106,7 @@ export async function uploadJobMediaDrafts(
   for (const [index, pickedItem] of mediaItems.slice(0, 5).entries()) {
     const item = stage === 'kael_reference' && pickedItem.type === 'image'
       ? await reencodeVisionImage(pickedItem)
-      : pickedItem
+      : await reencodeUploadImage(pickedItem)
     if (!item) {
       await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
       return jobMediaFailure('MEDIA_READ_FAILED', 'Không thể đọc tệp media đã chọn')
@@ -174,6 +174,7 @@ export async function uploadJobMediaDrafts(
           localFile.bytes,
           { contentType: mimeType, upsert: false },
         ),
+        fileSizeBytes,
       )
       if (error) {
         await revokeJobMediaUploadsBestEffort(jobId, reservedObjectPaths)
@@ -223,10 +224,10 @@ async function revokeJobMediaUploadsBestEffort(jobId: string, objectPaths: strin
   }
 }
 
-async function withJobMediaUploadTimeout<T>(promise: Promise<T>) {
+async function withJobMediaUploadTimeout<T>(promise: Promise<T>, bytes?: number) {
   let timer: ReturnType<typeof setTimeout> | undefined
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error('Job media upload timeout')), JOB_MEDIA_UPLOAD_TIMEOUT_MS)
+    timer = setTimeout(() => reject(new Error('Job media upload timeout')), uploadDeadlineMs(bytes))
   })
   try {
     return await Promise.race([promise, timeout])
@@ -402,7 +403,7 @@ async function uploadKaelChatEvidenceObject(
   evidence: CaseWorkEvidence
   mediaRef: string
 } | MediaUploadFailure> {
-  const item = options.modelEligible ? await reencodeVisionImage(pickedItem) : pickedItem
+  const item = options.modelEligible ? await reencodeVisionImage(pickedItem) : await reencodeUploadImage(pickedItem)
   if (!item) {
     return jobMediaFailure('MEDIA_READ_FAILED', 'Không thể đọc tệp media đã chọn')
   }
@@ -444,7 +445,7 @@ async function uploadKaelChatEvidenceObject(
       signedUpload.data.token,
       localFile.bytes,
       { contentType: mimeType, upsert: false },
-    ))
+    ), fileSizeBytes)
     if (!uploadError) {
       return {
         success: true,

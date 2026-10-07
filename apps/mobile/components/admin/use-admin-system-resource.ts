@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { useAuth } from '@/lib/auth-provider'
+import { peekResource, writeResource } from '@/lib/resource-cache/resource-cache'
+
 type ApiResult<T> = { success: true; data: T } | { success: false; error?: string }
 type ListEnvelope<TRecord, TSummary> = {
   generated_at: string
@@ -22,7 +25,8 @@ type ResourceState<TRecord, TSummary, TEnvelope> = {
   summary: TSummary | null
 }
 
-const sessionCache = new Map<string, unknown>()
+// Scoped to the signed-in admin, so a second admin on the same device never sees the first one's lists.
+const ANONYMOUS_OWNER = 'anonymous'
 
 export function useAdminSystemResource<TRecord, TSummary, TEnvelope extends ListEnvelope<TRecord, TSummary> = ListEnvelope<TRecord, TSummary>>({
   cacheKey,
@@ -36,29 +40,31 @@ export function useAdminSystemResource<TRecord, TSummary, TEnvelope extends List
   query: string
 }) {
   const debouncedQuery = useDebouncedValue(query, 300)
+  const { session } = useAuth()
+  const ownerId = session?.user.id ?? ANONYMOUS_OWNER
   const activeKey = `${cacheKey}:${debouncedQuery}`
   const requestId = useRef(0)
-  const [state, setState] = useState<ResourceState<TRecord, TSummary, TEnvelope>>(() => resourceStateForKey<TRecord, TSummary, TEnvelope>(activeKey))
-  const current = state.key === activeKey ? state : resourceStateForKey<TRecord, TSummary, TEnvelope>(activeKey)
+  const [state, setState] = useState<ResourceState<TRecord, TSummary, TEnvelope>>(() => resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey))
+  const current = state.key === activeKey ? state : resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey)
 
   useEffect(() => {
-    if (sessionCache.has(activeKey)) return
+    if (peekResource(ownerId, adminResourceKey(activeKey))) return
     const currentRequest = ++requestId.current
     let active = true
     void fetchPage({ query: debouncedQuery }).then((result) => {
       if (!active || currentRequest !== requestId.current) return
       if (!result.success) {
-        setState({ ...resourceStateForKey<TRecord, TSummary, TEnvelope>(activeKey), error: result.error || errorMessage, loading: false })
+        setState({ ...resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey), error: result.error || errorMessage, loading: false })
         return
       }
-      sessionCache.set(activeKey, result.data)
+      writeResource(ownerId, adminResourceKey(activeKey), result.data)
       setState(resourceStateFromEnvelope(activeKey, result.data))
     })
     return () => {
       active = false
       if (currentRequest === requestId.current) requestId.current += 1
     }
-  }, [activeKey, debouncedQuery, errorMessage, fetchPage])
+  }, [activeKey, debouncedQuery, errorMessage, fetchPage, ownerId])
 
   const load = useCallback(async ({ append = false, refresh = false }: { append?: boolean; refresh?: boolean } = {}) => {
     const currentRequest = ++requestId.current
@@ -80,9 +86,9 @@ export function useAdminSystemResource<TRecord, TSummary, TEnvelope extends List
     const response = append
       ? { ...result.data, records: [...current.records, ...result.data.records] } as TEnvelope
       : result.data
-    sessionCache.set(activeKey, response)
+    writeResource(ownerId, adminResourceKey(activeKey), response)
     setState(resourceStateFromEnvelope(activeKey, response))
-  }, [activeKey, current, debouncedQuery, errorMessage, fetchPage])
+  }, [activeKey, current, debouncedQuery, errorMessage, fetchPage, ownerId])
 
   return {
     dataQuality: current.dataQuality,
@@ -101,8 +107,12 @@ export function useAdminSystemResource<TRecord, TSummary, TEnvelope extends List
   }
 }
 
-function resourceStateForKey<TRecord, TSummary, TEnvelope extends ListEnvelope<TRecord, TSummary>>(key: string): ResourceState<TRecord, TSummary, TEnvelope> {
-  const cached = sessionCache.get(key) as TEnvelope | undefined
+function adminResourceKey(key: string) {
+  return `admin.system:${key}` as const
+}
+
+function resourceStateForKey<TRecord, TSummary, TEnvelope extends ListEnvelope<TRecord, TSummary>>(ownerId: string, key: string): ResourceState<TRecord, TSummary, TEnvelope> {
+  const cached = peekResource<TEnvelope>(ownerId, adminResourceKey(key))?.data
   return cached ? resourceStateFromEnvelope(key, cached) : {
     dataQuality: 'unavailable',
     error: null,
