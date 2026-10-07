@@ -185,7 +185,7 @@ export function assertHostedRuntimeBindingsRestorable(hosted) {
   const bindings = runtimeReleaseBindingsFromHostedState(hosted)
   const args = bindingArguments(bindings)
   if (args.some((argument) => /(?:=unknown|=unreleased|=legacy-unavailable)$/u.test(argument)) ||
-      args.length !== (hosted.releaseLane === 'plan55-production-only' ? 28 : 25)) {
+      args.length !== (hosted.releaseLane === 'plan55-production-only' ? 28 : hosted.releaseLane ? 26 : 25)) {
     throw new Error('rollback preflight cannot reconstruct the exact hosted binding set')
   }
   return Object.freeze({ bindingCount: args.length, bindings })
