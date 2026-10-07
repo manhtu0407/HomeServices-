@@ -789,6 +789,18 @@ describe('LoginRoleSurface', () => {
     expect(mockRequestPasswordRecovery).not.toHaveBeenCalled()
   })
 
+  it('opens the password-reset screen even while a worker registration handoff is still set', () => {
+    setWorkerRegistrationHandoff({ phase: 'login-notice', identifier: 'worker@example.com', notice: 'Hồ sơ đang được xem xét.' })
+    mockAuthOverride = {
+      passwordRecoveryPending: true,
+      session: { user: { app_metadata: {}, id: 'customer_test_1', user_metadata: {} } },
+    }
+    render(<LoginRoleSurface />)
+
+    expect(screen.getByTestId('auth-password-reset-screen')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-login-submit')).toBeNull()
+  })
+
   it('keeps a recovery session on the password-reset screen until the new password is saved', async () => {
     mockAuthOverride = {
       passwordRecoveryPending: true,

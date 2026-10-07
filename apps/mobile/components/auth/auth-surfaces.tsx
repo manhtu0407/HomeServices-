@@ -79,11 +79,13 @@ export function LoginRoleSurface() {
   const hasExplicitRole = firstParam(params.role) !== undefined
   const passwordRecoveryStep: EntryAccessStep | null = !reviewStep && auth.passwordRecoveryPending ? 'password-reset' : null
   const profileRecoveryStep: EntryAccessStep | null = !reviewStep && auth.session && auth.profileStatus === 'profile_missing' ? 'onboarding' : null
-  const handoffStep: EntryAccessStep | null = !handoff
+  // A recovery callback outranks a leftover worker handoff; otherwise the valid recovery session never reaches the reset screen.
+  const activeHandoff = passwordRecoveryStep ? null : handoff
+  const handoffStep: EntryAccessStep | null = !activeHandoff
     ? null
-    : handoff.phase === 'submitted' || handoff.phase === 'signing-in' || handoff.phase === 'login-failed' || handoff.phase === 'login-notice'
+    : activeHandoff.phase === 'submitted' || activeHandoff.phase === 'signing-in' || activeHandoff.phase === 'login-failed' || activeHandoff.phase === 'login-notice'
       ? 'login'
-      : handoff.phase === 'pending'
+      : activeHandoff.phase === 'pending'
         ? 'onboarding'
         : 'register'
   const baseStep = reviewStep ?? passwordRecoveryStep ?? profileRecoveryStep ?? 'splash'
@@ -91,32 +93,32 @@ export function LoginRoleSurface() {
   // The key must not follow the handoff: a phase change inside one flow would rebuild the screen
   // and drop it back to the role gate. A rebuilt screen reads the handoff for its initial values.
   const flowKey = `${baseStep}:${routeRole}:${reviewStep ? 'review' : 'live'}:${passwordRecoveryStep ? 'recovery' : profileRecoveryStep ? 'profile' : 'entry'}`
-  const handoffApplication = handoff && 'application' in handoff ? handoff.application : null
+  const handoffApplication = activeHandoff && 'application' in activeHandoff ? activeHandoff.application : null
   const resume = useMemo(() => {
-    if (!handoff) return null
-    switch (handoff.phase) {
+    if (!activeHandoff) return null
+    switch (activeHandoff.phase) {
       case 'submitted':
-        return { identifier: handoff.identifier, notice: copy.register.workerSubmitted, step: 'login' as const }
+        return { identifier: activeHandoff.identifier, notice: copy.register.workerSubmitted, step: 'login' as const }
       case 'login-notice':
-        return { identifier: handoff.identifier, notice: handoff.notice, step: 'login' as const }
+        return { identifier: activeHandoff.identifier, notice: activeHandoff.notice, step: 'login' as const }
       case 'login-failed':
-        return { error: handoff.error, identifier: handoff.identifier, step: 'login' as const }
+        return { error: activeHandoff.error, identifier: activeHandoff.identifier, step: 'login' as const }
       case 'failed':
-        return { error: handoff.error, identifier: handoff.identifier, step: 'register' as const }
+        return { error: activeHandoff.error, identifier: activeHandoff.identifier, step: 'register' as const }
       case 'pending':
-        return { identifier: handoff.identifier, step: 'onboarding' as const }
+        return { identifier: activeHandoff.identifier, step: 'onboarding' as const }
       default:
         return null
     }
-  }, [copy, handoff])
-  const initialState = handoff
+  }, [copy, activeHandoff])
+  const initialState = activeHandoff
     ? {
-        error: handoff.phase === 'failed' || handoff.phase === 'login-failed' ? handoff.error : null,
-        identifier: handoff.identifier,
-        notice: handoff.phase === 'submitted'
+        error: activeHandoff.phase === 'failed' || activeHandoff.phase === 'login-failed' ? activeHandoff.error : null,
+        identifier: activeHandoff.identifier,
+        notice: activeHandoff.phase === 'submitted'
           ? copy.register.workerSubmitted
-          : handoff.phase === 'login-notice'
-            ? handoff.notice
+          : activeHandoff.phase === 'login-notice'
+            ? activeHandoff.notice
             : null,
       }
     : undefined
