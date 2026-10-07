@@ -55,6 +55,17 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/preview-session-context.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
     ]
   }
 }
