@@ -1346,14 +1346,14 @@ Chỉ complete Pursuing Goal khi đồng thời có: **6 receipts PASS + mọi g
 
 **Historical next action at this snapshot:** replace the comment-only holdout preflight with an exact-source Codex blind-result + Perplexity Agent API evidence path, add fail-closed schema/coverage/citation/usage validation and workflow transport, then test that path locally. This work is recorded in 55.3 below; do not treat this historical instruction as current.
 
-#### 55.3 Execution checkpoint — 2026-10-07 15:01 UTC
+#### 55.3 Execution checkpoint — 2026-10-07 15:13 UTC
 
 - Goal `01a03e98-182b-76e0-af1d-31e220d9791e` remains `active`; reuse it. Ultimate Plan 55.1 remains the sole execution authority. Production-only; no Staging, RAM cleanup, or canary has been started.
 - A fresh read-only `--next-action` check at 15:01 UTC found Production project `iwevizmsedyqozxlawwl` active/healthy, release `harness-d753f26174ee-0b25b027f0cb`, served source `d753f26174ee0bc17e9ae350a535707f4113ec0a`, and `0/48` verified slices. `canary_started` is null, cleanup is false, and the command reported `mutations=0`; with the checkpoint identity refreshed it now returns `REPAIR_LOCAL`.
-- Implementation checkout `codex/plan55-readiness` is clean at merge commit `ce77310b3e653ebfa7761dd0750aa4ce77b64cb7`; local Plan 55 commit is `83ba8b33`, and fetched `origin/main` `d753f26174ee0bc17e9ae350a535707f4113ec0a` is its ancestor. The PR diff is limited to the 28 Plan 55-scoped files. The branch has not been pushed and no PR exists yet.
+- Implementation checkout `codex/plan55-readiness` is clean at `0bd6d91c6fbe57b386251cceece8c667915cb7f4`, based on merge commit `ce77310b3e653ebfa7761dd0750aa4ce77b64cb7`; Plan 55 implementation commit is `83ba8b33`, and fetched `origin/main` `d753f26174ee0bc17e9ae350a535707f4113ec0a` is an ancestor. PR #335 is open against `main` with the exact 28-file Plan 55 diff. Required checks `package` and `secret scan, classification, and repository controls` passed; the two live-release jobs were skipped on the PR event. GitHub reports the PR merge state clean. Merge requests via both the CLI GraphQL and REST endpoints returned HTTP 500; read-only follow-up confirms the PR is still open and `main` is unchanged. Do not bypass the PR merge path.
 - PR #332 is the prior `MERGED` base at `2026-10-07T06:43:50Z`, head `03fc066ec15d0531efb1381f9b5257680da51712`; required CI passed and its Plan 55 release/canary job was skipped. It is not the final Plan 55 measurement source.
-- The exact-source, label-free holdout package, Codex/Perplexity Agent API runners, verifier, adjudicator, workflow transport, and fail-closed gates are implemented locally. Review caught and fixed a Perplexity citation prompt/validator mismatch. The prompt now asks for a real search-result ID for every judgment; local validation rejects empty, duplicate, fabricated, or unknown source IDs. The provider schema stays conservative because the current official docs do not enumerate `minItems`/`uniqueItems` support.
-- Verification after merge: `pnpm test:api` Vitest `128 files: 1765 PASS, 2 SKIP`; Node contract suite `111 PASS, 1 SKIP`; focused Plan 55 holdout/workflow tests `40/40 PASS`; `pnpm lint:workplan` and `pnpm lint:comments --working` PASS; `git diff --check origin/main...HEAD` PASS. No live provider call, blind-holdout receipt, or Production mutation occurred.
+- The exact-source, label-free holdout package, Codex/Perplexity Agent API runners, verifier, adjudicator, workflow transport, and fail-closed gates are implemented locally. Tu approved the narrowly scoped RULES/AI-protocol exception for Perplexity on this synthetic Plan 55 holdout only. Review caught and fixed a Perplexity citation prompt/validator mismatch. The prompt now asks for a real search-result ID for every judgment; local validation rejects empty, duplicate, fabricated, or unknown source IDs. The provider schema stays conservative because the current official docs do not enumerate `minItems`/`uniqueItems` support.
+- Verification after merge: `pnpm test:api` Vitest `128 files: 1765 PASS, 2 SKIP`; Node contract suite `111 PASS, 1 SKIP`; focused Plan 55 holdout/workflow tests `40/40 PASS`; `pnpm lint:workplan` and `pnpm lint:comments --working` PASS; `git diff --check origin/main...HEAD` PASS. PR #335 exact-head checks also pass; live-release jobs are correctly skipped on pull request. No live provider call, blind-holdout receipt, or Production mutation occurred.
 - The protected GitHub `production` environment has `PERPLEXITY_API_KEY` but lacks `CODEX_ACCESS_TOKEN` (secret names only inspected). This is the exact external prerequisite for the configured Codex judge; do not replace it with another provider or bypass independent adjudication.
 - Aggregate-only Production query found zero non-synthetic completed jobs in the last 30 days for all six services. In 90 days it found HVAC 1, Handyman 2, Cleaning 1, Upholstery 1, Plumbing 7, Electrical 1; each service had one distinct completed customer and one distinct worker, Plumbing had one paid job, and one Electrical synthetic-tagged job was not completed. These totals lack preregistered cohort provenance and do not pass pilot/cohort readiness.
 - At 15:02 UTC there was no matching mutating Plan 55 evaluator process and no local checkpoint store after excluding the read-only `--next-action` command. This is a local observation only.
@@ -1361,7 +1361,7 @@ Chỉ complete Pursuing Goal khi đồng thời có: **6 receipts PASS + mọi g
 <!-- PLAN55_EXECUTION_CHECKPOINT_START -->
 {
   "schema": "plan55-execution-checkpoint/v1",
-  "observedAtUtc": "2026-10-07T15:01:20Z",
+  "observedAtUtc": "2026-10-07T15:13:36Z",
   "production": {
     "projectRef": "iwevizmsedyqozxlawwl",
     "releaseId": "harness-d753f26174ee-0b25b027f0cb",
@@ -1387,24 +1387,24 @@ Chỉ complete Pursuing Goal khi đồng thời có: **6 receipts PASS + mọi g
   "cleanupRequired": false,
   "repairableLocalBlocker": true,
   "safeParallelWork": [
-    "push the exact 28-file Plan 55 branch and open its PR; verify required CI before merge",
+    "retry the exact-head PR #335 merge only after GitHub merge API HTTP 500 clears; do not bypass the PR",
     "prepare source-bound cohort and final-readiness evidence without Production writes",
     "resolve the missing protected Production CODEX_ACCESS_TOKEN before any Codex holdout provider call"
   ],
   "evidence": {
     "productionCheckpoint": "read-only GET at 2026-10-07T15:01Z: project iwevizmsedyqozxlawwl active/healthy; release harness-d753f26174ee-0b25b027f0cb serves d753f26174ee0bc17e9ae350a535707f4113ec0a; 0/48 verified slices; canary_started null; cleanup false; mutations=0",
     "evaluator": "no matching mutating Plan 55 evaluator process and no local checkpoint store at 2026-10-07T15:02Z after excluding the read-only next-action command; this does not prove absence of an unobserved external attempt",
-    "currentMainPullRequest": "PR 332 is the prior merged base; no PR exists yet for this Plan 55 patch",
-    "implementationSource": "worktree codex/plan55-readiness clean at ce77310b3e653ebfa7761dd0750aa4ce77b64cb7; Plan 55 commit 83ba8b33; origin/main d753f26174ee0bc17e9ae350a535707f4113ec0a is an ancestor; exact PR diff is 28 Plan 55-scoped files",
-    "holdoutImplementation": "exact-source label-free Codex/Perplexity Agent API path and workflow transport implemented locally; Perplexity empty/duplicate/unknown source IDs fail closed locally; no live provider call or holdout receipt",
-    "verification": "pnpm test:api Vitest 128 files 1765 PASS/2 SKIP and Node 111 PASS/1 SKIP; focused Plan55 holdout/workflow tests 40/40 PASS; lint:workplan and lint:comments PASS; diff check PASS; read-only --next-action returns REPAIR_LOCAL",
+    "currentMainPullRequest": "PR 335 OPEN, exact head 0bd6d91c6fbe57b386251cceece8c667915cb7f4, base d753f26174ee0bc17e9ae350a535707f4113ec0a; package and secret-scan/classification/repository-controls checks SUCCESS; Plan55 live jobs SKIPPED on PR; mergeState CLEAN; GraphQL and REST merge returned HTTP 500; follow-up confirms main unchanged",
+    "implementationSource": "worktree codex/plan55-readiness clean at 0bd6d91c6fbe57b386251cceece8c667915cb7f4; merge base ce77310b3e653ebfa7761dd0750aa4ce77b64cb7; Plan 55 implementation commit 83ba8b33; exact PR diff is 28 Plan 55-scoped files",
+    "holdoutImplementation": "exact-source label-free Codex/Perplexity Agent API path and workflow transport implemented; Tu approved the narrow Perplexity-only policy exception for this synthetic holdout; empty/duplicate/unknown Perplexity source IDs fail closed; no live provider call or holdout receipt",
+    "verification": "pnpm test:api Vitest 128 files 1765 PASS/2 SKIP and Node 111 PASS/1 SKIP; focused Plan55 holdout/workflow tests 40/40 PASS; lint:workplan and lint:comments PASS; diff checks PASS; PR #335 required CI checks PASS and live release jobs SKIPPED on PR",
     "providerSecretNames": "Production environment has PERPLEXITY_API_KEY but no CODEX_ACCESS_TOKEN; names only checked, no secret values read",
     "cohortAggregate": "zero non-synthetic completed jobs in 30d for all six services; 90d per-service completed counts HVAC 1, Handyman 2, Cleaning 1, Upholstery 1, Plumbing 7, Electrical 1; each service has one distinct completed customer and worker; Plumbing has one paid job; one Electrical synthetic-tagged job is not completed; not a preregistered cohort or pilot",
     "providerSchemaReview": "official Agent API docs confirm structured JSON Schema and source extraction from actual search_results; minItems/uniqueItems support is not documented, so remote schema is conservative and local validation enforces citations",
     "failedWorkflowRun": "37195685554 failed before Docker/deploy at the legacy comment-only independent-holdout preflight; no live adjudication or canary evidence"
   },
   "nextAction": "REPAIR_LOCAL",
-  "nextActionReason": "Plan 55 source is tested and based on current main but not yet pushed, CI-verified, or merged; independent holdout also requires the missing protected Production CODEX_ACCESS_TOKEN"
+  "nextActionReason": "PR #335 is exact-head and CI-clean but GitHub merge endpoints returned HTTP 500; keep main and Production unchanged until merge succeeds. Independent Codex holdout also requires the missing protected Production CODEX_ACCESS_TOKEN"
 }
 <!-- PLAN55_EXECUTION_CHECKPOINT_END -->
 
