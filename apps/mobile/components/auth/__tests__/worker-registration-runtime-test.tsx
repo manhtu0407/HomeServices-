@@ -261,4 +261,21 @@ describe('worker registration against the real AuthProvider', () => {
     expect(screen.getByText(/Email\/SĐT hoặc mật khẩu không đúng|Invalid|không đúng/i)).toBeOnTheScreen()
     expect(mockReplace).not.toHaveBeenCalled()
   })
+
+  it('signs a changes-requested worker out to the worker sign-in so a restart cannot reach Customer Home', async () => {
+    mockGetReadiness.mockResolvedValue({
+      success: true,
+      data: { application: { application_id: 'app-1', reason: 'Bổ sung khu vực phục vụ.', status: 'changes_requested' } },
+    })
+    renderSurface()
+    signInThroughWorkerGate()
+
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByTestId('auth-login-notice')).toHaveTextContent(/Bổ sung khu vực phục vụ/))
+    expect(screen.getByText('Gửi lại hồ sơ xét duyệt')).toBeOnTheScreen()
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+    expect(mockSubmitApplication).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalledWith('/(customer)/home')
+    expect(mockReplace).not.toHaveBeenCalledWith('/(worker)/(tabs)/home')
+  })
 })

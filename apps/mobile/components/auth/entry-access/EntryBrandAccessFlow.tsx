@@ -54,6 +54,7 @@ export function EntryBrandAccessFlow({
   initialState,
   initialStep = 'splash',
   restoreRememberedRole = true,
+  resubmitApplication = false,
   resume,
   onRoleChange,
   onStepChange,
@@ -175,6 +176,7 @@ export function EntryBrandAccessFlow({
         passwordConfirmation={passwordConfirmation}
         providerLogin={providerLogin}
         remember={remember}
+        resubmitApplication={resubmitApplication}
         role={role}
         setAcceptedTerms={setAcceptedTerms}
         setFullName={setFullName}
@@ -193,7 +195,7 @@ export function EntryBrandAccessFlow({
 }
 
 type EntryAccessStepContentProps = {
-  acceptedTerms: boolean; busy: boolean; error: string | null; remember: boolean
+  acceptedTerms: boolean; busy: boolean; error: string | null; remember: boolean; resubmitApplication: boolean
   chooseRole: (role: EntryRole) => void; completeOnboarding: () => void; providerLogin: (provider: 'apple' | 'google') => Promise<void>
   copy: EntryAccessCopy; features: EntryAccessFeatureFlags
   fullName: string; identifier: string; notice: string | null; password: string; passwordConfirmation: string
@@ -216,6 +218,7 @@ function EntryAccessStepContent(props: EntryAccessStepContentProps) {
       return (
         <LoginScreen
           busy={props.busy}
+          resubmit={props.resubmitApplication}
           canRegister={props.role === 'customer' ? props.features.customerRegistration : props.features.workerRegistration}
           copy={props.copy}
           identifier={props.identifier}
@@ -346,7 +349,7 @@ function FormHeader({ lead, singleLineTitle = false, title }: { lead: string; si
 }
 
 function LoginScreen(props: {
-  busy: boolean; canRegister: boolean; error: string | null; notice: string | null; remember: boolean
+  busy: boolean; canRegister: boolean; error: string | null; notice: string | null; remember: boolean; resubmit: boolean
   copy: EntryAccessCopy; features: EntryAccessFeatureFlags
   identifier: string; language: AppLanguage; password: string; role: EntryRole
   onApple: () => void; onBack: () => void; onForgotPassword: () => void; onGoogle: () => void
@@ -370,7 +373,7 @@ function LoginScreen(props: {
             </View>
             {props.notice ? <Text accessibilityLiveRegion="polite" style={styles.notice} testID="auth-login-notice">{props.notice}</Text> : null}
             {props.error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{props.error}</Text> : null}
-            <PrimaryButton disabled={props.busy} label={props.busy ? props.copy.login.busy : props.copy.login.submit} onPress={props.onSubmit} testID="auth-login-submit" />
+            <PrimaryButton disabled={props.busy} label={props.busy ? props.copy.login.busy : props.resubmit ? props.copy.onboarding.workerResubmit : props.copy.login.submit} onPress={props.onSubmit} testID="auth-login-submit" />
             {showProviders ? (
               <>
                 <Divider label={props.copy.login.providerDivider} />

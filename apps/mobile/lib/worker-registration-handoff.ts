@@ -12,8 +12,8 @@ export type WorkerRegistrationHandoff =
   | Readonly<{ phase: 'submitted'; identifier: string; application: WorkerHandoffApplication }>
   | Readonly<{ phase: 'signing-in'; identifier: string }>
   | Readonly<{ phase: 'login-failed'; identifier: string; error: string }>
-  | Readonly<{ phase: 'login-notice'; identifier: string; notice: string }>
-  | Readonly<{ phase: 'pending'; identifier: string; application: WorkerHandoffApplication }>
+  // `revision` marks a sign-in screen that offers the explicit resubmit of an application the reviewer sent back.
+  | Readonly<{ phase: 'login-notice'; identifier: string; notice: string; revision?: Readonly<{ applicationId: string }> }>
 
 // Signing up or in changes the session, and FrontendWorkflowProvider keys its whole subtree by
 // session and role, so the auth screen is rebuilt mid-flow. Component state and refs die with it;

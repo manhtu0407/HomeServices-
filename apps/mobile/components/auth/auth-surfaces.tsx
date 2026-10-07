@@ -85,14 +85,13 @@ export function LoginRoleSurface() {
     ? null
     : activeHandoff.phase === 'submitted' || activeHandoff.phase === 'signing-in' || activeHandoff.phase === 'login-failed' || activeHandoff.phase === 'login-notice'
       ? 'login'
-      : activeHandoff.phase === 'pending'
-        ? 'onboarding'
-        : 'register'
+      : 'register'
   const baseStep = reviewStep ?? passwordRecoveryStep ?? profileRecoveryStep ?? 'splash'
   const initialStep = handoffStep ?? baseStep
   // The key must not follow the handoff: a phase change inside one flow would rebuild the screen
   // and drop it back to the role gate. A rebuilt screen reads the handoff for its initial values.
   const flowKey = `${baseStep}:${routeRole}:${reviewStep ? 'review' : 'live'}:${passwordRecoveryStep ? 'recovery' : profileRecoveryStep ? 'profile' : 'entry'}`
+  const resubmitApplication = activeHandoff?.phase === 'login-notice' && Boolean(activeHandoff.revision)
   const handoffApplication = activeHandoff && 'application' in activeHandoff ? activeHandoff.application : null
   const resume = useMemo(() => {
     if (!activeHandoff) return null
@@ -105,8 +104,6 @@ export function LoginRoleSurface() {
         return { error: activeHandoff.error, identifier: activeHandoff.identifier, step: 'login' as const }
       case 'failed':
         return { error: activeHandoff.error, identifier: activeHandoff.identifier, step: 'register' as const }
-      case 'pending':
-        return { identifier: activeHandoff.identifier, step: 'onboarding' as const }
       default:
         return null
     }
@@ -199,6 +196,9 @@ export function LoginRoleSurface() {
       }
     },
     onPasswordLogin: async ({ identifier, password, role }: PasswordLoginInput) => {
+      // Read before the record is overwritten: a sign-in on a screen that offers the resubmit is the confirmation.
+      const previousHandoff = getWorkerRegistrationHandoff()
+      const resubmitRequested = previousHandoff?.phase === 'login-notice' && Boolean(previousHandoff.revision)
       workerRegistrationIntentRef.current = role === 'worker'
       workerIdentifierRef.current = role === 'worker' ? identifier : null
       setWorkerRegistrationHandoff(role === 'worker' ? { phase: 'signing-in', identifier } : null)
@@ -238,10 +238,24 @@ export function LoginRoleSurface() {
           status: applicationStatus,
         }
         setWorkerApplication(readinessApplication)
-        if (applicationStatus === 'changes_requested') {
-          // Resubmitting needs an explicit confirmation, which the onboarding screen owns.
-          setWorkerRegistrationHandoff({ phase: 'pending', identifier, application: readinessApplication })
-          return { success: true, nextStep: 'onboarding' as const }
+        if (applicationStatus === 'changes_requested' && readinessApplication.applicationId) {
+          // Like every other status this ends signed out, so a restart cannot land on Customer Home.
+          // Resubmitting still needs an explicit confirmation: the next worker sign-in, whose button says so.
+          if (!resubmitRequested) {
+            const notice = [copy.onboarding.workerChangesRequestedLead, readinessApplication.reason].filter(Boolean).join(' ')
+            setWorkerRegistrationHandoff({ phase: 'login-notice', identifier, notice, revision: { applicationId: readinessApplication.applicationId } })
+            await auth.signOut()
+            return { success: true, nextStep: 'login' as const, notice }
+          }
+          const revision = await auth.submitWorkerApplication({
+            contact: identifier,
+            language,
+            revisionOfApplicationId: readinessApplication.applicationId,
+          })
+          if (!revision.success) {
+            return await failWorkerLogin(localizeEntryAuthError(revision.error, language, 'workerApplicationFailed'))
+          }
+          return await holdAtWorkerLogin(copy.onboarding.workerPendingLead)
         }
         if (applicationStatus !== 'not_submitted') {
           return await holdAtWorkerLogin(
@@ -379,6 +393,7 @@ export function LoginRoleSurface() {
       initialState={initialState}
       resume={resume}
       initialStep={initialStep}
+      resubmitApplication={resubmitApplication}
       onStepChange={(step) => {
         if (step === 'role-gate') setWorkerRegistrationHandoff(null)
       }}

@@ -63,6 +63,8 @@ export type EntryBrandAccessFlowProps = {
   // action that was started by the screen it replaced.
   resume?: Readonly<{ error?: string | null; identifier?: string; notice?: string | null; step: EntryAccessStep }> | null
   initialStep?: EntryAccessStep
+  // The worker sign-in doubles as the confirmation to resubmit an application that needs changes.
+  resubmitApplication?: boolean
   restoreRememberedRole?: boolean
   onStepChange?: (step: EntryAccessStep) => void
   onRoleChange?: (role: EntryRole) => void

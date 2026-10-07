@@ -1075,21 +1075,25 @@ describe('LoginRoleSurface', () => {
     fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
     fireEvent.press(screen.getByTestId('auth-login-submit'))
 
-    await waitFor(() => expect(screen.getByTestId('auth-onboarding-screen')).toBeOnTheScreen())
-    expect(screen.getByText('Hồ sơ ứng tuyển cần được bổ sung. Chỉ gửi lại khi bạn chủ động xác nhận.')).toBeOnTheScreen()
-    expect(screen.getByTestId('auth-worker-application-reason')).toHaveTextContent('Bổ sung khu vực phục vụ.')
+    await waitFor(() => expect(screen.getByTestId('auth-login-notice')).toHaveTextContent('Hồ sơ ứng tuyển cần được bổ sung. Chỉ gửi lại khi bạn chủ động xác nhận. Bổ sung khu vực phục vụ.'))
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+    expect(mockSignOut).toHaveBeenCalled()
     expect(screen.getByText('Gửi lại hồ sơ xét duyệt')).toBeOnTheScreen()
     expect(mockSubmitWorkerApplication).not.toHaveBeenCalled()
+    expect(mockReplace).not.toHaveBeenCalled()
 
-    fireEvent.press(screen.getByTestId('auth-onboarding-start'))
+    mockSignInWithPassword.mockResolvedValueOnce({ success: true, role: 'customer' })
+    fireEvent.changeText(screen.getByTestId('auth-login-password-input'), 'secret123')
+    fireEvent.press(screen.getByTestId('auth-login-submit'))
 
     await waitFor(() => expect(mockSubmitWorkerApplication).toHaveBeenCalledWith({
       contact: 'worker@example.com',
       language: 'vi',
       revisionOfApplicationId: '11111111-1111-4111-8111-111111111111',
     }))
-    expect(screen.getByText('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.')).toBeOnTheScreen()
-    expect(screen.getByText('Kiểm tra trạng thái')).toBeOnTheScreen()
+    await waitFor(() => expect(screen.getByTestId('auth-login-notice')).toHaveTextContent('Hồ sơ ứng tuyển đang được xem xét. Hệ thống sẽ không tự gửi thêm hồ sơ trùng lặp.'))
+    expect(screen.queryByTestId('auth-onboarding-screen')).toBeNull()
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it('does not duplicate a worker application when the resolved account is already a worker', async () => {
