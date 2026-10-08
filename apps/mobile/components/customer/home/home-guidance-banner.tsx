@@ -97,15 +97,17 @@ export function HomeGuidanceBanner({ language, onPress, reduceTransparency, toke
         </Text>
         <Text
           adjustsFontSizeToFit
-          minimumFontScale={0.85}
-          numberOfLines={1}
+          minimumFontScale={0.8}
+          numberOfLines={2}
           style={[styles.subtitle, { color: tokens.muted, marginTop: q(10) }]}
           testID="customer-v21-home-promo-subtitle"
         >
           {copy.subtitle}
         </Text>
         <Text
-          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.8}
+          numberOfLines={2}
           style={[styles.link, { color: accentColor, marginTop: q(12) }]}
           testID="customer-v21-home-promo-link"
         >
