@@ -150,7 +150,7 @@ export async function prepareKaelPipeline(
   // call time. Awaited so the daily counter stays accurate before we return.
   // the intermediate stage-progress writes are fire-and-forget.
   // updateKaelProgress swallows its own errors (returns void, never throws), the
-  // UI consumes stage granularity over a separate 800ms SSE poll, and each write
+  // open SSE stream hears each write in-process at call time, and each write
   // is followed by awaited stage work that keeps the isolate alive long enough
   // to flush it. Only the terminal progress:1 write stays awaited so the
   // completed state is durably persisted before the response returns.

@@ -151,6 +151,20 @@ export async function finalizeMarketRouteResult(input: {
 }): Promise<MarketLookupResult | null> {
   if (isInsufficientTrustedData(input.selectedResult.data)) {
     const failureReason = `${input.route.provider}:insufficient_trusted_data`;
+    // An empty lookup is still a lookup: without this row nothing records which cases the
+    // trusted registry cannot cover, so the evidence gap never becomes reviewable.
+    await maybeWriteMarketArtifact(input.cacheClient, {
+      key: input.cacheKey,
+      serviceType: input.serviceType,
+      provider: input.selectedRoute.provider,
+      market: null,
+      failureReason,
+      safeMetadata: marketArtifactMetadata(
+        mergeMarketSafeMetadata(input.trustedConfig?.safeMetadata, input.routeSafeMetadata),
+        mergeCitations(input.selectedResult.citations),
+        null,
+      ),
+    });
     return input.trustedConfig
       ? trustedMarketFailure(failureReason, input.trustedConfig, input.routeSafeMetadata)
       : null;

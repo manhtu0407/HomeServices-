@@ -25,7 +25,6 @@ import {
 import {
   cleanupKaelChatMediaRefs,
   localizeMediaUploadFailure,
-  uploadKaelChatMediaDrafts,
 } from '@/lib/media-upload'
 import {
   jobService,
@@ -49,6 +48,8 @@ import {
   preAgenticMissingDetails,
   preAgenticUnsupportedService,
 } from './customer-kael-pre-agentic-copy'
+import { uploadCaseWorkMediaDrafts } from './case-work-turn-media'
+import { caseWorkCreateFingerprint, showCaseWorkPendingSend } from './case-work-pending-send'
 import { applyCustomerKaelReasoningEvent } from './customer-kael-reasoning-actions'
 import { customerKaelMessageLengthError } from './customer-kael-message-limits'
 import type { CustomerKaelRequestGuard } from './customer-kael-state-scope'
@@ -285,15 +286,18 @@ export function useCustomerKaelMessageActions({
     }
     setStreamingReply(null)
     let composerCleared = false
+    let restorePendingCaseSend: () => void = () => undefined
     const clearSubmittedComposer = () => {
       setDraft('')
       setVoiceTranscript('')
       composerCleared = true
     }
     const commitSubmittedComposer = () => {
+      restorePendingCaseSend = () => undefined
       composerCleared = false
     }
     const restoreSubmittedComposer = () => {
+      restorePendingCaseSend()
       if (!composerCleared) return
       setDraft(submittedDraft)
       setVoiceTranscript(messageOverride === undefined ? voiceTranscript : '')
@@ -633,24 +637,18 @@ export function useCustomerKaelMessageActions({
     }
     setLoading(true)
     setError(null)
+    restorePendingCaseSend = showCaseWorkPendingSend(conversation, { drafts: composerMediaDrafts, text: message })
+    if (chat) startBackendProcessLines()
+    clearSubmittedComposer()
     const outgoingMessage = intakeMessage || (language === 'vi' ? 'Đã gửi ảnh/video.' : 'Sent media.')
-    const createFingerprint = JSON.stringify({
-      evidence: {
-        media: composerMediaDrafts.map((item) => ({
-          durationMillis: item.durationMillis,
-          fileName: item.fileName,
-          fileSizeBytes: item.fileSizeBytes,
-          mimeType: item.mimeType,
-          type: item.type,
-          uri: item.uri,
-        })),
-        voiceTranscript: reviewedVoiceTranscript,
-      },
+    const createFingerprint = caseWorkCreateFingerprint({
+      catalogClientRequestId: catalogConversation?.session.client_request_id ?? null,
+      drafts: composerMediaDrafts,
       language,
       message: outgoingMessage,
-      catalog_client_request_id: catalogConversation?.session.client_request_id ?? null,
-      problem_chips: inferredDraft?.problemChips ?? [],
-      service_type: inferredService,
+      problemChips: inferredDraft?.problemChips ?? [],
+      serviceType: inferredService,
+      voiceTranscript: reviewedVoiceTranscript,
     })
     let pendingCreate = !chat ? pendingCreateRef.current : null
     if (
@@ -682,7 +680,7 @@ export function useCustomerKaelMessageActions({
       uploadedMediaRefs = pendingCreate.upload.mediaRefs
     } else if (hasComposerMedia) {
       setUploadingMedia(true)
-      const uploaded = await uploadKaelChatMediaDrafts(composerMediaDrafts)
+      const uploaded = await uploadCaseWorkMediaDrafts(composerMediaDrafts)
       if (!kaelRequestGuard.isCurrent(requestToken)) {
         if (uploaded.success) await cleanupKaelChatMediaRefs(uploaded.mediaRefs)
         return
@@ -691,6 +689,7 @@ export function useCustomerKaelMessageActions({
       if (!uploaded.success) {
         setLoading(false)
         stopProcessLines()
+        restoreSubmittedComposer()
         setError(localizeMediaUploadFailure(uploaded, language))
         return
       }
@@ -705,8 +704,6 @@ export function useCustomerKaelMessageActions({
         }
       }
     }
-    if (chat) startBackendProcessLines()
-    clearSubmittedComposer()
     const result = chat
       ? await kaelChatStreamService.sendTurn(
           chat.session.id,
@@ -754,7 +751,7 @@ export function useCustomerKaelMessageActions({
       setAssistantTurns([])
       setPendingPreAgenticIntake(null)
       commitSubmittedComposer()
-      setComposerMediaDrafts([])
+      setPendingNormalMessage(null)
       setAgenticAdjustmentOpen(false)
       setAgenticAdjustmentText('')
       setAgenticRejectOpen(false)

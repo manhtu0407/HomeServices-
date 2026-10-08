@@ -101,9 +101,8 @@ export function KaelChatComposer({
     voiceTranscript: hasVoiceTranscript ? 'voice' : '',
   })
   const mediaPickerEnabled = canUseComposerMedia && !composerBusy && composerMediaDraftCount < 5
-  const normalChatImageDrafts = !allowVideoSelection
-    ? composerMediaDrafts.filter((item) => item.type === 'image')
-    : []
+  const visibleMediaDrafts = composerMediaDrafts.filter((item) =>
+    item.type === 'image' || (allowVideoSelection && item.type === 'video'))
   const activeMediaIconColor = tokens.mode === 'light' ? color.text.strong : tokens.text
   const normalSendPalette = getNormalChatSendPalette(composerSending)
   const isLightNormalChat = !allowVideoSelection && tokens.mode === 'light'
@@ -157,24 +156,23 @@ export function KaelChatComposer({
         style={[
           rootStyles.composer,
           chatStyles.chatComposer,
-          normalChatImageDrafts.length > 0 ? chatStyles.chatComposerWithImages : null,
+          visibleMediaDrafts.length > 0 ? chatStyles.chatComposerWithImages : null,
         ]}
         testID="customer-v21-kael-composer-frame"
         variant="control"
       >
-        {normalChatImageDrafts.length > 0 ? (
+        {visibleMediaDrafts.length > 0 ? (
           <MediaDraftPreviewTray
             busy={composerBusy}
-            drafts={composerMediaDrafts}
+            drafts={visibleMediaDrafts}
             language={language}
-            onRemove={onRemoveComposerMediaDraft}
-            variant="composer-images"
+            onRemove={(index) => onRemoveComposerMediaDraft(composerMediaDrafts.indexOf(visibleMediaDrafts[index]))}
             tokens={tokens}
           />
         ) : null}
         <View style={[
           chatStyles.chatComposerControls,
-          normalChatImageDrafts.length > 0
+          visibleMediaDrafts.length > 0
             ? chatStyles.chatComposerControlsFullWidth
             : chatStyles.chatComposerControlsExpanded,
         ]}>
@@ -205,16 +203,6 @@ export function KaelChatComposer({
             size={27}
             style={!allowVideoSelection ? chatStyles.chatMediaIconOpticallyAligned : undefined}
           />
-          {allowVideoSelection && composerMediaDraftCount > 0 ? (
-            <View
-              style={[chatStyles.chatMediaBadge, { backgroundColor: tokens.primary }]}
-              testID="customer-v21-kael-media-count"
-            >
-              <Text style={[chatStyles.chatMediaBadgeText, { color: tokens.primaryText }]}>
-                {composerMediaDraftCount}
-              </Text>
-            </View>
-          ) : null}
         </Pressable>
         <KaelTextField
           editable={!composerBusy}

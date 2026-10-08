@@ -200,7 +200,7 @@ export async function finalizeKaelChatEstimate(
     await emitKaelChatStep(client, sessionId, progressTarget, {
       artifact: unavailableArtifact,
       turn: {
-        contentType: "error",
+        contentType: "analysis",
         text: withIntakeSafetyGuidance(
           language === "en"
             ? "Kael has identified the scope but does not have sufficiently grounded price evidence for this case. No estimate is shown until a verified source or an inspection supports it."
@@ -219,9 +219,8 @@ export async function finalizeKaelChatEstimate(
       },
       progress: {
         stage: "price_synthesis",
-        status: "failed",
+        status: "completed",
         progress: 1,
-        failureReason: "validated_price_evidence_unavailable",
       },
     });
     return;
@@ -283,7 +282,7 @@ async function finalizePreviousReleaseEstimate(input: {
       {
         artifact: unavailableArtifact,
         turn: {
-          contentType: "error",
+          contentType: "analysis",
           text: withIntakeSafetyGuidance(
             input.input.language === "en"
               ? "Kael has identified the scope but does not have sufficiently grounded price evidence for this case. No estimate is shown until a verified source or an inspection supports it."
@@ -302,9 +301,8 @@ async function finalizePreviousReleaseEstimate(input: {
         },
         progress: {
           stage: "price_synthesis",
-          status: "failed",
+          status: "completed",
           progress: 1,
-          failureReason: "validated_price_evidence_unavailable",
         },
       },
     );

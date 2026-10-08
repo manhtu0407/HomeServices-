@@ -13,6 +13,11 @@ type KaelRespondStreamItemsOptions = {
   items: readonly KaelRespondStreamItem[]
   onSettled?: (streamId: string) => void
   reduceMotion: boolean
+  /**
+   * A live reply whose text is already complete when it first paints still reveals and then
+   * settles. Without it such a reply shows at once and never reports settled.
+   */
+  revealOnMount?: boolean
   streamId: string | null
   streaming: boolean
   terminal: boolean
@@ -22,20 +27,22 @@ export function useKaelRespondStreamItems({
   items,
   onSettled,
   reduceMotion,
+  revealOnMount = false,
   streamId,
   streaming,
   terminal,
 }: KaelRespondStreamItemsOptions) {
+  const revealing = (streaming || (revealOnMount && terminal)) && !reduceMotion
   const itemsSignature = useMemo(
     () => items.map((item) => `${item.id}\u0000${item.text}`).join('\u0001'),
     [items],
   )
-  const activeStreamIdRef = useRef<string | null>(streaming && !reduceMotion ? streamId : null)
+  const activeStreamIdRef = useRef<string | null>(revealing ? streamId : null)
   const itemsRef = useRef(items)
   const settledStreamIdRef = useRef<string | null>(null)
   const onSettledRef = useRef(onSettled)
   const [presentation, setPresentation] = useState(() => (
-    createKaelRespondStreamPresentationState(items, streamId, !streaming || reduceMotion)
+    createKaelRespondStreamPresentationState(items, streamId, !revealing)
   ))
 
   useEffect(() => {
@@ -107,7 +114,7 @@ export function useKaelRespondStreamItems({
 
 export function useKaelResponseStreamPresentation(
   state: KaelResponseStreamState,
-  options: Pick<KaelRespondStreamItemsOptions, 'onSettled' | 'reduceMotion'>,
+  options: Pick<KaelRespondStreamItemsOptions, 'onSettled' | 'reduceMotion' | 'revealOnMount'>,
 ) {
   const items = useMemo(() => state.blockOrder.flatMap((blockId) => {
     const block = state.blocks[blockId]
@@ -117,6 +124,7 @@ export function useKaelResponseStreamPresentation(
     items,
     onSettled: options.onSettled,
     reduceMotion: options.reduceMotion,
+    revealOnMount: options.revealOnMount,
     streamId: state.responseId,
     streaming: state.status === 'streaming',
     terminal: state.status === 'completed',

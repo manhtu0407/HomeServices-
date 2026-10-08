@@ -7,6 +7,7 @@ import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 import type { PendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
 import type { useJobChatThread } from '@/lib/use-job-chat-thread'
 
+import { caseWorkTurnImages, isCaseWorkMediaPlaceholderText } from './case-work-turn-media'
 import {
   localizedCaseWorkEvidencePrompt,
   localizedCaseWorkSafetyMessage,
@@ -59,15 +60,32 @@ export function deriveCustomerKaelPresentation({
   turns: KaelChatTurn[]
 }) {
   const chatEstimate = chat?.session.estimate ?? turns.find((turn) => turn.estimate)?.estimate ?? null
+  const firstCustomerTurn = turns.find((turn) => turn.role === 'customer' && turn.text_content?.trim())
+  // An evidence turn re-sends the request summary as its message; next to that summary's own
+  // bubble, the repeat is noise once the photos carry the turn.
+  const restatedRequestTexts = new Set([
+    pendingDraftLocalizedMessage,
+    intakeDisplayMessage,
+    firstCustomerTurn?.text_content,
+  ].flatMap((text) => text?.trim() ? [text.trim()] : []))
   const normalVisibleTurns = turns.flatMap((turn) => {
     if (turn.content_type === 'estimate' || isScriptedKaelAcknowledgementTurn(turn)) return []
+    const images = turn.role === 'customer' ? caseWorkTurnImages(turn.media_refs, chat?.session) : []
+    const rawText = turn.text_content?.trim() ?? ''
+    const photosCarryTurn = images.length > 0 && (
+      isCaseWorkMediaPlaceholderText(rawText) ||
+      (turn.id !== firstCustomerTurn?.id && restatedRequestTexts.has(rawText))
+    )
     return [{
       ...turn,
-      text_content: turn.role === 'customer'
-        ? mode === 'case'
-          ? customerVisibleCaseRequestText(turn.text_content, language)
-          : customerVisibleIntakeSummaryText(turn.text_content, language)
-        : customerVisibleKaelTurnText(turn.text_content, language),
+      images,
+      text_content: photosCarryTurn
+        ? ''
+        : turn.role === 'customer'
+          ? mode === 'case'
+            ? customerVisibleCaseRequestText(turn.text_content, language)
+            : customerVisibleIntakeSummaryText(turn.text_content, language)
+          : customerVisibleKaelTurnText(turn.text_content, language),
     }]
   })
   const catalogConversationTurns = catalogTurns.map((turn) => ({

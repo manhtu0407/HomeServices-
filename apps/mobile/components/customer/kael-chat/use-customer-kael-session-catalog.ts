@@ -38,7 +38,6 @@ type Router = ReturnType<typeof useRouter>
 type WorkflowActions = ReturnType<typeof useFrontendWorkflow>['actions']
 type CaseSessionFetchResult = Awaited<ReturnType<typeof kaelChatService.get>>
 
-const CASE_SESSION_PREFETCH_LIMIT = 6
 const CASE_SESSION_MEMORY_LIMIT = 40
 const caseSessionMemory = new Map<string, KaelChatResponse>()
 
@@ -175,16 +174,6 @@ export function useCustomerKaelSessionCatalog({
     resolveCatalogCaseSession,
     setConversationLoading,
   ])
-
-  useEffect(() => {
-    if (mode !== 'case') return
-    conversations.sessions
-      .filter((session) => Boolean(session.case_session_id))
-      .slice(0, CASE_SESSION_PREFETCH_LIMIT)
-      .forEach((session) => {
-        if (!readRememberedCaseSession(session)) void fetchCatalogCaseSession(session)
-      })
-  }, [conversations.sessions, fetchCatalogCaseSession, mode])
 
   useEffect(() => {
     if (mode !== 'case' || !conversation.chat) return

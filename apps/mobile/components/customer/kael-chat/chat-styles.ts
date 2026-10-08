@@ -223,21 +223,6 @@ export const customerV21ChatStyles = StyleSheet.create({
     fontWeight: '700',
     paddingHorizontal: 16,
   },
-  chatMediaBadge: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 16,
-    justifyContent: 'center',
-    minWidth: 16,
-    paddingHorizontal: 4,
-    position: 'absolute',
-    right: -4,
-    top: -4,
-  },
-  chatMediaBadgeText: {
-    ...typography.caption2,
-    fontWeight: '600',
-  },
   chatMediaButton: {
     alignItems: 'center',
     justifyContent: 'center',

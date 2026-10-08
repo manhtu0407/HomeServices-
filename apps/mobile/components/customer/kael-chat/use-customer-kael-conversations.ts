@@ -35,7 +35,6 @@ import {
   archivedSessionIdsForCatalog,
   catalogMemory,
   createCatalogState,
-  CUSTOMER_SESSION_PREFETCH_LIMIT,
   patchCatalogState,
   responseMemory,
   setCatalogStateField,
@@ -292,26 +291,6 @@ export function useCustomerKaelConversations(
     mode,
     refreshSessions,
   ])
-
-  useEffect(() => {
-    if (!customerId || !catalogKey) return
-    sessions
-      .filter((summary) => !summary.case_session_id)
-      .slice(0, CUSTOMER_SESSION_PREFETCH_LIMIT)
-      .forEach((summary) => {
-        const cached = responseMemory.get(summary.id)
-        if (cached && matchesCatalogCustomer(cached.session.customer_id) && cached.session.mode === mode) return
-        void fetchCustomerConversation(summary.id).then((loaded) => {
-          if (
-            !loaded?.success ||
-            activeKeyRef.current !== catalogKey ||
-            !matchesCatalogCustomer(loaded.data.session.customer_id) ||
-            loaded.data.session.mode !== mode
-          ) return
-          responseMemory.set(summary.id, loaded.data)
-        })
-      })
-  }, [catalogKey, customerId, matchesCatalogCustomer, mode, sessions])
 
   const { ensureActiveSession, resetToBlank, startNewSession } = useCustomerKaelSessionStarter({
     activateResponse,
