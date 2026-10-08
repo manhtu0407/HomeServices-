@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "da64d2ea48baee241affd8626ad7f59f556aedfc99e9874b4562ada702988868",
+  "migrationsSha256": "13a8b261f11c0976b72b58bbdbfcaa6a8b54e33d5402472b0a78255d9336f0c5",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "81880f524afc694ded1bea7fa0b85f23c50cd99a64d7c788917d45c58c353507"
@@ -3108,8 +3108,8 @@
       "version": "20261008121000",
       "name": "kael_live_market_evidence_policy",
       "file": "supabase/migrations/20261008121000_kael_live_market_evidence_policy.sql",
-      "sha256": "f37de70cabba47cfedcea87c994f5e4505e3a3cb4ce327dace8360ddfea5eb49",
-      "bytes": 5432
+      "sha256": "6b1d2d72d294e01ebccbe6650f8230014ebaf329245f6230eeb59442b7c418cd",
+      "bytes": 5485
     }
   ]
 }

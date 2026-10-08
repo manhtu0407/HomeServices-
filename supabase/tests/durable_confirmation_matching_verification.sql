@@ -77,7 +77,7 @@ do $$
 declare v_problem_id uuid;
 begin
   select id into strict v_problem_id from public.service_problems
-    where service_type = 'plumbing' and is_active order by slug limit 1;
+    where service_type = 'plumbing' and slug = 'plumbing-general' and is_active;
   update public.service_intake_policies set quote_mode = 'rfq'
     where service_problem_id = v_problem_id and status = 'active';
   insert into public.kael_chat_sessions(
