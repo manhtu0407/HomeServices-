@@ -25,6 +25,7 @@ import { buildWorkerHomeProductionModel, type WorkerHomeProductionModel } from '
 import type { WorkerEarningsPeriod } from '../earnings/overview-model'
 import { customerTheme } from '@/design/theme'
 import { stableImageSource } from '@/lib/stable-image-source'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 const SERVICE_WORKART_KEY: Record<ServiceType, CustomerServiceId> = {
   cleaning: 'home_cleaning',
@@ -159,7 +160,7 @@ function Hero({
             placeholderTextColor="#66768A"
             ref={inputRef}
             returnKeyType="search"
-            style={styles.heroSearchInput}
+            style={withoutInputLineHeight(styles.heroSearchInput)}
             testID="worker-home-production-kael-search-input"
             value={query}
           />

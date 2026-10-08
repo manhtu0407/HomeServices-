@@ -1,5 +1,6 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native'
 
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 import { spacing, typography } from '@/design/theme'
 
 const customerV21WebFocusRing = Platform.OS === 'web'
@@ -345,14 +346,15 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
   },
   composerInput: {
     flex: 1,
-    ...typography.subheadline,
+    ...withoutInputLineHeight(typography.subheadline),
     minHeight: 44,
     paddingHorizontal: 4,
     // A multiline TextInput does not vertically center its text on its own —
     // browsers and iOS both top-align it — so this padding is what actually
-    // levels the placeholder with the icons at the one-line resting height.
-    // (44 minHeight - 20 lineHeight) / 2.
-    paddingVertical: 12,
+    // levels the placeholder and the typed text with the icons at the one-line
+    // resting height. No lineHeight: the 15pt font's own line is ~18pt, so
+    // (44 minHeight - 18) / 2.
+    paddingVertical: 13,
     position: 'relative',
     textAlignVertical: 'top',
     zIndex: 1,

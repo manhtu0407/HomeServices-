@@ -24,6 +24,7 @@ import { stageSixAssets } from './stage-six-assets'
 import { StageSixIcon, type StageSixIconName } from './stage-six-icons'
 import { stageSixTokens as stageSixTokensLight } from './stage-six-tokens'
 import { useWorkerThemedStyles, useWorkerThemedTokens } from '../../ui/worker-dark-styles'
+import { FillSvg } from '@/components/ui/fill-svg'
 
 const CLight = stageSixTokensLight.colors
 
@@ -152,7 +153,7 @@ function StageSixConnectorFill() {
   const C = useWorkerThemedTokens(CLight)
   const gradientId = useSvgId('stage-six-connector')
   return (
-    <Svg height="100%" preserveAspectRatio="none" style={StyleSheet.absoluteFill} viewBox="0 0 2 100" width="100%">
+    <FillSvg preserveAspectRatio="none" viewBox="0 0 2 100">
       <Defs>
         <LinearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
           <Stop offset="0%" stopColor={C.connectorStart} />
@@ -161,7 +162,7 @@ function StageSixConnectorFill() {
         </LinearGradient>
       </Defs>
       <Rect fill={`url(#${gradientId})`} height={100} width={2} x={0} y={0} />
-    </Svg>
+    </FillSvg>
   )
 }
 

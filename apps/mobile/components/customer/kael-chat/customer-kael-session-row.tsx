@@ -10,6 +10,7 @@ import type { CustomerThemeTokens } from '../customer-theme'
 import { KaelLiquidPressable } from './kael-liquid-pressable'
 import { KaelLiquidReveal } from './kael-liquid-reveal'
 import { styles } from './kael-session-menu-styles'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 const inlineRenameInputWebStyle = Platform.select({
   web: {
@@ -114,7 +115,7 @@ export function CustomerKaelSessionRow({
               onSubmitEditing={onSaveRename}
               returnKeyType="done"
               selectionColor={tokens.primary}
-              style={[styles.sessionTitle, styles.sessionTitleInput, inlineRenameInputWebStyle, { color: tokens.text }]}
+              style={withoutInputLineHeight([styles.sessionTitle, styles.sessionTitleInput, inlineRenameInputWebStyle, { color: tokens.text }])}
               testID="customer-v21-kael-session-title-input"
               underlineColorAndroid="transparent"
               value={draftTitle}

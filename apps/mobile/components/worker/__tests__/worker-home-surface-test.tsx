@@ -1447,12 +1447,12 @@ describe('Worker runtime surface wiring', () => {
       fontSize: 15,
       fontWeight: '400',
       letterSpacing: -0.23,
-      lineHeight: 20,
       minHeight: 44,
       paddingHorizontal: 4,
-      paddingVertical: 12,
+      paddingVertical: 13,
       WebkitBoxShadow: 'none',
     })
+    expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-input').props.style)).not.toHaveProperty('lineHeight')
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-kael-orb-input-shell').props.style)).toMatchObject({
       backgroundColor: 'transparent',
       borderWidth: 0,

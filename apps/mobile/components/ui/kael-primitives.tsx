@@ -16,6 +16,7 @@ import {
 } from 'react-native'
 import Svg, { Defs, Path, Rect } from 'react-native-svg'
 import { aura, color, component, spacing, typography } from '@/design/theme'
+import { withoutInputLineHeight } from './input-text-style'
 import { PrimaryCtaFill, primaryCtaFrame } from './primary-cta-fill'
 import { useGlassAccessibility } from './accessibility-motion'
 import { reduceMotionAwarePressStyle } from './reduce-motion-aware-animation'
@@ -37,7 +38,7 @@ const webTextInputNoOutline = {
 type KaelTextInputProps = TextInputProps & { ref?: Ref<TextInput> }
 
 export function KaelTextInput({ ref, style, ...inputProps }: KaelTextInputProps) {
-  return <TextInput spellCheck={false} {...inputProps} ref={ref} style={[webTextInputNoOutline, styles.inputFontMetrics, inputProps.multiline ? null : styles.singleLineInput, style]} />
+  return <TextInput spellCheck={false} {...inputProps} ref={ref} style={withoutInputLineHeight([webTextInputNoOutline, styles.inputFontMetrics, inputProps.multiline ? null : styles.singleLineInput, style])} />
 }
 
 type KaelButtonProps = {
@@ -197,7 +198,7 @@ export function KaelTextField({ inputRef, inputShellAdornment, inputShellStyle, 
         {mode === 'search' ? <SearchIcon /> : null}
         <TextInput spellCheck={false}
           placeholderTextColor={component.input.placeholder}
-          style={[styles.input, webTextInputNoOutline, mode === 'search' ? styles.searchInput : null, multiline ? [styles.multilineInput, webHeight] : styles.singleLineInput, style]}
+          style={withoutInputLineHeight([styles.input, webTextInputNoOutline, mode === 'search' ? styles.searchInput : null, multiline ? [styles.multilineInput, webHeight] : styles.singleLineInput, style])}
           {...inputProps}
           ref={inputRef}
           onContentSizeChange={(event) => {

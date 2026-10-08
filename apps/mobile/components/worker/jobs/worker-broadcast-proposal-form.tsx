@@ -12,6 +12,7 @@ import type { WorkerThemeTokens } from '../worker-theme'
 import { textByLanguage } from '../ui/format'
 import { Text } from './worker-jobs-zip-prototype-shared'
 import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 type ProposalAction = Exclude<WorkerBroadcastProposalAction, 'accept_priced_offer'>
 
@@ -108,7 +109,7 @@ export function WorkerBroadcastProposalForm({
         onChangeText={(value) => dispatch({ type: 'patch', patch: { scopeSummary: value } })}
         placeholder={copy.scopePlaceholder}
         placeholderTextColor={tokens.subtleText}
-        style={[styles.scopeInput, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+        style={withoutInputLineHeight([styles.scopeInput, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }])}
         testID="worker-stage1-proposal-scope"
         textAlignVertical="top"
         value={scopeSummary}
@@ -124,7 +125,7 @@ export function WorkerBroadcastProposalForm({
               onChangeText={(value) => dispatch({ type: 'patch', patch: { priceMinText: value } })}
               placeholder="₫"
               placeholderTextColor={tokens.subtleText}
-              style={[styles.priceInput, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+              style={withoutInputLineHeight([styles.priceInput, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }])}
               testID="worker-stage1-proposal-price-min"
               value={priceMinText}
             />
@@ -138,7 +139,7 @@ export function WorkerBroadcastProposalForm({
               onChangeText={(value) => dispatch({ type: 'patch', patch: { priceMaxText: value } })}
               placeholder="₫"
               placeholderTextColor={tokens.subtleText}
-              style={[styles.priceInput, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }]}
+              style={withoutInputLineHeight([styles.priceInput, { backgroundColor: tokens.base, borderColor: tokens.border, color: tokens.text }])}
               testID="worker-stage1-proposal-price-max"
               value={priceMaxText}
             />

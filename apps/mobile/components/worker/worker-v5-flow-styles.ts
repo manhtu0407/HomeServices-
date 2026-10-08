@@ -1,5 +1,6 @@
 import { StyleSheet, type TextStyle } from 'react-native'
 
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 import { color, customerTheme, glass, radius, shadow, signature, spacing, typography } from '@/design/theme'
 
 export const workerV5KaelComposerWebTextInputNoOutline = {
@@ -1787,11 +1788,11 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerInput: {
     color: color.text.strong,
-    ...typography.subheadline,
+    ...withoutInputLineHeight(typography.subheadline),
     boxShadow: 'none',
     minHeight: 44,
     paddingHorizontal: 10,
-    paddingVertical: 12,
+    paddingVertical: 13,
     textAlignVertical: 'top',
   },
   kaelOrbNormalComposerInput: {

@@ -36,6 +36,7 @@ import type { Actions as StageFiveActions, StageFiveJobStatus, WorkModel as Stag
 import { workerV5ArrivalDestinationLabel } from '../ui/route'
 import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 import { PrimaryCtaFill, primaryCtaFrame } from '@/components/ui/primary-cta-fill'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type StageFiveMutableStatus = Extract<StageFiveJobStatus, 'arrived' | 'inspecting' | 'repairing'>
@@ -644,7 +645,7 @@ export function WorkerV5InProgressBody({
                 multiline
                 onChangeText={setStageFiveNoteDraft}
                 placeholder={textByLanguage(language, 'Thêm ghi chú về tình trạng thực tế, vật tư sử dụng…', 'Add a note about the actual condition or materials used…')}
-                style={{ minHeight: 120, borderColor: '#E4EFF0', borderRadius: 16, borderWidth: 1, color: '#081D36', padding: 14, textAlignVertical: 'top' }}
+                style={withoutInputLineHeight({ minHeight: 120, borderColor: '#E4EFF0', borderRadius: 16, borderWidth: 1, color: '#081D36', padding: 14, textAlignVertical: 'top' })}
                 testID="stage5-note-input"
                 value={stageFiveNoteDraft}
               />

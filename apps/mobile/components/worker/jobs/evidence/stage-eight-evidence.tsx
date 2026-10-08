@@ -21,6 +21,7 @@ import { stageEightAssets } from './stage-eight-assets'
 import { StageEightIcon, type StageEightIconName } from './stage-eight-icons'
 import type { StageEightEvidenceProps } from './stage-eight.types'
 import { useWorkerThemedStyles } from '../../ui/worker-dark-styles'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 const BASE = 420
 const C = {
@@ -302,7 +303,7 @@ export function StageEightEvidenceScreen({
           onChangeText={onNoteChange}
           placeholder={copy.completeRecordPlaceholder}
           placeholderTextColor="#81929A"
-          style={[stageTypography('footnote', width), styles.input]}
+          style={withoutInputLineHeight([stageTypography('footnote', width), styles.input])}
           testID="worker-v5-stage-eight-fidelity-note-input"
           textAlignVertical="top"
           value={note}
