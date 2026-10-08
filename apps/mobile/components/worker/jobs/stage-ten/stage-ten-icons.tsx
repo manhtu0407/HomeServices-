@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 
 import { stageTenTokens as stageTenTokensLight } from './stage-ten-tokens'
+import { FillSvg } from '@/components/ui/fill-svg'
 
 export type StageTenIconName = 'calendar' | 'chart' | 'check' | 'chevron' | 'info' | 'photo' | 'pin' | 'star' | 'trend' | 'trophy' | 'wallet'
 
@@ -104,13 +105,7 @@ export function StageTenIcon({
 
 export function StageTenGradient({ from, id, to }: { from: string; id: string; to: string }) {
   return (
-    <Svg
-      height="100%"
-      pointerEvents="none"
-      preserveAspectRatio="none"
-      style={{ left: 0, position: 'absolute', top: 0 }}
-      width="100%"
-    >
+    <FillSvg preserveAspectRatio="none">
       <Defs>
         <LinearGradient id={id} x1="0%" x2="100%" y1="0%" y2="100%">
           <Stop offset="0" stopColor={from} />
@@ -118,6 +113,6 @@ export function StageTenGradient({ from, id, to }: { from: string; id: string; t
         </LinearGradient>
       </Defs>
       <Rect fill={`url(#${id})`} height="100%" width="100%" />
-    </Svg>
+    </FillSvg>
   )
 }

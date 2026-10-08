@@ -1,5 +1,8 @@
 import React from 'react'
+import { readdirSync, readFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
 import { render } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
 import { LinearGradient, RadialGradient, Stop } from 'react-native-svg'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
@@ -21,7 +24,7 @@ jest.mock('@/components/worker/worker-theme', () => ({
 export const PILLAR = {
   id: 'P322-primary-cta-colour',
   invariant:
-    'every filled primary call-to-action, in Auth, Customer, Worker and Admin and in light and dark, paints the sign-in button recipe through PrimaryCtaFill: the #49CFC0 → #24B3A1 → #088779 horizontal gradient with its soft top-left white light, white rim and mint glow; a primary-variant button that paints its own danger fill opts out',
+    'every filled primary call-to-action, in Auth, Customer, Worker and Admin and in light and dark, paints the sign-in button recipe through PrimaryCtaFill, over the full width of the button whatever its side padding: the #49CFC0 → #24B3A1 → #088779 horizontal gradient with its soft top-left white light, white rim and mint glow; a primary-variant button that paints its own danger fill opts out',
   authority: [
     'governance/design/signature.md (one mint accent, one primary CTA recipe)',
     'component.button.primary in apps/mobile/design/theme.ts (the single source of the recipe)',
@@ -30,7 +33,7 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P318-dark-text-contrast', 'P320-worker-derived-dark-styles'],
   mutation:
-    'put #31D7C2 back as the first token stop, or let KaelButton skip PrimaryCtaFill for the primary variant — the recipe stop or the shared-button case turns red',
+    'put #31D7C2 back as the first token stop, let KaelButton skip PrimaryCtaFill for the primary variant, or drop the absolute-fill frame around the Svg — the recipe stop, the shared-button case or the full-width case turns red',
 } as const satisfies PillarManifest
 
 function linearStops(root: ReturnType<typeof render>) {
@@ -65,6 +68,37 @@ describe('P322 primary CTA colour', () => {
       expect(fills(<WorkerV5PrimaryButtonFill disabled={false} variant="source" />)).toBe(1)
       expect(fills(<StageNineButtonSurface />)).toBe(1)
     })
+  })
+
+  it('stretches the fill over the whole button through an absolute-fill frame, not a percentage-width Svg', () => {
+    withPillarContext(PILLAR, () => {
+      const root = render(<KaelButton label="Lưu mật khẩu" onPress={jest.fn()} />)
+      const frame = root.getByTestId('primary-cta-fill-frame')
+      const svg = root.getByTestId('primary-cta-fill')
+
+      expect(StyleSheet.flatten(frame.props.style)).toMatchObject({ bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 })
+      let ancestor = svg.parent
+      while (ancestor && ancestor !== frame) ancestor = ancestor.parent
+      expect(ancestor).toBe(frame)
+      expect(StyleSheet.flatten(svg.props.style) ?? {}).not.toHaveProperty('position', 'absolute')
+    }, 'an Svg sized width="100%" resolves against the content box, so a button with 20pt side padding painted only 320 of its 360pt')
+  })
+
+  it('never paints a background with an absolutely placed Svg that has a percentage width', () => {
+    withPillarContext(PILLAR, () => {
+      const walk = (root: string): string[] => readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+        const path = join(root, entry.name)
+        if (entry.isDirectory()) return entry.name === '__tests__' || entry.name === 'node_modules' ? [] : walk(path)
+        return entry.name.endsWith('.tsx') ? [path] : []
+      })
+      const offenders = [...walk(join(process.cwd(), 'components')), ...walk(join(process.cwd(), 'app'))].flatMap((path) => {
+        const tags = readFileSync(path, 'utf8').match(/<Svg\b[^>]*>/g) ?? []
+        return tags
+          .filter((tag) => /(width|height)="100%"/.test(tag) && /absoluteFill|position:\s*'absolute'|STAGE_TWO_FILL/.test(tag))
+          .map(() => relative(process.cwd(), path).split('\\').join('/'))
+      })
+      expect(offenders).toEqual([])
+    }, 'use FillSvg (components/ui/fill-svg.tsx): a percentage-width Svg resolves against the content box and stops short of a padded parent’s edge')
   })
 
   it('keeps the same colours in dark mode and leaves danger and disabled buttons unpainted', () => {

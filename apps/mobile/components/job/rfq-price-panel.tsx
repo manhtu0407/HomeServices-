@@ -4,6 +4,7 @@ import type { CustomerThemeTokens } from '@/components/customer/customer-theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useRfqPrice } from '@/lib/frontend-workflow/use-rfq-price'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 const copy = {
   vi: { title: 'Báo giá sau khảo sát', source: 'Thợ đề xuất • Chỉ khóa giá khi khách đồng ý',
@@ -76,11 +77,11 @@ export function RfqPricePanelView({ actorRole, language, tokens, state }: {
         <Text style={textStyle}>{c.total}</Text>
         <TextInput spellCheck={false} accessibilityLabel={c.total} testID="rfq-price-input" value={price} onChangeText={setPrice}
           editable={!disabled} keyboardType="number-pad" maxLength={10}
-          style={[styles.input, { color: tokens.text, borderColor: tokens.borderStrong }]} />
+          style={withoutInputLineHeight([styles.input, { color: tokens.text, borderColor: tokens.borderStrong }])} />
         <Text style={textStyle}>{c.scope}</Text>
         <TextInput spellCheck={false} accessibilityLabel={c.scope} testID="rfq-scope-input" value={scope} onChangeText={setScope}
           editable={!disabled} multiline maxLength={2000} textAlignVertical="top"
-          style={[styles.input, styles.scope, { color: tokens.text, borderColor: tokens.borderStrong }]} />
+          style={withoutInputLineHeight([styles.input, styles.scope, { color: tokens.text, borderColor: tokens.borderStrong }])} />
         {button(c.send, () => state.propose(/^[1-9][0-9]*$/.test(price) ? Number(price) : NaN, scope), 'rfq-price-send')}
       </> : null}
       {actorRole === 'customer' && proposal?.status === 'pending' ? <>

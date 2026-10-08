@@ -8,6 +8,7 @@ import type { WorkerKaelChatSession } from '@/lib/api-types'
 import { WorkerV5KaelSessionIcon } from './session-menu-icons'
 import { useWorkerKaelOrbPalette } from './orb-palette'
 import { darkStyles, styles } from './session-menu-styles'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 const inlineRenameInputWebStyle = Platform.select({
   web: {
@@ -112,7 +113,7 @@ export function WorkerV5KaelSessionRow({
               onSubmitEditing={onSaveRename}
               returnKeyType="done"
               selectionColor={palette.accent}
-              style={[styles.sessionTitle, dark ? darkStyles.sessionTitle : null, styles.sessionTitleInput, inlineRenameInputWebStyle]}
+              style={withoutInputLineHeight([styles.sessionTitle, dark ? darkStyles.sessionTitle : null, styles.sessionTitleInput, inlineRenameInputWebStyle])}
               testID="worker-v5-kael-session-title-input"
               underlineColorAndroid="transparent"
               value={draftTitle}

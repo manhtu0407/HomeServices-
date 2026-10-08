@@ -601,13 +601,13 @@ describe('active customer Kael chat surface wiring', () => {
         fontSize: 15,
         fontWeight: '400',
         letterSpacing: -0.23,
-        lineHeight: 20,
         minHeight: 44,
         paddingHorizontal: 4,
-        // (minHeight 44 - lineHeight 20) / 2 — levels the placeholder with the
-        // media and send icons at the one-line resting height.
-        paddingVertical: 12,
+        // (minHeight 44 - the 15pt font's ~18pt own line) / 2 — levels the placeholder and the
+        // typed text with the media and send icons at the one-line resting height.
+        paddingVertical: 13,
       })
+      expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input').props.style)).not.toHaveProperty('lineHeight')
       expect(StyleSheet.flatten(screen.getByTestId('customer-v21-kael-input-shell').props.style)).toMatchObject({
         backgroundColor: 'transparent',
         borderWidth: 0,

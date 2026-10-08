@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { fireEvent, render, screen } from '@testing-library/react-native'
+import { fireEvent, render, screen, within } from '@testing-library/react-native'
 import type { LocalDeal, LocalWorkflowSelectors } from '@nestscout/shared'
 import { Dimensions, StyleSheet, Text } from 'react-native'
 
@@ -251,10 +251,10 @@ describe('CustomerHomeSurface v2.1', () => {
       borderWidth: 0,
       fontSize: searchTypography.fontSize,
       includeFontPadding: false,
-      lineHeight: searchTypography.lineHeight,
       paddingVertical: 0,
       textAlignVertical: 'center',
     })
+    expect(searchInputStyle).not.toHaveProperty('lineHeight')
     expect(screen.getByTestId('customer-v21-top-title')).toHaveTextContent(/Good (morning|afternoon|evening), Anh Tú$/)
     expect(screen.getByTestId('customer-v21-top-title')).toHaveStyle({ fontSize: 13.4, lineHeight: 16 })
     expect(screen.getByText('Việc nhà có chúng tôi,\nbạn yên tâm tận hưởng')).toBeOnTheScreen()
@@ -274,23 +274,20 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(screen.queryByTestId('customer-v21-home-greeting-icon')).toBeNull()
     expect(screen.queryByLabelText('Xin chào')).toBeNull()
     expect(screen.getByText('Kết nối thợ lành nghề  •  Đến nhanh  •  Giá minh bạch')).toBeOnTheScreen()
-    expect(screen.getByText('An tâm với quy trình rõ ràng')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-home-promo-title')).toHaveTextContent('An tâm với quy trình rõ ràng')
     expect(screen.getByTestId('customer-v21-home-guidance-section-title')).toHaveTextContent('Quy trình dịch vụ')
     expect(screen.getByTestId('customer-v21-home-activity-section-title')).toHaveTextContent('Hoạt động dịch vụ')
-    expect(screen.getByTestId('customer-v21-home-promo-action')).toBeOnTheScreen()
+    expect(screen.getByRole('button', { name: 'An tâm với quy trình rõ ràng. Xem cách hoạt động' })).toBe(screen.getByTestId('customer-v21-home-guidance'))
+    expect(screen.queryByTestId('customer-v21-home-promo-action')).toBeNull()
+    expect(within(screen.getByTestId('customer-v21-home-guidance')).queryByTestId('primary-cta-fill')).toBeNull()
+    expect(screen.getByTestId('customer-v21-home-promo-subtitle')).toHaveTextContent('Rõ thợ, rõ phạm vi, rõ giá.')
+    expect(screen.getByTestId('customer-v21-home-promo-link')).toHaveTextContent('Xem cách hoạt động ›')
     expect(screen.getByTestId('customer-v21-home-promo-image')).toBeOnTheScreen()
     const guidanceScale = Math.min(Math.max(Dimensions.get('window').width - 32, 280) / 847, 1)
-    const guidanceTitleStyle = StyleSheet.flatten(screen.getByText('An tâm với quy trình rõ ràng').props.style)
-    const guidanceButtonStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-home-promo-action').props.style)
-    const guidanceButtonTextStyle = StyleSheet.flatten(screen.getByText('Xem cách hoạt động').props.style)
+    const guidanceTitleStyle = StyleSheet.flatten(screen.getByTestId('customer-v21-home-promo-title').props.style)
     const baseGuidanceTitleStyle = scaledTypography('title1', guidanceScale)
-    const baseGuidanceButtonStyle = scaledTypography('headline', guidanceScale)
     expect(guidanceTitleStyle.fontSize).toBe((baseGuidanceTitleStyle.fontSize ?? 0) + 3)
     expect(guidanceTitleStyle.lineHeight).toBe((baseGuidanceTitleStyle.lineHeight ?? 0) + 3)
-    expect(guidanceButtonStyle.height).toBeCloseTo(guidanceScale * 47 + 4)
-    expect(guidanceButtonStyle.paddingHorizontal).toBeCloseTo(guidanceScale * 21 + 4)
-    expect(guidanceButtonTextStyle.fontSize).toBe((baseGuidanceButtonStyle.fontSize ?? 0) + 3)
-    expect(guidanceButtonTextStyle.lineHeight).toBe((baseGuidanceButtonStyle.lineHeight ?? 0) + 3)
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-home-guidance').props.style).marginTop).toBeGreaterThan(0)
     expect(screen.queryByLabelText('Mở thông báo')).toBeNull()
     expect(screen.queryByText('Cần hỗ trợ ngay?')).toBeNull()
@@ -424,6 +421,14 @@ describe('CustomerHomeSurface v2.1', () => {
     expect(mockDispatch).toHaveBeenCalledWith({ type: 'start_home_service', serviceType: 'electrical' })
     expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking?service=electrical')
     expect(mockWorkflowValue.actions.createRemoteJobFromDraft).toBeUndefined()
+  })
+
+  it('opens Booking when the guidance banner itself is tapped', () => {
+    render(<CustomerHomeSurface />)
+
+    fireEvent.press(screen.getByTestId('customer-v21-home-guidance'))
+
+    expect(mockReplace).toHaveBeenCalledWith('/(customer)/booking')
   })
 
   it('keeps the three-column home grid from overflowing at a narrow iPhone width', () => {

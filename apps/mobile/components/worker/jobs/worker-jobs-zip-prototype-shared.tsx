@@ -30,6 +30,7 @@ import {
   type StageTwoPillTone,
   type StageTwoTextKind,
 } from './worker-jobs-zip-prototype-style-stage-two'
+import { FillSvg } from '@/components/ui/fill-svg'
 
 export type WorkerJobsLegacyPrototypeRuntime = ReturnType<typeof useFrontendWorkflow>
 
@@ -471,7 +472,6 @@ export function useWorkerJobsStageTwoScale(tokens: WorkerThemeTokens) {
 
 export type WorkerJobsStageTwoScale = ReturnType<typeof useWorkerJobsStageTwoScale>
 
-const STAGE_TWO_FILL = { left: 0, position: 'absolute', top: 0 } as const
 
 type StageTwoGradientVector = { x1: number; x2: number; y1: number; y2: number }
 
@@ -485,7 +485,7 @@ function StageTwoGradient({ colors, locations, vector }: {
   const last = Math.max(colors.length - 1, 1)
 
   return (
-    <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={STAGE_TWO_FILL} width="100%">
+    <FillSvg preserveAspectRatio="none">
       <Defs>
         <LinearGradient
           id={id}
@@ -499,7 +499,7 @@ function StageTwoGradient({ colors, locations, vector }: {
         </LinearGradient>
       </Defs>
       <Rect fill={`url(#${id})`} height="100%" width="100%" />
-    </Svg>
+    </FillSvg>
   )
 }
 
