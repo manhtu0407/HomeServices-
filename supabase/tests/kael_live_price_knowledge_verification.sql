@@ -85,6 +85,19 @@ begin
   ) then
     raise exception 'WEAK_LIVE_EVIDENCE_POLICY_ACCEPTED';
   end if;
+
+  if exists (
+    select 1
+    from public.service_problems as problem
+    join public.service_intake_policies as policy
+      on policy.service_problem_id = problem.id
+    where problem.is_active
+      and problem.slug like '%-general'
+      and policy.status = 'active'
+      and policy.quote_mode = 'kael_auto_quote'::public.service_quote_mode
+  ) then
+    raise exception 'GENERAL_PROBLEM_WAS_ENABLED_FOR_AUTOMATIC_QUOTING';
+  end if;
 end;
 $verification$;
 

@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "8db11e9934937cec6cf2153b72b110cc7c7170d6e24c9cd8d6b3789435369d7f",
+  "migrationsSha256": "da64d2ea48baee241affd8626ad7f59f556aedfc99e9874b4562ada702988868",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "0fcc401abfcf616a7bd559a99fd2f77e080b41b7fbf48b8ad29c9c11e9688bd7"
+    "sha256": "81880f524afc694ded1bea7fa0b85f23c50cd99a64d7c788917d45c58c353507"
   },
   "entries": [
     {
@@ -3108,8 +3108,8 @@
       "version": "20261008121000",
       "name": "kael_live_market_evidence_policy",
       "file": "supabase/migrations/20261008121000_kael_live_market_evidence_policy.sql",
-      "sha256": "faa428f0113fdf1bafce2167c389bef978798f0b0bd53b40195527be57539e01",
-      "bytes": 5299
+      "sha256": "f37de70cabba47cfedcea87c994f5e4505e3a3cb4ce327dace8360ddfea5eb49",
+      "bytes": 5432
     }
   ]
 }

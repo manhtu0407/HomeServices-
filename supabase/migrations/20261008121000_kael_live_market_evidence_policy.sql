@@ -1,6 +1,7 @@
 -- Auto-quote may rest on live research that met a stricter quorum of two high-trust sources,
--- not only on a governed baseline. Problems that were RFQ because no baseline evidence
--- existed move to auto-quote under that rule; the old policy version is retired, not edited.
+-- not only on a governed baseline. Specific problems that were RFQ because no baseline
+-- evidence existed move to auto-quote; broad `*-general` problems remain RFQ because their
+-- scope is too wide for a problem-keyed price. The old policy version is retired, not edited.
 begin;
 
 create or replace function public.service_intake_evidence_requirements_valid(
@@ -87,6 +88,7 @@ from public.service_intake_policies as policy
 join public.service_problems as problem on problem.id = policy.service_problem_id
 where policy.status = 'active'
   and policy.quote_mode = 'rfq'::public.service_quote_mode
+  and problem.slug not like '%-general'
   and problem.is_active;
 
 update public.service_intake_policies as policy
