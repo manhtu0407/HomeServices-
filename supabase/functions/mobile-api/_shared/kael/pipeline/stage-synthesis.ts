@@ -7,6 +7,7 @@ import {
   marketVerdictSafeMetadata,
 } from "../tools/market-verdict.ts";
 import { synthesizePrice, type BaselineResult } from "../tools/synthesis.ts";
+import { hasVerifiedMarketQuorum } from "../evidence/live-price-knowledge.ts";
 import { runKaelPurposeStage } from "./orchestrator.ts";
 import type { PreparedKaelPipeline } from "./prepare.ts";
 import type { runKaelParallelStage } from "./stage-parallel.ts";
@@ -45,29 +46,10 @@ export async function runKaelSynthesisStage(
   }
   let fallbackUsed = input.fallbackUsed;
   fallbackUsed ||= !marketResult.success;
-  pushPipelineStageLog(stageLogs, pipelineInput, {
-    stage: "market",
-    provider: marketResult.provider ?? "perplexity",
-    model: marketResult.model ?? "sonar",
-    latencyMs: marketStage.elapsedMs,
-    success: marketResult.success,
-    failureReason: marketResult.success
-      ? undefined
-      : marketResult.failureReason,
-    fallbackUsed: !marketResult.success,
-    inputTokens: marketResult.success ? marketResult.inputTokens : undefined,
-    outputTokens: marketResult.success ? marketResult.outputTokens : undefined,
-    costUsd: marketResult.success ? marketResult.costUsd : undefined,
-    cacheStatus: marketResult.success ? marketResult.cacheStatus : undefined,
-    safeMetadata: marketResult.safeMetadata,
-  });
-  void updateKaelProgress(supabase, progressTarget, {
-    stage: "market_lookup",
-    status: marketResult.success ? "completed" : "failed",
-    progress: 0.78,
-    failureReason: marketResult.success ? undefined : marketResult.failureReason,
-  });
-  const marketVerdict = marketResult.success &&
+  // An unverified baseline cannot judge or dilute a verified market range.
+  const marketAnchored = input.baselineResult.evidenceReceipt === null &&
+    hasVerifiedMarketQuorum(marketResult);
+  const marketVerdict = !marketAnchored && marketResult.success &&
       marketResult.safeMetadata?.source_trust_enabled === true
     ? evaluateMarketVerdict({
       baselineMin: input.baselineResult.priceMin,
@@ -84,7 +66,7 @@ export async function runKaelSynthesisStage(
   });
   // Clamp the learned price against the reference baseline at apply time. A rule
   // outside the permitted band is ignored, and synthesis falls back to baseline.
-  const learnedPrice = clampLearnedPriceToBaseline(
+  const learnedPrice = marketAnchored ? null : clampLearnedPriceToBaseline(
     await applyLearnedPriceRule(
       supabase,
       secrets,
@@ -125,6 +107,7 @@ export async function runKaelSynthesisStage(
           : null,
         complexityHint: input.effectiveComplexity,
         needsInspection: marketVerdict?.needsInspection === true,
+        marketAnchored,
       })),
   });
   const synthesized = synthesizedStage.value;
@@ -138,6 +121,8 @@ export async function runKaelSynthesisStage(
     fallbackUsed: false,
     safeMetadata: marketVerdict
       ? marketVerdictSafeMetadata(marketVerdict)
+      : marketAnchored
+      ? { price_basis: "verified_market_sources" }
       : undefined,
   });
   await updateKaelProgress(supabase, progressTarget, {

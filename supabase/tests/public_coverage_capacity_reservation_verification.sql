@@ -74,9 +74,9 @@ declare
 begin
   select problem.id into strict v_problem_id
   from public.service_problems as problem
-  where problem.service_type = 'plumbing' and problem.is_active
-  order by problem.slug
-  limit 1;
+  where problem.service_type = 'plumbing'
+    and problem.slug = 'plumbing-general'
+    and problem.is_active;
 
   update public.service_intake_policies as policy
   set quote_mode = 'rfq'

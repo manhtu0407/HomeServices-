@@ -14,6 +14,7 @@ import { diagnosisScopeWithQuestion } from "./case-work-artifact.ts";
 import { handleKaelPipelineClarification } from "./clarification.service.ts";
 import { emitKaelChatStep } from "./emit-step.ts";
 import { finalizeKaelChatEstimate } from "./estimate-support.ts";
+import { priceEvidenceGapReply } from "./price-gap-reply.ts";
 import { resolveKaelResponseSafetySignals } from "./intake-safety.ts";
 import {
   intakeObservationMetadata,
@@ -229,21 +230,20 @@ async function emitPipelineNoBaseline(
     customerDetail: input.customerAnalysisDetail,
     scopeSummary: input.customerAnalysisDetail,
   });
+  const gapReply = priceEvidenceGapReply({
+    stageLogs: pipeline.stageLogs,
+    language: input.language,
+  });
   await emitKaelChatStep(input.client, input.sessionId, input.progressTarget, {
     artifact: unavailableArtifact,
     turn: {
       contentType: "analysis",
-      text: withIntakeSafetyGuidance(
-        input.language === "en"
-          ? "Kael has identified the scope but does not have validated price evidence for this case. It needs review before any offer is shown."
-          : "Kael đã xác định phạm vi nhưng chưa có dữ liệu giá đã kiểm chứng cho trường hợp này. Yêu cầu cần được rà soát trước khi hiển thị báo giá.",
-        responseSafetySignals,
-        input.language,
-      ),
+      text: withIntakeSafetyGuidance(gapReply.text, responseSafetySignals, input.language),
       nextStatus: "active",
       metadata: {
         diagnosis_scope: unavailableArtifact,
         quote_readiness: "validated_price_evidence_unavailable",
+        ...gapReply.metadata,
         ...intakeObservationMetadata(pipeline.intakeObservation),
       },
     },

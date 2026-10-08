@@ -3,11 +3,15 @@ import { customerVisibleKaelProblemSummary } from "../language/user-facing-copy.
 import { applyLearnedComplexityRule } from "../learning/learning.ts";
 import { pushPipelineStageLog } from "../learning/trace.ts";
 import { KAEL_ROUTING_CONFIG } from "../kael-providers/routing.config.ts";
-import { marketLookupTelemetry, searchMarketPrice } from "../tools/market.ts";
 import { fetchBaselineCandidates } from "../tools/synthesis.ts";
 import { analyzeDescription, buildFallbackVision } from "../tools/vision.ts";
 import type { KaelKnowledgeContext } from "../tools/knowledge.ts";
+import {
+  asPriceKnowledgeClient,
+  readPriceKnowledgeState,
+} from "../evidence/live-price-knowledge.ts";
 import { runKaelParallel } from "./orchestrator.ts";
+import { runKaelMarketResearchStage } from "./stage-market-research.ts";
 import type { EstimateParallelValue } from "./pipeline-parallel-types.ts";
 import type { PreparedKaelPipeline } from "./prepare.ts";
 import { updateKaelProgress } from "./streaming.ts";
@@ -41,13 +45,13 @@ export async function runKaelParallelStage(
     knowledgeContext,
   } = input;
   let fallbackUsed = input.fallbackUsed;
-  const parallelRun = await runParallelRequests(prepared, {
+  const parallelBatch = await runParallelRequests(prepared, {
     serviceType,
     problemSlug,
     knowledgeContext,
   });
 
-  const visionStage = parallelRun.results.find((stage) =>
+  const visionStage = parallelBatch.results.find((stage) =>
     stage.label === "vision"
   );
   const visionResult = visionStage?.value?.kind === "vision"
@@ -56,7 +60,7 @@ export async function runKaelParallelStage(
   if (!visionStage || !visionResult) {
     throw new Error(visionStage?.failureReason ?? "vision stage failed");
   }
-  const baselineStage = parallelRun.results.find((stage) =>
+  const baselineStage = parallelBatch.results.find((stage) =>
     stage.label === "baseline"
   );
   const baselineResult = baselineStage?.value?.kind === "baseline"
@@ -136,6 +140,26 @@ export async function runKaelParallelStage(
     });
   }
 
+  const knowledgeStage = parallelBatch.results.find((stage) =>
+    stage.label === "price_knowledge"
+  );
+  const knowledgeState = knowledgeStage?.value?.kind === "price_knowledge"
+    ? knowledgeStage.value.result
+    : { serviceProblemId: null, problemLabelVi: null, active: null, gap: null, priorFindings: [] };
+  const marketStage = await runKaelMarketResearchStage(prepared, {
+    serviceType,
+    problemSlug,
+    knowledgeContext,
+    analysis,
+    visionAnalyzed: visionResult.success,
+    complexity: effectiveComplexity,
+    knowledgeState,
+  });
+  const parallelRun = {
+    ...parallelBatch,
+    results: [...parallelBatch.results, marketStage],
+  };
+
   return {
     parallelRun,
     analysis,
@@ -160,14 +184,6 @@ async function runParallelRequests(
     photoUrls,
     spendGate,
   } = prepared;
-  const preliminaryComplexity = "medium";
-  const marketTelemetry = marketLookupTelemetry({
-    serviceType: input.serviceType,
-    problem: input.problemSlug,
-    complexity: preliminaryComplexity,
-    district,
-    secrets,
-  });
   return runKaelParallel<EstimateParallelValue>([
     {
       label: "vision",
@@ -198,29 +214,16 @@ async function runParallelRequests(
       }),
     },
     {
-      label: "market",
-      purpose: "market_lookup",
-      timeoutMs: marketTelemetry.timeoutMs ??
-        KAEL_ROUTING_CONFIG.market_lookup.latencyBudgetMs,
+      label: "price_knowledge",
+      purpose: "problem_synthesis",
+      timeoutMs: KAEL_ROUTING_CONFIG.problem_synthesis.latencyBudgetMs,
       run: async () => ({
-        kind: "market" as const,
-        result: await searchMarketPrice(
+        kind: "price_knowledge" as const,
+        result: await readPriceKnowledgeState(
+          asPriceKnowledgeClient(supabase),
           input.serviceType,
           input.problemSlug,
-          preliminaryComplexity,
-          district,
-          secrets,
-          supabase,
-          { knowledgeContext: input.knowledgeContext, gate: spendGate },
         ),
-      }),
-      fallback: () => ({
-        kind: "market" as const,
-        result: {
-          success: false as const,
-          failureReason: "TIMEOUT",
-          ...marketTelemetry,
-        },
       }),
     },
     {

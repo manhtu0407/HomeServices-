@@ -350,6 +350,7 @@ function isOptionalNullablePriceReasoningReceipt(
     !(fairness.market_source_count === null || isNonNegativeInteger(fairness.market_source_count)) ||
     !(fairness.high_trust_source_count === null || isNonNegativeInteger(fairness.high_trust_source_count)) ||
     !(fairness.quorum_met === null || typeof fairness.quorum_met === 'boolean') ||
+    !isOptionalVerifiedMarketSources(fairness.market_sources) ||
     !isBoundedString(fairness.cap_statement, 360) ||
     !isBoundedStringArray(fairness.remaining_uncertainty, 5, 300)
   ) return false
@@ -377,6 +378,41 @@ function isOptionalNullablePriceReasoningReceipt(
     exactMin === costs.total_min &&
     exactMax === costs.total_max &&
     isFairPriceReasoningMarketCounts(fairness)
+}
+
+function isOptionalVerifiedMarketSources(value: unknown): boolean {
+  if (value === undefined) return true
+  if (!Array.isArray(value) || value.length > 10) return false
+  const seen = new Set<string>()
+  return value.every((item) => {
+    const source = asRecord(item)
+    const domain = source?.domain
+    const urlValue = source?.url
+    if (
+      typeof domain !== 'string' ||
+      domain.length > 253 ||
+      !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))+$/iu.test(domain) ||
+      typeof urlValue !== 'string' ||
+      urlValue.length > 2_000 ||
+      seen.has(domain.toLowerCase())
+    ) return false
+    try {
+      const url = new URL(urlValue)
+      if (
+        url.protocol !== 'https:' ||
+        url.username ||
+        url.password ||
+        url.port ||
+        url.search ||
+        url.hash ||
+        url.hostname.toLowerCase() !== domain.toLowerCase()
+      ) return false
+      seen.add(domain.toLowerCase())
+      return true
+    } catch {
+      return false
+    }
+  })
 }
 
 function isPriceReasoningCauses(value: unknown): boolean {

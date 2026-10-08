@@ -1,7 +1,7 @@
 import type { AIMessage, ComplexityLevel, ServiceType } from "../contracts/types.ts";
 import { KAEL_BUSINESS_GUARDRAILS, KAEL_RESPONSE_STYLE } from "../contracts/types.ts";
 
-export const SOURCE_TRUST_VERSION = "source-trust-r3-2026-07-10";
+export const SOURCE_TRUST_VERSION = "source-trust-r4-live-research";
 const SOURCE_TRUST_CACHE_TTL_MS = 5 * 60 * 1000;
 const SOURCE_TRUST_MIN_EFFECTIVE_SCORE = 0.5;
 
@@ -55,6 +55,25 @@ export type SourceTrustRegistryEntry = {
   entityType: string | null;
   region: string | null;
   criteriaMet: SourceTrustCriteria;
+  serviceTypes: readonly string[];
+};
+
+// What Kael already knows about the case when it searches. Every field is model-derived
+// or customer text that has already passed the PII scrubber; none of it is a media ref.
+export type MarketResearchContext = {
+  problemLabelVi?: string | null;
+  customerDetail?: string | null;
+  visualFindings?: readonly string[];
+  recommendedScope?: string | null;
+  priorFindings?: readonly string[];
+};
+
+type TrustedMarketInput = {
+  serviceType: ServiceType;
+  problem: string;
+  complexity: ComplexityLevel;
+  district: string;
+  research?: MarketResearchContext;
 };
 
 export type SourceTrustLookupResult = {
@@ -104,7 +123,7 @@ export type TrustedPerplexityMarketConfig = {
   maxTokens: 600;
   timeoutMs: 6_000;
   searchDomainFilter: readonly string[];
-  searchRecencyFilter: "month";
+  searchRecencyFilter: "year";
   searchMode: "web";
   searchContextSize: "medium";
   messages: AIMessage[];
@@ -160,12 +179,9 @@ export function sourceTrustQuorumForMarketAmount(
   return marketAmountVnd >= highValueThresholdVnd ? 3 : 2;
 }
 
-export function trustedPerplexityMarketConfig(input: {
-  serviceType: ServiceType;
-  problem: string;
-  complexity: ComplexityLevel;
-  district: string;
-}): TrustedPerplexityMarketConfig {
+export function trustedPerplexityMarketConfig(
+  input: TrustedMarketInput,
+): TrustedPerplexityMarketConfig {
   return buildTrustedPerplexityMarketConfig(
     input,
     fallbackRegistryRows(),
@@ -174,12 +190,7 @@ export function trustedPerplexityMarketConfig(input: {
 }
 
 export async function trustedPerplexityMarketConfigForClient(
-  input: {
-    serviceType: ServiceType;
-    problem: string;
-    complexity: ComplexityLevel;
-    district: string;
-  },
+  input: TrustedMarketInput,
   supabase?: unknown,
 ): Promise<TrustedPerplexityMarketConfig> {
   const registry = await loadSourceTrustRegistry(supabase);
@@ -336,34 +347,18 @@ export function effectiveTrustScore(
 }
 
 function buildTrustedPerplexityMarketConfig(
-  input: {
-    serviceType: ServiceType;
-    problem: string;
-    complexity: ComplexityLevel;
-    district: string;
-  },
+  input: TrustedMarketInput,
   registryRows: readonly SourceTrustRegistryEntry[],
   source: "db" | "fallback",
 ): TrustedPerplexityMarketConfig {
-  const tier1Domains = registryRows
-    .filter((row) =>
-      row.autoTier === 1 &&
-      row.isActive &&
-      effectiveTrustScore(row) >= SOURCE_TRUST_MIN_EFFECTIVE_SCORE
-    )
-    .sort((a, b) => effectiveTrustScore(b) - effectiveTrustScore(a))
-    .map((row) => row.domain);
-  const domains = (tier1Domains.length > 0
-    ? [...new Set(tier1Domains)]
-    : [...TIER_1_SOURCE_TRUST_DOMAINS])
-    .slice(0, PERPLEXITY_SEARCH_DOMAIN_LIMIT);
+  const domains = searchDomainsForService(input.serviceType, registryRows);
 
   return {
     model: "sonar",
     maxTokens: 600,
     timeoutMs: 6_000,
     searchDomainFilter: domains,
-    searchRecencyFilter: "month",
+    searchRecencyFilter: "year",
     searchMode: "web",
     searchContextSize: "medium",
     messages: buildTrustedPerplexityMarketMessages(input),
@@ -372,20 +367,88 @@ function buildTrustedPerplexityMarketConfig(
       source_trust_version: SOURCE_TRUST_VERSION,
       source_trust_registry_source: source,
       search_domain_filter_count: domains.length,
-      search_recency_filter: "month",
+      search_recency_filter: "year",
       search_mode: "web",
+      research_context_fields: researchContextFieldCount(input.research),
       search_context_size: "medium",
       latency_budget_ms: 6_000,
     },
   };
 }
 
-function buildTrustedPerplexityMarketMessages(input: {
-  serviceType: ServiceType;
-  problem: string;
-  complexity: ComplexityLevel;
-  district: string;
-}): AIMessage[] {
+// Domains reviewed for this service come first, Tier 2 included: a price table from a
+// verified local repair company is the evidence the quorum needs, and leaving it out of the
+// search is what made every electrical lookup come back empty. Unscoped Tier 1 rows fill
+// whatever room the provider limit leaves.
+function searchDomainsForService(
+  serviceType: ServiceType,
+  registryRows: readonly SourceTrustRegistryEntry[],
+): string[] {
+  const usable = registryRows
+    .filter((row) =>
+      row.isActive &&
+      effectiveTrustScore(row) >= SOURCE_TRUST_MIN_EFFECTIVE_SCORE
+    )
+    .sort((a, b) =>
+      a.autoTier - b.autoTier || effectiveTrustScore(b) - effectiveTrustScore(a) ||
+      a.domain.localeCompare(b.domain)
+    );
+  const serviceScoped = usable
+    .filter((row) => row.autoTier <= 2 && row.serviceTypes.includes(serviceType))
+    .map((row) => row.domain);
+  const unscopedTier1 = usable
+    .filter((row) => row.autoTier === 1 && row.serviceTypes.length === 0)
+    .map((row) => row.domain);
+  const domains = [...new Set([...serviceScoped, ...unscopedTier1])];
+  return (domains.length > 0 ? domains : [...TIER_1_SOURCE_TRUST_DOMAINS])
+    .slice(0, PERPLEXITY_SEARCH_DOMAIN_LIMIT);
+}
+
+function researchContextFieldCount(research: MarketResearchContext | undefined): number {
+  if (!research) return 0;
+  return [
+    research.problemLabelVi,
+    research.customerDetail,
+    research.recommendedScope,
+    (research.visualFindings ?? []).length > 0 ? "visual" : null,
+    (research.priorFindings ?? []).length > 0 ? "prior" : null,
+  ].filter((value) => typeof value === "string" && value.trim().length > 0).length;
+}
+
+function clipResearchText(value: string, max: number): string {
+  return value.replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+function researchContextLines(research: MarketResearchContext | undefined): string {
+  if (!research) return "";
+  const lines: string[] = [];
+  if (research.problemLabelVi?.trim()) {
+    lines.push(`Vấn đề (tiếng Việt): ${clipResearchText(research.problemLabelVi, 120)}`);
+  }
+  if (research.customerDetail?.trim()) {
+    lines.push(`Mô tả của khách: ${clipResearchText(research.customerDetail, 400)}`);
+  }
+  const findings = (research.visualFindings ?? [])
+    .map((finding) => clipResearchText(finding, 160))
+    .filter(Boolean)
+    .slice(0, 4);
+  if (findings.length > 0) {
+    lines.push(`Phát hiện từ ảnh hiện trạng: ${findings.join("; ")}`);
+  }
+  if (research.recommendedScope?.trim()) {
+    lines.push(`Phạm vi đề xuất: ${clipResearchText(research.recommendedScope, 240)}`);
+  }
+  const prior = (research.priorFindings ?? [])
+    .map((finding) => clipResearchText(finding, 160))
+    .filter(Boolean)
+    .slice(0, 3);
+  if (prior.length > 0) {
+    lines.push(`Ghi nhận từ các ca tương tự trước đây: ${prior.join("; ")}`);
+  }
+  return lines.length > 0 ? `\n${lines.join("\n")}` : "";
+}
+
+function buildTrustedPerplexityMarketMessages(input: TrustedMarketInput): AIMessage[] {
   return [
     {
       role: "system",
@@ -402,7 +465,7 @@ When enough trusted evidence exists, return ONLY valid JSON:
       "domain": "trusted-source.example",
       "price_min": number,
       "price_max": number,
-      "unit": "per_visit" | "per_hour" | "per_m2",
+      "unit": "per_visit" | "per_repair_point" | "per_item" | "per_hour" | "per_m2",
       "date": "YYYY-MM-DD",
       "signals": {
         "identity_verified": boolean,
@@ -426,6 +489,8 @@ Rules:
 - Keep the domain, price range, unit, date, and A-G evidence signals factual to that source.
 - Do not return or claim any trust tier. NestScout's deterministic rulebook computes it.
 - Do not use Facebook groups, personal forums, personal blogs, or open classifieds.
+- Search Vietnamese price tables ("bảng giá", "giá sửa", "giá dịch vụ") for the exact work described, using the Vietnamese problem, the customer description, and the photo findings.
+- Use per_repair_point for a price per repaired point or device, per_item for a price per replaced item, per_visit for a package or visit price.
 - Do not invent prices or citations.
 - If trusted data is insufficient, return {"error":"insufficient_trusted_data"}.`,
     },
@@ -435,7 +500,7 @@ Rules:
 Problem: ${input.problem}
 Complexity: ${input.complexity}
 District: ${input.district}
-Location: Ho Chi Minh City, Vietnam`,
+Location: Ho Chi Minh City, Vietnam${researchContextLines(input.research)}`,
     },
   ];
 }
@@ -463,13 +528,7 @@ async function loadSourceTrustRegistry(
     return { source: "fallback", rows };
   }
 
-  const result = await client
-    .from("source_trust_registry")
-    .select("domain,tier,auto_tier,entity_type,region,criteria_met,trust_score,last_reviewed_at,is_active,effective_until")
-    .eq("is_active", true) as {
-      data?: unknown;
-      error?: { code?: string; message?: string } | null;
-    };
+  const result = await selectRegistryRows(client);
 
   const rows = !result.error && Array.isArray(result.data)
     ? result.data.map(normalizeRegistryRow).filter((row): row is SourceTrustRegistryEntry => row !== null)
@@ -491,6 +550,28 @@ async function loadSourceTrustRegistry(
     expiresAt: now.getTime() + SOURCE_TRUST_CACHE_TTL_MS,
   };
   return { source: "fallback", rows: fallback };
+}
+
+type RegistrySelectResult = {
+  data?: unknown;
+  error?: { code?: string; message?: string } | null;
+};
+
+const REGISTRY_COLUMNS =
+  "domain,tier,auto_tier,entity_type,region,criteria_met,trust_score,last_reviewed_at,is_active,effective_until";
+
+// service_types arrives with a migration that can land after this code is deployed; an
+// undefined-column error must not drop the whole registry to the hardcoded fallback.
+async function selectRegistryRows(client: SourceTrustClient): Promise<RegistrySelectResult> {
+  const scoped = await client
+    .from("source_trust_registry")
+    .select(`${REGISTRY_COLUMNS},service_types`)
+    .eq("is_active", true) as RegistrySelectResult;
+  if (scoped.error?.code !== "42703") return scoped;
+  return await client
+    .from("source_trust_registry")
+    .select(REGISTRY_COLUMNS)
+    .eq("is_active", true) as RegistrySelectResult;
 }
 
 function normalizeRegistryRow(value: unknown): SourceTrustRegistryEntry | null {
@@ -519,6 +600,9 @@ function normalizeRegistryRow(value: unknown): SourceTrustRegistryEntry | null {
     entityType: nullableString(row.entity_type),
     region: nullableString(row.region),
     criteriaMet: normalizeCriteriaMet(row.criteria_met),
+    serviceTypes: Array.isArray(row.service_types)
+      ? row.service_types.filter((item): item is string => typeof item === "string")
+      : [],
   };
 }
 
@@ -534,6 +618,7 @@ function fallbackRegistryRows(): SourceTrustRegistryEntry[] {
     entityType: null,
     region: "hcmc",
     criteriaMet: emptyCriteria(),
+    serviceTypes: [],
   }));
 }
 

@@ -1,6 +1,6 @@
 import { typography } from '@/design/theme'
 import { Image } from 'expo-image'
-import { StyleSheet, Text, View } from 'react-native'
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { CustomerThemeTokens } from '@/components/customer/customer-theme'
 
@@ -14,12 +14,9 @@ export function AgenticPriceReasoningStream({
   reduceMotion: boolean
   tokens: CustomerThemeTokens
 }) {
-  const accessibilityLabel = `${model.title}. ${model.rows.map((row) => `${row.label}: ${accessibleRowDetail(row)}`).join('. ')}. ${model.valueStatement}`
-
   return (
     <View
-      accessibilityLabel={accessibilityLabel}
-      accessible
+      accessible={false}
       style={[styles.surface, { borderColor: tokens.border }]}
       testID="customer-v21-agentic-estimate-supporting-phase"
     >
@@ -78,6 +75,25 @@ export function AgenticPriceReasoningStream({
                     <Text style={[styles.sectionValue, { color: tokens.text }]}>
                       {section.value}
                     </Text>
+                    {section.links?.length ? (
+                      <View style={styles.sourceLinks}>
+                        {section.links.map((link) => (
+                          <Pressable
+                            accessibilityLabel={link.accessibilityLabel}
+                            accessibilityRole="link"
+                            key={link.url}
+                            onPress={() => {
+                              void Linking.openURL(link.url).catch(() => undefined)
+                            }}
+                            testID={`customer-v21-agentic-estimate-source-link-${link.label}`}
+                          >
+                            <Text style={[styles.sourceLink, { color: tokens.primary }]}>
+                              {link.label}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
                   </View>
                 ))}
               </View>
@@ -123,12 +139,6 @@ function EvidencePreview({
       testID={testID}
     />
   )
-}
-
-function accessibleRowDetail(row: AgenticEstimateSupportingPhaseModel['rows'][number]) {
-  return row.sections?.length
-    ? row.sections.map((section) => `${section.label}: ${section.value}`).join('. ')
-    : row.detail
 }
 
 const styles = StyleSheet.create({
@@ -184,6 +194,16 @@ const styles = StyleSheet.create({
   },
   sectionValue: {
     ...typography.subheadline,
+  },
+  sourceLink: {
+    ...typography.subheadline,
+    textDecorationLine: 'underline',
+  },
+  sourceLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 4,
   },
   structuredRow: {
     flexDirection: 'column',

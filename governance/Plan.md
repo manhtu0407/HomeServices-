@@ -1656,3 +1656,74 @@ KHÔNG CHẠY ĐƯỢC: backend thật (Production) — cần Tu đăng nhập; 
 | 0.3 | 2026-10-07 | Claude | Màn offline phiên (P333) thay shell trống + Login Gate; đưa mock + E2E vào repo (`scripts/preview/cache-e2e/`, `docs/ops/cache-e2e.md`), 12/12 |
 
 ---
+
+## 59. Kael Live Price Research + Knowledge — phá ngõ cụt Báo giá / Ghép thợ — 2026-10-08
+
+Plan đầy đủ được Tu duyệt trong phiên 2026-10-08. Mục này ghi lại phần đã làm, phần còn chờ quyết định, và cách kiểm chứng trên Build 53.
+
+### 59.1 Gốc lỗi (Production, kiểm tra read-only)
+
+- 45 ngày có 2 phiên thật, cả 2 dừng ở `validated_price_evidence_unavailable`. Cả 2 thuộc slug RFQ nhưng đi làn `previous`: client không gửi `x-client-contract-epoch: 2`, nên làn này bỏ qua policy.
+- 41/49 slug có `price_evidence.sources = []`. Perplexity trả rỗng vì các lý do:
+  - recency `month`;
+  - filter chỉ lấy tier-1, phần lớn là site vệ sinh và báo;
+  - chỉ chấp nhận `per_visit`;
+  - query chỉ có slug.
+- `escalate` không có nơi nhận. Mỗi tin nhắn hỏi lại chạy lại DeepSeek + Perplexity.
+- Ghép thợ:
+  - thợ thật duy nhất có 0 `device_push_tokens`, nên push chưa bao giờ tới;
+  - floor policy bắt đủ 4 năng lực của dịch vụ;
+  - 7 job legacy (`quote_mode = null`, 11–16/08) kẹt `broadcasting` vì không có `matching_operations`.
+
+### 59.2 Đã làm (chưa commit)
+
+| Phase | Nội dung | File chính |
+|---|---|---|
+| 0 | `stage1_runtime_behavior` trong metadata turn không có giá | `domains/kael-chat/estimate-support.ts` |
+| 1 | Domain filter theo dịch vụ (tier ≤ 2), recency `year`, query có nhãn VI + mô tả đã scrub + phát hiện từ ảnh + ghi nhận ca trước, đơn vị `per_repair_point`/`per_item` gom theo nhóm cùng đơn vị, độ mới ≤ 12 tháng | `kael/evidence/source-trust.ts`, `source-trust-aggregation.ts`, `kael/contracts/types.ts`, `kael/tools/market.ts` |
+| 2 | `kael_price_knowledge` (active/insufficient/quarantined/superseded, TTL 30 ngày / gap 6 giờ) và `kael_case_knowledge` (không có cột media hay PII). Research chạy sau vision; knowledge HIT không gọi provider; gap được khóa theo dịch vụ + slug + số ảnh | `migrations/20261008120000_kael_live_price_knowledge.sql`, `supabase/tests/kael_live_price_knowledge_verification.sql`, `kael/evidence/live-price-knowledge.ts`, `kael/pipeline/stage-market-research.ts`, `stage-parallel.ts`, `config/harness/migration-inventory.json`, `config/harness/access-matrix.json` |
+| 3 | Baseline không có receipt nhưng market đạt quorum: giá = aggregate nguồn đã kiểm chứng, không blend với seed. Không có dòng baseline thì dùng anchor từ market. Làn governed thêm `allow_live_market_evidence` (≥ 2 nguồn high-trust); chỉ problem slug cụ thể được chuyển từ `rfq` sang `kael_auto_quote`, còn `*-general` và slug bắt đầu bằng `other_` hoặc `other-` vẫn `rfq` | `kael/tools/synthesis.ts`, `stage-baseline.ts`, `stage-synthesis.ts`, `estimate-intake-policy.ts`, `estimate-evidence.ts`, `admin/policy-governance.ts`, contract twin `stage1-reliability.ts`, `migrations/20261008121000_kael_live_market_evidence_policy.sql` |
+| 4 | Câu trả lời khi thiếu giá được sinh từ dữ liệu thật: nêu lý do và việc khách có thể bổ sung. Hỏi lại thì nhận câu khác và không gọi provider | `domains/kael-chat/price-gap-reply.ts`, `branches-post-pipeline.ts` |
+| 5 | Receipt giá đưa các URL nguồn đã xác minh tới RN; chỉ nhận HTTPS cùng domain, có nhãn link truy cập được và giữ nhãn VI/EN | `kael-guardrails/output-pipeline.ts`, `domains/kael-chat/estimate-evidence.ts`, `apps/mobile/components/customer/kael-chat/agentic-estimate-display-model.ts`, `agentic-price-reasoning-stream.tsx`, `apps/mobile/lib/kael-stream-validation.ts` |
+
+Pillar: P343, P344, P345, P346 (mỗi cái đỏ khi đảo mutation). P337 đổi câu kiểm tra theo câu trả lời mới.
+
+### 59.3 Chờ Tu quyết (chưa làm)
+
+1. **Năng lực ghép thợ theo vấn đề (D3).** Phải sửa 3 chỗ:
+   - `service_intake_policy_floors` (floor hiện bắt đủ 4 năng lực);
+   - `estimate-support.ts`, nơi `worker_requirements` luôn gộp toàn bộ `profile.worker_capabilities`;
+   - policy version mới.
+
+   Bảng đề xuất (Tu duyệt trước khi viết migration):
+
+| Dịch vụ | Slug → năng lực bắt buộc |
+|---|---|
+| electrical | `breaker_trip`, `power_outage_one_room`, `power_outage_whole_unit` → `electrical_fault_isolation` + `fixed_wiring_and_panel_safety`; `flickering_light` → `electrical_fault_isolation` + `device_repair_or_replacement`; `outlet_or_switch_broken` → `device_repair_or_replacement`; `install_device` → `electrical_installation`; `electrical-general`, `other_electrical` → `electrical_fault_isolation` |
+| plumbing | `pipe_leak` → `leak_and_flow_diagnosis` + `pipe_and_fixture_repair`; `faucet_broken`, `toilet_flush_issue` → `pipe_and_fixture_repair`; `clogged_drain_or_sink` → `drain_clearing`; `install_or_replace_fixture` → `fixture_installation`; `weak_water_pressure`, `plumbing-general`, `other_plumbing` → `leak_and_flow_diagnosis` |
+| cleaning | `standard_home_cleaning`, `cleaning-general`, `other_cleaning` → `home_cleaning`; `deep_cleaning`, `bathroom_deep_clean`, `kitchen_deep_clean` → `deep_cleaning` + `surface_safe_cleaning`; `post_repair_cleaning` → `deep_cleaning` + `cleaning_equipment_operation`; `window_cleaning` → `surface_safe_cleaning` + `cleaning_equipment_operation` |
+| hvac | `routine_hvac_cleaning` → `hvac_cleaning` + `safe_height_access`; `no_cooling`, `weak_cooling` → `hvac_fault_diagnosis` + `refrigerant_system_service` + `safe_height_access`; `error_code` → `hvac_fault_diagnosis` + `hvac_electrical_and_control_repair`; `water_leak` → `hvac_cleaning` + `hvac_fault_diagnosis` + `safe_height_access`; `unusual_noise`, `hvac-general`, `other_hvac` → `hvac_fault_diagnosis` + `safe_height_access` |
+| upholstery | `sofa_cleaning`, `mattress_cleaning`, `carpet_cleaning`, `curtain_cleaning` → `upholstery_material_identification` + `fabric_safe_extraction_cleaning`; `stain_treatment` → `upholstery_material_identification` + `colorfastness_and_patch_testing` + `stain_and_odor_treatment`; `odor_or_mold` → `upholstery_material_identification` + `stain_and_odor_treatment`; `upholstery-general`, `other_upholstery` → `upholstery_material_identification` |
+| handyman | `drill_or_mount_shelf`, `mount_tv_or_furniture`, `install_curtain_rod` → `safe_drilling_and_mounting`; `install_bathroom_fixture`, `install_small_fixture` → `small_fixture_and_furniture_installation`; `repair_hinge_or_handle`, `replace_cabinet_hinges`, `handyman-general`, `other_handyman` → `minor_home_repairs` |
+
+2. **Ops (Tu).**
+   - Thợ thật bật quyền thông báo trên app thợ để đăng ký `device_push_tokens`.
+   - Thêm năng lực điện cho thợ.
+3. **7 job legacy kẹt `broadcasting` — đã xóa trên Production ngày 2026-10-08.** Tu đồng ý trực tiếp trong phiên Codex này. Codex xóa đúng `#MOH-260034`, `#MOH-260036`, `#MOH-260038`, `#MOH-260040`, `#MOH-260053`, `#MOH-260055`, `#MOH-260056` sau khi xác nhận chưa trả tiền, không có `matching_operations`, và không có bản ghi tài chính chặn xóa. Truy vấn sau xóa xác nhận không còn 7 job. `reconcile_expired_matching_leases` không xử lý nhóm này.
+4. **`service_types` của registry** là đề xuất của Claude theo ledger tháng 8; Tu xem lại danh sách domain trong migration `20261008120000`.
+
+### 59.4 Kiểm chứng trên Build 53 (sau khi Codex release)
+
+1. Tạo yêu cầu Sửa điện → Cầu dao trip, có 1 ảnh.
+   - Nếu có giá: panel báo giá cũ, `price_source = perplexity_validated`, `kael_price_knowledge` có dòng `active`.
+   - Nếu chưa có giá: câu trả lời nêu lý do cụ thể, và có dòng `insufficient`.
+2. Hỏi lại "Sao không đủ dữ liệu?". Kỳ vọng: câu trả lời khác ("kết quả chưa thay đổi"), log không có `provider.call market_lookup` mới.
+3. Yêu cầu thứ hai cùng vấn đề. Kỳ vọng: không gọi Perplexity, `reuse_count` tăng.
+4. Đọc `safe_metadata.stage1_runtime_behavior` để biết Build 53 chạy làn nào.
+
+### 59.5 Change Log
+
+| Ver | Ngày | Ai | Đổi gì |
+|---|---|---|---|
+| 0.1 | 2026-10-08 | Claude | Phase 0–4 code + 2 migration + P343–P345; Phase 5 chẩn đoán xong, chờ Tu duyệt bảng năng lực |
+| 0.2 | 2026-10-08 | Codex | Thêm link nguồn giá đã xác minh cho RN receipt; xóa 7 job eval legacy trên Production theo xác nhận của Tu |

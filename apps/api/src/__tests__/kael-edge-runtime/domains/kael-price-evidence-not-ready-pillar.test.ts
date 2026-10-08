@@ -86,7 +86,8 @@ describe(`${PILLAR.id}: honest unavailable-price response`, () => {
     })
     expect(step.progress, pillarWhy(PILLAR, 'a valid not-ready result must not surface as a failed request')).not.toHaveProperty('failureReason')
     expect(step.turn, pillarWhy(PILLAR, 'no price source means no estimate payload')).not.toHaveProperty('estimate')
-    expect(step.turn.text, pillarWhy(PILLAR, 'explain why no offer is shown')).toContain('chưa có dữ liệu giá đã kiểm chứng')
+    expect(step.turn.text, pillarWhy(PILLAR, 'explain why no offer is shown')).toContain('chưa thể đưa ra giá có căn cứ')
+    expect(step.turn.text, pillarWhy(PILLAR, 'tell the customer what evidence lets Kael search again')).toContain('Kael sẽ tìm lại')
   })
 
   it('keeps both validated-price fallback branches out of the error state', () => {

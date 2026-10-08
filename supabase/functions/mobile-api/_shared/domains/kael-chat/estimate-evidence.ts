@@ -77,7 +77,42 @@ export function buildKaelEstimateMarketEvidence(
     quorumMet: typeof metadata?.source_trust_quorum_met === "boolean"
       ? metadata.source_trust_quorum_met
       : null,
+    sources: marketSourcesFromMetadata(metadata?.source_trust_accepted_sources),
   };
+}
+
+function marketSourcesFromMetadata(value: unknown): { domain: string; url: string }[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const source = item as Record<string, unknown>;
+    const domain = typeof source.verified_domain === "string"
+      ? source.verified_domain.trim().toLowerCase()
+      : "";
+    const rawUrl = typeof source.verified_url === "string" ? source.verified_url : "";
+    if (!/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))+$/u.test(domain)) {
+      return [];
+    }
+    try {
+      const url = new URL(rawUrl);
+      if (
+        url.protocol !== "https:" ||
+        url.username ||
+        url.password ||
+        url.port ||
+        url.search ||
+        url.hash ||
+        url.hostname.toLowerCase() !== domain ||
+        rawUrl.length > 2_000 ||
+        seen.has(domain)
+      ) return [];
+      seen.add(domain);
+      return [{ domain, url: url.toString() }];
+    } catch {
+      return [];
+    }
+  }).slice(0, 10);
 }
 
 export function baselineEvidenceFromStageLogs(
@@ -134,9 +169,12 @@ export function buildConfirmedWorkerScopeSummary(input: {
     .trim();
 }
 
-export type KaelEstimateMarketEvidence = ReturnType<
-  typeof buildKaelEstimateMarketEvidence
->;
+export type KaelEstimateMarketEvidence = {
+  acceptedSourceCount: number | null;
+  highTrustSourceCount: number | null;
+  quorumMet: boolean | null;
+  sources?: { domain: string; url: string }[];
+};
 
 export function hasValidatedKaelPriceEvidence(input: {
   baselineEvidence?: BaselinePriceEvidenceReceipt | null;
@@ -145,6 +183,7 @@ export function hasValidatedKaelPriceEvidence(input: {
     minimumSourceCount: number;
     minimumHighTrustSourceCount: number;
     requiresActiveBaseline: boolean;
+    allowLiveMarketEvidence?: boolean;
   };
 }) {
   const minimumSourceCount = input.requirements?.minimumSourceCount ?? 2;
@@ -157,7 +196,12 @@ export function hasValidatedKaelPriceEvidence(input: {
       input.baselineEvidence.accepted_source_count ===
         input.baselineEvidence.sources.length,
   );
-  if (input.requirements?.requiresActiveBaseline) return hasVerifiedBaselineQuorum;
+  if (
+    input.requirements?.requiresActiveBaseline &&
+    input.requirements.allowLiveMarketEvidence !== true
+  ) {
+    return hasVerifiedBaselineQuorum;
+  }
   const hasTrustedMarketQuorum =
     input.marketEvidence.quorumMet === true &&
     (input.marketEvidence.acceptedSourceCount ?? 0) >= minimumSourceCount &&

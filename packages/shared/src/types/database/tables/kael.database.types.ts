@@ -602,6 +602,56 @@ export type KaelTables = {
           },
         ]
       }
+      kael_case_knowledge: {
+        Row: {
+          complexity_hint:
+            | Database["public"]["Enums"]["complexity_level"]
+            | null
+          created_at: string
+          finding: string
+          id: string
+          price_knowledge_id: string | null
+          problem_slug: string
+          recommended_scope: string | null
+          service_type: Database["public"]["Enums"]["service_type"]
+          severity_indicators: string[]
+        }
+        Insert: {
+          complexity_hint?:
+            | Database["public"]["Enums"]["complexity_level"]
+            | null
+          created_at?: string
+          finding: string
+          id?: string
+          price_knowledge_id?: string | null
+          problem_slug: string
+          recommended_scope?: string | null
+          service_type: Database["public"]["Enums"]["service_type"]
+          severity_indicators?: string[]
+        }
+        Update: {
+          complexity_hint?:
+            | Database["public"]["Enums"]["complexity_level"]
+            | null
+          created_at?: string
+          finding?: string
+          id?: string
+          price_knowledge_id?: string | null
+          problem_slug?: string
+          recommended_scope?: string | null
+          service_type?: Database["public"]["Enums"]["service_type"]
+          severity_indicators?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_case_knowledge_price_knowledge_id_fkey"
+            columns: ["price_knowledge_id"]
+            isOneToOne: false
+            referencedRelation: "kael_price_knowledge"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kael_charter_audit: {
         Row: {
           actor_id: string | null
@@ -1883,6 +1933,102 @@ export type KaelTables = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kael_price_knowledge: {
+        Row: {
+          accepted_source_count: number
+          aggregate_max: number | null
+          aggregate_min: number | null
+          created_at: string
+          demand_count: number
+          district_scope: string
+          expires_at: string
+          failure_reason: string | null
+          high_trust_source_count: number
+          id: string
+          market_artifact_id: string | null
+          policy_id: string
+          problem_slug: string
+          required_quorum: number | null
+          research_fingerprint: string
+          reuse_count: number
+          safe_metadata: Json
+          service_problem_id: string | null
+          service_type: Database["public"]["Enums"]["service_type"]
+          sources: Json
+          status: string
+          unit: string | null
+          updated_at: string
+          verified_at: string
+        }
+        Insert: {
+          accepted_source_count?: number
+          aggregate_max?: number | null
+          aggregate_min?: number | null
+          created_at?: string
+          demand_count?: number
+          district_scope?: string
+          expires_at: string
+          failure_reason?: string | null
+          high_trust_source_count?: number
+          id?: string
+          market_artifact_id?: string | null
+          policy_id?: string
+          problem_slug: string
+          required_quorum?: number | null
+          research_fingerprint: string
+          reuse_count?: number
+          safe_metadata?: Json
+          service_problem_id?: string | null
+          service_type: Database["public"]["Enums"]["service_type"]
+          sources?: Json
+          status: string
+          unit?: string | null
+          updated_at?: string
+          verified_at?: string
+        }
+        Update: {
+          accepted_source_count?: number
+          aggregate_max?: number | null
+          aggregate_min?: number | null
+          created_at?: string
+          demand_count?: number
+          district_scope?: string
+          expires_at?: string
+          failure_reason?: string | null
+          high_trust_source_count?: number
+          id?: string
+          market_artifact_id?: string | null
+          policy_id?: string
+          problem_slug?: string
+          required_quorum?: number | null
+          research_fingerprint?: string
+          reuse_count?: number
+          safe_metadata?: Json
+          service_problem_id?: string | null
+          service_type?: Database["public"]["Enums"]["service_type"]
+          sources?: Json
+          status?: string
+          unit?: string | null
+          updated_at?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kael_price_knowledge_market_artifact_id_fkey"
+            columns: ["market_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "kael_market_artifacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kael_price_knowledge_service_problem_id_fkey"
+            columns: ["service_problem_id"]
+            isOneToOne: false
+            referencedRelation: "service_problems"
             referencedColumns: ["id"]
           },
         ]

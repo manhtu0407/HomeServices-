@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 431,
+  "migrationCount": 433,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "17ce26595c7d8dcd0e4158e78edf83cee64cc7f6283e7ece5df1b006c08b2f55",
+  "migrationsSha256": "13a8b261f11c0976b72b58bbdbfcaa6a8b54e33d5402472b0a78255d9336f0c5",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "0fcc401abfcf616a7bd559a99fd2f77e080b41b7fbf48b8ad29c9c11e9688bd7"
+    "sha256": "81880f524afc694ded1bea7fa0b85f23c50cd99a64d7c788917d45c58c353507"
   },
   "entries": [
     {
@@ -3096,6 +3096,20 @@
       "file": "supabase/migrations/20261005100000_customer_membership_invite_claim_status.sql",
       "sha256": "275e0d0df6c8dbc56b37ce5a45d60b505622a135424b2db0e7169c322aa62147",
       "bytes": 3128
+    },
+    {
+      "version": "20261008120000",
+      "name": "kael_live_price_knowledge",
+      "file": "supabase/migrations/20261008120000_kael_live_price_knowledge.sql",
+      "sha256": "13f75ab437d288fc39fd482925d4c91ac3aad5893c9e27226e23545591c2c537",
+      "bytes": 8098
+    },
+    {
+      "version": "20261008121000",
+      "name": "kael_live_market_evidence_policy",
+      "file": "supabase/migrations/20261008121000_kael_live_market_evidence_policy.sql",
+      "sha256": "6b1d2d72d294e01ebccbe6650f8230014ebaf329245f6230eeb59442b7c418cd",
+      "bytes": 5485
     }
   ]
 }

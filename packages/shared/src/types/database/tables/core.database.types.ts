@@ -1056,6 +1056,7 @@ export type CoreTables = {
           price_unit: string | null
           region: string | null
           review_notes: string | null
+          service_types: string[]
           tier: string
           trust_score: number
         }
@@ -1081,6 +1082,7 @@ export type CoreTables = {
           price_unit?: string | null
           region?: string | null
           review_notes?: string | null
+          service_types?: string[]
           tier: string
           trust_score: number
         }
@@ -1106,6 +1108,7 @@ export type CoreTables = {
           price_unit?: string | null
           region?: string | null
           review_notes?: string | null
+          service_types?: string[]
           tier?: string
           trust_score?: number
         }

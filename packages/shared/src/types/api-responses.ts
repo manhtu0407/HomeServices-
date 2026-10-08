@@ -14,10 +14,14 @@ import type { WorkflowResponses } from './workflow-responses'
 import type {
   BaselinePriceEvidenceReceiptResponse,
   KaelEstimateAnalysisReceipt,
+  KaelEstimateMarketSource,
+  KaelPriceReasoningReceipt,
 } from './price-evidence-responses'
 export type {
   BaselinePriceEvidenceReceiptResponse,
   KaelEstimateAnalysisReceipt,
+  KaelEstimateMarketSource,
+  KaelPriceReasoningReceipt,
 } from './price-evidence-responses'
 export type AddressAccessView = {
   release_stage: 'area_only' | 'building_released' | 'unit_released'
@@ -28,68 +32,6 @@ export type AddressAccessView = {
   customer_handoff_required: boolean
   evidence_mode: 'none' | 'geofence' | 'manual_photo'
   access_profile: ApartmentAccessProfileInput
-}
-
-export type KaelPriceReasoningReceipt = {
-  schema_version: 'price_reasoning_receipt.v1'
-  receipt_id: string
-  problem: {
-    confirmed_facts: string[]
-    possible_causes: {
-      statement: string
-      basis: ('customer_report' | 'visual_evidence' | 'service_profile' | 'knowledge')[]
-      confidence: 'low' | 'medium' | 'high'
-    }[]
-    unknowns: string[]
-  }
-  scope: {
-    included: string[]
-    conditional: string[]
-    excluded: string[]
-  }
-  costs: {
-    currency: 'VND'
-    total_min: number
-    total_max: number
-    reconciliation: 'package_total' | 'exact'
-    components: {
-      kind:
-        | 'service_package'
-        | 'labor'
-        | 'travel'
-        | 'materials'
-        | 'replacement_parts'
-        | 'equipment'
-        | 'other'
-      status:
-        | 'priced'
-        | 'included_unitemized'
-        | 'conditional_unpriced'
-        | 'excluded'
-        | 'undetermined'
-      amount_min: number | null
-      amount_max: number | null
-      explanation: string
-    }[]
-  }
-  scenarios: {
-    low: { total: number; conditions: string[]; scope: string[] }
-    high: { total: number; conditions: string[]; scope: string[] }
-  }
-  fairness: {
-    price_source:
-      | 'perplexity_validated'
-      | 'baseline_with_market'
-      | 'baseline_only'
-      | 'inspection_required'
-    confidence: 'low' | 'medium' | 'high'
-    baseline_evidence?: BaselinePriceEvidenceReceiptResponse | null
-    market_source_count: number | null
-    high_trust_source_count: number | null
-    quorum_met: boolean | null
-    cap_statement: string
-    remaining_uncertainty: string[]
-  }
 }
 
 export type MatchingState = {

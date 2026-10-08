@@ -119,6 +119,7 @@ export const serviceIntakePolicySchema = z.object({
     minimum_source_count: z.number().int().nonnegative(),
     minimum_high_trust_source_count: z.number().int().nonnegative(),
     requires_active_baseline: z.boolean(),
+    allow_live_market_evidence: z.boolean().optional(),
   }).strict(),
   questions: z.array(localizedQuestionSchema).max(100),
   change_reason: z.string().trim().min(3).max(1000),
@@ -127,10 +128,15 @@ export const serviceIntakePolicySchema = z.object({
   published_by: z.string().uuid().nullable(),
   published_at: instantSchema.nullable(),
 }).strict().superRefine((policy, ctx) => {
-  if (policy.quote_mode === "kael_auto_quote" && !policy.evidence_requirements.requires_active_baseline) {
+  const evidence = policy.evidence_requirements;
+  if (
+    policy.quote_mode === "kael_auto_quote" && !evidence.requires_active_baseline &&
+    !(evidence.allow_live_market_evidence === true && evidence.minimum_source_count >= 2 &&
+      evidence.minimum_high_trust_source_count >= 2)
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "kael_auto_quote requires an active governed price baseline",
+      message: "kael_auto_quote requires an active governed price baseline or a two high-trust source live quorum",
       path: ["evidence_requirements", "requires_active_baseline"],
     });
   }

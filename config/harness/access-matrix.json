@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 431,
-    "migrationDigest": "75d4bb7706e8d32f68754c67c8b49b56d3b784d384939ccaaad53af007bf1e18"
+    "migrationCount": 433,
+    "migrationDigest": "df5d0ff3dd8288b84b5538db9ae730d458ef582608c4801dd225b747c642ace1"
   },
   "actors": [
     "anonymous",
@@ -1395,6 +1395,24 @@
       "realtime": false
     },
     {
+      "name": "kael_case_knowledge",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "kael_charter_audit",
       "classification": "actor-scoped",
       "rlsEnabled": true,
@@ -1782,6 +1800,25 @@
         "anonymous": [],
         "authenticated": [
           "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "kael_price_knowledge",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select",
+          "update"
         ]
       },
       "serviceRole": [
