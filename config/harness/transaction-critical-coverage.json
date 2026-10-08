@@ -922,17 +922,17 @@
       },
       "customer.intake.create": {
         "status": "PARTIAL",
-        "gaps": ["Collected Customer RNTL tests exercise the real Kael intake coverage response and confirm/recovery guard. HTTP session creation, real Auth, hosted Edge-to-SQL, concurrent session ownership, native relaunch, and Production proof remain open."],
+        "gaps": ["Collected Customer tests prove owner-bound Kael session creation, initial-turn persistence, and pending duplicate rejection. Real Auth, hosted Edge-to-SQL, concurrent session ownership, native relaunch, and Production proof remain open."],
         "cases": [{
-          "id": "customer-intake-create-mobile",
-          "pillar": "P46-stage1-customer-intake-mode",
-          "file": "apps/mobile/components/customer/__tests__/stage1-customer-intake-mode-pillar-test.tsx",
-          "owner": "apps/mobile/components/customer/kael-chat/intake-coverage-response.tsx",
-          "invocation": "IntakeCoverageResponse", "seam": "ui", "actor": "customer",
+          "id": "customer-kael-intake-create-service",
+          "pillar": "P342-customer-kael-intake-create",
+          "file": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-chat-create-intake-pillar.test.ts",
+          "owner": "supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts",
+          "invocation": "createKaelChat", "seam": "service", "actor": "customer",
           "from": ["authenticated"], "to": ["intake"],
-          "success_tests": ["Stage-1 customer intake modes renders an honest Vietnamese RFQ confirmation with a callable button"],
-          "denial_tests": ["Stage-1 customer intake modes blocks confirmation and names missing Tier A information in English"],
-          "recovery_tests": ["Stage-1 customer intake modes announces reconciliation without claiming that a job was created"]
+          "success_tests": ["customer Kael intake create creates an owner-bound intake session and persists the initial customer turn"],
+          "denial_tests": ["customer Kael intake create refuses a duplicate create while the owner session is still pending"],
+          "recovery_tests": []
         }]
       },
       "customer.intake.turn": {
@@ -1603,7 +1603,7 @@
       "confirmation_gate": "none",
       "from": ["authenticated"],
       "to": ["intake"],
-      "pillars": ["P46-stage1-customer-intake-mode", "P19-job-access-ownership"]
+      "pillars": ["P342-customer-kael-intake-create", "P19-job-access-ownership"]
     },
     {
       "id": "customer.intake.turn",

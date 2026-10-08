@@ -1,9 +1,9 @@
 import { typography } from '@/design/theme'
 import { Image } from 'expo-image'
 import { useMemo } from 'react'
+import Svg, { Path } from 'react-native-svg'
 import {
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -20,91 +20,59 @@ import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 
+// Every picked photo or video reads as its own thumbnail with an X in the corner; filenames are
+// never shown, so removing or swapping a pick is one tap on the media itself.
 export function MediaDraftPreviewTray({
   busy,
   drafts,
   language,
   onRemove,
-  variant = 'case',
   tokens,
 }: {
   busy: boolean
   drafts: LocalMediaUploadDraft[]
   language: AppLanguage
   onRemove: (index: number) => void
-  variant?: 'case' | 'composer-images'
   tokens: CustomerThemeTokens
 }) {
-  const imageDrafts = useMemo(() => drafts.flatMap((draft, index) => {
-    if (draft.type !== 'image') return []
+  const rows = useMemo(() => drafts.flatMap((draft, index): ComposerMediaDraftRow[] => {
+    if (draft.type !== 'image' && draft.type !== 'video') return []
+    const isVideo = draft.type === 'video'
     return [{
-      accessibilityLabel: language === 'vi' ? 'Ảnh đã chọn' : 'Selected photo',
-      accessibilityState: { disabled: busy },
-      frameStyle: [styles.composerImageFrame, { borderColor: tokens.border }],
-      imageSource: { uri: draft.uri },
+      accessibilityLabel: isVideo
+        ? (language === 'vi' ? 'Video đã chọn' : 'Selected video')
+        : (language === 'vi' ? 'Ảnh đã chọn' : 'Selected photo'),
+      disabled: busy,
+      frameStyle: [styles.frame, { borderColor: tokens.border }],
+      imageSource: isVideo ? null : { uri: draft.uri },
       index,
       key: `${draft.uri}:${index}`,
-      onRemove: () => onRemove(index),
-      removeAccessibilityLabel: language === 'vi' ? 'Xóa ảnh đã chọn' : 'Remove selected photo',
       mode: tokens.mode,
-      removeTextStyle: [styles.composerRemoveText, { color: tokens.text }],
+      onRemove: () => onRemove(index),
+      removeAccessibilityLabel: isVideo
+        ? (language === 'vi' ? 'Xóa video đã chọn' : 'Remove selected video')
+        : (language === 'vi' ? 'Xóa ảnh đã chọn' : 'Remove selected photo'),
+      removeGlyphColor: tokens.text,
+      videoLabelStyle: [styles.videoText, { color: tokens.primary }],
+      videoTileStyle: [styles.media, styles.videoTile, { backgroundColor: tokens.service }],
     }]
-  }), [busy, drafts, language, onRemove, tokens.border, tokens.mode, tokens.text])
+  }), [busy, drafts, language, onRemove, tokens.border, tokens.mode, tokens.primary, tokens.service, tokens.text])
 
-  if (drafts.length === 0) return null
-
-  if (variant === 'composer-images') {
-    if (imageDrafts.length === 0) return null
-
-    return (
-      <FlatList
-        contentContainerStyle={styles.composerImageRailContent}
-        data={imageDrafts}
-        horizontal
-        keyExtractor={keyComposerImageDraft}
-        showsHorizontalScrollIndicator={false}
-        renderItem={renderComposerImageDraft}
-        style={styles.composerImageRail}
-        testID="customer-kael-composer-image-rail"
-      />
-    )
-  }
-
+  if (rows.length === 0) return null
   const includesVideo = drafts.some((draft) => draft.type === 'video')
 
   return (
     <View style={styles.root} testID="customer-kael-media-draft-previews">
-      {drafts.map((draft, index) => (
-        <View
-          key={`${draft.uri}:${index}`}
-          style={[styles.previewItem, { backgroundColor: tokens.service, borderColor: tokens.border }]}
-        >
-          {draft.type === 'image' ? (
-            <Image accessibilityIgnoresInvertColors contentFit="contain" source={{ uri: draft.uri }} style={styles.previewImage} />
-          ) : (
-            <View style={[styles.previewImage, styles.videoBadge, { backgroundColor: tokens.ghost }]}>
-              <Text style={[styles.videoText, { color: tokens.primary }]}>VIDEO</Text>
-            </View>
-          )}
-          <Text numberOfLines={1} style={[styles.previewName, { color: tokens.text }]}>
-            {draft.fileName?.trim() || (draft.type === 'video'
-              ? (language === 'vi' ? 'Video đã chọn' : 'Selected video')
-              : (language === 'vi' ? 'Ảnh đã chọn' : 'Selected photo'))}
-          </Text>
-          <Pressable
-            accessibilityLabel={language === 'vi' ? 'Bỏ tệp đã chọn' : 'Remove selected file'}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: busy }}
-            disabled={busy}
-            hitSlop={4}
-            onPress={() => onRemove(index)}
-            style={styles.removeButton}
-            testID={`customer-kael-media-draft-remove-${index}`}
-          >
-            <Text style={[styles.removeText, { color: tokens.primary }]}>{language === 'vi' ? 'Bỏ' : 'Remove'}</Text>
-          </Pressable>
-        </View>
-      ))}
+      <FlatList
+        contentContainerStyle={styles.railContent}
+        data={rows}
+        horizontal
+        keyExtractor={keyComposerMediaDraft}
+        showsHorizontalScrollIndicator={false}
+        renderItem={renderComposerMediaDraft}
+        style={styles.rail}
+        testID="customer-kael-composer-image-rail"
+      />
       {includesVideo ? (
         <Text style={[styles.disclosure, { color: tokens.muted }]} testID="customer-kael-video-privacy-disclosure">
           {language === 'vi'
@@ -116,69 +84,94 @@ export function MediaDraftPreviewTray({
   )
 }
 
-type ComposerImageDraftRow = {
+type ComposerMediaDraftRow = {
   accessibilityLabel: string
-  accessibilityState: { disabled: boolean }
+  disabled: boolean
   frameStyle: StyleProp<ViewStyle>
-  imageSource: { uri: string }
+  imageSource: { uri: string } | null
   index: number
   key: string
+  mode: CustomerThemeTokens['mode']
   onRemove: () => void
   removeAccessibilityLabel: string
-  mode: CustomerThemeTokens['mode']
-  removeTextStyle: StyleProp<TextStyle>
+  removeGlyphColor: string
+  videoLabelStyle: StyleProp<TextStyle>
+  videoTileStyle: StyleProp<ViewStyle>
 }
 
-function keyComposerImageDraft(item: ComposerImageDraftRow) {
+function keyComposerMediaDraft(item: ComposerMediaDraftRow) {
   return item.key
 }
 
-function renderComposerImageDraft({ item }: ListRenderItemInfo<ComposerImageDraftRow>) {
+function renderComposerMediaDraft({ item }: ListRenderItemInfo<ComposerMediaDraftRow>) {
   const { key, ...props } = item
-  return <ComposerImageDraftRowView key={key} {...props} />
+  return <ComposerMediaDraftRowView key={key} {...props} />
 }
 
-function ComposerImageDraftRowView({
+function ComposerMediaDraftRowView({
   accessibilityLabel,
-  accessibilityState,
+  disabled,
   frameStyle,
   imageSource,
   index,
   mode,
   onRemove,
   removeAccessibilityLabel,
-  removeTextStyle,
-}: ComposerImageDraftRow) {
+  removeGlyphColor,
+  videoLabelStyle,
+  videoTileStyle,
+}: Omit<ComposerMediaDraftRow, 'key'>) {
   return (
     <View style={frameStyle}>
-      <Image
-        accessibilityIgnoresInvertColors
-        accessibilityLabel={accessibilityLabel}
-        accessible
-        contentFit="cover"
-        source={imageSource}
-        style={styles.composerImage}
-        testID={`customer-kael-composer-image-${index}`}
-      />
+      {imageSource ? (
+        <Image
+          accessibilityIgnoresInvertColors
+          accessibilityLabel={accessibilityLabel}
+          accessible
+          contentFit="cover"
+          source={imageSource}
+          style={styles.media}
+          testID={`customer-kael-composer-image-${index}`}
+        />
+      ) : (
+        <View
+          accessibilityLabel={accessibilityLabel}
+          accessible
+          style={videoTileStyle}
+          testID={`customer-kael-composer-video-${index}`}
+        >
+          <Text style={videoLabelStyle}>Video</Text>
+        </View>
+      )}
       <LiquidControlButton
         accessibilityLabel={removeAccessibilityLabel}
-        disabled={accessibilityState.disabled}
+        disabled={disabled}
         hitSlop={7}
         mode={mode}
         onPress={onRemove}
         size={30}
-        style={styles.composerRemoveButton}
+        style={styles.removeButton}
         testID={`customer-kael-media-draft-remove-${index}`}
       >
-        <Text style={removeTextStyle}>×</Text>
+        <RemoveGlyph color={removeGlyphColor} />
       </LiquidControlButton>
     </View>
   )
 }
 
+// A drawn cross sits on the button's geometric centre; a text "×" rides on font metrics and
+// lands off-centre by a different amount on each platform.
+function RemoveGlyph({ color }: { color: string }) {
+  return (
+    <Svg height={12} pointerEvents="none" testID="customer-kael-media-draft-remove-glyph" viewBox="0 0 12 12" width={12}>
+      <Path d="M2 2L10 10M10 2L2 10" fill="none" stroke={color} strokeLinecap="round" strokeWidth={1.8} />
+    </Svg>
+  )
+}
+
 const styles = StyleSheet.create({
-  composerImage: { borderRadius: 15, height: 112, width: 112 },
-  composerImageFrame: {
+  disclosure: { ...typography.caption2, paddingHorizontal: 8 },
+  frame: {
     borderRadius: 16,
     borderWidth: 1,
     height: 114,
@@ -186,21 +179,15 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: 114,
   },
-  composerImageRail: { flexGrow: 0, maxHeight: 126, width: '100%' },
-  composerImageRailContent: { alignItems: 'center', paddingHorizontal: 5, paddingVertical: 7 },
-  composerRemoveButton: {
+  media: { borderRadius: 15, height: 112, width: 112 },
+  rail: { flexGrow: 0, maxHeight: 126, width: '100%' },
+  railContent: { alignItems: 'center', paddingHorizontal: 5, paddingVertical: 7 },
+  removeButton: {
     position: 'absolute',
     right: -6,
     top: -6,
   },
-  composerRemoveText: { fontSize: 22, fontWeight: '500', lineHeight: 24, marginTop: -2 },
-  disclosure: { ...typography.caption2 },
-  previewImage: { borderRadius: 8, height: 40, width: 40 },
-  previewItem: { alignItems: 'center', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 9, padding: 7 },
-  previewName: { flex: 1, ...typography.caption1 },
-  removeButton: { alignItems: 'center', justifyContent: 'center', minHeight: 44, minWidth: 44, paddingHorizontal: 7 },
-  removeText: { ...typography.caption1, fontWeight: '600' },
-  root: { gap: 7 },
-  videoBadge: { alignItems: 'center', justifyContent: 'center' },
-  videoText: { ...typography.caption2, fontWeight: '600' },
+  root: { gap: 4, width: '100%' },
+  videoText: { ...typography.caption1, fontWeight: '600' },
+  videoTile: { alignItems: 'center', justifyContent: 'center' },
 })

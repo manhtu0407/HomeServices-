@@ -2,7 +2,6 @@ import { useCallback, useMemo } from 'react'
 import { customerKaelConversationService } from '@/lib/services'
 import { useNormalChatSuggestions } from '@/lib/normal-chat-suggestions'
 
-import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 import { CustomerAgenticEstimateNode } from './customer-agentic-estimate-node'
 import { KaelChatSurfaceView } from './chat-stateful-surfaces'
 import { customerV21KaelChatRootStyles as rootStyles } from './chat-styles'
@@ -10,6 +9,7 @@ import { ChatBubble } from './chat-surfaces'
 import { CustomerKaelCaseThreadNode } from './customer-kael-case-thread-node'
 import { CustomerKaelAnalysisEvidenceNode } from './customer-kael-analysis-evidence-node'
 import { KaelResponseSurface } from './kael-response-surface'
+import { useSettleReplyOnceStored } from './use-settle-reply-once-stored'
 import { CustomerKaelIntakeResponseNode } from './customer-kael-intake-response-node'
 import { CustomerWorkerCandidateNode } from './customer-worker-candidate-node'
 import { CustomerKaelSessionMenu } from './kael-session-menu'
@@ -162,32 +162,29 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     () => <CustomerKaelAnalysisEvidenceNode controller={controller} />,
     [controller],
   )
+  const settleStreamingReply = useSettleReplyOnceStored({
+    mode,
+    requestInFlight: conversation.loading,
+    settle: messageActions.settleStreamingReply,
+    storedTurns: conversation.turns,
+  })
   const streamingReplyNode = useMemo(() => (
     conversation.streamingReply ? (
       <KaelResponseSurface
         language={language}
-        onPresentationSettled={messageActions.settleStreamingReply}
+        onPresentationSettled={settleStreamingReply}
         reduceMotion={reduceMotion}
+        revealOnMount
         state={conversation.streamingReply}
         testID="customer-v21-kael-streaming-response"
         tokens={tokens}
       />
     ) : null
-  ), [conversation.streamingReply, language, messageActions.settleStreamingReply, reduceMotion, tokens])
+  ), [conversation.streamingReply, language, reduceMotion, settleStreamingReply, tokens])
   const agenticEstimateNode = useMemo(
     () => <CustomerAgenticEstimateNode controller={controller} />,
     [controller],
   )
-  const composerMediaNode = useMemo(() => mode === 'case' ? (
-    <MediaDraftPreviewTray
-      busy={composerBusy}
-      drafts={conversation.composerMediaDrafts}
-      language={language}
-      onRemove={(index) => conversation.setComposerMediaDrafts((current) =>
-        current.filter((_, currentIndex) => currentIndex !== index))}
-      tokens={tokens}
-    />
-  ) : null, [composerBusy, conversation, language, mode, tokens])
   const processLinesNode = useMemo(() => (
     processController.processLines ? (
       <>
@@ -251,7 +248,6 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
       caseIntakeResponseNode={caseIntakeResponseNode}
       caseThreadNode={caseThreadNode}
       caseWorkLabel={copy.caseWork}
-      composerMediaNode={composerMediaNode}
       composerMediaDrafts={conversation.composerMediaDrafts}
       composer={{
         busy: composerBusy,

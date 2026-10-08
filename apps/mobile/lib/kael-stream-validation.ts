@@ -36,10 +36,15 @@ const CUSTOMER_CASE_PHASES = new Set([
   'analysis', 'offer_review', 'matching', 'worker_candidate_review', 'worker_en_route',
   'service_execution', 'scope_change_review', 'completion_review', 'payment', 'review', 'closed',
 ])
-const CUSTOMER_NEXT_ACTIONS = new Set([
-  'await_input', 'collect_evidence', 'ask_photo', 'ask_video', 'estimate_ready',
-  'unsupported', 'budget_exceeded', 'confirmed', 'ask_question', 'request_evidence',
-])
+// Keyed by the contract union so a next action added on the server fails type-check here
+// instead of silently rejecting every stream result that carries it.
+const CUSTOMER_NEXT_ACTION_KEYS: Record<KaelChatResponse['session']['next_action'], true> = {
+  await_input: true, ask_photo: true, ask_question: true, ask_video: true, blocked: true,
+  budget_exceeded: true, collect_evidence: true, collect_required: true, confirm_intake: true,
+  confirmed: true, estimate_ready: true, inspection_review: true, offer_review: true,
+  reconcile_confirmation: true, request_evidence: true, rfq_review: true, unsupported: true,
+}
+const CUSTOMER_NEXT_ACTIONS = new Set(Object.keys(CUSTOMER_NEXT_ACTION_KEYS))
 const CUSTOMER_TURN_ROLES = new Set(['customer', 'kael', 'system'])
 const CUSTOMER_TURN_TYPES = new Set([
   'text', 'photo_request', 'video_request', 'photo_attached', 'video_attached',

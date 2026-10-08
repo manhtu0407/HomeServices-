@@ -20,12 +20,12 @@ import { preAgenticUnsupportedService } from '../kael-chat/customer-kael-pre-age
 
 export const PILLAR = {
   id: 'P205-kael-composer-and-failure-boundary',
-  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, aligns the normal-chat camera glyph with the placeholder, leaves multiline input uncapped by one native line, lets the native field grow with its text up to its cap with scrolling on and Return inserting a line, on web resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat images without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, offers Stop only when the busy request can be cancelled, and renders one user-facing failure copy',
+  invariant: 'Kael never submits an empty composer, never sends a message beyond the shared 5000-character boundary, keeps text close to the camera, aligns the normal-chat camera glyph with the placeholder, leaves multiline input uncapped by one native line, lets the native field grow with its text up to its cap with scrolling on and Return inserting a line, on web resets the text field after a draft is cleared and keeps its measured height across same-size edits, previews normal-chat and Work handling media as composer thumbnails without filenames and with accessible X removal controls, allows image analysis while keeping video in Work handling, renders a 27px dark-toned media icon in a 44px touch target, uses a pale liquid-glass send and stop surface with accessible themed controls, offers Stop only when the busy request can be cancelled, and renders one user-facing failure copy',
   authority: ['governance/RULES.md #3, #6, and #7', 'governance/protocols/frontend-test.md G3 and G4'],
   target: 'apps/mobile/components/customer/kael-chat/kael-chat-composer.tsx',
   layer: 'unit',
   siblings: ['P104-kael-ephemeral-state-scope', 'P75-transaction-critical-route-coverage'],
-  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, restore numberOfLines=1 on the multiline field, pin a measured height on native, make native Return send, widen spacing between the camera and text field, leave the normal-chat camera glyph below the placeholder, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, show Stop for a busy request that cannot be cancelled, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
+  mutation: 'allow whitespace submission, lower the UI boundary without the contract constant, restore numberOfLines=1 on the multiline field, pin a measured height on native, make native Return send, widen spacing between the camera and text field, leave the normal-chat camera glyph below the placeholder, retain stale input height after the parent clears a draft, collapse a measured multi-line draft on an edit that keeps its line count, render normal-chat or Work handling filenames instead of in-composer thumbnails with X controls, disable normal-chat image picking, enlarge the composer media icon past 27px, color the enabled camera teal instead of matching the dark send glyph, replace the pale light-theme send surface with a saturated fill or low-contrast icon, restore the thick stop ring, disable the busy stop action, show Stop for a busy request that cannot be cancelled, render an inline failure beside the receipt, or mix VI and EN decline copy; an assertion fails',
 } as const satisfies PillarManifest
 
 const rootStyles: RootChatStyles = {
@@ -269,22 +269,47 @@ describe('Kael composer and failure boundary', () => {
     })
   })
 
-  it('keeps the Work handling file tray copy and remove control', () => {
+  it('shows Work handling photos and videos as composer thumbnails with X removal instead of a filename chip', () => {
+    withPillarContext(PILLAR, () => {
+      const onRemoveComposerMediaDraft = jest.fn()
+      renderComposer('light', true, false, undefined, true, [
+        { fileName: 'IMG_1453.jpg', type: 'image', uri: 'file:///IMG_1453.jpg' },
+        { fileName: 'inspection-video.mp4', type: 'video', uri: 'file:///inspection-video.mp4' },
+      ], onRemoveComposerMediaDraft)
+
+      expect(screen.getByTestId('customer-kael-composer-image-rail')).toBeTruthy()
+      expect(screen.getByTestId('customer-kael-composer-image-0')).toBeTruthy()
+      expect(screen.getByTestId('customer-kael-composer-video-1')).toHaveProp('accessibilityLabel', 'Video đã chọn')
+      expect(screen.queryByText('IMG_1453.jpg')).toBeNull()
+      expect(screen.queryByText('inspection-video.mp4')).toBeNull()
+      expect(screen.queryByText('Bỏ')).toBeNull()
+      expect(screen.queryByText('×')).toBeNull()
+      expect(screen.getAllByTestId('customer-kael-media-draft-remove-glyph')).toHaveLength(2)
+      expect(screen.queryByTestId('customer-v21-kael-media-count')).toBeNull()
+      expect(screen.getByTestId('customer-kael-video-privacy-disclosure')).toBeTruthy()
+      expect(screen.getByTestId('customer-kael-media-draft-remove-0')).toHaveProp('accessibilityLabel', 'Xóa ảnh đã chọn')
+      expect(screen.getByTestId('customer-kael-media-draft-remove-1')).toHaveProp('accessibilityLabel', 'Xóa video đã chọn')
+
+      fireEvent.press(screen.getByTestId('customer-kael-media-draft-remove-1'))
+      expect(onRemoveComposerMediaDraft).toHaveBeenCalledWith(1)
+    }, 'Work handling picks read as removable thumbnails inside the composer; filenames and the Bỏ chip never render')
+  })
+
+  it('keeps a busy composer from removing a picked photo while it uploads', () => {
     const onRemove = jest.fn()
     render(
       <MediaDraftPreviewTray
-        busy={false}
-        drafts={[{ fileName: 'inspection-video.mp4', type: 'video', uri: 'file:///inspection-video.mp4' }]}
+        busy
+        drafts={[{ fileName: 'IMG_1453.jpg', type: 'image', uri: 'file:///IMG_1453.jpg' }]}
         language="vi"
         onRemove={onRemove}
         tokens={getCustomerThemeTokens('light')}
       />,
     )
 
-    expect(screen.getByText('inspection-video.mp4')).toBeTruthy()
-    expect(screen.getByText('Bỏ')).toBeTruthy()
+    expect(screen.queryByText('IMG_1453.jpg')).toBeNull()
     fireEvent.press(screen.getByTestId('customer-kael-media-draft-remove-0'))
-    expect(onRemove).toHaveBeenCalledWith(0)
+    expect(onRemove).not.toHaveBeenCalled()
   })
 
   it('uses the header liquid glass control for a ready send in light and dark themes', () => {

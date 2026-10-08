@@ -3,6 +3,7 @@ import type { ReactElement } from 'react'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import type { CustomerThemeTokens } from '@/components/customer/customer-theme'
+import { ChatBubble } from '@/components/customer/kael-chat/chat-surfaces'
 import { sendCustomerNormalTurn } from '@/components/customer/kael-chat/customer-kael-normal-turn-send'
 import { useKaelChatTranscript } from '@/components/customer/kael-chat/use-kael-chat-transcript'
 import { workerV5KaelOrbTurnsFromResponse } from '@/components/worker/chat/kael-orb-chat-model'
@@ -118,6 +119,37 @@ describe('P313 Kael chat turn images', () => {
       expect(screen.getByTestId('customer-v21-kael-turn-images-1-expired')).toHaveTextContent('Ảnh đã hết hạn lưu')
       expect(screen.getByText('Ảnh này là ảnh gì?')).toBeOnTheScreen()
       expect(screen.getByTestId('customer-v21-kael-turn-group')).toHaveStyle({ gap: 8 })
+    })
+  })
+
+  it('shows a Work handling photo turn as the photo alone, with no empty text bubble', () => {
+    const view = renderRows(transcriptInput({
+      agenticVisibleTurns: [{
+        id: 'case-photo',
+        images: [{ key: 'a', status: 'available', uri: 'file:///IMG_1453.jpg' }],
+        role: 'customer',
+        text_content: '',
+      }],
+      mode: 'case',
+    }))
+    withPillarContext(PILLAR, () => {
+      expect(screen.getByTestId('customer-v21-kael-turn-images-0')).toBeOnTheScreen()
+      expect(view.UNSAFE_queryAllByType(ChatBubble)).toHaveLength(0)
+      expect(screen.queryByText('Đã gửi ảnh/video.')).toBeNull()
+    })
+  })
+
+  it('shows a Work handling send as a pending message at once, without the normal-chat thinking card', () => {
+    const { result } = renderHook(() => useKaelChatTranscript(transcriptInput({
+      mode: 'case',
+      pendingNormalImageUris: ['file:///IMG_1453.jpg'],
+      pendingNormalMessage: 'Cầu dao nhảy ngay khi bật lại.',
+    })))
+    withPillarContext(PILLAR, () => expect(result.current.transcriptRows.map(({ key }) => key)).toEqual(['normal-pending-message']))
+    renderRows(transcriptInput({ mode: 'case', pendingNormalImageUris: ['file:///IMG_1453.jpg'], pendingNormalMessage: '' }))
+    withPillarContext(PILLAR, () => {
+      expect(screen.getByTestId('customer-v21-kael-reasoning-pending-message-images-0')).toBeOnTheScreen()
+      expect(screen.queryByTestId('customer-v21-kael-reasoning-receipt')).toBeNull()
     })
   })
 

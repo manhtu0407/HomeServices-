@@ -5,6 +5,7 @@ import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { normalizeKaelResponseBrand } from "../../kael/language/user-facing-copy.ts";
 import { kaelIntakeConfirmationSchema } from "../../kael/pipeline/intake-confirmation.ts";
+import { publishKaelChatReply } from "./reply-channel.ts";
 
 type ExistingKaelSessionByClientRequest =
   | { kind: "ready"; sessionId: string }
@@ -126,16 +127,21 @@ export async function appendKaelSystemTurn(
     apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
   }
   const nextIndex = asNumber(sessionResult.data.total_turns) + 1;
-  await insertKaelTurn(client, {
+  const textContent = normalizeKaelResponseBrand(input.text);
+  const inserted = await insertKaelTurn(client, {
     session_id: sessionId,
     turn_index: nextIndex,
     role: "kael",
     content_type: input.contentType,
-    text_content: normalizeKaelResponseBrand(input.text),
+    text_content: textContent,
     media_refs: [],
     safe_metadata: input.metadata ?? {},
     cost_usd: input.costUsd ?? null,
   });
+  // An estimate renders as its own card, not as streamed text.
+  if (input.contentType !== "estimate" && typeof inserted.id === "string") {
+    publishKaelChatReply(sessionId, { turnId: inserted.id, text: textContent });
+  }
   const sessionUpdate: Record<string, unknown> = {
     total_turns: nextIndex,
     total_cost_usd: asNumber(sessionResult.data.total_cost_usd) +

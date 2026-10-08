@@ -29,6 +29,7 @@ export type ChatTurnView = {
 
 export type AgenticTurnView = {
   id: string
+  images?: KaelChatTurnImage[]
   role: string
   text_content?: string | null
 }
@@ -145,9 +146,10 @@ export function useKaelChatTranscript({
     ) : null
   ), [language, mode, normalReasoningReceipt, onToggleNormalReasoningReceipt, pendingNormalMessage, tokens])
   // The pending message and Kael's thinking card are separate transcript rows, so the row gap keeps
-  // the card off the message instead of the two touching.
+  // the card off the message instead of the two touching. Work handling shows the same pending
+  // message while its turn is in flight; its progress lines take the thinking card's place.
   const normalPendingMessageNode = useMemo(() => (
-    mode === 'normal' && pendingNormalMessage !== null ? (
+    pendingNormalMessage !== null ? (
       <CustomerTurnBubble
         images={pendingNormalImageUris.map((uri) => ({ key: uri, status: 'available' as const, uri }))}
         language={language}
@@ -156,7 +158,7 @@ export function useKaelChatTranscript({
         tokens={tokens}
       />
     ) : null
-  ), [language, mode, pendingNormalImageUris, pendingNormalMessage, tokens])
+  ), [language, pendingNormalImageUris, pendingNormalMessage, tokens])
   const normalPendingReasoningNode = useMemo(() => (
     mode === 'normal' && pendingNormalMessage !== null ? (
       <KaelReasoningReceipt
@@ -212,12 +214,31 @@ export function useKaelChatTranscript({
       if (index === pinnedCaseAssistantIndex) continue
       appendRow(rows, `turn-${turn.id}`, renderTurn(turn, language, reduceMotion, tokens))
     }
-    const finalAgenticKaelTurnIndex = streamingReplyNode ? agenticVisibleTurns.findLastIndex((turn) => turn.role !== 'customer') : -1
+    // A streamed Work reply carries its stored turn's id, and the turn can land after the stream
+    // starts; until then no earlier Kael turn is hidden. A reporter-generated id
+    // ("kael-response:…") names no turn, so that stream keeps the last-turn rule.
+    const streamedTurnId = streamingReplyTurnId && !streamingReplyTurnId.startsWith('kael-response:')
+      ? streamingReplyTurnId
+      : null
+    const finalAgenticKaelTurnIndex = !streamingReplyNode
+      ? -1
+      : streamedTurnId
+        ? agenticVisibleTurns.findIndex((turn) => turn.id === streamedTurnId)
+        : agenticVisibleTurns.findLastIndex((turn) => turn.role !== 'customer')
+    // Once its stored turn is here, the streamed reply takes that turn's place under the same key,
+    // so it keeps revealing where the turn belongs instead of below later cards.
+    let streamedReplyPlaced = false
     for (const [index, turn] of agenticVisibleTurns.entries()) {
       if (index === pinnedAgenticIndex) continue
-      if (index === finalAgenticKaelTurnIndex && streamingReplyNode) continue
+      if (index === finalAgenticKaelTurnIndex && streamingReplyNode) {
+        if (streamedTurnId) {
+          appendRow(rows, `turn-${turn.id}`, streamingReplyNode)
+          streamedReplyPlaced = true
+        }
+        continue
+      }
       appendRow(rows, `turn-${turn.id}`, turn.role === 'customer'
-        ? <ChatBubble speaker="customer" text={turn.text_content ?? ''} tokens={tokens} />
+        ? <CustomerTurnBubble images={turn.images ?? []} language={language} text={turn.text_content ?? ''} tokens={tokens} />
         : <KaelResponseSurface language={language} reduceMotion={reduceMotion} state={createCompletedKaelResponseState(turn.text_content ?? '', turn.id)} tokens={tokens} />)
     }
     appendRow(rows, 'case-thread', caseThreadNode)
@@ -236,7 +257,7 @@ export function useKaelChatTranscript({
     appendRow(rows, 'normal-pending-message', normalPendingMessageNode)
     appendRow(rows, 'normal-pending-reasoning', normalPendingReasoningNode)
     appendRow(rows, 'process-lines', processLinesNode)
-    appendRow(rows, streamingReplyTurnId ? `turn-${streamingReplyTurnId}` : 'streaming-reply', streamingReplyNode)
+    if (!streamedReplyPlaced) appendRow(rows, streamingReplyTurnId ? `turn-${streamingReplyTurnId}` : 'streaming-reply', streamingReplyNode)
     if (missingCaseWorkDeal && !hydratingCase) appendRow(rows, 'case-work-inactive', <InactiveAgenticGate testID="customer-v21-case-work-inactive" />)
     return rows
   }, [

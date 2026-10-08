@@ -15,11 +15,11 @@ import {
   cleanupKaelChatMediaRefs,
   localizeMediaUploadFailure,
   uploadJobMediaDrafts,
-  uploadKaelChatMediaDrafts,
   type LocalMediaUploadDraft,
 } from '@/lib/media-upload'
 import { jobService, kaelChatService, kaelChatStreamService } from '@/lib/services'
 
+import { uploadCaseWorkMediaDrafts } from './case-work-turn-media'
 import { clearPendingKaelChatDraft } from './pending-intake'
 import {
   localizeKaelRequestFailure,
@@ -84,6 +84,8 @@ export function useCustomerKaelEvidenceActions({
     setError,
     setLoading,
     setRouteDraftEvidencePending,
+    setPendingNormalImageUris,
+    setPendingNormalMessage,
     setStreamingReply,
     setTurns,
     turns,
@@ -186,6 +188,12 @@ export function useCustomerKaelEvidenceActions({
     let uploadedMediaRefs: string[] = []
     let mediaAccepted = false
     let evidenceItems: CaseWorkEvidence[] = initialEvidence.evidenceItems
+    // The gate card hides while it submits, so the confirmed photos and transcript show at once as
+    // the customer's pending message; the drafts stay with the gate for a retry if this fails.
+    if (decision === 'confirmed') {
+      setPendingNormalMessage(reviewedVoiceTranscript)
+      setPendingNormalImageUris(composerMediaDrafts.flatMap((item) => item.type === 'image' ? [item.uri] : []))
+    }
     try {
       startEvidenceProcessLines({
         hasImage: composerMediaDrafts.some((item) => item.type === 'image'),
@@ -195,7 +203,7 @@ export function useCustomerKaelEvidenceActions({
       })
       if (decision === 'confirmed') {
         setUploadingMedia(true)
-        const uploaded = await uploadKaelChatMediaDrafts(composerMediaDrafts)
+        const uploaded = await uploadCaseWorkMediaDrafts(composerMediaDrafts)
         if (kaelRequestGuard.isCurrent(requestToken)) setUploadingMedia(false)
         if (!uploaded.success) {
           if (kaelRequestGuard.isCurrent(requestToken)) {
@@ -272,6 +280,7 @@ export function useCustomerKaelEvidenceActions({
         setRouteDraftEvidencePending(false)
         setChat(result.data)
         setTurns(result.data.turns)
+        setPendingNormalMessage(null)
         if (!receivedResponseTerminal) setStreamingReply(null)
         stopProcessLines()
         setComposerMediaDrafts([])
@@ -299,6 +308,7 @@ export function useCustomerKaelEvidenceActions({
           setRouteDraftEvidencePending(false)
           setChat(legacy.data)
           setTurns(legacy.data.turns)
+          setPendingNormalMessage(null)
           setStreamingReply(null)
           stopProcessLines()
           setComposerMediaDrafts([])
@@ -333,6 +343,7 @@ export function useCustomerKaelEvidenceActions({
       }
       if (evidenceSubmissionRef.current === operation) evidenceSubmissionRef.current = null
       if (kaelRequestGuard.isCurrent(requestToken)) {
+        if (!mediaAccepted) setPendingNormalMessage(null)
         setUploadingMedia(false)
         setSubmittingAgenticEvidence(false)
         setLoading(false)

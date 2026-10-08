@@ -22,15 +22,12 @@ import { localizeWorkflowError } from '@/lib/frontend-workflow/errors'
 
 import { getCustomerThemeTokens } from '../customer-theme'
 import { createCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
-import {
-  ConfirmationReconciliationResponse,
-  IntakeCoverageResponse,
-} from '../kael-chat/intake-coverage-response'
+import { ConfirmationReconciliationResponse } from '../kael-chat/intake-coverage-response'
 import { useCustomerKaelDecisionActions } from '../kael-chat/use-customer-kael-decision-actions'
 
 export const PILLAR = {
   id: 'P46-stage1-customer-intake-mode',
-  invariant: 'customer confirmation names the real quote mode, blocks on missing Tier A data, localizes VI/EN, and treats an unknown confirm outcome as reconciliation rather than success or failure',
+  invariant: 'customer confirmation keeps one recovery identity, localizes policy and matching failures in VI/EN, sends one confirm on a double tap, and treats an unknown confirm outcome as reconciliation rather than success or failure',
   authority: [
     'governance/RULES.md #5 (one selected language)',
     'governance/RULES.md #8 (no fake price or workflow claim)',
@@ -39,7 +36,7 @@ export const PILLAR = {
   target: 'apps/mobile/components/customer/kael-chat/intake-coverage-response.tsx',
   layer: 'ui-visual',
   siblings: ['P45-stage1-response-identity', 'P47-stage1-worker-delivery'],
-  mutation: 'enable the RFQ action while a Tier A field is missing or label it as a priced booking; this pillar turns red',
+  mutation: 'let a double tap send two confirms or claim a created job while reconciling; this pillar turns red',
 } as const satisfies PillarManifest
 
 const coverageOf = (patch: Partial<IntakeCoverage>): IntakeCoverage => ({
@@ -59,42 +56,6 @@ describe('Stage-1 customer intake modes', () => {
   beforeEach(() => {
     mockConfirm.mockReset()
   })
-  it('renders an honest Vietnamese RFQ confirmation with a callable button', () => {
-    const onConfirm = jest.fn()
-    render(<IntakeCoverageResponse busy={false} coverage={coverageOf({})} language="vi" onConfirm={onConfirm} tokens={getCustomerThemeTokens('light')} />)
-
-    fireEvent.press(screen.getByTestId('customer-stage1-intake-confirm'))
-    withPillarContext(PILLAR, () => {
-      expect(screen.getByText('Yêu cầu báo giá')).toBeTruthy()
-      expect(screen.getByText('Thông tin yêu cầu')).toBeTruthy()
-      expect(screen.getByText('Thợ sẽ báo giá sau khi xem yêu cầu. Chưa có giá được xác nhận ở bước này.')).toBeTruthy()
-      expect(screen.getByText('Thông tin nên bổ sung (1)')).toBeTruthy()
-      expect(screen.queryByText('Tier A · Tier B')).toBeNull()
-      expect(onConfirm).toHaveBeenCalledTimes(1)
-    }, 'RFQ must not read as an auto-priced booking')
-  })
-
-  it('blocks confirmation and names missing Tier A information in English', () => {
-    const onConfirm = jest.fn()
-    render(<IntakeCoverageResponse
-      busy={false}
-      coverage={coverageOf({ missing_required_fields: ['scheduled_at'], next_action: 'collect_required', order_eligible: false })}
-      language="en"
-      onConfirm={onConfirm}
-      tokens={getCustomerThemeTokens('light')}
-    />)
-
-    fireEvent.press(screen.getByTestId('customer-stage1-intake-confirm'))
-    withPillarContext(PILLAR, () => {
-      expect(screen.getByText('Required before sending (1)')).toBeTruthy()
-      expect(screen.getByText('Request details')).toBeTruthy()
-      expect(screen.getByText('Service time')).toBeTruthy()
-      expect(screen.queryByText('Tier A · Tier B')).toBeNull()
-      expect(screen.getByTestId('customer-stage1-intake-confirm')).toBeDisabled()
-      expect(onConfirm).not.toHaveBeenCalled()
-    }, 'Tier A is a server policy gate, not a cosmetic checklist')
-  })
-
   it('announces reconciliation without claiming that a job was created', () => {
     render(<ConfirmationReconciliationResponse language="vi" supportCode="DEADBEEF" tokens={getCustomerThemeTokens('light')} />)
 

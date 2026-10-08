@@ -179,6 +179,41 @@ function useCustomerKaelNormalConversationHarness() {
   return { chatUi, conversation, messageActions }
 }
 
+const mockStartBackendProcessLines = jest.fn()
+
+function useAgenticCaseTurnHarness() {
+  const chatUi = useCustomerKaelChatUiState()
+  const conversation = useCustomerKaelConversationState({
+    initialLoading: false,
+    initialMode: 'case',
+    pendingDraft: null,
+  })
+  const jobIncidentThread = useJobChatThread(null, false)
+  const kaelRequestGuard = useCustomerKaelRequestGuard('customer-a:case-turn')
+  const selectedServiceRef = useRef<ServiceType | null>('electrical')
+  const messageActions = useCustomerKaelMessageActions({
+    chatUi,
+    conversation,
+    deal: null,
+    hasSharedJobIncident: false,
+    jobIncidentThread,
+    kaelRequestGuard,
+    language: 'vi',
+    mode: 'case',
+    processController: {
+      processLines: null,
+      startBackendProcessLines: mockStartBackendProcessLines,
+      startProcessLines: jest.fn(async () => undefined),
+      stopProcessLines: jest.fn(),
+      updateBackendProcessProgress: jest.fn(),
+    } as unknown as Parameters<typeof useCustomerKaelMessageActions>[0]['processController'],
+    requestOwnerKey: 'customer-a:case-turn',
+    selectedService: 'electrical',
+    selectedServiceRef,
+  })
+  return { chatUi, conversation, messageActions }
+}
+
 describe('customer Kael create idempotency', () => {
   beforeEach(() => {
     mockCleanupKaelChatMediaRefs.mockReset()
@@ -452,5 +487,99 @@ describe('customer Kael create idempotency', () => {
     expect(result.current.conversation.error).toBeNull()
     expect(result.current.chatUi.draft).toBe('')
     expect(result.current.conversation.chat?.turns).toEqual(recoveredChat.turns)
+  })
+  describe('Work handling photo kept after a failed send', () => {
+    const photo = { fileName: 'IMG_1453.jpg', type: 'image' as const, uri: 'file:///IMG_1453.jpg' }
+    const mediaRef = 'supabase://kael-chat-media/customer-a/kael-chat/model_vision/breaker.jpg'
+    async function sendFromOpenCase() {
+      const { result } = renderHook(() => useAgenticCaseTurnHarness())
+      act(() => {
+        result.current.conversation.setChat(kaelChatResponse())
+        result.current.conversation.setComposerMediaDrafts([photo])
+        result.current.chatUi.setDraft('Cầu dao nhảy ngay khi bật lại.')
+      })
+      await act(async () => {
+        await result.current.messageActions.sendMessage()
+      })
+      return result
+    }
+
+    it('keeps the picked photo and the typed text in the composer when Kael fails the turn', async () => {
+      mockUploadKaelChatMediaDrafts.mockResolvedValue({
+        evidenceItems: [{ kind: 'photo', model_eligible: true, ref: mediaRef }],
+        mediaRefs: [mediaRef],
+        success: true,
+        urls: [],
+      })
+      mockKaelChatSendTurn.mockResolvedValue({ code: 'KAEL_UNAVAILABLE', error: 'unavailable', status: 503, success: false })
+
+      const result = await sendFromOpenCase()
+
+      expect(mockKaelChatSendTurn).toHaveBeenCalledTimes(1)
+      expect(result.current.conversation.composerMediaDrafts).toEqual([photo])
+      expect(result.current.chatUi.draft).toBe('Cầu dao nhảy ngay khi bật lại.')
+      expect(result.current.conversation.error).not.toBeNull()
+      expect(mockCleanupKaelChatMediaRefs).toHaveBeenCalledWith([mediaRef])
+      expect(result.current.conversation.pendingNormalMessage).toBeNull()
+    })
+
+    it('shows the message and photo as pending and empties the composer before the upload resolves', async () => {
+      let finishUpload: (value: unknown) => void = () => undefined
+      mockUploadKaelChatMediaDrafts.mockReturnValue(new Promise((resolve) => { finishUpload = resolve }))
+      const committed = {
+        ...kaelChatResponse(),
+        turns: [{
+          content_type: 'photo_attached',
+          created_at: '2026-10-08T00:00:00.000Z',
+          estimate: null,
+          id: 'turn-1',
+          media_refs: [mediaRef],
+          role: 'customer',
+          session_id: 'session-a',
+          text_content: 'Cầu dao nhảy ngay khi bật lại.',
+          turn_index: 1,
+        }],
+      }
+      mockKaelChatSendTurn.mockResolvedValue({ data: committed, status: 200, success: true })
+      const { result } = renderHook(() => useAgenticCaseTurnHarness())
+      act(() => {
+        result.current.conversation.setChat(kaelChatResponse())
+        result.current.conversation.setComposerMediaDrafts([photo])
+        result.current.chatUi.setDraft('Cầu dao nhảy ngay khi bật lại.')
+      })
+      mockStartBackendProcessLines.mockClear()
+
+      let sending: Promise<void> = Promise.resolve()
+      act(() => { sending = result.current.messageActions.sendMessage() })
+
+      expect(result.current.conversation.pendingNormalMessage).toBe('Cầu dao nhảy ngay khi bật lại.')
+      expect(result.current.conversation.pendingNormalImageUris).toEqual(['file:///IMG_1453.jpg'])
+      expect(result.current.conversation.composerMediaDrafts).toEqual([])
+      expect(result.current.chatUi.draft).toBe('')
+      expect(mockStartBackendProcessLines).toHaveBeenCalledTimes(1)
+      expect(mockKaelChatSendTurn).not.toHaveBeenCalled()
+
+      await act(async () => {
+        finishUpload({ evidenceItems: [{ kind: 'photo', model_eligible: true, ref: mediaRef }], mediaRefs: [mediaRef], success: true, urls: [] })
+        await sending
+      })
+
+      expect(result.current.conversation.pendingNormalMessage).toBeNull()
+      expect(result.current.conversation.turns).toEqual(committed.turns)
+      expect(result.current.conversation.composerMediaDrafts).toEqual([])
+      expect(result.current.chatUi.draft).toBe('')
+    })
+
+    it('keeps the picked photo when its upload fails before Kael is reached', async () => {
+      mockUploadKaelChatMediaDrafts.mockResolvedValue({ code: 'MEDIA_UPLOAD_FAILED', error: 'upload failed', success: false })
+
+      const result = await sendFromOpenCase()
+
+      expect(mockKaelChatSendTurn).not.toHaveBeenCalled()
+      expect(result.current.conversation.composerMediaDrafts).toEqual([photo])
+      expect(result.current.chatUi.draft).toBe('Cầu dao nhảy ngay khi bật lại.')
+      expect(result.current.conversation.error).toBe('upload failed')
+      expect(result.current.conversation.pendingNormalMessage).toBeNull()
+    })
   })
 })

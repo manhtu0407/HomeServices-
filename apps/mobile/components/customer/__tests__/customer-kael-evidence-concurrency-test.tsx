@@ -63,6 +63,8 @@ function evidenceHarness(agenticEvidenceReason = 'Không có ảnh hiện trạn
     setComposerMediaDrafts: jest.fn(),
     setError: jest.fn(),
     setLoading: jest.fn(),
+    setPendingNormalImageUris: jest.fn(),
+    setPendingNormalMessage: jest.fn(),
     setRouteDraftEvidencePending: jest.fn(),
     setStreamingReply: jest.fn(),
     setTurns: jest.fn(),

@@ -232,7 +232,7 @@ async function emitPipelineNoBaseline(
   await emitKaelChatStep(input.client, input.sessionId, input.progressTarget, {
     artifact: unavailableArtifact,
     turn: {
-      contentType: "error",
+      contentType: "analysis",
       text: withIntakeSafetyGuidance(
         input.language === "en"
           ? "Kael has identified the scope but does not have validated price evidence for this case. It needs review before any offer is shown."
@@ -249,9 +249,8 @@ async function emitPipelineNoBaseline(
     },
     progress: {
       stage: "price_synthesis",
-      status: "failed",
+      status: "completed",
       progress: 1,
-      failureReason: "validated_price_evidence_unavailable",
     },
   });
 }

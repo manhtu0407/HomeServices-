@@ -29,6 +29,55 @@ type ProgressClient = {
   };
 };
 
+export type KaelProgressSnapshot = {
+  readonly current_stage: KaelProgressStage;
+  readonly status: KaelProgressStatus;
+  readonly progress: number;
+  readonly failure_reason: string | null;
+  readonly updated_at: string;
+};
+
+type KaelProgressListener = (snapshot: KaelProgressSnapshot) => void;
+
+const progressListeners = new Map<string, Set<KaelProgressListener>>();
+
+function progressListenerKey(target: KaelProgressTarget) {
+  return `${target.table}:${target.id}`;
+}
+
+// An open SSE stream runs the turn in this same isolate, so it hears each stage the moment the
+// pipeline reaches it instead of on its next database poll. Listeners never block or fail the
+// pipeline; the database write below stays the durable record for every other reader.
+export function subscribeKaelProgress(
+  target: KaelProgressTarget,
+  listener: KaelProgressListener,
+): () => void {
+  if (!target.id) return () => undefined;
+  const key = progressListenerKey(target);
+  const listeners = progressListeners.get(key) ?? new Set<KaelProgressListener>();
+  listeners.add(listener);
+  progressListeners.set(key, listeners);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) progressListeners.delete(key);
+  };
+}
+
+function notifyKaelProgress(target: KaelProgressTarget, snapshot: KaelProgressSnapshot) {
+  const listeners = progressListeners.get(progressListenerKey(target));
+  if (!listeners) return;
+  for (const listener of [...listeners]) {
+    try {
+      listener(snapshot);
+    } catch {
+      console.warn("Kael progress listener threw", {
+        targetTable: target.table,
+        stage: snapshot.current_stage,
+      });
+    }
+  }
+}
+
 export async function updateKaelProgress(
   client: unknown,
   target: string | KaelProgressTarget | undefined,
@@ -38,13 +87,14 @@ export async function updateKaelProgress(
   if (!progressTarget?.id) return;
   if (!isProgressClient(client)) return;
   const progress = Math.max(0, Math.min(1, update.progress));
-  const kaelProgress = {
+  const kaelProgress: KaelProgressSnapshot = {
     current_stage: update.stage,
     status: update.status,
     progress,
     failure_reason: update.failureReason ?? null,
     updated_at: new Date().toISOString(),
   };
+  notifyKaelProgress(progressTarget, kaelProgress);
 
   try {
     const table = client.from(progressTarget.table);

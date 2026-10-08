@@ -31,7 +31,6 @@ type Props = {
   caseIntakeResponseNode: ReactNode
   caseThreadNode: ReactNode
   caseWorkLabel: string
-  composerMediaNode: ReactNode
   composerMediaDrafts: LocalMediaUploadDraft[]
   composer: {
     busy: boolean
@@ -101,7 +100,6 @@ export function KaelChatSurfaceView({
   caseIntakeResponseNode,
   caseThreadNode,
   caseWorkLabel,
-  composerMediaNode,
   composerMediaDrafts,
   composer,
   error,
@@ -220,7 +218,6 @@ export function KaelChatSurfaceView({
             rows={transcriptRows}
             tokens={tokens}
           />
-          {composerMediaNode}
           {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-kael-error">{error}</Text> : null}
           {showComposer ? (
             <KaelChatComposer
@@ -229,7 +226,7 @@ export function KaelChatSurfaceView({
               composerBusy={composerBusy}
               composerSending={composerSending}
               composerMediaDraftCount={composerMediaDraftCount}
-              composerMediaDrafts={mode === 'normal' ? composerMediaDrafts : []}
+              composerMediaDrafts={composerMediaDrafts}
               composerPlaceholder={composerPlaceholder}
               draft={draft}
               hasVoiceTranscript={hasVoiceTranscript}

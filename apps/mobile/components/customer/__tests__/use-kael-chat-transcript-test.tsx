@@ -50,6 +50,52 @@ function testID(node: unknown) {
 }
 
 describe('Customer Kael transcript ordering', () => {
+  describe('streamed Work reply', () => {
+    const summary = 'Dịch vụ: Sửa điện\n\nMô tả: Ổ điện nhà tôi bị hư, theo đó là cầu dao điện bị hư hỏng luôn'
+    const priorTurns: AgenticTurnView[] = [
+      { id: 'customer-summary', role: 'customer', text_content: summary },
+      { id: 'kael-question', role: 'kael', text_content: 'Cầu dao hiện đang bật/tắt/đã nhảy?' },
+      { id: 'customer-answer', role: 'customer', text_content: 'Bật xong thì nó tự động tắt.' },
+    ]
+    const streaming = <View testID="customer-v21-kael-streaming-response" />
+
+    it('keeps the earlier Kael question visible while the new reply streams ahead of its stored turn', () => {
+      const { result } = renderHook(() => useKaelChatTranscript(makeInput({
+        agenticVisibleTurns: priorTurns,
+        caseIntakeResponseNode: null,
+        streamingReplyNode: streaming,
+        streamingReplyTurnId: 'kael-reply-new',
+      })))
+
+      expect(result.current.transcriptRows.map(({ key }) => key)).toEqual([
+        'pinned-intake-summary',
+        'turn-kael-question',
+        'turn-customer-answer',
+        'turn-kael-reply-new',
+      ])
+    })
+
+    it('shows the streamed reply in place of its stored turn, above later cards, once that turn arrives', () => {
+      const { result } = renderHook(() => useKaelChatTranscript(makeInput({
+        agenticVisibleTurns: [...priorTurns, { id: 'kael-reply-new', role: 'kael', text_content: 'Kael đã nhận.' }],
+        analysisEvidenceNode: <View testID="customer-v21-agentic-evidence-gate" />,
+        caseIntakeResponseNode: null,
+        streamingReplyNode: streaming,
+        streamingReplyTurnId: 'kael-reply-new',
+      })))
+
+      const keys = result.current.transcriptRows.map(({ key }) => key)
+      expect(keys).toEqual([
+        'pinned-intake-summary',
+        'turn-kael-question',
+        'turn-customer-answer',
+        'turn-kael-reply-new',
+        'analysis-evidence',
+      ])
+      expect(testID(result.current.transcriptRows[3]?.node)).toBe('customer-v21-kael-streaming-response')
+    })
+  })
+
   it('pins the persisted intake summary before the confirmation response', () => {
     const summary = [
       'Dịch vụ: Vệ sinh nhà',

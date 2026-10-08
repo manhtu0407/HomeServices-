@@ -19,6 +19,7 @@ export function KaelResponseSurface({
   language,
   onPresentationSettled,
   reduceMotion,
+  revealOnMount,
   state,
   testID,
   tokens,
@@ -26,6 +27,8 @@ export function KaelResponseSurface({
   language: AppLanguage
   onPresentationSettled?: (responseId: string) => void
   reduceMotion: boolean
+  /** Set on the live reply only; a stored turn renders complete. */
+  revealOnMount?: boolean
   state: KaelResponseStreamState
   testID?: string
   tokens: CustomerThemeTokens
@@ -33,6 +36,7 @@ export function KaelResponseSurface({
   const presentationState = useKaelResponseStreamPresentation(state, {
     onSettled: onPresentationSettled,
     reduceMotion,
+    revealOnMount,
   })
   const activeBlockId = activeKaelResponseBlockId(presentationState)
   const streaming = state.status === 'streaming'

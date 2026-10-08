@@ -1954,9 +1954,10 @@ describe('active customer Kael chat surface wiring', () => {
     const staleView = render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('case')
-    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith('stale-case-session'))
+    expect(mockKaelChatGet).not.toHaveBeenCalled()
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
     fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${staleCatalogSession.id}`))
+    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith('stale-case-session'))
     await waitFor(() => expect(screen.getByText('STALE CASE READY')).toBeOnTheScreen())
     staleView.unmount()
 
@@ -2389,7 +2390,7 @@ describe('active customer Kael chat surface wiring', () => {
     expect(transcriptText.indexOf('Tôi đã gửi ảnh hiện trạng')).toBeLessThan(currentPhaseIndex)
   })
 
-  it('prefetches linked Case Work sessions and paints a selected session before its refresh finishes', async () => {
+  it('loads only the selected Case Work session when opening its history', async () => {
     mockRouteParams = { mode: 'case' }
     const first = {
       ...makeConversationSession('case', 'instant-case-catalog-a'),
@@ -2412,32 +2413,15 @@ describe('active customer Kael chat surface wiring', () => {
     render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('case')
-    await waitFor(() => {
-      expect(mockKaelChatGet).toHaveBeenCalledWith(first.case_session_id)
-      expect(mockKaelChatGet).toHaveBeenCalledWith(second.case_session_id)
-    })
-    await act(async () => {
-      await Promise.all(mockKaelChatGet.mock.results.map((result) => result.value))
-    })
-
-    let resolveRefresh!: (value: { data: ReturnType<typeof makeCaseWorkResponse>; success: true }) => void
-    const pendingRefresh = new Promise<{ data: ReturnType<typeof makeCaseWorkResponse>; success: true }>((resolve) => {
-      resolveRefresh = resolve
-    })
-    mockKaelChatGet.mockImplementationOnce(() => pendingRefresh)
+    expect(mockKaelChatGet).not.toHaveBeenCalled()
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
-    await act(async () => {
-      fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${second.id}`))
-      await Promise.resolve()
-    })
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${second.id}`))
 
-    expect(screen.getByText('SECOND SESSION READY')).toBeOnTheScreen()
+    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledTimes(1))
+    expect(mockKaelChatGet).toHaveBeenCalledWith(second.case_session_id)
+    expect(mockKaelChatGet).not.toHaveBeenCalledWith(first.case_session_id)
+    await waitFor(() => expect(screen.getByText('SECOND SESSION READY')).toBeOnTheScreen())
     expect(screen.queryByText('FIRST SESSION READY')).toBeNull()
-
-    await act(async () => {
-      resolveRefresh({ data: makeCaseWorkResponse(second.case_session_id, 'SECOND SESSION REFRESHED'), success: true })
-      await pendingRefresh
-    })
   })
 
   it('does not navigate again when selecting a Case Work session on the blank Case Work route', async () => {
@@ -2455,23 +2439,19 @@ describe('active customer Kael chat surface wiring', () => {
     render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('case')
-    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith(linkedSession.case_session_id))
-    await act(async () => {
-      await Promise.all(mockKaelChatGet.mock.results.map((result) => result.value))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
+    expect(mockKaelChatGet).not.toHaveBeenCalled()
     mockReplace.mockClear()
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
     fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${linkedSession.id}`))
 
+    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith(linkedSession.case_session_id))
     await waitFor(() => expect(screen.getByText('SAME ROUTE READY')).toBeOnTheScreen())
     expect(mockReplace).not.toHaveBeenCalled()
     await settleKaelChatSurfaceUpdates()
   })
 
-  it('lets a cached Case Work session replace an uncached session that is still loading', async () => {
+  it('lets a previously opened Case Work session replace an uncached session that is still loading', async () => {
     mockRouteParams = { mode: 'case' }
     const sessions = Array.from({ length: 7 }, (_, index) => ({
       ...makeConversationSession('case', `rapid-case-catalog-${index + 1}`),
@@ -2495,10 +2475,12 @@ describe('active customer Kael chat surface wiring', () => {
     render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('case')
-    await waitFor(() => expect(mockKaelChatGet).toHaveBeenCalledWith(cached.case_session_id))
-    await act(async () => {
-      await Promise.all(mockKaelChatGet.mock.results.map((result) => result.value))
-    })
+    expect(mockKaelChatGet).not.toHaveBeenCalled()
+
+    fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
+    fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${cached.id}`))
+    await waitFor(() => expect(screen.getByText('CACHED SESSION READY')).toBeOnTheScreen())
+    expect(mockKaelChatGet).toHaveBeenCalledWith(cached.case_session_id)
     expect(mockKaelChatGet).not.toHaveBeenCalledWith(uncached.case_session_id)
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
@@ -2581,9 +2563,10 @@ describe('active customer Kael chat surface wiring', () => {
     expect(result.current.sessions.find((item) => item.id === session.id)?.title).toBe('Nhà bếp')
   })
 
-  it('prefetches recent normal conversations so selecting one paints its history immediately', async () => {
+  it('fetches only the selected normal conversation when opening its history', async () => {
     const session = makeConversationSession('normal', 'prefetched-normal-session')
-    mockSessionsByMode.normal = [session]
+    const unselectedSession = makeConversationSession('normal', 'unselected-normal-session')
+    mockSessionsByMode.normal = [session, unselectedSession]
     mockConversationGet.mockResolvedValue({
       data: {
         session,
@@ -2592,7 +2575,7 @@ describe('active customer Kael chat surface wiring', () => {
           created_at: '2026-07-13T16:01:00.000Z',
           id: 'prefetched-normal-turn',
           role: 'kael',
-          text_content: 'PREFETCHED NORMAL READY',
+          text_content: 'SELECTED NORMAL READY',
           turn_index: 1,
         }],
       },
@@ -2601,17 +2584,15 @@ describe('active customer Kael chat surface wiring', () => {
     render(<CustomerKaelSurface />)
 
     await waitForConversationCatalog('normal')
-    await waitFor(() => expect(mockConversationGet).toHaveBeenCalledWith(session.id))
-    await act(async () => {
-      await Promise.all(mockConversationGet.mock.results.map((result) => result.value))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
+    expect(mockConversationGet).not.toHaveBeenCalled()
 
     fireEvent.press(screen.getByTestId('customer-v21-kael-new-conversation'))
     fireEvent.press(screen.getByTestId(`customer-v21-kael-session-${session.id}`))
 
-    await waitFor(() => expect(screen.getByText('PREFETCHED NORMAL READY')).toBeOnTheScreen())
+    await waitFor(() => expect(mockConversationGet).toHaveBeenCalledTimes(1))
+    expect(mockConversationGet).toHaveBeenCalledWith(session.id)
+    expect(mockConversationGet).not.toHaveBeenCalledWith(unselectedSession.id)
+    await waitFor(() => expect(screen.getByText('SELECTED NORMAL READY')).toBeOnTheScreen())
     await settleKaelChatSurfaceUpdates()
   })
 

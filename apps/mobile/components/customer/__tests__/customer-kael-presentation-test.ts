@@ -1,5 +1,6 @@
 import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 
+import { rememberCaseWorkPhotoDrafts } from '../kael-chat/case-work-turn-media'
 import { deriveCustomerKaelPresentation } from '../kael-chat/customer-kael-presentation'
 
 function derivePresentation({
@@ -145,6 +146,127 @@ describe('customer Kael presentation', () => {
       'initial-customer',
       'kael-evidence',
     ])
+  })
+
+  describe('Work handling photo turns', () => {
+    const owner = 'supabase://kael-chat-media/00000000-0000-4000-8000-000000000001/kael-chat'
+    const photoOne = `${owner}/model_vision/photo-1.jpg`
+    const photoTwo = `${owner}/model_vision/photo-2.jpg`
+    const frame = `${owner}/model_vision/frame-1.jpg`
+    const original = `${owner}/private_video_original/video-1.mp4`
+    function photoChat() {
+      const chat = analysisChat(false)
+      chat.session.diagnosis_scope = {
+        ...chat.session.diagnosis_scope,
+        evidence: [
+          { kind: 'video_original_private', model_eligible: false, ref: original },
+          { kind: 'photo', model_eligible: true, ref: photoOne },
+          { kind: 'video_frame', model_eligible: true, ref: frame },
+          { kind: 'photo', model_eligible: true, ref: photoTwo },
+        ],
+      }
+      chat.session.evidence_previews = [
+        { evidence_index: 1, evidence_kind: 'photo', url: 'https://media.test/photo-1' },
+        { evidence_index: 1, evidence_kind: 'video_frame', url: 'https://media.test/frame-1' },
+      ]
+      return chat
+    }
+    const intake = 'Dịch vụ: Sửa điện\nVấn đề: Ổ cắm/công tắc hỏng\nMô tả: Ổ điện nhà tôi bị hư, theo đó là cầu dao điện bị hư hỏng luôn'
+
+    it('shows the photos alone in place of the media-only stand-in text', () => {
+      const presentation = derivePresentation({
+        chat: photoChat(),
+        turns: [
+          { id: 'intake', role: 'customer', text_content: intake, media_refs: [] },
+          { id: 'kael-ask', role: 'kael', text_content: 'Bạn gửi ảnh cầu dao giúp Kael.', media_refs: [] },
+          { id: 'photo-turn', role: 'customer', text_content: 'Đã gửi ảnh/video.', media_refs: [photoOne, photoTwo] },
+        ] as unknown as KaelChatTurn[],
+      })
+
+      const photoTurn = presentation.agenticVisibleTurns.find((turn) => turn.id === 'photo-turn')
+      expect(photoTurn?.text_content).toBe('')
+      expect(photoTurn?.images).toHaveLength(2)
+    })
+
+    it('keeps the sent-media text beside the photos when the turn also carried a video', () => {
+      const presentation = derivePresentation({
+        chat: photoChat(),
+        turns: [
+          { id: 'intake', role: 'customer', text_content: intake, media_refs: [] },
+          { id: 'kael-ask', role: 'kael', text_content: 'Bạn gửi ảnh cầu dao giúp Kael.', media_refs: [] },
+          { id: 'photo-turn', role: 'customer', text_content: 'Đã gửi ảnh/video.', media_refs: [photoOne, frame, original, photoTwo] },
+        ] as unknown as KaelChatTurn[],
+      })
+
+      const photoTurn = presentation.agenticVisibleTurns.find((turn) => turn.id === 'photo-turn')
+      expect(photoTurn?.text_content).toBe('Đã gửi ảnh/video.')
+      expect(photoTurn?.images).toEqual([
+        { key: photoOne, status: 'available', uri: 'https://media.test/photo-1' },
+        { key: photoTwo, status: 'unavailable', uri: null },
+      ])
+    })
+
+    it('keeps an evidence turn that repeats the request as a photo-only bubble instead of dropping it', () => {
+      const presentation = derivePresentation({
+        chat: photoChat(),
+        turns: [
+          { id: 'intake', role: 'customer', text_content: intake, media_refs: [] },
+          { id: 'kael-ask', role: 'kael', text_content: 'Bạn gửi ảnh cầu dao giúp Kael.', media_refs: [] },
+          { id: 'evidence-turn', role: 'customer', text_content: intake, media_refs: [photoOne] },
+        ] as unknown as KaelChatTurn[],
+      })
+
+      const evidenceTurn = presentation.agenticVisibleTurns.find((turn) => turn.id === 'evidence-turn')
+      expect(evidenceTurn).toEqual(expect.objectContaining({ text_content: '' }))
+      expect(evidenceTurn?.images).toHaveLength(1)
+      expect(presentation.agenticVisibleTurns.find((turn) => turn.id === 'intake')?.text_content).not.toBe('')
+    })
+
+    it('keeps words the customer typed beside their photos', () => {
+      const presentation = derivePresentation({
+        chat: photoChat(),
+        turns: [
+          { id: 'photo-turn', role: 'customer', text_content: 'Cầu dao nhảy sau khi bật lại.', media_refs: [photoOne] },
+        ] as unknown as KaelChatTurn[],
+      })
+
+      expect(presentation.agenticVisibleTurns[0]).toEqual(expect.objectContaining({
+        images: [expect.objectContaining({ key: photoOne })],
+        text_content: 'Cầu dao nhảy sau khi bật lại.',
+      }))
+    })
+
+    it('keeps the stand-in text for a video-only turn rather than showing extracted frames', () => {
+      const presentation = derivePresentation({
+        chat: photoChat(),
+        turns: [
+          { id: 'video-turn', role: 'customer', text_content: 'Đã gửi ảnh/video.', media_refs: [frame, original] },
+        ] as unknown as KaelChatTurn[],
+      })
+
+      expect(presentation.agenticVisibleTurns[0]).toEqual(expect.objectContaining({
+        images: [],
+        text_content: 'Đã gửi ảnh/video.',
+      }))
+    })
+
+    it('shows a just-sent photo from the device before any signed preview exists', () => {
+      const sentRef = `${owner}/model_vision/just-sent.jpg`
+      rememberCaseWorkPhotoDrafts(
+        [{ kind: 'photo', model_eligible: true, ref: sentRef }],
+        [{ type: 'image', uri: 'file:///IMG_1453.jpg' }],
+      )
+      const presentation = derivePresentation({
+        chat: analysisChat(false),
+        turns: [
+          { id: 'photo-turn', role: 'customer', text_content: 'Đã gửi ảnh/video.', media_refs: [sentRef] },
+        ] as unknown as KaelChatTurn[],
+      })
+
+      expect(presentation.agenticVisibleTurns[0]?.images).toEqual([
+        { key: sentRef, status: 'available', uri: 'file:///IMG_1453.jpg' },
+      ])
+    })
   })
 
   it('keeps the Basic Intake summary visible while Kael processes a follow-up turn', () => {
