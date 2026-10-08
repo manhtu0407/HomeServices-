@@ -112,7 +112,7 @@ const clientContractEpoch = resolveClientContractEpoch({
   easBuildId,
   gitSha: buildGitSha,
 })
-const mobileVersion = '0.2.1'
+const mobileVersion = '0.2.2'
 const runtimeBuildInfo = {
   builtAt: fromEnv('NESTSCOUT_BUILD_CREATED_AT', 'EAS_BUILD_CREATED_AT') || new Date().toISOString(),
   easBuildId,

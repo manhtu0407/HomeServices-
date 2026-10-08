@@ -9,7 +9,7 @@ import createExpoConfig from '../../app.config'
 export const PILLAR = {
   id: 'P37-ios-release-readiness',
   invariant:
-    'the store-bound iOS release uses one version 0.2.1 Build 54 identity and aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
+    'the store-bound iOS release uses one version 0.2.2 Build 54 identity and aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
   authority: [
     'apps/mobile/eas.json production profile with appVersionSource local',
     'governance/RULES.md #8 (no fake or silently degraded runtime state)',
@@ -78,7 +78,7 @@ describe('iOS release readiness', () => {
     const easConfig = readJson<EasConfig>('eas.json')
     const packageConfig = readJson<{ version: string }>('package.json')
 
-    expect(evaluated.version).toBe('0.2.1')
+    expect(evaluated.version).toBe('0.2.2')
     expect(staticConfig.version).toBe(evaluated.version)
     expect(packageConfig.version).toBe(evaluated.version)
     expect(evaluated.extra?.runtimeBuildInfo?.runtimeVersion).toBe(evaluated.version)
