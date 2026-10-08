@@ -2,7 +2,7 @@ import { scaledTypography, typography } from '@/design/theme'
 import { Image } from 'expo-image'
 import { useState } from 'react'
 import { StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
-import Svg, { Defs, Rect } from 'react-native-svg'
+import { Defs, Rect } from 'react-native-svg'
 
 import type { AppLanguage } from '@/lib/app-language'
 
@@ -11,6 +11,8 @@ import { customerV21HomeV4Assets } from '../ui/assets'
 import { customerV21WebTextInputNoOutline } from '../ui/platform-styles'
 import { AlphaStop as Stop, NativeSafeLinearGradient as LinearGradient } from '@/components/ui/svg-alpha-stop'
 import { HomeIcon } from './home-icons'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
+import { FillSvg } from '@/components/ui/fill-svg'
 
 type HomeStorytellingCardProps = {
   language: AppLanguage
@@ -53,7 +55,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
   const content = (
     <>
       {!reduceTransparency ? (
-        <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={StyleSheet.absoluteFill} viewBox="0 0 100 100" width="100%">
+        <FillSvg preserveAspectRatio="none" viewBox="0 0 100 100">
           <Defs>
             <LinearGradient id="customer-home-v4-hero-gradient" x1="0" x2="1" y1="0.5" y2="0.5">
               <Stop offset="0" stopColor={tokens.primary} />
@@ -63,7 +65,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
             </LinearGradient>
           </Defs>
           <Rect fill="url(#customer-home-v4-hero-gradient)" height="100" width="100" />
-        </Svg>
+        </FillSvg>
       ) : null}
       <Image
         accessible={false}
@@ -121,7 +123,7 @@ export function HomeStorytellingCard({ language, onSearch, onSearchFocus, reduce
           placeholder={copy.searchPlaceholder}
           placeholderTextColor={tokens.muted}
           returnKeyType="search"
-          style={[customerV21WebTextInputNoOutline, styles.searchInput, searchTypography, solidDark && { color: tokens.text }, { borderWidth: 0, height: q(68), includeFontPadding: false, paddingHorizontal: q(19), paddingVertical: 0, textAlignVertical: 'center' }]}
+          style={withoutInputLineHeight([customerV21WebTextInputNoOutline, styles.searchInput, searchTypography, solidDark && { color: tokens.text }, { borderWidth: 0, height: q(68), includeFontPadding: false, paddingHorizontal: q(19), paddingVertical: 0, textAlignVertical: 'center' }])}
           value={value}
         />
       </View>

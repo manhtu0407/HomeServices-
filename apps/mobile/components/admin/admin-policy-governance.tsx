@@ -11,6 +11,7 @@ import {
 } from '@/lib/services/admin-control-service'
 
 import { AdminText } from './admin-text'
+import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 const copy = {
   vi: {
@@ -277,15 +278,15 @@ export function AdminPolicyGovernance({ language }: { language: AppLanguage }) {
         </View>
         <AdminText textRole="headline" style={styles.cardTitle}>{labels.evidenceLocks}</AdminText>
         <AdminText textRole="footnote" style={styles.secondary}>{labels.sourceCount}</AdminText>
-        <TextInput spellCheck={false} accessibilityLabel={labels.sourceCount} editable={!acting} inputMode="numeric" onChangeText={(value) => updateEvidenceRequirements({ minimum_source_count: boundedCount(value) })} style={styles.input} value={String(evidenceRequirements.minimum_source_count)} />
+        <TextInput spellCheck={false} accessibilityLabel={labels.sourceCount} editable={!acting} inputMode="numeric" onChangeText={(value) => updateEvidenceRequirements({ minimum_source_count: boundedCount(value) })} style={withoutInputLineHeight(styles.input)} value={String(evidenceRequirements.minimum_source_count)} />
         <AdminText textRole="footnote" style={styles.secondary}>{labels.highTrustSources}</AdminText>
-        <TextInput spellCheck={false} accessibilityLabel={labels.highTrustSources} editable={!acting} inputMode="numeric" onChangeText={(value) => updateEvidenceRequirements({ minimum_high_trust_source_count: boundedCount(value) })} style={styles.input} value={String(evidenceRequirements.minimum_high_trust_source_count)} />
+        <TextInput spellCheck={false} accessibilityLabel={labels.highTrustSources} editable={!acting} inputMode="numeric" onChangeText={(value) => updateEvidenceRequirements({ minimum_high_trust_source_count: boundedCount(value) })} style={withoutInputLineHeight(styles.input)} value={String(evidenceRequirements.minimum_high_trust_source_count)} />
         <Pressable accessibilityRole="switch" accessibilityState={{ checked: evidenceRequirements.requires_active_baseline, disabled: acting || quoteMode === 'kael_auto_quote' }} disabled={acting || quoteMode === 'kael_auto_quote'} onPress={() => updateEvidenceRequirements({ requires_active_baseline: !evidenceRequirements.requires_active_baseline })} style={[styles.switchRow, quoteMode === 'kael_auto_quote' && styles.buttonMuted]}>
           <AdminText textRole="footnote" style={styles.secondary}>{labels.activeBaseline}</AdminText><AdminText textRole="title2" style={styles.switchValue}>{evidenceRequirements.requires_active_baseline ? '✓' : '○'}</AdminText>
         </Pressable>
         <AdminText textRole="headline" style={styles.cardTitle}>{labels.safetyLocks}</AdminText>
         <AdminText textRole="footnote" style={styles.secondary}>{[...selectedPolicy.safety_requirements, ...selectedPolicy.capability_requirements].join(' · ')}</AdminText>
-        <TextInput spellCheck={false} accessibilityLabel={labels.reason} editable={!acting} onChangeText={(value) => dispatch({ type: 'patch', patch: { reason: value } })} placeholder={labels.reason} style={styles.input} value={reason} />
+        <TextInput spellCheck={false} accessibilityLabel={labels.reason} editable={!acting} onChangeText={(value) => dispatch({ type: 'patch', patch: { reason: value } })} placeholder={labels.reason} style={withoutInputLineHeight(styles.input)} value={reason} />
         <View style={styles.actions}>
           <Action disabled={acting} label={labels.draft} onPress={draftPolicy} />
           <Action disabled={acting || selectedPolicy.status !== 'draft'} label={labels.approve} onPress={() => transitionPolicy('approve')} />

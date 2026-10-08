@@ -12,7 +12,7 @@ import {
   type ViewStyle,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Defs, Rect } from 'react-native-svg'
+import { Defs, Rect } from 'react-native-svg'
 
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
@@ -28,6 +28,7 @@ import { WorkerV5SectionHeader } from '../ui/primitives-surfaces'
 import { formatVnd, textByLanguage } from '../ui/format'
 import { workerV5HomeDisplayName } from '../ui/labels'
 import { WorkerV5AvailabilityCard } from './availability-surfaces'
+import { FillSvg } from '@/components/ui/fill-svg'
 
 const workart = {
   hero: require('../../../assets/client-image-icons/client-booking-journey-workart.png'),
@@ -326,7 +327,7 @@ function SvgBlendGradient({ index, stops }: { index: number; stops: readonly str
 }
 
 function SvgBlendRoot({ children }: { children: ReactNode }) {
-  return <Svg height="100%" style={StyleSheet.absoluteFill} viewBox="0 0 100 100" width="100%">{children}</Svg>
+  return <FillSvg viewBox="0 0 100 100">{children}</FillSvg>
 }
 
 const styles = StyleSheet.create({

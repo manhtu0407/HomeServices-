@@ -1,8 +1,10 @@
 import { useId } from 'react'
-import { StyleSheet, type ViewStyle } from 'react-native'
-import Svg, { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
+import { type ViewStyle } from 'react-native'
+import { Defs, LinearGradient, RadialGradient, Rect, Stop } from 'react-native-svg'
 
 import { component } from '@/design/theme'
+
+import { FillSvg } from './fill-svg'
 
 const recipe = component.button.primary
 
@@ -20,7 +22,7 @@ export function PrimaryCtaFill({ radius, testID = 'primary-cta-fill' }: { radius
   const fillId = `primary-cta-${id}`
   const lightId = `primary-cta-light-${id}`
   return (
-    <Svg height="100%" pointerEvents="none" preserveAspectRatio="none" style={StyleSheet.absoluteFill} testID={testID} width="100%">
+    <FillSvg frameTestID={`${testID}-frame`} preserveAspectRatio="none" testID={testID}>
       <Defs>
         <LinearGradient id={fillId} x1="0%" x2="100%" y1="0%" y2="0%">
           {recipe.gradient.map((stopColor, index) => (
@@ -34,6 +36,6 @@ export function PrimaryCtaFill({ radius, testID = 'primary-cta-fill' }: { radius
       </Defs>
       <Rect fill={`url(#${fillId})`} height="100%" rx={radius} width="100%" />
       <Rect fill={`url(#${lightId})`} height="100%" rx={radius} width="100%" />
-    </Svg>
+    </FillSvg>
   )
 }
