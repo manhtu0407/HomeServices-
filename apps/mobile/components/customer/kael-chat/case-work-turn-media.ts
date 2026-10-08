@@ -77,3 +77,17 @@ export function caseWorkTurnImages(
   const photoRefs = mediaRefs.filter((ref) => localKaelChatMediaUri(ref) !== null || kindByRef.get(ref) === 'photo')
   return kaelChatTurnImages(photoRefs, previewByRef)
 }
+
+// True when a turn carried a video (original or extracted frames) beside or instead of photos.
+// The photo bubble cannot show it, so the turn keeps its text as the sign that video was sent.
+export function caseWorkTurnHasVideo(
+  mediaRefs: readonly string[] | undefined,
+  session: Pick<KaelChatSession, 'diagnosis_scope'> | null | undefined,
+): boolean {
+  if (!mediaRefs?.length) return false
+  const scopeEvidence = session?.diagnosis_scope?.evidence
+  const evidence: DiagnosisEvidence[] = Array.isArray(scopeEvidence) ? scopeEvidence : []
+  const photoRefs = new Set(evidence.flatMap((item) =>
+    item?.kind === 'photo' && typeof item.ref === 'string' ? [item.ref.trim()] : []))
+  return mediaRefs.some((ref) => localKaelChatMediaUri(ref) === null && !photoRefs.has(ref))
+}

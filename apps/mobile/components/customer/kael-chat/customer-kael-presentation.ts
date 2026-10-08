@@ -7,7 +7,7 @@ import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
 import type { PendingKaelChatDraft } from '@/lib/pending-kael-chat-draft'
 import type { useJobChatThread } from '@/lib/use-job-chat-thread'
 
-import { caseWorkTurnImages, isCaseWorkMediaPlaceholderText } from './case-work-turn-media'
+import { caseWorkTurnHasVideo, caseWorkTurnImages, isCaseWorkMediaPlaceholderText } from './case-work-turn-media'
 import {
   localizedCaseWorkEvidencePrompt,
   localizedCaseWorkSafetyMessage,
@@ -72,7 +72,7 @@ export function deriveCustomerKaelPresentation({
     if (turn.content_type === 'estimate' || isScriptedKaelAcknowledgementTurn(turn)) return []
     const images = turn.role === 'customer' ? caseWorkTurnImages(turn.media_refs, chat?.session) : []
     const rawText = turn.text_content?.trim() ?? ''
-    const photosCarryTurn = images.length > 0 && (
+    const photosCarryTurn = images.length > 0 && !caseWorkTurnHasVideo(turn.media_refs, chat?.session) && (
       isCaseWorkMediaPlaceholderText(rawText) ||
       (turn.id !== firstCustomerTurn?.id && restatedRequestTexts.has(rawText))
     )

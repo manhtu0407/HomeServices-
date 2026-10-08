@@ -5,7 +5,7 @@ import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 export const PILLAR = {
   id: 'P335-kael-work-reply-stream',
   invariant:
-    'a Kael Work reply streams to the open SSE stream as soon as its guarded text is stored, carrying the stored turn id as the response id and exactly the stored text; an estimate turn never streams as text, and only the first reply of a request streams',
+    'a Kael Work reply streams to the open SSE stream as soon as its guarded text is stored, carrying the stored turn id as the response id and exactly the stored text; an estimate turn never streams as text, and only the first reply of a request streams, and no reply streams while two streams overlap on one session',
   authority: [
     'governance/RULES.md #3 (only validated Kael output reaches the customer)',
     'governance/RULES.md #8 (the streamed reply is the stored reply, never a draft)',
@@ -119,5 +119,23 @@ describe('P335 Kael Work reply stream', () => {
 
     finishTurn()
     expect(await readUntil(reader, 'event: result', buffer)).toBe(true)
+  })
+
+  it('streams no reply while two streams overlap on one session, so neither gets the answer of the other request', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const stopFirst = subscribeKaelChatReply('session-overlap', first)
+    const stopSecond = subscribeKaelChatReply('session-overlap', second)
+    publishKaelChatReply('session-overlap', { turnId: 'turn-b', text: 'Câu trả lời của yêu cầu B' })
+    expect(first, pillarWhy(PILLAR, 'an uncorrelated reply must not reach a stream it may not belong to')).not.toHaveBeenCalled()
+    expect(second).not.toHaveBeenCalled()
+    stopFirst()
+    stopSecond()
+
+    const later = vi.fn()
+    const stopLater = subscribeKaelChatReply('session-overlap', later)
+    publishKaelChatReply('session-overlap', { turnId: 'turn-c', text: 'Câu trả lời sau' })
+    expect(later, pillarWhy(PILLAR, 'a lone stream streams again once the overlap has closed')).toHaveBeenCalledTimes(1)
+    stopLater()
   })
 })

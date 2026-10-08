@@ -179,12 +179,27 @@ describe('customer Kael presentation', () => {
         turns: [
           { id: 'intake', role: 'customer', text_content: intake, media_refs: [] },
           { id: 'kael-ask', role: 'kael', text_content: 'Bạn gửi ảnh cầu dao giúp Kael.', media_refs: [] },
-          { id: 'photo-turn', role: 'customer', text_content: 'Đã gửi ảnh/video.', media_refs: [photoOne, frame, original, photoTwo] },
+          { id: 'photo-turn', role: 'customer', text_content: 'Đã gửi ảnh/video.', media_refs: [photoOne, photoTwo] },
         ] as unknown as KaelChatTurn[],
       })
 
       const photoTurn = presentation.agenticVisibleTurns.find((turn) => turn.id === 'photo-turn')
       expect(photoTurn?.text_content).toBe('')
+      expect(photoTurn?.images).toHaveLength(2)
+    })
+
+    it('keeps the sent-media text beside the photos when the turn also carried a video', () => {
+      const presentation = derivePresentation({
+        chat: photoChat(),
+        turns: [
+          { id: 'intake', role: 'customer', text_content: intake, media_refs: [] },
+          { id: 'kael-ask', role: 'kael', text_content: 'Bạn gửi ảnh cầu dao giúp Kael.', media_refs: [] },
+          { id: 'photo-turn', role: 'customer', text_content: 'Đã gửi ảnh/video.', media_refs: [photoOne, frame, original, photoTwo] },
+        ] as unknown as KaelChatTurn[],
+      })
+
+      const photoTurn = presentation.agenticVisibleTurns.find((turn) => turn.id === 'photo-turn')
+      expect(photoTurn?.text_content).toBe('Đã gửi ảnh/video.')
       expect(photoTurn?.images).toEqual([
         { key: photoOne, status: 'available', uri: 'https://media.test/photo-1' },
         { key: photoTwo, status: 'unavailable', uri: null },
