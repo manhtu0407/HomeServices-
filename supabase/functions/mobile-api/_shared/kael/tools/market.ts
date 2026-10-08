@@ -18,6 +18,7 @@ import {
   isSourceTrustPerplexityFilterEnabled,
   trustedPerplexityMarketConfig,
   trustedPerplexityMarketConfigForClient,
+  type MarketResearchContext,
 } from "../evidence/source-trust.ts";
 import {
   MARKET_RANGE_ORDER_INVALID,
@@ -65,7 +66,11 @@ export async function searchMarketPrice(
   district: string,
   secrets: EdgeAiSecrets,
   supabase?: unknown,
-  options: { knowledgeContext?: KaelKnowledgeContext; gate?: KaelSpendGate } = {},
+  options: {
+    knowledgeContext?: KaelKnowledgeContext;
+    gate?: KaelSpendGate;
+    research?: MarketResearchContext;
+  } = {},
 ): Promise<MarketLookupResult> {
   const cacheClient = asMarketCacheClient(supabase);
   const cacheKey = normalizeMarketCacheKey(
@@ -132,7 +137,11 @@ async function searchMarketRoutes(input: {
   cacheKey: ReturnType<typeof normalizeMarketCacheKey>;
   sourceTrustEnabled: boolean;
   knowledgeContext: KaelKnowledgeContext | undefined;
-  options: { knowledgeContext?: KaelKnowledgeContext; gate?: KaelSpendGate };
+  options: {
+    knowledgeContext?: KaelKnowledgeContext;
+    gate?: KaelSpendGate;
+    research?: MarketResearchContext;
+  };
 }): Promise<MarketLookupResult> {
   const {
     serviceType,
@@ -161,6 +170,7 @@ async function searchMarketRoutes(input: {
         problem,
         complexity,
         district,
+        research: options.research,
       }, cacheClient)
       : null;
     const routeSafeMetadata = mergeMarketSafeMetadata(

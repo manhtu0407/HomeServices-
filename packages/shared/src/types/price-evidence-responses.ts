@@ -18,6 +18,7 @@ export type KaelEstimateAnalysisReceipt = {
     accepted_source_count: number | null
     high_trust_source_count: number | null
     quorum_met: boolean | null
+    sources?: KaelEstimateMarketSource[]
   }
   problem?: {
     remaining_uncertainty: string | null
@@ -25,6 +26,11 @@ export type KaelEstimateAnalysisReceipt = {
     severity_indicators: string[]
     summary: string
   }
+}
+
+export type KaelEstimateMarketSource = {
+  domain: string
+  url: string
 }
 
 export type BaselinePriceEvidenceReceiptResponse = {
@@ -62,3 +68,66 @@ export type BaselinePriceEvidenceUnitResponse =
   | 'per_cabinet_door'
   | 'per_repair_point'
   | 'per_item'
+
+export type KaelPriceReasoningReceipt = {
+  schema_version: 'price_reasoning_receipt.v1'
+  receipt_id: string
+  problem: {
+    confirmed_facts: string[]
+    possible_causes: {
+      statement: string
+      basis: ('customer_report' | 'visual_evidence' | 'service_profile' | 'knowledge')[]
+      confidence: 'low' | 'medium' | 'high'
+    }[]
+    unknowns: string[]
+  }
+  scope: {
+    included: string[]
+    conditional: string[]
+    excluded: string[]
+  }
+  costs: {
+    currency: 'VND'
+    total_min: number
+    total_max: number
+    reconciliation: 'package_total' | 'exact'
+    components: {
+      kind:
+        | 'service_package'
+        | 'labor'
+        | 'travel'
+        | 'materials'
+        | 'replacement_parts'
+        | 'equipment'
+        | 'other'
+      status:
+        | 'priced'
+        | 'included_unitemized'
+        | 'conditional_unpriced'
+        | 'excluded'
+        | 'undetermined'
+      amount_min: number | null
+      amount_max: number | null
+      explanation: string
+    }[]
+  }
+  scenarios: {
+    low: { total: number; conditions: string[]; scope: string[] }
+    high: { total: number; conditions: string[]; scope: string[] }
+  }
+  fairness: {
+    price_source:
+      | 'perplexity_validated'
+      | 'baseline_with_market'
+      | 'baseline_only'
+      | 'inspection_required'
+    confidence: 'low' | 'medium' | 'high'
+    baseline_evidence?: BaselinePriceEvidenceReceiptResponse | null
+    market_source_count: number | null
+    high_trust_source_count: number | null
+    quorum_met: boolean | null
+    market_sources?: KaelEstimateMarketSource[]
+    cap_statement: string
+    remaining_uncertainty: string[]
+  }
+}

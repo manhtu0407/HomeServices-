@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react-native'
-import { Dimensions, StyleSheet } from 'react-native'
+import { fireEvent, render, screen } from '@testing-library/react-native'
+import { Dimensions, Linking, StyleSheet } from 'react-native'
 
 import { customerTheme } from '@/design/theme'
 
@@ -40,6 +40,20 @@ const model: AgenticEstimateSupportingPhaseModel = {
       detail: 'Khoảng giá dựa trên phạm vi đã xác nhận và chưa bao gồm hạng mục phát sinh.',
       key: 'price',
       label: 'Vì sao có khoảng giá này',
+    },
+    {
+      detail: '3 nguồn đã được đối chiếu, gồm 2 nguồn độ tin cậy cao.',
+      key: 'fairness',
+      label: 'Vì sao đề nghị này công bằng',
+      sections: [{
+        label: 'Nguồn giá đã kiểm chứng',
+        value: '3 nguồn đã được đối chiếu.',
+        links: [{
+          accessibilityLabel: 'Mở nguồn giá example.vn',
+          label: 'example.vn',
+          url: 'https://example.vn/gia-sua-dien',
+        }],
+      }],
     },
   ],
   valueStatement: 'Khoảng giá gắn với phạm vi hiện tại.',
@@ -86,6 +100,25 @@ describe('Agentic Price Reasoning stream', () => {
 
     expect(screen.getByTestId('customer-v21-agentic-estimate-support-scope'))
       .toHaveTextContent(/Khớp ren dưới bồn rửa rò khi xả\./)
+  })
+
+  it('opens a verified source only when its accessible link is pressed', () => {
+    const openURLSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
+
+    render(
+      <AgenticPriceReasoningStream
+        model={{ ...model, rows: [model.rows[4]] }}
+        reduceMotion
+        tokens={customerTheme.lightLayer}
+      />,
+    )
+
+    const sourceLink = screen.getByRole('link', { name: 'Mở nguồn giá example.vn' })
+    expect(openURLSpy).not.toHaveBeenCalled()
+    fireEvent.press(sourceLink)
+    expect(openURLSpy).toHaveBeenCalledWith('https://example.vn/gia-sua-dien')
+
+    openURLSpy.mockRestore()
   })
 
   it('reveals the complete validated receipt immediately with Reduce Motion', () => {

@@ -29,6 +29,14 @@ describe('Kael trusted per-source market evidence', () => {
         market_range_max: 210_000,
         sources_summary: 'Tổng hợp 2 nguồn đã kiểm chứng (T1: 2).',
       },
+      safeMetadata: {
+        source_trust_accepted_sources: expect.arrayContaining([
+          expect.objectContaining({
+            verified_domain: 'btaskee.com',
+            verified_url: 'https://btaskee.com/price',
+          }),
+        ]),
+      },
       rejected: [expect.objectContaining({
         domain: 'tuoitre.vn',
         reason: 'outlier_over_40_percent',

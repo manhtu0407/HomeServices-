@@ -97,6 +97,7 @@ export type EstimateAnalysisReceipt = {
     accepted_source_count: number | null;
     high_trust_source_count: number | null;
     quorum_met: boolean | null;
+    sources?: Array<{ domain: string; url: string }>;
   };
   problem?: {
     remaining_uncertainty: string | null;
@@ -154,6 +155,7 @@ export type PriceReasoningReceipt = {
     market_source_count: number | null;
     high_trust_source_count: number | null;
     quorum_met: boolean | null;
+    market_sources?: Array<{ domain: string; url: string }>;
     cap_statement: string;
     remaining_uncertainty: string[];
   };
@@ -224,6 +226,7 @@ export function buildEstimateCardOutput(input: {
     acceptedSourceCount: number | null;
     highTrustSourceCount: number | null;
     quorumMet: boolean | null;
+    sources?: Array<{ domain: string; url: string }>;
   };
   visionFindings?: string | null;
   visionAnalysis?: {
@@ -436,6 +439,7 @@ function buildEstimateAnalysisReceipt(
     acceptedSourceCount: number | null;
     highTrustSourceCount: number | null;
     quorumMet: boolean | null;
+    sources?: Array<{ domain: string; url: string }>;
   } | undefined,
   vision: {
     analysisStatus?: "analyzed" | "not_provided" | "unavailable";
@@ -470,6 +474,7 @@ function buildEstimateAnalysisReceipt(
     .map((indicator) => optionalText(indicator, 200))
     .filter((indicator): indicator is string => Boolean(indicator))
     .slice(0, 5);
+  const marketSources = sanitizeMarketSourceLinks(market?.sources);
   const receipt: EstimateAnalysisReceipt = {
     schema_version: "analysis_receipt.v1",
     evidence: {
@@ -484,6 +489,7 @@ function buildEstimateAnalysisReceipt(
       accepted_source_count: nullableBoundedEvidenceCount(market?.acceptedSourceCount),
       high_trust_source_count: nullableBoundedEvidenceCount(market?.highTrustSourceCount),
       quorum_met: typeof market?.quorumMet === "boolean" ? market.quorumMet : null,
+      ...(marketSources.length > 0 ? { sources: marketSources } : {}),
     },
     ...(problemSummary
       ? {
@@ -669,6 +675,9 @@ function buildPriceReasoningReceipt(input: {
       market_source_count: input.analysisReceipt?.market.accepted_source_count ?? null,
       high_trust_source_count: input.analysisReceipt?.market.high_trust_source_count ?? null,
       quorum_met: input.analysisReceipt?.market.quorum_met ?? null,
+      ...(input.analysisReceipt?.market.sources
+        ? { market_sources: input.analysisReceipt.market.sources }
+        : {}),
       cap_statement: input.needsInspection
         ? isVietnamese
           ? "Khoảng giá chỉ là căn cứ tham khảo trước khi kiểm tra hiện trường; không tự phát sinh khoản mới."
@@ -679,6 +688,37 @@ function buildPriceReasoningReceipt(input: {
       remaining_uncertainty: unknowns,
     },
   };
+}
+
+export function sanitizeMarketSourceLinks(
+  sources: readonly { domain: string; url: string }[] | undefined,
+): Array<{ domain: string; url: string }> {
+  if (!sources) return [];
+  const seen = new Set<string>();
+  return sources.flatMap((source) => {
+    const domain = source.domain.trim().toLowerCase();
+    if (
+      !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))+$/u.test(domain) ||
+      seen.has(domain) ||
+      source.url.length > 2_000
+    ) return [];
+    try {
+      const url = new URL(source.url);
+      if (
+        url.protocol !== "https:" ||
+        url.username ||
+        url.password ||
+        url.port ||
+        url.search ||
+        url.hash ||
+        url.hostname.toLowerCase() !== domain
+      ) return [];
+      seen.add(domain);
+      return [{ domain, url: url.toString() }];
+    } catch {
+      return [];
+    }
+  }).slice(0, 10);
 }
 
 function customerConfirmedFacts(

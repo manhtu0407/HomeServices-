@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { serializeKaelEstimate } from '../../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/serialize'
 import { hasValidatedKaelPriceEvidence } from '../../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-support'
+import { buildKaelEstimateMarketEvidence } from '../../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-evidence'
 import { buildEstimateCardOutput } from '../../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-pipeline'
 
 const estimate = {
@@ -49,7 +50,7 @@ const baselineEvidence = {
   ],
 } as const
 
-function buildCard() {
+function buildCard(sources?: Array<{ domain: string; url: string }>) {
   return buildEstimateCardOutput({
     analysisEvidence: {
       photoCount: 0,
@@ -63,6 +64,7 @@ function buildCard() {
       acceptedSourceCount: 3,
       highTrustSourceCount: 2,
       quorumMet: true,
+      sources,
     },
     priceSource: 'baseline_with_market',
     baselineUsed: 'plumbing:pipe_leak:small',
@@ -77,6 +79,70 @@ function buildCard() {
 }
 
 describe('Kael price reasoning receipt', () => {
+  it('carries only safe HTTPS links from the trusted market stage into the public estimate receipt', () => {
+    const marketEvidence = buildKaelEstimateMarketEvidence([{
+      stage: 'market',
+      latencyMs: 12,
+      success: true,
+      fallbackUsed: false,
+      safeMetadata: {
+        source_trust_accepted_source_count: 3,
+        source_trust_tier_1_2_count: 2,
+        source_trust_quorum_met: true,
+        source_trust_accepted_sources: [
+          {
+            verified_domain: 'market-a.example',
+            verified_url: 'https://market-a.example/prices',
+          },
+          {
+            verified_domain: 'market-b.example',
+            verified_url: 'http://market-b.example/prices',
+          },
+          {
+            verified_domain: 'market-c.example',
+            verified_url: 'https://other.example/prices',
+          },
+        ],
+      },
+    }])
+    const output = buildEstimateCardOutput({
+      estimate,
+      marketEvidence,
+      priceSource: 'baseline_with_market',
+      baselineUsed: 'plumbing:pipe_leak:small',
+      analysisEvidence: {
+        photoCount: 0,
+        skipped: true,
+        videoFrameCount: 0,
+        voiceTranscriptCount: 0,
+      },
+      visionAnalysis: {
+        analysisStatus: 'not_provided',
+        problemSummary: estimate.problem_summary,
+        severityIndicators: [],
+      },
+    })
+
+    expect(output.card.price_reasoning_receipt.fairness.market_sources).toEqual([
+      { domain: 'market-a.example', url: 'https://market-a.example/prices' },
+    ])
+  })
+
+  it('rejects credentialed, non-HTTPS, query-bearing and cross-domain links at the output boundary', () => {
+    const output = buildCard([
+      { domain: 'market-a.example', url: 'https://market-a.example/prices' },
+      { domain: 'market-b.example', url: 'https://user:pass@market-b.example/prices' },
+      { domain: 'market-c.example', url: 'http://market-c.example/prices' },
+      { domain: 'market-d.example', url: 'https://market-d.example/prices?session=secret' },
+      { domain: 'market-e.example', url: 'https://other.example/prices' },
+    ])
+    const receipt = output.card.price_reasoning_receipt
+
+    expect(receipt.fairness.market_sources).toEqual([
+      { domain: 'market-a.example', url: 'https://market-a.example/prices' },
+    ])
+  })
+
   it('blocks a legacy source label when neither baseline nor market evidence reached quorum', () => {
     expect(hasValidatedKaelPriceEvidence({
       baselineEvidence: null,

@@ -23,6 +23,7 @@ import { emitKaelChatStep } from "./emit-step.ts";
 import { intakeObservationMetadata, withIntakeSafetyGuidance } from "./intake-safety.ts";
 import { appendKaelSystemTurn, updateKaelSession } from "./session-store.ts";
 import { maybeRequestEstimateEvidence } from "./estimate-request-evidence.ts";
+import { priceEvidenceGapReply } from "./price-gap-reply.ts";
 import { resolveStage1RuntimeBehavior } from "../release/stage1-release-lane.ts";
 import {
   baselineEvidenceFromStageLogs,
@@ -197,21 +198,18 @@ export async function finalizeKaelChatEstimate(
       customerDetail: customerAnalysisDetail,
       scopeSummary: estimate.problem_summary,
     });
+    const gapReply = priceEvidenceGapReply({ stageLogs: pipeline.stageLogs, language });
     await emitKaelChatStep(client, sessionId, progressTarget, {
       artifact: unavailableArtifact,
       turn: {
         contentType: "analysis",
-        text: withIntakeSafetyGuidance(
-          language === "en"
-            ? "Kael has identified the scope but does not have sufficiently grounded price evidence for this case. No estimate is shown until a verified source or an inspection supports it."
-            : "Kael đã xác định phạm vi nhưng chưa có dữ liệu giá đủ căn cứ cho trường hợp này. Kael chưa hiển thị báo giá cho tới khi có nguồn đã kiểm chứng hoặc kết quả khảo sát hỗ trợ.",
-          responseSafetySignals,
-          language,
-        ),
+        text: withIntakeSafetyGuidance(gapReply.text, responseSafetySignals, language),
         nextStatus: "active",
         metadata: {
           diagnosis_scope: unavailableArtifact,
           quote_readiness: "validated_price_evidence_unavailable",
+          stage1_runtime_behavior: runtimeBehavior,
+          ...gapReply.metadata,
           fallback_used: pipeline.fallbackUsed,
           service_problem_id: pipeline.serviceProblemId,
           ...intakeObservationMetadata(pipeline.intakeObservation),
@@ -275,6 +273,10 @@ async function finalizePreviousReleaseEstimate(input: {
       customerDetail: input.input.customerAnalysisDetail,
       scopeSummary: input.estimate.problem_summary,
     });
+    const gapReply = priceEvidenceGapReply({
+      stageLogs: input.input.pipeline.stageLogs,
+      language: input.input.language,
+    });
     await emitKaelChatStep(
       input.input.client,
       input.input.sessionId,
@@ -284,9 +286,7 @@ async function finalizePreviousReleaseEstimate(input: {
         turn: {
           contentType: "analysis",
           text: withIntakeSafetyGuidance(
-            input.input.language === "en"
-              ? "Kael has identified the scope but does not have sufficiently grounded price evidence for this case. No estimate is shown until a verified source or an inspection supports it."
-              : "Kael đã xác định phạm vi nhưng chưa có dữ liệu giá đủ căn cứ cho trường hợp này. Kael chưa hiển thị báo giá cho tới khi có nguồn đã kiểm chứng hoặc kết quả khảo sát hỗ trợ.",
+            gapReply.text,
             input.input.responseSafetySignals,
             input.input.language,
           ),
@@ -294,6 +294,8 @@ async function finalizePreviousReleaseEstimate(input: {
           metadata: {
             diagnosis_scope: unavailableArtifact,
             quote_readiness: "validated_price_evidence_unavailable",
+            stage1_runtime_behavior: "previous",
+            ...gapReply.metadata,
             fallback_used: input.input.pipeline.fallbackUsed,
             service_problem_id: input.input.pipeline.serviceProblemId,
             ...intakeObservationMetadata(input.input.pipeline.intakeObservation),

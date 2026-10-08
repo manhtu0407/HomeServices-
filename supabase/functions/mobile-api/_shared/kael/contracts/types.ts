@@ -267,7 +267,7 @@ const marketSourceEvidenceBaseSchema = z.object({
   domain: z.string().min(1).max(253),
   price_min: z.number().int().positive(),
   price_max: z.number().int().positive(),
-  unit: z.enum(["per_visit", "per_hour", "per_m2"]),
+  unit: z.enum(["per_visit", "per_repair_point", "per_item", "per_hour", "per_m2"]),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
 });
 

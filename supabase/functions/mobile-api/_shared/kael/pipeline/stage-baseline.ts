@@ -5,6 +5,7 @@ import type {
 } from "../contracts/types.ts";
 import { pushPipelineStageLog } from "../learning/trace.ts";
 import { pickBaselineCandidate, type BaselineResult } from "../tools/synthesis.ts";
+import { hasVerifiedMarketQuorum } from "../evidence/live-price-knowledge.ts";
 import type { PreparedKaelPipeline } from "./prepare.ts";
 import type { runKaelParallelStage } from "./stage-parallel.ts";
 import { updateKaelProgress } from "./streaming.ts";
@@ -52,13 +53,16 @@ export async function runKaelBaselineStage(
   // A missing or failed price lookup is an honest no-price outcome. Keep it in
   // the typed pipeline result so the intake observation survives the response
   // boundary instead of being discarded by the outer catch path.
-  const baselineResult = pickBaselineCandidate(
+  const pickedBaseline = pickBaselineCandidate(
     baselineCandidates ?? {
       success: false,
       error: baselineStage.failureReason ?? "baseline stage failed",
     },
     input.effectiveComplexity,
   );
+  const baselineResult = pickedBaseline.success
+    ? pickedBaseline
+    : marketAnchoredBaseline(input.parallelRun) ?? pickedBaseline;
   // Second pick at the pre-learning complexity. effectiveComplexity may already have
   // been raised by an LS2 rule, so selecting on it would leave a learned input in the
   // reference band. Same rows, no extra I/O.
@@ -82,6 +86,7 @@ export async function runKaelBaselineStage(
         baseline_price_evidence_receipt: baselineResult.evidenceReceipt,
         baseline_source: baselineResult.source,
         baseline_district: baselineResult.matchedDistrict,
+        ...(baselineResult.marketAnchored ? { baseline_market_anchored: true } : {}),
       }
       : undefined,
   });
@@ -112,4 +117,29 @@ export async function runKaelBaselineStage(
   }
 
   return { ok: true, baselineResult, referenceBaseline };
+}
+
+// A problem with no catalogue row can still be priced when live research met the Tier 1-2
+// quorum. The anchor carries the verified range and no baseline receipt, so synthesis and
+// the evidence gate treat it as market-sourced, never as a governed baseline.
+function marketAnchoredBaseline(
+  parallelRun: ParallelRun,
+): Extract<BaselineResult, { success: true }> | null {
+  const marketStage = parallelRun.results.find((stage) => stage.label === "market");
+  const market = marketStage?.value?.kind === "market" ? marketStage.value.result : undefined;
+  const knowledgeStage = parallelRun.results.find((stage) => stage.label === "price_knowledge");
+  const serviceProblemId = knowledgeStage?.value?.kind === "price_knowledge"
+    ? knowledgeStage.value.result.serviceProblemId
+    : null;
+  if (!serviceProblemId || !hasVerifiedMarketQuorum(market)) return null;
+  return {
+    success: true,
+    priceMin: market.market.market_range_min,
+    priceMax: market.market.market_range_max,
+    serviceProblemId,
+    matchedDistrict: "hcmc_all",
+    evidenceReceipt: null,
+    source: "verified_market_sources",
+    marketAnchored: true,
+  };
 }

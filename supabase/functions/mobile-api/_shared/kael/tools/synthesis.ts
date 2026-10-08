@@ -33,6 +33,7 @@ export type BaselineResult =
     matchedDistrict: string;
     evidenceReceipt: BaselinePriceEvidenceReceipt | null;
     source: string | null;
+    marketAnchored?: true;
   }
   | {
     success: false;
@@ -76,7 +77,11 @@ export function synthesizePrice(input: {
   market: MarketPriceResult | null;
   complexityHint: ComplexityLevel;
   needsInspection?: boolean;
+  marketAnchored?: boolean;
 }): { price_min: number; price_max: number; confidence: number } {
+  if (input.marketAnchored && input.market) {
+    return marketAnchoredPrice(input.market, input.needsInspection === true);
+  }
   const market = clampMarketPriceToBaseline(input.market, {
     priceMin: input.baselineMin,
     priceMax: input.baselineMax,
@@ -135,6 +140,24 @@ export function synthesizePrice(input: {
         ) * 100,
       ) /
       100,
+  };
+}
+
+// Without a source-verified baseline, the only grounded numbers are the verified market
+// sources. Blending them with an unverified seed row would put an unsourced half into the
+// customer's price, so the aggregate is used as researched for the case's own complexity.
+function marketAnchoredPrice(
+  market: MarketPriceResult,
+  needsInspection: boolean,
+): { price_min: number; price_max: number; confidence: number } {
+  const priceMin = Math.round(market.market_range_min / 1000) * 1000;
+  let priceMax = Math.round(market.market_range_max / 1000) * 1000;
+  if (priceMax < priceMin) priceMax = priceMin;
+  const band = inspectionAdjustedBand(priceMin, priceMax, needsInspection);
+  return {
+    price_min: band.priceMin,
+    price_max: band.priceMax,
+    confidence: Math.round(Math.min(needsInspection ? 0.44 : 0.85, market.confidence) * 100) / 100,
   };
 }
 

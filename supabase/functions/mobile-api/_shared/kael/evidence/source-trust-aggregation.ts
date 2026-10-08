@@ -6,7 +6,11 @@ import {
   type CitationValidationResult,
 } from "./source-trust.ts";
 
-const MAX_PRICE_EVIDENCE_AGE_MONTHS = 24;
+const MAX_PRICE_EVIDENCE_AGE_MONTHS = 12;
+// A total is only meaningful when every source prices the same unit of work; hourly and
+// area rates need a quantity Kael does not have at quote time.
+const PRICEABLE_UNITS = ["per_visit", "per_repair_point", "per_item"] as const;
+type PriceableUnit = typeof PRICEABLE_UNITS[number];
 const OUTLIER_MAX_DISTANCE_FROM_MEDIAN = 0.4;
 const HCMC_UTC_OFFSET_MS = 7 * 60 * 60 * 1000;
 
@@ -17,6 +21,7 @@ type RejectedSource = {
     | "duplicate_source_domain"
     | "source_domain_not_cited"
     | "unsupported_unit"
+    | "mixed_unit"
     | "stale_price_evidence"
     | "outlier_over_40_percent";
 };
@@ -35,6 +40,7 @@ export type TrustedMarketAggregationResult =
     requiredQuorum: number;
     tier1Tier2Count: number;
     effectiveTiers: ReadonlyArray<{ domain: string; autoTier: 1 | 2 | 3 | 4 | 5 }>;
+    unit: PriceableUnit;
     rejected: RejectedSource[];
     safeMetadata: Record<string, unknown>;
   }
@@ -80,7 +86,7 @@ export function aggregateTrustedMarketSources(input: {
       rejected.push({ domain, reason: "source_domain_not_cited" });
       continue;
     }
-    if (source.unit !== "per_visit") {
+    if (!isPriceableUnit(source.unit)) {
       rejected.push({ domain, reason: "unsupported_unit" });
       continue;
     }
@@ -97,11 +103,17 @@ export function aggregateTrustedMarketSources(input: {
     });
   }
 
-  const tier1Tier2 = eligible.filter((item) => item.citation.autoTier <= 2);
+  const unit = dominantUnit(eligible);
+  const sameUnit = eligible.filter((item) => {
+    if (item.source.unit === unit) return true;
+    rejected.push({ domain: item.domain, reason: "mixed_unit" });
+    return false;
+  });
+  const tier1Tier2 = sameUnit.filter((item) => item.citation.autoTier <= 2);
   const median = medianOf(tier1Tier2.map((item) => item.midpoint));
   const nonOutliers = median === null
-    ? eligible
-    : eligible.filter((item) => {
+    ? sameUnit
+    : sameUnit.filter((item) => {
       const isOutlier = Math.abs(item.midpoint - median) / median >
         OUTLIER_MAX_DISTANCE_FROM_MEDIAN;
       if (isOutlier) {
@@ -131,11 +143,12 @@ export function aggregateTrustedMarketSources(input: {
       domain: item.domain,
       autoTier: item.citation.autoTier,
     })),
+    unit,
     rejected,
     safeMetadata: {
       source_trust_aggregation_result: quorumMet ? "passed" : "weak_quorum",
       source_trust_quorum_met: quorumMet,
-      source_trust_aggregation_unit: "per_visit",
+      source_trust_aggregation_unit: unit,
       source_trust_outlier_limit: OUTLIER_MAX_DISTANCE_FROM_MEDIAN,
       source_trust_tier_1_2_count: survivingTier1Tier2.length,
       source_trust_required_quorum: requiredQuorum,
@@ -143,6 +156,8 @@ export function aggregateTrustedMarketSources(input: {
       source_trust_rejected_source_count: rejected.length,
       source_trust_accepted_sources: nonOutliers.map((item) => ({
         domain: item.domain,
+        verified_domain: item.citation.domain,
+        verified_url: trustedCitationUrl(item.citation.url, item.citation.domain),
         price_min: item.source.price_min,
         price_max: item.source.price_max,
         unit: item.source.unit,
@@ -152,6 +167,47 @@ export function aggregateTrustedMarketSources(input: {
       })),
     },
   };
+}
+
+function trustedCitationUrl(value: string, expectedDomain: string): string | null {
+  try {
+    const url = new URL(value)
+    const domain = expectedDomain.trim().toLowerCase()
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      url.port ||
+      url.hostname.toLowerCase() !== domain
+    ) return null
+    url.search = ""
+    url.hash = ""
+    const canonical = url.toString()
+    return canonical.length <= 2_000 ? canonical : null
+  } catch {
+    return null
+  }
+}
+
+function isPriceableUnit(value: string): value is PriceableUnit {
+  return (PRICEABLE_UNITS as readonly string[]).includes(value);
+}
+
+// The unit with the most Tier 1-2 sources wins; ties keep the PRICEABLE_UNITS order so a
+// per-visit package outranks a per-point rate for the same evidence weight.
+function dominantUnit(sources: readonly EligibleSource[]): PriceableUnit {
+  let best: PriceableUnit = PRICEABLE_UNITS[0];
+  let bestScore = -1;
+  for (const unit of PRICEABLE_UNITS) {
+    const matching = sources.filter((item) => item.source.unit === unit);
+    const score = matching.filter((item) => item.citation.autoTier <= 2).length * 100 +
+      matching.length;
+    if (score > bestScore) {
+      best = unit;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 function registryBackedAutoTier(citation: AcceptedCitation): SourceTrustAutoTier {

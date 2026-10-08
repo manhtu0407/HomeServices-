@@ -111,6 +111,10 @@ describe('Kael agentic estimate display model', () => {
           market_source_count: 3,
           high_trust_source_count: 2,
           quorum_met: true,
+          market_sources: [
+            { domain: 'example.vn', url: 'https://example.vn/gia-sua-dien' },
+            { domain: 'diennuoc.test', url: 'https://diennuoc.test/bang-gia' },
+          ],
           cap_statement: 'Mức cao là giới hạn cho đúng phạm vi đã nêu.',
           remaining_uncertainty: ['Phần ống âm tường cần một đề nghị riêng.'],
         },
@@ -124,6 +128,9 @@ describe('Kael agentic estimate display model', () => {
     const upperScenario = model?.rows.find((row) => row.key === 'scenario_high')
     const servicePackage = costs?.sections?.find((section) => section.label === 'Gói dịch vụ')
     const replacementParts = costs?.sections?.find((section) => section.label === 'Linh kiện thay thế')
+    const sourceSection = model?.rows.find((row) => row.key === 'fairness')?.sections?.find(
+      (section) => section.label === 'Nguồn giá đã kiểm chứng',
+    )
 
     expect(model?.receiptId).toBe('receipt_kael_price_20260811_01')
     expect(rowKeys).toEqual([
@@ -144,6 +151,18 @@ describe('Kael agentic estimate display model', () => {
     expect(upperScenario?.detail).not.toMatch(/\d/u)
     expect(replacementParts?.value).toContain('Chưa có số tiền')
     expect(replacementParts?.value).not.toMatch(/\d/u)
+    expect(sourceSection?.links).toEqual([
+      {
+        accessibilityLabel: 'Mở nguồn giá example.vn',
+        label: 'example.vn',
+        url: 'https://example.vn/gia-sua-dien',
+      },
+      {
+        accessibilityLabel: 'Mở nguồn giá diennuoc.test',
+        label: 'diennuoc.test',
+        url: 'https://diennuoc.test/bang-gia',
+      },
+    ])
     expect(model?.rows.at(-1)).toMatchObject({
       key: 'price',
       label: 'Khoảng giá cho phạm vi hiện tại',

@@ -22,6 +22,7 @@ import { KAEL_CHAT_HARD_COST_CAP_USD } from "../../kael/kael-guardrails/cost-cap
 import { parseBaselinePriceEvidenceReceipt } from "../../kael/evidence/baseline-price-evidence.ts";
 import {
   isSafePublicPriceReasoningText,
+  sanitizeMarketSourceLinks,
   type PriceReasoningReceipt,
 } from "../../kael/kael-guardrails/output-pipeline.ts";
 
@@ -286,6 +287,9 @@ function serializePriceReasoningReceipt(
   const marketSourceCount = nullableNonNegativeSafeInteger(
     fairness.market_source_count,
   );
+  const marketSources = serializePriceReasoningMarketSources(
+    fairness.market_sources,
+  );
   const highTrustSourceCount = nullableNonNegativeSafeInteger(
     fairness.high_trust_source_count,
   );
@@ -344,6 +348,7 @@ function serializePriceReasoningReceipt(
       market_source_count: marketSourceCount,
       high_trust_source_count: highTrustSourceCount,
       quorum_met: fairness.quorum_met,
+      ...(marketSources ? { market_sources: marketSources } : {}),
       cap_statement: capStatement,
       remaining_uncertainty: priceReasoningTextList(
         fairness.remaining_uncertainty,
@@ -353,6 +358,21 @@ function serializePriceReasoningReceipt(
       ),
     },
   };
+}
+
+function serializePriceReasoningMarketSources(
+  value: unknown,
+): PriceReasoningReceipt["fairness"]["market_sources"] {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value) || value.length > 10) {
+    invalidPriceReasoningReceipt();
+  }
+  return sanitizeMarketSourceLinks(value.flatMap((item) => {
+    const source = asRecord(item);
+    return typeof source.domain === "string" && typeof source.url === "string"
+      ? [{ domain: source.domain, url: source.url }]
+      : [];
+  }));
 }
 
 function serializePriceReasoningCauses(

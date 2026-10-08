@@ -42,6 +42,11 @@ export type AgenticEstimateSupportingPhaseModel = {
     mediaUrl?: string
     sections?: {
       label: string
+      links?: {
+        accessibilityLabel: string
+        label: string
+        url: string
+      }[]
       value: string
     }[]
   }[]
@@ -307,6 +312,7 @@ function priceReasoningSupportingPhase(
     {
       label: priceReasoningEvidenceLabel(receipt, language),
       value: priceReasoningMarketDetail(receipt, language),
+      links: priceReasoningSourceLinks(receipt, language),
     },
     {
       label: language === 'vi' ? 'Giới hạn khi xác nhận' : 'Limit when you approve',
@@ -346,6 +352,42 @@ function priceReasoningSupportingPhase(
       ? 'Giá chỉ áp dụng cho phạm vi trên. Hạng mục ngoài phạm vi cần một đề nghị mới để bạn quyết định riêng.'
       : 'This price applies only to the scope above. Work outside it needs a new proposal for your separate decision.',
   }
+}
+
+function priceReasoningSourceLinks(
+  receipt: NonNullable<AgenticEstimate['price_reasoning_receipt']>,
+  language: AppLanguage,
+) {
+  const sources = receipt.fairness.market_sources?.length
+    ? receipt.fairness.market_sources
+    : receipt.fairness.baseline_evidence?.sources ?? []
+  const seen = new Set<string>()
+  return sources.flatMap((source) => {
+    const domain = source.domain.trim().toLowerCase()
+    try {
+      const url = new URL(source.url)
+      if (
+        url.protocol !== 'https:' ||
+        url.username ||
+        url.password ||
+        url.port ||
+        url.search ||
+        url.hash ||
+        url.hostname.toLowerCase() !== domain ||
+        seen.has(domain)
+      ) return []
+      seen.add(domain)
+      return [{
+        accessibilityLabel: language === 'vi'
+          ? `Mở nguồn giá ${domain}`
+          : `Open price source ${domain}`,
+        label: domain,
+        url: url.toString(),
+      }]
+    } catch {
+      return []
+    }
+  }).slice(0, 10)
 }
 
 function priceReasoningBasisLabel(
@@ -489,7 +531,7 @@ function priceReasoningEvidenceLabel(
   receipt: NonNullable<AgenticEstimate['price_reasoning_receipt']>,
   language: AppLanguage,
 ) {
-  if (receipt.fairness.baseline_evidence?.quorum_met) {
+  if (receipt.fairness.baseline_evidence?.quorum_met || receipt.fairness.quorum_met) {
     return language === 'vi' ? 'Nguồn giá đã kiểm chứng' : 'Verified price sources'
   }
   return language === 'vi' ? 'Đối chiếu thị trường' : 'Market check'

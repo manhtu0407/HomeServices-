@@ -9,6 +9,7 @@ type EvidenceRequirements = {
   minimum_source_count: number;
   minimum_high_trust_source_count: number;
   requires_active_baseline: boolean;
+  allow_live_market_evidence?: boolean;
 };
 
 export type IntakePolicyDraftInput = {
@@ -249,12 +250,16 @@ function validEvidenceRequirements(mode: QuoteMode, value: unknown): value is Ev
   const minimumSourceCount = value.minimum_source_count;
   const minimumHighTrustSourceCount = value.minimum_high_trust_source_count;
   const requiresActiveBaseline = value.requires_active_baseline;
+  const allowLiveMarketEvidence = value.allow_live_market_evidence;
+  if (allowLiveMarketEvidence !== undefined && typeof allowLiveMarketEvidence !== "boolean") return false;
   return Number.isSafeInteger(minimumSourceCount) && Number(minimumSourceCount) >= 0 && Number(minimumSourceCount) <= 50 &&
     Number.isSafeInteger(minimumHighTrustSourceCount) && Number(minimumHighTrustSourceCount) >= 0 &&
     Number(minimumHighTrustSourceCount) <= Number(minimumSourceCount) &&
     typeof requiresActiveBaseline === "boolean" &&
     (mode !== "kael_auto_quote" || (requiresActiveBaseline &&
-      Number(minimumSourceCount) >= 2 && Number(minimumHighTrustSourceCount) >= 1));
+      Number(minimumSourceCount) >= 2 && Number(minimumHighTrustSourceCount) >= 1) ||
+      (allowLiveMarketEvidence === true &&
+        Number(minimumSourceCount) >= 2 && Number(minimumHighTrustSourceCount) >= 2));
 }
 
 function parseEvidenceRequirements(value: unknown): EvidenceRequirements {
@@ -263,10 +268,15 @@ function parseEvidenceRequirements(value: unknown): EvidenceRequirements {
     minimum_source_count: value.minimum_source_count,
     minimum_high_trust_source_count: value.minimum_high_trust_source_count,
     requires_active_baseline: value.requires_active_baseline,
+    ...(value.allow_live_market_evidence === undefined
+      ? {}
+      : { allow_live_market_evidence: value.allow_live_market_evidence }),
   };
   if (typeof parsed.minimum_source_count !== "number" ||
     typeof parsed.minimum_high_trust_source_count !== "number" ||
-    typeof parsed.requires_active_baseline !== "boolean") {
+    typeof parsed.requires_active_baseline !== "boolean" ||
+    (value.allow_live_market_evidence !== undefined &&
+      typeof value.allow_live_market_evidence !== "boolean")) {
     apiFailure("POLICY_UNAVAILABLE", "Yêu cầu bằng chứng của chính sách không hợp lệ", 503);
   }
   return parsed as EvidenceRequirements;

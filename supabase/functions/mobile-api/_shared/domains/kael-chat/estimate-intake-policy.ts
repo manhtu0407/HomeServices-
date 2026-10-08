@@ -17,6 +17,7 @@ export type ActiveIntakePolicy = {
     minimumSourceCount: number;
     minimumHighTrustSourceCount: number;
     requiresActiveBaseline: boolean;
+    allowLiveMarketEvidence: boolean;
   };
   missingTierA: string[];
 };
@@ -116,13 +117,19 @@ function parseEvidenceRequirements(
   const minimumSourceCount = requirements.minimum_source_count;
   const minimumHighTrustSourceCount = requirements.minimum_high_trust_source_count;
   const requiresActiveBaseline = requirements.requires_active_baseline;
+  const allowLiveMarketEvidence = requirements.allow_live_market_evidence ?? false;
+  // Auto-quote needs either a governed baseline (1+ high-trust source behind it) or live
+  // research that met a stricter quorum of 2+ high-trust sources on its own.
   const valid = Number.isSafeInteger(minimumSourceCount) && Number(minimumSourceCount) >= 0 &&
     Number(minimumSourceCount) <= 50 && Number.isSafeInteger(minimumHighTrustSourceCount) &&
     Number(minimumHighTrustSourceCount) >= 0 &&
     Number(minimumHighTrustSourceCount) <= Number(minimumSourceCount) &&
     typeof requiresActiveBaseline === "boolean" &&
+    typeof allowLiveMarketEvidence === "boolean" &&
     (quoteMode !== "kael_auto_quote" || (requiresActiveBaseline &&
-      Number(minimumSourceCount) >= 2 && Number(minimumHighTrustSourceCount) >= 1));
+      Number(minimumSourceCount) >= 2 && Number(minimumHighTrustSourceCount) >= 1) ||
+      (allowLiveMarketEvidence &&
+        Number(minimumSourceCount) >= 2 && Number(minimumHighTrustSourceCount) >= 2));
   if (!valid) {
     apiFailure(
       "POLICY_UNAVAILABLE",
@@ -136,6 +143,7 @@ function parseEvidenceRequirements(
     minimumSourceCount: Number(minimumSourceCount),
     minimumHighTrustSourceCount: Number(minimumHighTrustSourceCount),
     requiresActiveBaseline: Boolean(requiresActiveBaseline),
+    allowLiveMarketEvidence,
   };
 }
 
