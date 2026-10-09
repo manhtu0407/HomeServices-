@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 438,
+  "migrationCount": 441,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -71,10 +71,19 @@
           "20260823190100"
         ],
         "semanticSha256": "3939768f0a8fc0b4fd77f8e023d4de819fc8c0a0051d1ca0f863cdd7a76bc07b"
+      },
+      {
+        "id": "confirmed-matching-retry-operation-time-alias-20261010",
+        "canonicalVersion": "20261010120000",
+        "versions": [
+          "20261009204030",
+          "20261010120000"
+        ],
+        "semanticSha256": "580ac1c558e63bcd8a9473ea7029c65a16982637b25b04958dbf4715fdc80685"
       }
     ]
   },
-  "migrationsSha256": "8b1c9aa75a5025fb7526122735aaf7616a4be093c43bafaaa3ededd6be62a997",
+  "migrationsSha256": "0343b1148df0ba4d431a5a83cdc2e911386a7eca44189290bc9034f8f2725333",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
@@ -3133,6 +3142,20 @@
       "bytes": 10706
     },
     {
+      "version": "20261009192934",
+      "name": "worker_matching_terminal_capacity_release",
+      "file": "supabase/migrations/20261009192934_worker_matching_terminal_capacity_release.sql",
+      "sha256": "0af8f9666d31af5a15f4f7c8958faf0549891e7cb928b1167952590ac9c6b344",
+      "bytes": 3391
+    },
+    {
+      "version": "20261009204030",
+      "name": "allow_available_worker_for_confirmed_matching_retry",
+      "file": "supabase/migrations/20261009204030_allow_available_worker_for_confirmed_matching_retry.sql",
+      "sha256": "580ac1c558e63bcd8a9473ea7029c65a16982637b25b04958dbf4715fdc80685",
+      "bytes": 3977
+    },
+    {
       "version": "20261010100000",
       "name": "kael_matching_recovery_capacity_alignment",
       "file": "supabase/migrations/20261010100000_kael_matching_recovery_capacity_alignment.sql",
@@ -3145,6 +3168,13 @@
       "file": "supabase/migrations/20261010110000_worker_matching_terminal_capacity_release.sql",
       "sha256": "0af8f9666d31af5a15f4f7c8958faf0549891e7cb928b1167952590ac9c6b344",
       "bytes": 3391
+    },
+    {
+      "version": "20261010120000",
+      "name": "allow_available_worker_for_confirmed_matching_retry",
+      "file": "supabase/migrations/20261010120000_allow_available_worker_for_confirmed_matching_retry.sql",
+      "sha256": "580ac1c558e63bcd8a9473ea7029c65a16982637b25b04958dbf4715fdc80685",
+      "bytes": 3977
     }
   ]
 }

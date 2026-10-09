@@ -1,5 +1,5 @@
 -- @pillar id: P103-customer-matching-retry-sql
--- @pillar invariant: Customer retry after exhausted matching reserves fresh eligible capacity once and records a durable outbox receipt without inventing delivery.
+-- @pillar invariant: An explicit retry after exhausted matching dispatches to one or more real eligible public Workers, keeps zero-worker retries fail-closed, and records a durable outbox receipt without inventing delivery.
 -- @pillar authority: approved Production Agentic Transaction Readiness plan | governance/RULES.md #7 and #8
 -- @pillar target: supabase/migrations/20260905153000_customer_matching_retry_command.sql
 -- @pillar layer: sql
@@ -256,7 +256,7 @@ $identity$;
 rollback to retry_fixture;
 
 do $public_coverage$
-declare v_actor uuid; v_receipt jsonb;
+declare v_actor uuid; v_receipt jsonb; v_claim record;
 begin
   -- Public-shaped fixtures are isolated by rollback; they are not real-account launch evidence.
   update public.worker_profiles set is_available=false
@@ -289,25 +289,38 @@ begin
   insert into public.matching_operations(id,confirmation_operation_id,job_id,state)
     values('dd000000-0000-4000-8000-000000000407','dd000000-0000-4000-8000-000000000307',
       'dd000000-0000-4000-8000-000000000107','no_reachable_worker');
+  update public.worker_profiles set is_available=false where id in (
+    'dd000000-0000-4000-8000-000000000008','dd000000-0000-4000-8000-000000000009',
+    'dd000000-0000-4000-8000-000000000010');
   begin
     perform public.request_job_matching_retry_atomic('dd000000-0000-4000-8000-000000000107',
       'dd000000-0000-4000-8000-000000000007','dd000000-0000-4000-8000-000000000607','dd000000-0000-4000-8000-000000000407');
-    raise exception 'P103_PUBLIC_RETRY_OPENED_WITH_TWO_WORKERS_OR_COUNTED_SYNTHETIC';
+    raise exception 'P103_PUBLIC_RETRY_OPENED_WITH_ZERO_WORKERS';
   exception when object_not_in_prerequisite_state then
     if sqlerrm<>'COVERAGE_UNAVAILABLE' then raise; end if;
   end;
   if exists(select 1 from public.matching_capacity_reservations where job_id='dd000000-0000-4000-8000-000000000107')
     or exists(select 1 from public.matching_operations where retry_request_id='dd000000-0000-4000-8000-000000000607')
   then raise exception 'P103_PUBLIC_QUOTA_FAILURE_COMMITTED_CAPACITY'; end if;
-  update public.worker_profiles set is_available=true where id='dd000000-0000-4000-8000-000000000010';
+  update public.worker_profiles set is_available=true where id='dd000000-0000-4000-8000-000000000008';
   v_receipt := public.request_job_matching_retry_atomic('dd000000-0000-4000-8000-000000000107',
     'dd000000-0000-4000-8000-000000000007','dd000000-0000-4000-8000-000000000607','dd000000-0000-4000-8000-000000000407');
   if v_receipt->>'state'<>'queued'
     or (select count(distinct worker_id) from public.matching_capacity_reservations
-      where job_id='dd000000-0000-4000-8000-000000000107' and status='held' and synthetic_cohort_id is null)<>3
+      where job_id='dd000000-0000-4000-8000-000000000107' and status='held' and synthetic_cohort_id is null)<>1
     or exists(select 1 from public.matching_capacity_reservations where job_id='dd000000-0000-4000-8000-000000000107'
-      and worker_id not in ('dd000000-0000-4000-8000-000000000008','dd000000-0000-4000-8000-000000000009','dd000000-0000-4000-8000-000000000010'))
-  then raise exception 'P103_PUBLIC_RETRY_DID_NOT_RESERVE_THREE_DISTINCT_PUBLIC_WORKERS'; end if;
+      and worker_id<>'dd000000-0000-4000-8000-000000000008')
+  then raise exception 'P103_PUBLIC_RETRY_DID_NOT_RESERVE_THE_ONLY_ELIGIBLE_REAL_WORKER'; end if;
+  select * into strict v_claim from public.claim_worker_replacement_outbox_batch('sql:p103-one-public-worker',1,45);
+  v_receipt := public.activate_worker_replacement_outbox_claim(v_claim.outbox_id,v_claim.lease_token);
+  if v_receipt->>'state'<>'broadcasting' or jsonb_array_length(v_receipt->'targets')<>1
+    or v_receipt#>>'{targets,0,worker_id}'<>'dd000000-0000-4000-8000-000000000008'
+    or v_receipt->>'matching_reason'<>'customer_retry'
+  then raise exception 'P103_PUBLIC_RETRY_DID_NOT_DISPATCH_TO_ITS_ONLY_REAL_WORKER'; end if;
+  if public.settle_worker_replacement_outbox_claim(v_claim.outbox_id,v_claim.lease_token,'broadcasting')<>'completed'
+    or (select count(*) from public.matching_recipient_deliveries where job_id='dd000000-0000-4000-8000-000000000107'
+      and worker_id='dd000000-0000-4000-8000-000000000008' and status in ('queued','delivered','seen'))<>1
+  then raise exception 'P103_PUBLIC_RETRY_DID_NOT_RECORD_ONE_REAL_RECIPIENT'; end if;
 end;
 $public_coverage$;
 
