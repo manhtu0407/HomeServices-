@@ -767,8 +767,8 @@ export function useCustomerKaelDecisionActions({
     setRetryingWorkerSearch(true)
     setError(null)
     try {
-      // The workflow owner preserves receipt/reconciliation feedback across refreshes.
-      await workflow.actions.confirmRemoteSearch(deal.id)
+      if (chat?.session.job_id === deal.id) await workflow.actions.confirmRemoteSearch(deal.id, chat.session.id)
+      else await workflow.actions.confirmRemoteSearch(deal.id)
     } catch {
       if (kaelRequestGuard.isCurrent(requestToken)) setError(localizeWorkflowError({
         success: false, code: 'MATCHING_RETRY_OUTCOME_UNKNOWN', error: '', status: 0,

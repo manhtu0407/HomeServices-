@@ -106,7 +106,7 @@ type FrontendWorkflowActions = {
     mediaItems?: LocalMediaUploadDraft[],
   ) => Promise<{ jobId: string; mediaError?: string } | false | null>
   hydrateRemoteJobById: (jobId: string, accessToken?: string) => Promise<boolean>
-  confirmRemoteSearch: (jobIdOverride?: string) => Promise<boolean>
+  confirmRemoteSearch: (jobIdOverride?: string, sessionId?: string) => Promise<boolean>
   listFavoriteWorkersForMatching: () => Promise<FavoriteWorkerForMatching[] | null>
   setMatchingPreference: (input: Omit<JobMatchingPreferenceInput, 'client_request_id'>) => Promise<boolean>
   cancelRemoteJob: () => Promise<boolean>

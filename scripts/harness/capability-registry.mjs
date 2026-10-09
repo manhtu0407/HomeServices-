@@ -194,6 +194,7 @@ function policyFor(input) {
       input.kind.startsWith('disputes.') ||
       input.kind.startsWith('workers.') ||
       input.kind === 'workerApplications.submit' ||
+      input.kind === 'kael.chat.recoverConfirmation' ||
       SERVER_OWNED_KAEL_AI_ROUTE_KINDS.has(input.kind) ||
       SERVER_OWNED_CUSTOMER_CONVERSATION_CATALOG_ROUTE_KINDS.has(input.kind) ||
       SERVER_OWNED_KAEL_MEDIA_ROUTE_KINDS.has(input.kind) ||

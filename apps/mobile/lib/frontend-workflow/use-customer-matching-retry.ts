@@ -9,6 +9,7 @@ import { validateMatchingRetryResult } from '../services/customer-matching-retry
 import { localizeWorkflowError, type WorkflowErrorHandler, type WorkflowErrorInput } from './errors'
 import { getRemoteJobId, isAppForeground } from './helpers'
 import { jobDetailToSnapshot } from './snapshots'
+import { recoverCustomerLegacyConfirmation } from './legacy-confirmation-recovery'
 import {
   isMatchingRetryTerminal, listMatchingRetries, MATCHING_RETRY_REJECTIONS,
   prepareMatchingRetry, storeMatchingRetry, type PendingMatchingRetry,
@@ -41,13 +42,14 @@ export function useCustomerMatchingRetry({
   const hydratedTerminals = useRef(new Set<string>())
   const [feedback, setFeedback] = useState<{ ownerId: string | null; jobId: string; error: WorkflowErrorInput } | null>(null)
 
-  const processRetry = useCallback((jobId: string, explicit: boolean): Promise<boolean> => {
+  const processRetry = useCallback((jobId: string, explicit: boolean, sessionId?: string): Promise<boolean> => {
     const generation = lifecycle.current.generation
     const flightKey = `${generation}:${sessionUserId}:${jobId}`
     const inFlight = flights.current.get(flightKey)
     if (inFlight) return inFlight
     const current = () => lifecycle.current.active && lifecycle.current.generation === generation
     const visible = () => current() && getRemoteJobId(stateRef.current) === jobId
+    const authorized = () => current() && (!explicit || visible())
     const report = (code: string, meta?: ApiResponseMetadata) => {
       if (!visible()) return false
       const error = { success: false as const, code, error: '', status: 0, meta: meta ?? createClientDiagnosticMetadata() }
@@ -56,20 +58,31 @@ export function useCustomerMatchingRetry({
     }
 
     const request = (async () => {
-      if (!current() || !isAppForeground()) return false
+      if (!authorized() || !isAppForeground()) return false
       // Bind every call to the initiating account, never the mutable shared Auth session.
       if (role !== 'customer' || !sessionUserId || !sessionAccessToken) return report('AUTH_REQUIRED')
       let pending: PendingMatchingRetry | undefined
       try {
         pending = (await listMatchingRetries(sessionUserId)).find((record) => record.jobId === jobId)
       } catch { return report('MATCHING_RETRY_STORAGE_UNAVAILABLE') }
-      if (!current()) return false
+      if (!authorized()) return false
       if (!explicit && (!pending || pending.rejectedCode)) return true
 
       if (explicit && (!pending || isMatchingRetryTerminal(pending.receipt) || pending.rejectedCode)) {
-        const latest = await jobService.getMatchingOperation(jobId, sessionAccessToken)
-        if (!current() || !isAppForeground()) return false
+        let latest = await jobService.getMatchingOperation(jobId, sessionAccessToken)
+        if (!visible() || !isAppForeground()) return false
         if (!latest.success) return report(latest.code, latest.meta)
+        if (!latest.data.operation && sessionId) {
+          const recovered = await recoverCustomerLegacyConfirmation({
+            sessionId, jobId, customerId: sessionUserId, accessToken: sessionAccessToken,
+            current: () => visible() && isAppForeground(),
+          })
+          if (!recovered || !visible() || !isAppForeground()) return false
+          if (!recovered.success) return report(recovered.code, recovered.meta)
+          latest = await jobService.getMatchingOperation(jobId, sessionAccessToken)
+          if (!visible() || !isAppForeground()) return false
+          if (!latest.success) return report(latest.code, latest.meta)
+        }
         if (!latest.data.operation || latest.data.operation.state !== 'no_reachable_worker') {
           return report(latest.data.operation ? receiptCode(latest.data.operation) ?? 'MATCHING_RETRY_NOT_READY' : 'MATCHING_RETRY_CONFIRMATION_UNAVAILABLE', latest.meta)
         }
@@ -77,12 +90,12 @@ export function useCustomerMatchingRetry({
           pending = await prepareMatchingRetry(sessionUserId, jobId, latest.data.operation.operation_id)
         } catch { return report('MATCHING_RETRY_STORAGE_UNAVAILABLE') }
       }
-      if (!pending || !current() || !isAppForeground()) return false
+      if (!pending || !authorized() || !isAppForeground()) return false
       report('MATCHING_RETRY_OUTCOME_UNKNOWN', pending.receipt ? { ...createClientDiagnosticMetadata(), supportCode: pending.receipt.support_code } : undefined)
       let result = validateMatchingRetryResult(
         await jobService.getMatchingRetry(jobId, pending.request.client_request_id, sessionAccessToken), jobId, pending.request,
       )
-      if (!current() || !isAppForeground()) return false
+      if (!authorized() || !isAppForeground()) return false
       let posted = false
       // A missing receipt may replay the persisted command, never invent a new identity.
       if (!result.success && result.status === 404 && result.code === 'NOT_FOUND' && !pending.receipt) {
@@ -174,18 +187,19 @@ export function useCustomerMatchingRetry({
       clearInterval(timer)
       subscription.remove()
     }
-  }, [role, sessionUserId])
+  }, [role, sessionUserId, sessionAccessToken])
 
-  const confirmRemoteSearch = useCallback((jobIdOverride?: string) => {
+  const confirmRemoteSearch = useCallback((jobIdOverride?: string, sessionId?: string) => {
     const jobId = jobIdOverride ?? getRemoteJobId(stateRef.current)
     if (!jobId) return Promise.resolve(setRemoteError('Chưa có yêu cầu để tìm thợ'))
     automatic.current.remaining = 20
-    return processRetry(jobId, true)
+    return processRetry(jobId, true, sessionId)
   }, [processRetry, setRemoteError, stateRef])
 
   return {
     confirmRemoteSearch,
     customerMatchingRetryFeedback: feedback && feedback.ownerId === sessionUserId
+      && feedback.jobId === getRemoteJobId(stateRef.current) && stateRef.current.deal?.status === 'broadcasting'
       ? { jobId: feedback.jobId, message: localizeWorkflowError(feedback.error, language) }
       : null,
   }

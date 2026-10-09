@@ -268,6 +268,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         show: presentation.showComposer,
       }}
       error={inlineError}
+      onRetryJobLoad={caseHydration.failed ? caseHydration.retry : undefined}
       hiddenScrollbarStyle={customerV21HiddenScrollbar}
       language={language}
       mode={mode}

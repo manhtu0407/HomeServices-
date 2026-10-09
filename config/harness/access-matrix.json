@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 433,
-    "migrationDigest": "df5d0ff3dd8288b84b5538db9ae730d458ef582608c4801dd225b747c642ace1"
+    "migrationCount": 434,
+    "migrationDigest": "ff0f1713395b2c0c6a4def218d9ade119c898862a48f1def26b2a8e1ae249c66"
   },
   "actors": [
     "anonymous",
@@ -5739,6 +5739,14 @@
     },
     {
       "signature": "record_worker_matching_heartbeat(uuid, timestamp with time zone)",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "recover_legacy_kael_confirmation_atomic(uuid, uuid, uuid, text)",
       "securityDefiner": false,
       "fixedSearchPath": true,
       "executeRoles": [

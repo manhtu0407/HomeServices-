@@ -153,7 +153,7 @@ function CustomerKaelCaseThreadContent({
         chatUi.setCaseQuoteRejectOpen(true)
         conversation.setError(null)
       }}
-      onRetryWorkerSearch={() => void decisionActions.retryWorkerSearch()}
+      onRetryWorkerSearch={decisionActions.retryWorkerSearch}
       onStopMatching={workflow.actions.cancelRemoteJob}
       onSubmitReview={workflow.actions.submitReview}
       reduceMotion={reduceMotion}

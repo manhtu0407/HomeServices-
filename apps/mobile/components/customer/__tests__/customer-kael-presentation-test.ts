@@ -64,6 +64,33 @@ function analysisChat(required?: boolean) {
 }
 
 describe('customer Kael presentation', () => {
+  it('keeps the HVAC clarification replay behind the offer gate until a priced server response arrives', () => {
+    const chat = analysisChat(false)
+    chat.session.service_type = 'hvac'
+    const messages = ['Đã xác nhận thông tin.', 'Ảnh thiết bị đã được gửi.', 'Là sao?', 'Chắc 2 hạng mục', 'Ở phòng ngủ']
+    const turns = messages.map((text_content, index) => ({
+      id: `hvac-customer-${index}`, session_id: chat.session.id, role: 'customer', content_type: 'text',
+      text_content, turn_index: index + 1, media_refs: [], estimate: null, created_at: '2026-10-09T00:00:00.000Z',
+    })) as KaelChatTurn[]
+    for (let count = 1; count <= turns.length; count += 1) {
+      const presentation = derivePresentation({ chat, turns: turns.slice(0, count) })
+      expect(presentation.canConfirmAgenticEstimate).toBe(false)
+      expect(presentation.agenticVisibleTurns.map((turn) => turn.id)).toEqual(turns.slice(0, count).map((turn) => turn.id))
+    }
+    chat.session.case_phase = 'offer_review'
+    chat.session.status = 'estimate_ready'
+    chat.session.next_action = 'estimate_ready'
+    chat.session.diagnosis_scope = { next_action: { kind: 'prepare_offer' }, quote_blockers: [], quote_ready: true } as NonNullable<KaelChatResponse['session']['diagnosis_scope']>
+    chat.session.estimate = { confidence: 0.8, needs_inspection: false } as NonNullable<KaelChatResponse['session']['estimate']>
+    expect(derivePresentation({ chat, turns }).canConfirmAgenticEstimate).toBe(true)
+    chat.session.estimate = null
+    chat.session.service_type = 'electrical'
+    chat.session.case_phase = 'analysis'
+    chat.session.status = 'active'
+    chat.session.next_action = 'ask_question'
+    expect(derivePresentation({ chat, turns: [] }).canConfirmAgenticEstimate).toBe(false)
+  })
+
   it('keeps signed evidence previews available for Price Reasoning', () => {
     const chat = analysisChat(false)
     chat.session.evidence_previews = [

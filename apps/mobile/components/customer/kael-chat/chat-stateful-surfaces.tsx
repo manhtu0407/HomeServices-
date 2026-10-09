@@ -4,6 +4,7 @@ import { SafeAreaView, type Edge } from 'react-native-safe-area-context'
 import Animated from 'react-native-reanimated'
 
 import type { AppLanguage } from '@/lib/app-language'
+import { KaelButton } from '@/components/ui/kael-primitives'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 import type { KaelReasoningReceiptState } from '@/lib/kael-reasoning-receipt'
 import { useKaelComposerBottomInset } from '@/components/ui/use-kael-composer-bottom-inset'
@@ -45,6 +46,7 @@ type Props = {
     show: boolean
   }
   error: string | null
+  onRetryJobLoad?: () => void
   hiddenScrollbarStyle: StyleProp<ViewStyle>
   language: AppLanguage
   motion: {
@@ -103,6 +105,7 @@ export function KaelChatSurfaceView({
   composerMediaDrafts,
   composer,
   error,
+  onRetryJobLoad,
   hiddenScrollbarStyle,
   language,
   motion,
@@ -219,6 +222,14 @@ export function KaelChatSurfaceView({
             tokens={tokens}
           />
           {error ? <Text style={[rootStyles.errorText, { color: tokens.primary }]} testID="customer-v21-kael-error">{error}</Text> : null}
+          {onRetryJobLoad ? (
+            <KaelButton
+              label={language === 'vi' ? 'Tải lại công việc' : 'Reload job'}
+              onPress={onRetryJobLoad}
+              size="small"
+              testID="customer-v21-kael-retry-job-load"
+            />
+          ) : null}
           {showComposer ? (
             <KaelChatComposer
               allowVideoSelection={mode === 'case'}

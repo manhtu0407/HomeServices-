@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 433,
+  "migrationCount": 434,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "13a8b261f11c0976b72b58bbdbfcaa6a8b54e33d5402472b0a78255d9336f0c5",
+  "migrationsSha256": "f1b4de04b9f4b0f5d22e981a331d5f8cdd4e1ba8e9b249dda593ec798f828864",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "81880f524afc694ded1bea7fa0b85f23c50cd99a64d7c788917d45c58c353507"
@@ -3110,6 +3110,13 @@
       "file": "supabase/migrations/20261008121000_kael_live_market_evidence_policy.sql",
       "sha256": "6b1d2d72d294e01ebccbe6650f8230014ebaf329245f6230eeb59442b7c418cd",
       "bytes": 5485
+    },
+    {
+      "version": "20261009040000",
+      "name": "legacy_confirmation_recovery",
+      "file": "supabase/migrations/20261009040000_legacy_confirmation_recovery.sql",
+      "sha256": "db3aae4a115433a4fa8576edd93831852c92e63c78b518b1d16f51fa0376238a",
+      "bytes": 20212
     }
   ]
 }

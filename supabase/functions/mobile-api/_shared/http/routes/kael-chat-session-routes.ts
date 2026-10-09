@@ -9,6 +9,7 @@ export type CustomerKaelChatSessionRoute =
   | { kind: "kael.chat.intakeConfirmation"; method: "POST"; sessionId: string; roles: UserRole[] }
   | { kind: "kael.chat.confirm"; method: "POST"; sessionId: string; roles: UserRole[]; successStatus: 202 }
   | { kind: "kael.chat.operation"; method: "GET"; sessionId: string; roles: UserRole[] }
+  | { kind: "kael.chat.recoverConfirmation"; method: "POST"; sessionId: string; roles: UserRole[] }
   | { kind: "kael.chat.evidence"; method: "POST"; sessionId: string; roles: UserRole[] };
 
 type DecodePathSegment = (segment: string) => string | null;
@@ -38,6 +39,9 @@ export function matchCustomerKaelChatSessionRoute(
     kind: "kael.chat.confirm", method: "POST", sessionId, roles, successStatus: 202,
   };
   if (action === "operation" && method === "GET") return { kind: "kael.chat.operation", method: "GET", sessionId, roles };
+  if (action === "recover-confirmation" && method === "POST") return {
+    kind: "kael.chat.recoverConfirmation", method: "POST", sessionId, roles: ["customer"],
+  };
   if (action === "evidence" && method === "POST") return { kind: "kael.chat.evidence", method: "POST", sessionId, roles };
   return null;
 }
