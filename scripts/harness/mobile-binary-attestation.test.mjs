@@ -9,17 +9,17 @@ import {
   buildMobileBinaryAttestation,
   selectActiveProductionEasBuilds,
   selectExactEasBuilds,
-  selectLatestEasBuilds,
   verifyMobileBinaryAttestation,
 } from './mobile-binary-attestation.mjs'
 
+const mobilePolicy = JSON.parse(readFileSync(resolve('apps/mobile/config/release-client-policy.json'), 'utf8'))
 const release = buildHarnessRelease({
   environment: 'production', gitSha: 'a'.repeat(40), requireCleanWorktree: false,
   providerReadiness: productionProviderReadiness(),
 })
 const now = '2026-08-23T01:02:03.000Z'
 
-function build(platform, id, applicationIdentifier, appBuildVersion) {
+function build(platform, id, applicationIdentifier, appBuildVersion, appVersion = mobilePolicy.appVersion) {
   return {
     id,
     platform,
@@ -27,9 +27,9 @@ function build(platform, id, applicationIdentifier, appBuildVersion) {
     distribution: 'STORE',
     buildProfile: 'production',
     gitCommitHash: release.gitSha,
-    appVersion: '0.2.0',
+    appVersion,
     appBuildVersion,
-    runtime: { version: '0.2.0' },
+    runtime: { version: appVersion },
     appIdentifier: applicationIdentifier,
     fingerprint: { hash: platform === 'IOS' ? '1'.repeat(40) : '2'.repeat(40) },
     completedAt: now,
@@ -40,8 +40,8 @@ function attestationInput() {
   return {
     release,
     builds: [
-      build('IOS', '11111111-1111-4111-8111-111111111111', 'com.phanmanhtu.homeservices', '45'),
-      build('ANDROID', '22222222-2222-4222-8222-222222222222', 'com.phanmanhtu.nestscout', '4'),
+      build('IOS', '11111111-1111-4111-8111-111111111111', mobilePolicy.platforms.ios.applicationId, String(mobilePolicy.platforms.ios.buildNumber)),
+      build('ANDROID', '22222222-2222-4222-8222-222222222222', mobilePolicy.platforms.android.applicationId, String(mobilePolicy.platforms.android.buildNumber)),
     ],
     artifactBytes: { ios: Buffer.from('ios-binary'), android: Buffer.from('android-binary') },
     now,
@@ -76,11 +76,11 @@ function plan55ReleaseAndBuilds() {
   })
   const builds = [
     {
-      ...build('IOS', clientCompatibility.ios.easBuildId, clientCompatibility.ios.applicationId, '46'),
+      ...build('IOS', clientCompatibility.ios.easBuildId, clientCompatibility.ios.applicationId, '46', clientCompatibility.ios.runtimeVersion),
       gitCommitHash: 'a'.repeat(40), runtime: { version: clientCompatibility.ios.runtimeVersion },
     },
     {
-      ...build('ANDROID', clientCompatibility.android.easBuildId, clientCompatibility.android.applicationId, '5'),
+      ...build('ANDROID', clientCompatibility.android.easBuildId, clientCompatibility.android.applicationId, '5', clientCompatibility.android.runtimeVersion),
       gitCommitHash: 'b'.repeat(40), runtime: { version: clientCompatibility.android.runtimeVersion },
     },
   ]
@@ -89,8 +89,8 @@ function plan55ReleaseAndBuilds() {
 
 test('binds exact EAS iOS and Android store builds plus downloaded artifact bytes', () => {
   const receipt = buildMobileBinaryAttestation(attestationInput())
-  assert.equal(receipt.platforms.ios.buildNumber, 45)
-  assert.equal(receipt.platforms.android.buildNumber, 4)
+  assert.equal(receipt.platforms.ios.buildNumber, mobilePolicy.platforms.ios.buildNumber)
+  assert.equal(receipt.platforms.android.buildNumber, mobilePolicy.platforms.android.buildNumber)
   assert.equal(receipt.schemaVersion, 'stage1-mobile-binary-attestation.v2')
   assert.equal(receipt.platforms.ios.easFingerprintAlgorithm, 'sha1')
   assert.equal(receipt.platforms.ios.easFingerprintHash, '1'.repeat(40))
@@ -108,7 +108,8 @@ test('rejects stale commit, wrong build number, or missing platform build', () =
     release, builds: [], artifactPaths: {}, now,
   }), /no exact finished EAS ios/u)
   for (const [field, value] of Object.entries({
-    gitCommitHash: 'b'.repeat(40), appBuildVersion: '44', runtimeVersion: '0.1.0',
+    gitCommitHash: 'b'.repeat(40), appVersion: '0.2.0',
+    appBuildVersion: String(mobilePolicy.platforms.ios.buildNumber - 1), runtimeVersion: '0.1.0',
     applicationIdentifier: 'com.example.other', status: 'IN_PROGRESS',
     distribution: 'INTERNAL', buildProfile: 'native-proof-production',
   })) {
@@ -173,18 +174,11 @@ function olderCommitInput() {
   return input
 }
 
-test('a verification release may bind the latest existing store builds and says so', () => {
-  const input = { ...olderCommitInput(), relation: 'latest_existing' }
-  const receipt = buildMobileBinaryAttestation(input)
-  assert.equal(receipt.binaryRelation, 'latest_existing')
-  assert.equal(receipt.gitSha, release.gitSha)
-  assert.equal(receipt.platforms.ios.gitCommitHash, 'b'.repeat(40))
-  assert.equal(receipt.platforms.android.gitCommitHash, 'c'.repeat(40))
-  assert.deepEqual(verifyMobileBinaryAttestation(receipt, release), [])
-  assert.match(
-    verifyMobileBinaryAttestation({ ...receipt, binaryRelation: 'anything_else' }, release).join('; '),
-    /relation is invalid/u,
-  )
+test('verification releases cannot attest a store build from another commit', () => {
+  assert.throws(() => buildMobileBinaryAttestation({
+    ...olderCommitInput(), relation: 'latest_existing',
+  }), /unknown mobile binary relation/u)
+  assert.throws(() => buildMobileBinaryAttestation(olderCommitInput()), /no exact finished EAS ios/u)
 })
 
 test('the exact relation still refuses a build of another commit, and its receipt carries no relation field', () => {
@@ -194,31 +188,29 @@ test('the exact relation still refuses a build of another commit, and its receip
   assert.throws(() => buildMobileBinaryAttestation({ ...attestationInput(), relation: 'newest' }), /unknown mobile binary relation/u)
 })
 
-test('the relation cannot be stripped or forged to launder a build of another commit, even with a recomputed checksum', () => {
-  const latest = buildMobileBinaryAttestation({ ...olderCommitInput(), relation: 'latest_existing' })
-  const stripped = { ...latest }
-  delete stripped.binaryRelation
-  assert.ok(verifyMobileBinaryAttestation(rehash(stripped), release).includes('mobile ios binary evidence is invalid'),
-    'without the relation marker a receipt claims binaries built from the release commit')
+test('an unsupported relation cannot be forged to launder a build of another commit', () => {
   const exact = buildMobileBinaryAttestation(attestationInput())
-  const relabelled = rehash({ ...exact, platforms: { ...exact.platforms, ios: { ...exact.platforms.ios, gitCommitHash: 'b'.repeat(40) } } })
-  assert.ok(verifyMobileBinaryAttestation(relabelled, release).includes('mobile ios binary evidence is invalid'))
+  const relabelled = rehash({ ...exact, binaryRelation: 'latest_existing', platforms: {
+    ...exact.platforms,
+    ios: { ...exact.platforms.ios, gitCommitHash: 'b'.repeat(40) },
+  } })
+  assert.ok(verifyMobileBinaryAttestation(relabelled, release).includes('mobile binary attestation relation is invalid'))
 })
 
-test('latest existing selects the newest finished store build per platform and keeps the store build policy', () => {
+test('exact selection chooses only the newest finished store build for this release commit and policy', () => {
   const builds = [
-    { ...build('IOS', '11111111-1111-4111-8111-111111111111', 'com.phanmanhtu.homeservices', '45'), gitCommitHash: 'b'.repeat(40), completedAt: '2026-08-01T00:00:00.000Z' },
-    { ...build('IOS', '44444444-4444-4444-8444-444444444444', 'com.phanmanhtu.homeservices', '45'), gitCommitHash: 'd'.repeat(40), completedAt: '2026-09-01T00:00:00.000Z' },
-    build('ANDROID', '22222222-2222-4222-8222-222222222222', 'com.phanmanhtu.nestscout', '4'),
+    { ...build('IOS', '11111111-1111-4111-8111-111111111111', mobilePolicy.platforms.ios.applicationId, String(mobilePolicy.platforms.ios.buildNumber)), gitCommitHash: 'b'.repeat(40), completedAt: '2026-08-01T00:00:00.000Z' },
+    { ...build('IOS', '44444444-4444-4444-8444-444444444444', mobilePolicy.platforms.ios.applicationId, String(mobilePolicy.platforms.ios.buildNumber)), completedAt: '2026-09-01T00:00:00.000Z' },
+    build('ANDROID', '22222222-2222-4222-8222-222222222222', mobilePolicy.platforms.android.applicationId, String(mobilePolicy.platforms.android.buildNumber)),
   ]
-  assert.equal(selectLatestEasBuilds(release, builds).ios.id, '44444444-4444-4444-8444-444444444444')
-  assert.equal(selectExactEasBuilds(release, builds).ios, undefined, 'no iOS build was made from the release commit')
+  assert.equal(selectExactEasBuilds(release, builds).ios.id, '44444444-4444-4444-8444-444444444444')
   for (const [field, value] of Object.entries({
-    appBuildVersion: '44', runtimeVersion: '0.1.0', applicationIdentifier: 'com.example.other',
-    status: 'IN_PROGRESS', distribution: 'INTERNAL', buildProfile: 'preview', appVersion: '0.1.0',
+    gitCommitHash: 'd'.repeat(40), appBuildVersion: String(mobilePolicy.platforms.ios.buildNumber - 1),
+    runtimeVersion: '0.1.0', applicationIdentifier: 'com.example.other', status: 'IN_PROGRESS',
+    distribution: 'INTERNAL', buildProfile: 'preview', appVersion: '0.2.0',
   })) {
     const mutated = builds.map((item) => (item.platform === 'IOS' ? { ...item, [field]: value } : item))
-    assert.equal(selectLatestEasBuilds(release, mutated).ios, undefined, field)
+    assert.equal(selectExactEasBuilds(release, mutated).ios, undefined, field)
   }
 })
 

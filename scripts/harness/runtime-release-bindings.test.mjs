@@ -19,6 +19,7 @@ import { compareDeploymentState } from './deployment-drift.mjs'
 import { canonicalMigrationEntries } from './migration-history.mjs'
 
 const requireFromMobile = createRequire(new URL('../../apps/mobile/package.json', import.meta.url))
+const mobilePolicy = JSON.parse(readFileSync(new URL('../../apps/mobile/config/release-client-policy.json', import.meta.url), 'utf8'))
 const ts = requireFromMobile('typescript')
 const runtimeSource = readFileSync(new URL('../../supabase/functions/_shared/harness/release.ts', import.meta.url), 'utf8')
 const runtimeModule = ts.transpileModule(runtimeSource, {
@@ -109,17 +110,19 @@ function mobileAttestation(release) {
       {
         id: active ? compatibility.ios.easBuildId : '11111111-1111-4111-8111-111111111111', platform: 'IOS', status: 'FINISHED',
         distribution: 'STORE', buildProfile: 'production', gitCommitHash: active ? '3'.repeat(40) : release.gitSha,
-        appVersion: '0.2.0', appBuildVersion: String(active ? compatibility.ios.minimumBuildNumber : 45),
-        runtimeVersion: active ? compatibility.ios.runtimeVersion : '0.2.0',
-        applicationIdentifier: active ? compatibility.ios.applicationId : 'com.phanmanhtu.homeservices', fingerprint: { hash: '1'.repeat(64) },
+        appVersion: active ? compatibility.ios.runtimeVersion : mobilePolicy.appVersion,
+        appBuildVersion: String(active ? compatibility.ios.minimumBuildNumber : mobilePolicy.platforms.ios.buildNumber),
+        runtimeVersion: active ? compatibility.ios.runtimeVersion : mobilePolicy.appVersion,
+        applicationIdentifier: active ? compatibility.ios.applicationId : mobilePolicy.platforms.ios.applicationId, fingerprint: { hash: '1'.repeat(64) },
         completedAt: '2026-08-23T01:00:00.000Z',
       },
       {
         id: active ? compatibility.android.easBuildId : '22222222-2222-4222-8222-222222222222', platform: 'ANDROID', status: 'FINISHED',
         distribution: 'STORE', buildProfile: 'production', gitCommitHash: active ? '4'.repeat(40) : release.gitSha,
-        appVersion: '0.2.0', appBuildVersion: String(active ? compatibility.android.minimumBuildNumber : 4),
-        runtimeVersion: active ? compatibility.android.runtimeVersion : '0.2.0',
-        applicationIdentifier: active ? compatibility.android.applicationId : 'com.phanmanhtu.nestscout', fingerprint: { hash: '2'.repeat(64) },
+        appVersion: active ? compatibility.android.runtimeVersion : mobilePolicy.appVersion,
+        appBuildVersion: String(active ? compatibility.android.minimumBuildNumber : mobilePolicy.platforms.android.buildNumber),
+        runtimeVersion: active ? compatibility.android.runtimeVersion : mobilePolicy.appVersion,
+        applicationIdentifier: active ? compatibility.android.applicationId : mobilePolicy.platforms.android.applicationId, fingerprint: { hash: '2'.repeat(64) },
         completedAt: '2026-08-23T01:01:00.000Z',
       },
     ],
@@ -270,8 +273,8 @@ test('candidate bindings require the complete checksummed production release', (
   assert.equal(bindings.HARNESS_RELEASE_ID, release.releaseId)
   assert.equal(bindings.HARNESS_BUNDLE_SHA256, release.bundleSha256)
   assert.equal(bindings.NESTSCOUT_ENVIRONMENT, 'production')
-  assert.equal(bindings.NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER, '45')
-  assert.equal(bindings.NESTSCOUT_STAGE1_ANDROID_MINIMUM_BUILD_NUMBER, '4')
+  assert.equal(bindings.NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER, String(mobilePolicy.platforms.ios.buildNumber))
+  assert.equal(bindings.NESTSCOUT_STAGE1_ANDROID_MINIMUM_BUILD_NUMBER, String(mobilePolicy.platforms.android.buildNumber))
   assert.equal(bindingArguments(bindings).length, 25)
   assert.equal(bindings.NESTSCOUT_IOS_APNS_READY, 'true')
   assert.equal(bindings.NESTSCOUT_ANDROID_FCM_V1_READY, 'true')

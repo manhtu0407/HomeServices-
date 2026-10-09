@@ -81,19 +81,23 @@ test('it can only be dispatched by hand on main with the confirmation phrase', (
   assert.match(verification, /concurrency:\n {2}group: production-release\n {2}cancel-in-progress: false/u)
 })
 
-test('it reuses store binaries of any commit and builds only a platform that has none', () => {
-  const step = steps(verification).get('Reuse the latest store binaries, building only a platform that has none')
+test('verification release uses and attests only store binaries from its own release commit', () => {
+  const step = steps(verification).get('Reuse or build exact iOS and Android store binaries for this merge')
   assert.ok(step, 'the binary step must keep its build-if-missing shell')
-  assert.equal(step.includes('--git-commit-hash'), false, 'a listing pinned to the release commit would ignore existing store builds')
+  assert.ok(step.includes('--git-commit-hash "$GITHUB_SHA"'))
   assert.ok(step.includes('if [ -n "$missing" ]; then'))
   assert.ok(step.includes('eas-cli@22.0.0 build --platform "$platform"'))
-  assert.equal((step.match(/--relation latest_existing/gu) ?? []).length, 2, 'both readiness checks must use the latest-build relation')
-  assert.equal((verification.match(/--relation latest_existing/gu) ?? []).length, 5)
+  assert.ok(step.includes('--app-version "$app_version"'))
+  assert.ok(step.includes('release-client-policy.json'))
+  assert.ok(step.includes('eas-release-build-profile.mjs'))
+  assert.ok(step.includes('trap restore_eas_profile EXIT'))
+  assert.equal(verification.includes('--relation latest_existing'), false)
+  assert.ok(steps(verification).has('Download and attest exact EAS binary artifacts'))
   assert.equal(steps(strict).get('Reuse or build exact iOS and Android store binaries for this merge').includes('--git-commit-hash "$GITHUB_SHA"'), true)
 })
 
 test('it keeps every strict gate that still applies and says what it acknowledges', () => {
-  for (const forbidden of ['--require-behavioral', '--git-commit-hash', 'stale-canary-reconciler']) {
+  for (const forbidden of ['--require-behavioral', 'stale-canary-reconciler']) {
     assert.equal(verification.includes(forbidden), false, forbidden)
   }
   for (const required of [

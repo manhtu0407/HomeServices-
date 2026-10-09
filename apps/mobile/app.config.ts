@@ -9,6 +9,7 @@ const configDir = existsSync(resolve(process.cwd(), 'app.json'))
   ? process.cwd()
   : resolve(process.cwd(), 'apps/mobile')
 const repoRoot = resolve(configDir, '../..')
+const mobileReleasePolicy = JSON.parse(readFileSync(resolve(configDir, 'config/release-client-policy.json'), 'utf8'))
 
 const explicitEnvFiles = (process.env.NESTSCOUT_MOBILE_ENV_FILE ?? '')
   .split(/[;,\n]/)
@@ -112,7 +113,7 @@ const clientContractEpoch = resolveClientContractEpoch({
   easBuildId,
   gitSha: buildGitSha,
 })
-const mobileVersion = '0.2.2'
+const mobileVersion = mobileReleasePolicy.appVersion
 const runtimeBuildInfo = {
   builtAt: fromEnv('NESTSCOUT_BUILD_CREATED_AT', 'EAS_BUILD_CREATED_AT') || new Date().toISOString(),
   easBuildId,
@@ -140,7 +141,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   scheme: 'nestscout',
   ios: {
     supportsTablet: false,
-    buildNumber: '54',
+    buildNumber: String(mobileReleasePolicy.platforms.ios.buildNumber),
     bundleIdentifier: 'com.phanmanhtu.homeservices',
     config: {
       usesNonExemptEncryption: false,
@@ -155,7 +156,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       foregroundImage: './assets/nestscout-aurora-nest-foreground-1024.png',
       backgroundColor: '#ffffff',
     },
-    versionCode: 4,
+    versionCode: mobileReleasePolicy.platforms.android.buildNumber,
     permissions: [],
     package: 'com.phanmanhtu.nestscout',
     ...(androidGoogleServicesFile ? { googleServicesFile: androidGoogleServicesFile } : {}),

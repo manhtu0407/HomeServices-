@@ -24,6 +24,7 @@ const release = Object.freeze(buildHarnessRelease({
   environment: 'production', gitSha: '1'.repeat(40), requireCleanWorktree: false,
   providerReadiness: productionProviderReadiness(),
 }))
+const mobilePolicy = JSON.parse(readFileSync(resolve('apps/mobile/config/release-client-policy.json'), 'utf8'))
 
 const cohortId = `synthetic-stage1-${release.releaseId.slice(8, 20)}-${release.releaseId.slice(21)}-gh77`
 const mobileBinaryAttestation = buildMobileBinaryAttestation({
@@ -32,15 +33,15 @@ const mobileBinaryAttestation = buildMobileBinaryAttestation({
     {
       id: '11111111-1111-4111-8111-111111111111', platform: 'IOS', status: 'FINISHED',
       distribution: 'STORE', buildProfile: 'production', gitCommitHash: release.gitSha,
-      appVersion: '0.2.0', appBuildVersion: '45', runtimeVersion: '0.2.0',
-      applicationIdentifier: 'com.phanmanhtu.homeservices', fingerprint: { hash: 'b'.repeat(64) },
+      appVersion: mobilePolicy.appVersion, appBuildVersion: String(mobilePolicy.platforms.ios.buildNumber), runtimeVersion: mobilePolicy.appVersion,
+      applicationIdentifier: mobilePolicy.platforms.ios.applicationId, fingerprint: { hash: 'b'.repeat(64) },
       completedAt: '2026-08-23T01:00:00.000Z',
     },
     {
       id: '22222222-2222-4222-8222-222222222222', platform: 'ANDROID', status: 'FINISHED',
       distribution: 'STORE', buildProfile: 'production', gitCommitHash: release.gitSha,
-      appVersion: '0.2.0', appBuildVersion: '4', runtimeVersion: '0.2.0',
-      applicationIdentifier: 'com.phanmanhtu.nestscout', fingerprint: { hash: 'c'.repeat(64) },
+      appVersion: mobilePolicy.appVersion, appBuildVersion: String(mobilePolicy.platforms.android.buildNumber), runtimeVersion: mobilePolicy.appVersion,
+      applicationIdentifier: mobilePolicy.platforms.android.applicationId, fingerprint: { hash: 'c'.repeat(64) },
       completedAt: '2026-08-23T01:01:00.000Z',
     },
   ],

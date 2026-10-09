@@ -292,11 +292,12 @@ jobs:
             > artifacts/release/eas-project.txt
           grep -F '@nestscout/home-services' artifacts/release/eas-project.txt
           grep -F 'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b' artifacts/release/eas-project.txt
+          app_version=$(node -p "require('./apps/mobile/config/release-client-policy.json').appVersion")
           list_builds() {
             (cd apps/mobile && pnpm dlx eas-cli@22.0.0 build:list \
               --platform all --status finished --distribution store \
               --build-profile production --git-commit-hash "$GITHUB_SHA" \
-              --app-version 0.2.0 --limit 50 --json --non-interactive) \
+              --app-version "$app_version" --limit 50 --json --non-interactive) \
               > artifacts/mobile/eas-builds.json
           }
           list_builds
@@ -304,15 +305,22 @@ jobs:
             --release artifacts/release/release.json \
             --builds artifacts/mobile/eas-builds.json --mode missing)
           if [ -n "$missing" ]; then
+            node scripts/harness/eas-release-build-profile.mjs \
+              --action prepare --release artifacts/release/release.json \
+              --backup artifacts/release/eas-production-profile.backup.json
+            restore_eas_profile() {
+              node scripts/harness/eas-release-build-profile.mjs \
+                --action restore --backup artifacts/release/eas-production-profile.backup.json
+            }
+            trap restore_eas_profile EXIT
             IFS=',' read -ra platforms <<< "$missing"
             for platform in "${platforms[@]}"; do
-              (cd apps/mobile && \
-                NESTSCOUT_RELEASE_ID="$RELEASE_ID" \
-                NESTSCOUT_BUILD_GIT_SHA="$GITHUB_SHA" \
-                pnpm dlx eas-cli@22.0.0 build --platform "$platform" \
+              (cd apps/mobile && pnpm dlx eas-cli@22.0.0 build --platform "$platform" \
                   --profile production --non-interactive --wait --json)
             done
             list_builds
+            restore_eas_profile
+            trap - EXIT
           fi
           test -z "$(node scripts/harness/eas-build-readiness.mjs \
             --release artifacts/release/release.json \

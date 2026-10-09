@@ -13,7 +13,7 @@
     "scheme": "nestscout",
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "54",
+      "buildNumber": "55",
       "bundleIdentifier": "com.phanmanhtu.homeservices",
       "config": {
         "usesNonExemptEncryption": false
@@ -31,7 +31,7 @@
         "foregroundImage": "./assets/nestscout-aurora-nest-foreground-1024.png",
         "backgroundColor": "#ffffff"
       },
-      "versionCode": 4,
+      "versionCode": 5,
       "permissions": [],
       "package": "com.phanmanhtu.nestscout"
     },

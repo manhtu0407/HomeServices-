@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 import {
   buildStage1PromotionPacket,
@@ -15,6 +16,7 @@ const release = Object.freeze(buildHarnessRelease({
   environment: 'production', gitSha: '1'.repeat(40), requireCleanWorktree: false,
   providerReadiness: productionProviderReadiness(),
 }))
+const mobilePolicy = JSON.parse(readFileSync(new URL('../../apps/mobile/config/release-client-policy.json', import.meta.url), 'utf8'))
 
 function productionProviderReadiness() {
   return {
@@ -29,15 +31,15 @@ function storeBuilds(gitCommitHash) {
     {
       id: '11111111-1111-4111-8111-111111111111', platform: 'IOS', status: 'FINISHED',
       distribution: 'STORE', buildProfile: 'production', gitCommitHash,
-      appVersion: '0.2.0', appBuildVersion: '45', runtimeVersion: '0.2.0',
-      applicationIdentifier: 'com.phanmanhtu.homeservices', fingerprint: { hash: 'b'.repeat(64) },
+      appVersion: mobilePolicy.appVersion, appBuildVersion: String(mobilePolicy.platforms.ios.buildNumber), runtimeVersion: mobilePolicy.appVersion,
+      applicationIdentifier: mobilePolicy.platforms.ios.applicationId, fingerprint: { hash: 'b'.repeat(64) },
       completedAt: '2026-08-23T01:00:00.000Z',
     },
     {
       id: '22222222-2222-4222-8222-222222222222', platform: 'ANDROID', status: 'FINISHED',
       distribution: 'STORE', buildProfile: 'production', gitCommitHash,
-      appVersion: '0.2.0', appBuildVersion: '4', runtimeVersion: '0.2.0',
-      applicationIdentifier: 'com.phanmanhtu.nestscout', fingerprint: { hash: 'c'.repeat(64) },
+      appVersion: mobilePolicy.appVersion, appBuildVersion: String(mobilePolicy.platforms.android.buildNumber), runtimeVersion: mobilePolicy.appVersion,
+      applicationIdentifier: mobilePolicy.platforms.android.applicationId, fingerprint: { hash: 'c'.repeat(64) },
       completedAt: '2026-08-23T01:01:00.000Z',
     },
   ]
@@ -200,7 +202,7 @@ const verificationInput = Object.freeze({
   release: verificationRelease,
   lane: 'verification',
   cohortId: `synthetic-stage1-${verificationRelease.releaseId.slice(8, 20)}-${verificationRelease.releaseId.slice(21)}-gh78`,
-  mobileBinaryAttestation: attest(verificationRelease, 'e'.repeat(40), 'latest_existing'),
+  mobileBinaryAttestation: attest(verificationRelease, verificationRelease.gitSha),
   transactionBehaviorReceipt,
   passedGates: [...input.passedGates, 'transaction-bound-assertions'],
 })
@@ -209,7 +211,7 @@ test('a verification packet names its lane, its binary relation, and the gaps it
   const packet = buildStage1PromotionPacket(verificationInput)
   assert.equal(packet.lane, 'verification')
   assert.equal(packet.release.releaseLane, 'verification')
-  assert.equal(packet.mobileBinaryAttestation.binaryRelation, 'latest_existing')
+  assert.equal(packet.mobileBinaryAttestation.binaryRelation, undefined)
   assert.equal(packet.transactionBehavior.receiptSha256, transactionBehaviorReceipt.receiptSha256)
   assert.equal(packet.transactionBehavior.gapsSha256, transactionBehaviorReceipt.gapsSha256)
   assert.equal(packet.transactionBehavior.partialEntryCount, 1)
@@ -224,7 +226,10 @@ test('a strict packet stays free of the verification fields and refuses them', (
   assert.equal(Object.hasOwn(strict.release, 'releaseLane'), false)
   assert.throws(() => buildStage1PromotionPacket({ ...input, transactionBehaviorReceipt }), /strict Stage 1 promotion accepts only/u)
   assert.throws(
-    () => buildStage1PromotionPacket({ ...input, mobileBinaryAttestation: attest(release, 'e'.repeat(40), 'latest_existing') }),
+    () => buildStage1PromotionPacket({
+      ...input,
+      mobileBinaryAttestation: { ...mobileBinaryAttestation, binaryRelation: 'active_production' },
+    }),
     /strict Stage 1 promotion accepts only/u,
   )
   assert.throws(() => buildStage1PromotionPacket({ ...input, lane: 'verification' }), /verification-lane release/u)
@@ -232,11 +237,12 @@ test('a strict packet stays free of the verification fields and refuses them', (
   assert.throws(() => buildStage1PromotionPacket({ ...verificationInput, lane: undefined }), /strict Stage 1 promotion accepts only/u)
 })
 
-test('a verification packet cannot be built without exact acknowledgement evidence', () => {
-  assert.throws(
-    () => buildStage1PromotionPacket({ ...verificationInput, mobileBinaryAttestation: attest(verificationRelease, verificationRelease.gitSha) }),
-    /latest existing store binaries/u,
-  )
+test('a verification packet requires exact-release binaries and acknowledgement evidence', () => {
+  assert.doesNotThrow(() => buildStage1PromotionPacket(verificationInput))
+  assert.throws(() => buildStage1PromotionPacket({
+    ...verificationInput,
+    mobileBinaryAttestation: { ...verificationInput.mobileBinaryAttestation, binaryRelation: 'active_production' },
+  }), /exact-release store binaries/u)
   assert.throws(() => buildStage1PromotionPacket({ ...verificationInput, transactionBehaviorReceipt: undefined }), /valid transaction behavior receipt/u)
   assert.throws(
     () => buildStage1PromotionPacket({ ...verificationInput, transactionBehaviorReceipt: { ...transactionBehaviorReceipt, partialCount: 0 } }),
@@ -262,14 +268,17 @@ test('packet verification rejects a lane that was added or stripped even when th
   assert.match(verifyStage1PromotionPacket({ ...verification, transactionBehavior: { ...verification.transactionBehavior, partialEntryCount: 0 } }).join('; '), /checksum/u)
 })
 
-test('a verification packet must still carry its release lane, latest-binary relation, and extra gate', () => {
+test('a verification packet must still carry its release lane, exact binaries, and extra gate', () => {
   const verification = buildStage1PromotionPacket(verificationInput)
   const withoutGate = rehashPacket({ ...verification, passedGates: verification.passedGates.filter((gate) => gate !== 'transaction-bound-assertions') })
   assert.match(verifyStage1PromotionPacket(withoutGate).join('; '), /missing required release gate: transaction-bound-assertions/u)
   const { releaseLane, ...unlabelled } = verification.release
   assert.equal(releaseLane, 'verification')
   assert.match(verifyStage1PromotionPacket(rehashPacket({ ...verification, release: unlabelled })).join('; '), /verification lane requires a verification release/u)
-  const exactBinaries = rehashPacket({ ...verification, mobileBinaryAttestation: attest(verificationRelease, verificationRelease.gitSha) })
-  assert.match(verifyStage1PromotionPacket(exactBinaries).join('; '), /verification lane requires the latest existing store binaries/u)
+  const staleBinaries = rehashPacket({
+    ...verification,
+    mobileBinaryAttestation: { ...verification.mobileBinaryAttestation, binaryRelation: 'active_production' },
+  })
+  assert.match(verifyStage1PromotionPacket(staleBinaries).join('; '), /verification lane requires exact-release store binaries/u)
   assert.match(verifyStage1PromotionPacket(rehashPacket({ ...verification, lane: 'other' })).join('; '), /lane is invalid/u)
 })
