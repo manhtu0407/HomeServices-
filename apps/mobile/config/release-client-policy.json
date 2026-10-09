@@ -1,0 +1,13 @@
+{
+  "appVersion": "0.2.2",
+  "platforms": {
+    "ios": {
+      "applicationId": "com.phanmanhtu.homeservices",
+      "buildNumber": 55
+    },
+    "android": {
+      "applicationId": "com.phanmanhtu.nestscout",
+      "buildNumber": 5
+    }
+  }
+}

@@ -128,7 +128,7 @@ export function verifyStage1PromotionPacket(packet) {
   const relation = packet.mobileBinaryAttestation?.binaryRelation
   if (packet.lane === 'verification') {
     if (packet.release?.releaseLane !== 'verification') problems.push('promotion packet verification lane requires a verification release')
-    if (relation !== 'latest_existing') problems.push('promotion packet verification lane requires the latest existing store binaries')
+    if (relation !== undefined) problems.push('promotion packet verification lane requires exact-release store binaries')
     if (!validTransactionBehavior(packet.transactionBehavior)) problems.push('promotion packet transaction behavior evidence is invalid')
     if (!packet.passedGates?.includes('transaction-bound-assertions')) problems.push('promotion packet is missing required release gate: transaction-bound-assertions')
   } else {
@@ -204,8 +204,8 @@ function validateBuildInput(input) {
     }
   } else {
     if (release?.releaseLane !== 'verification') throw new Error('verification Stage 1 promotion requires a verification-lane release')
-    if (input.mobileBinaryAttestation?.binaryRelation !== 'latest_existing') {
-      throw new Error('verification Stage 1 promotion requires the latest existing store binaries, recorded as such')
+    if (input.mobileBinaryAttestation?.binaryRelation !== undefined) {
+      throw new Error('verification Stage 1 promotion requires exact-release store binaries')
     }
     const receiptProblems = verifyTransactionBehaviorReceipt(input.transactionBehaviorReceipt)
     if (receiptProblems.length > 0) {

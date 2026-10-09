@@ -131,19 +131,6 @@ export function deriveVerificationWorkflow(strictText) {
     'node scripts/harness/release-bundle.mjs --environment production --output artifacts/release/release.json',
     'node scripts/harness/release-bundle.mjs --environment production --lane verification --output artifacts/release/release.json')
 
-  const binaryStart = text.indexOf('      - name: Reuse or build exact iOS and Android store binaries for this merge\n')
-  const attestStart = text.indexOf('      - name: Download and attest exact EAS binary artifacts\n')
-  if (binaryStart < 0 || attestStart <= binaryStart) throw new Error('strict workflow step layout changed: EAS binary steps')
-  text = text.slice(0, binaryStart) + reuseLatestStoreBinaries(text.slice(binaryStart, attestStart)) + text.slice(attestStart)
-
-  text = replaceOnce(text, '      - name: Download and attest exact EAS binary artifacts\n',
-    '      - name: Download and attest the latest existing EAS store binaries\n')
-  text = replaceOnce(text, '--mode artifact-url --platform ios)', '--mode artifact-url --platform ios --relation latest_existing)')
-  text = replaceOnce(text, '--mode artifact-url --platform android)', '--mode artifact-url --platform android --relation latest_existing)')
-  text = replaceOnce(text,
-    '            --android-artifact artifacts/mobile/nestscout.aab \\\n            --output artifacts/release/mobile-binary-attestation.json',
-    '            --android-artifact artifacts/mobile/nestscout.aab \\\n            --relation latest_existing \\\n            --output artifacts/release/mobile-binary-attestation.json')
-
   text = replaceOnce(text, '      - name: Collect hosted production baseline\n', `${expression(RECEIPT_DOWNLOAD_STEP)}      - name: Collect hosted production baseline\n`)
 
   text = replaceOnce(text,
@@ -155,19 +142,6 @@ export function deriveVerificationWorkflow(strictText) {
 
   text = replaceOnce(text, 'name: stage1-production-release-${{ github.run_id }}', 'name: stage1-verification-release-${{ github.run_id }}')
   return text
-}
-
-// The strict step lists store builds of the release commit and builds what that commit lacks. The verification
-// step keeps the same build-if-missing shell but lists the newest store builds of any commit, so an existing
-// store binary is reused and only a platform that has none is built.
-function reuseLatestStoreBinaries(step) {
-  let next = replaceOnce(step, '      - name: Reuse or build exact iOS and Android store binaries for this merge\n',
-    '      - name: Reuse the latest store binaries, building only a platform that has none\n')
-  next = replaceOnce(next, ' --build-profile production --git-commit-hash "$GITHUB_SHA" \\\n', ' --build-profile production \\\n')
-  next = replaceOnce(next, '--builds artifacts/mobile/eas-builds.json --mode missing)\n          if [ -n "$missing" ]; then',
-    '--builds artifacts/mobile/eas-builds.json --mode missing \\\n            --relation latest_existing)\n          if [ -n "$missing" ]; then')
-  return replaceOnce(next, '--builds artifacts/mobile/eas-builds.json --mode missing)"',
-    '--builds artifacts/mobile/eas-builds.json --mode missing \\\n            --relation latest_existing)"')
 }
 
 // Replaces from a top-level key up to the next one, so an edit to the strict schedule or to the comments inside

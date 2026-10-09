@@ -7,7 +7,6 @@ import {
   BINARY_RELATIONS,
   selectActiveProductionEasBuilds,
   selectExactEasBuilds,
-  selectLatestEasBuilds,
 } from './mobile-binary-attestation.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -41,9 +40,7 @@ function main() {
   const builds = JSON.parse(readFileSync(resolveReleaseArtifactPath(ROOT, options.builds), 'utf8'))
   const selected = options.relation === 'active_production'
     ? selectActiveProductionEasBuilds(release, builds)
-    : options.relation === 'latest_existing'
-      ? selectLatestEasBuilds(release, builds)
-      : selectExactEasBuilds(release, builds)
+    : selectExactEasBuilds(release, builds)
   if (options.mode === 'missing') {
     process.stdout.write(`${['ios', 'android'].filter((platform) => !selected[platform]).join(',')}\n`)
     return

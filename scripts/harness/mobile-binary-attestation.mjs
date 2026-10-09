@@ -9,17 +9,27 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const SHA256 = /^[0-9a-f]{64}$/u
 const GIT_SHA = /^[0-9a-f]{40}$/u
 const UUID =/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
+const MOBILE_RELEASE_POLICY = JSON.parse(readFileSync(resolve(ROOT, 'apps/mobile/config/release-client-policy.json'), 'utf8'))
 const PLATFORM_POLICY = Object.freeze({
-  ios: Object.freeze({ applicationId: 'com.phanmanhtu.homeservices', buildNumber: 45 }),
-  android: Object.freeze({ applicationId: 'com.phanmanhtu.nestscout', buildNumber: 4 }),
+  ios: Object.freeze({
+    applicationId: MOBILE_RELEASE_POLICY.platforms.ios.applicationId,
+    buildNumber: MOBILE_RELEASE_POLICY.platforms.ios.buildNumber,
+    appVersion: MOBILE_RELEASE_POLICY.appVersion,
+    runtimeVersion: MOBILE_RELEASE_POLICY.appVersion,
+  }),
+  android: Object.freeze({
+    applicationId: MOBILE_RELEASE_POLICY.platforms.android.applicationId,
+    buildNumber: MOBILE_RELEASE_POLICY.platforms.android.buildNumber,
+    appVersion: MOBILE_RELEASE_POLICY.appVersion,
+    runtimeVersion: MOBILE_RELEASE_POLICY.appVersion,
+  }),
 })
 
 /**
- * `exact` binds store builds made from the release's own commit. `latest_existing` is for a verification
- * release that ships no new store build. `active_production` binds the exact EAS identities reported by
- * the pinned Production runtime snapshot, even when the app and backend were built from different commits.
+ * `exact` binds store builds made from the release's own commit. `active_production` binds the exact EAS
+ * identities reported by the pinned Production runtime snapshot, even when app and backend commits differ.
  */
-export const BINARY_RELATIONS = Object.freeze(['exact', 'latest_existing', 'active_production'])
+export const BINARY_RELATIONS = Object.freeze(['exact', 'active_production'])
 
 export function buildMobileBinaryAttestation(input) {
   const release = input?.release
@@ -32,9 +42,7 @@ export function buildMobileBinaryAttestation(input) {
   const builds = Array.isArray(input.builds) ? input.builds : []
   const selected = relation === 'exact'
     ? selectExactEasBuilds(release, builds)
-    : relation === 'active_production'
-      ? selectActiveProductionEasBuilds(release, builds)
-      : selectLatestEasBuilds(release, builds)
+    : selectActiveProductionEasBuilds(release, builds)
   const platforms = {}
   for (const platform of ['ios', 'android']) {
     const policy = PLATFORM_POLICY[platform]
@@ -60,7 +68,7 @@ export function buildMobileBinaryAttestation(input) {
     platforms[platform] = {
       easBuildId: build.id.toLowerCase(),
       applicationId: relation === 'active_production' ? activeClient.applicationId : policy.applicationId,
-      appVersion: build.appVersion,
+      appVersion: relation === 'active_production' ? activeClient.runtimeVersion : policy.appVersion,
       buildNumber: relation === 'active_production' ? activeClient.minimumBuildNumber : policy.buildNumber,
       runtimeVersion: build.runtimeVersion,
       gitCommitHash: build.gitCommitHash,
@@ -94,10 +102,6 @@ export function selectExactEasBuilds(release, builds) {
   return selectEasBuilds(release, builds, true)
 }
 
-export function selectLatestEasBuilds(release, builds) {
-  return selectEasBuilds(release, builds, false)
-}
-
 export function selectActiveProductionEasBuilds(release, builds) {
   const compatibility = release?.activeClientCompatibility
   if (release?.releaseLane !== 'plan55-production-only' || !compatibility) {
@@ -115,7 +119,7 @@ export function selectActiveProductionEasBuilds(release, builds) {
         String(build?.distribution ?? '').toUpperCase() === 'STORE' &&
         build?.buildProfile === 'production' &&
         build?.id?.toLowerCase() === expected?.easBuildId?.toLowerCase() &&
-        build?.appVersion === '0.2.0' &&
+        build?.appVersion === expected?.runtimeVersion &&
         String(build?.appBuildVersion ?? '') === String(expected?.minimumBuildNumber ?? '') &&
         build?.runtimeVersion === expected?.runtimeVersion &&
         build?.applicationIdentifier === expected?.applicationId &&
@@ -135,8 +139,8 @@ function selectEasBuilds(release, builds, requireReleaseCommit) {
       String(build?.distribution ?? '').toUpperCase() === 'STORE' &&
       build?.buildProfile === 'production' &&
       (!requireReleaseCommit || build?.gitCommitHash === release?.gitSha) &&
-      build?.appVersion === '0.2.0' && String(build?.appBuildVersion ?? '') === String(policy.buildNumber) &&
-      build?.runtimeVersion === '0.2.0' && build?.applicationIdentifier === policy.applicationId)
+      build?.appVersion === policy.appVersion && String(build?.appBuildVersion ?? '') === String(policy.buildNumber) &&
+      build?.runtimeVersion === policy.runtimeVersion && build?.applicationIdentifier === policy.applicationId)
       .sort((left, right) => String(right.completedAt ?? '').localeCompare(String(left.completedAt ?? '')))
     if (matches[0]) selected[platform] = matches[0]
   }
@@ -173,9 +177,10 @@ export function verifyMobileBinaryAttestation(receipt, release) {
     const activeClient = release?.activeClientCompatibility?.[platform]
     const expectedApplicationId = activeProduction ? activeClient?.applicationId : policy.applicationId
     const expectedBuildNumber = activeProduction ? activeClient?.minimumBuildNumber : policy.buildNumber
-    const expectedRuntimeVersion = activeProduction ? activeClient?.runtimeVersion : '0.2.0'
+    const expectedAppVersion = activeProduction ? activeClient?.runtimeVersion : policy.appVersion
+    const expectedRuntimeVersion = activeProduction ? activeClient?.runtimeVersion : policy.runtimeVersion
     if (!UUID.test(value?.easBuildId ?? '') || value?.applicationId !== expectedApplicationId ||
-        value?.appVersion !== '0.2.0' || value?.buildNumber !== expectedBuildNumber ||
+        value?.appVersion !== expectedAppVersion || value?.buildNumber !== expectedBuildNumber ||
         value?.runtimeVersion !== expectedRuntimeVersion ||
         (exactCommit ? value?.gitCommitHash !== receipt?.gitSha : !GIT_SHA.test(value?.gitCommitHash ?? '')) ||
         value?.distribution !== 'store' || value?.profile !== 'production' ||

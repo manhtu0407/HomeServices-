@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { test } from 'node:test'
 
 import { buildSyntheticCleanupReceipt } from '../../apps/api/scripts/lib/stage1-synthetic-cleanup-core.mjs'
@@ -8,6 +10,7 @@ import { buildProductionAcceptanceRpcArgs, sha256Bytes } from './production-acce
 import { buildStage1PromotionPacket } from './stage1-promotion-packet.mjs'
 import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 
+const mobilePolicy = JSON.parse(readFileSync(resolve('apps/mobile/config/release-client-policy.json'), 'utf8'))
 const release = buildHarnessRelease({
   environment: 'production', gitSha: '1'.repeat(40), requireCleanWorktree: false,
   providerReadiness: {
@@ -57,8 +60,8 @@ function fixtures() {
   const mobileBinaryAttestation = buildMobileBinaryAttestation({
     release,
     builds: [
-      build('IOS', '11111111-1111-4111-8111-111111111111', '45', 'com.phanmanhtu.homeservices', 'b'),
-      build('ANDROID', '22222222-2222-4222-8222-222222222222', '4', 'com.phanmanhtu.nestscout', 'c'),
+      build('IOS', '11111111-1111-4111-8111-111111111111', String(mobilePolicy.platforms.ios.buildNumber), mobilePolicy.platforms.ios.applicationId, 'b'),
+      build('ANDROID', '22222222-2222-4222-8222-222222222222', String(mobilePolicy.platforms.android.buildNumber), mobilePolicy.platforms.android.applicationId, 'c'),
     ],
     artifactBytes: { ios: Buffer.from('ios'), android: Buffer.from('android') },
     now: '2026-08-23T01:02:00.000Z',
@@ -101,8 +104,8 @@ function hostedMigrations() {
 function build(platform, id, appBuildVersion, applicationIdentifier, hash) {
   return {
     id, platform, status: 'FINISHED', distribution: 'STORE', buildProfile: 'production',
-    gitCommitHash: release.gitSha, appVersion: '0.2.0', appBuildVersion,
-    runtimeVersion: '0.2.0', applicationIdentifier, fingerprint: { hash: hash.repeat(64) },
+    gitCommitHash: release.gitSha, appVersion: mobilePolicy.appVersion, appBuildVersion,
+    runtimeVersion: mobilePolicy.appVersion, applicationIdentifier, fingerprint: { hash: hash.repeat(64) },
     completedAt: '2026-08-23T01:01:00.000Z',
   }
 }
