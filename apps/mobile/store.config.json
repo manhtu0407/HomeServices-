@@ -1,7 +1,7 @@
 {
   "configVersion": 0,
   "apple": {
-    "version": "0.2.1",
+    "version": "0.2.2",
     "release": {
       "automaticRelease": false
     },

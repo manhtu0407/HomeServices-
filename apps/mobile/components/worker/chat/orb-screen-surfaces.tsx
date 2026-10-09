@@ -100,9 +100,7 @@ export function WorkerV5KaelOrbScreenSurface({
       description: hasActiveExecutionCase
         ? textByLanguage(language, 'Hỗ trợ theo công việc đang chạy', 'Support the active job')
         : textByLanguage(language, 'Lọc và chuẩn bị cơ hội phù hợp', 'Filter and prepare matching work'),
-      label: hasActiveExecutionCase
-        ? textByLanguage(language, 'Công việc', 'Work case')
-        : 'Work',
+      label: 'Work',
       value: 'intake' as const,
     },
   ]

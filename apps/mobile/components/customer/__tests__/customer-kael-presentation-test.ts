@@ -11,6 +11,7 @@ function derivePresentation({
   intakeDisplayMessage = null,
   jobIncidentMessages = [],
   processLines = null,
+  submittingAgenticEvidence = false,
   turns = [],
 }: {
   assistantTurns?: Parameters<typeof deriveCustomerKaelPresentation>[0]['assistantTurns']
@@ -20,6 +21,7 @@ function derivePresentation({
   intakeDisplayMessage?: string | null
   jobIncidentMessages?: Parameters<typeof deriveCustomerKaelPresentation>[0]['jobIncidentMessages']
   processLines?: Parameters<typeof deriveCustomerKaelPresentation>[0]['processLines']
+  submittingAgenticEvidence?: boolean
   turns?: KaelChatTurn[]
 }) {
   return deriveCustomerKaelPresentation({
@@ -37,7 +39,7 @@ function derivePresentation({
     pendingDraftLocalizedMessage: null,
     processLines,
     routeDraftEvidencePending: false,
-    submittingAgenticEvidence: false,
+    submittingAgenticEvidence,
     turns,
   })
 }
@@ -405,6 +407,13 @@ describe('customer Kael presentation', () => {
     expect(presentation.intakeConfirmationActive).toBe(true)
     expect(presentation.agenticEvidenceGateActive).toBe(false)
     expect(presentation.showComposer).toBe(false)
+  })
+
+  it('keeps the composer closed while the evidence card is submitting its drafts', () => {
+    const chat = analysisChat(false)
+
+    expect(derivePresentation({ chat }).showComposer).toBe(false)
+    expect(derivePresentation({ chat, submittingAgenticEvidence: true }).showComposer).toBe(false)
   })
 
   it('uses the authoritative quote-ready phase instead of adding a second confidence threshold', () => {

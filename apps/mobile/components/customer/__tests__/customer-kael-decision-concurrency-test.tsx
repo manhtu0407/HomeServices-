@@ -6,13 +6,17 @@ import { useCustomerKaelDecisionActions } from '../kael-chat/use-customer-kael-d
 
 const mockConfirmEstimate = jest.fn()
 const mockSendKaelTurn = jest.fn()
+const mockDecideIntake = jest.fn()
+const mockProgressGet = jest.fn()
 
 jest.mock('@/lib/services', () => ({
   kaelAssistantService: { ask: jest.fn() },
   kaelChatService: {
     confirm: (...args: unknown[]) => mockConfirmEstimate(...args),
     sendTurn: (...args: unknown[]) => mockSendKaelTurn(...args),
+    decideIntakeConfirmation: (...args: unknown[]) => mockDecideIntake(...args),
   },
+  kaelChatProgressService: { get: (...args: unknown[]) => mockProgressGet(...args) },
 }))
 
 jest.mock('@/lib/frontend-workflow/confirmation-recovery', () => ({
@@ -103,8 +107,10 @@ function decisionHarness(agenticAdjustmentText = '') {
     mode: 'case' as const,
     pendingDraftOwnerId: 'customer-a',
     processController: {
+      startBackendProcessLines: jest.fn(),
       startProcessLines: jest.fn(async () => undefined),
       stopProcessLines: jest.fn(),
+      updateBackendProcessProgress: jest.fn(),
     } as any,
     router: { replace: jest.fn() } as any,
     sessionAccessToken: undefined as string | undefined,
@@ -118,6 +124,40 @@ describe('customer Kael decision concurrency', () => {
     jest.clearAllMocks()
     mockConfirmEstimate.mockReset()
     mockSendKaelTurn.mockReset()
+    mockDecideIntake.mockReset()
+    mockProgressGet.mockReset()
+  })
+
+  it('shows backend progress as soon as the intake is confirmed and keeps it live until the response', async () => {
+    const harness = decisionHarness()
+    harness.conversation.chat.session.intake_confirmation = { blocking: false, status: 'pending' }
+    let resolveDecision: (value: unknown) => void = () => undefined
+    mockDecideIntake.mockReturnValue(new Promise((resolve) => { resolveDecision = resolve }))
+    const livePhase = { current_stage: 'vision_analysis', progress: 0.3, status: 'running', updated_at: 'now' }
+    mockProgressGet.mockResolvedValue({ success: true, data: { session_id: 'session-a', progress: livePhase } })
+    const { result } = renderHook(() => useCustomerKaelDecisionActions(harness.input))
+
+    let pending: Promise<void> = Promise.resolve()
+    act(() => { pending = result.current.confirmIntakeInformation() })
+
+    const { processController } = harness.input
+    expect(processController.startBackendProcessLines).toHaveBeenCalledTimes(1)
+    expect(processController.updateBackendProcessProgress).toHaveBeenCalledWith(
+      expect.objectContaining({ current_stage: 'intent_classification', status: 'queued' }),
+    )
+    await waitFor(() => {
+      expect(processController.updateBackendProcessProgress).toHaveBeenCalledWith(livePhase)
+    }, { timeout: 3000 })
+
+    await act(async () => {
+      resolveDecision({ success: true, data: { session: { id: 'session-a' }, turns: [] } })
+      await pending
+    })
+    expect(harness.conversation.setChat).toHaveBeenCalled()
+    expect(processController.stopProcessLines).toHaveBeenCalled()
+    const callsAfterDone = mockProgressGet.mock.calls.length
+    await new Promise((resolve) => setTimeout(resolve, 1300))
+    expect(mockProgressGet.mock.calls.length).toBe(callsAfterDone)
   })
 
   it('persists estimate adjustments through the Kael turn rail before clearing the draft', async () => {

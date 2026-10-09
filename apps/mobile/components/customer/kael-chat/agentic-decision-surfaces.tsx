@@ -121,7 +121,7 @@ export function AgenticChatEstimateResponsePanel({
               </Text>
               <Text style={[styles.adjustmentHint, { color: tokens.muted }]}>
                 {language === 'vi'
-                  ? 'Biên nhận bên trên là căn cứ cho đề nghị hiện tại. Việc xem hoặc hỏi về giá không tạo báo giá mới và không thay đổi phạm vi. Nếu có dấu hiệu hoặc hạng mục mới, hãy dùng Điều chỉnh phạm vi để Kael phân tích lại.'
+                  ? 'Biên nhận bên trên là căn cứ cho đề nghị hiện tại. Việc xem hoặc hỏi về giá không tạo báo giá mới và không thay đổi phạm vi. Nếu có dấu hiệu hoặc hạng mục mới, hãy dùng Sửa phạm vi để Kael phân tích lại.'
                   : 'The receipt above is the basis for the current offer. Viewing or asking about the price does not create a new quote or change the scope. Use Adjust scope when there is a new symptom or work item for Kael to analyze again.'}
               </Text>
             </View>
@@ -200,7 +200,7 @@ export function AgenticChatEstimateResponsePanel({
             />
             <KaelButton
               disabled={confirming || submittingAdjustment || submittingRejectReason}
-              label={language === 'vi' ? 'Điều chỉnh phạm vi' : 'Adjust scope'}
+              label={language === 'vi' ? 'Sửa phạm vi' : 'Adjust scope'}
               onPress={onAdjust}
               size="small"
               style={styles.action}
