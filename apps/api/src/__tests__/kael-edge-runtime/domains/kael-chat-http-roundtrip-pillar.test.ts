@@ -10,7 +10,7 @@ import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 export const PILLAR = {
   id: 'P252-kael-chat-http-roundtrip',
   invariant:
-    'Released mobile clients and the exact authenticated localhost web-preview identity traverse the real mobile-api handler, while ordinary web and malformed preview identities are refused before authentication, the database, or any AI provider is reached',
+    'Released mobile clients and the allowlisted authenticated localhost web-preview origins traverse the real mobile-api handler, while ordinary web and malformed preview identities are refused before authentication, the database, or any AI provider is reached',
   authority: [
     'governance/RULES.md #0 (mobile -> mobile-api -> server-side AI)',
     'governance/RULES.md #8 (no fake success, no silent failure)',
@@ -20,7 +20,7 @@ export const PILLAR = {
   layer: 'integration',
   siblings: ['P217-customer-assistant-image-analysis', 'P204-customer-kael-request-abort', 'P250-kael-unreleased-client-copy'],
   mutation:
-    'skip the append_customer_kael_conversation_exchange write, or let the handler serve a POST without the release platform headers; the persisted-reply or the 426-before-auth assertion turns red',
+    'skip the append_customer_kael_conversation_exchange write, accept an origin outside the web-preview allowlist, or let the handler serve a POST without release platform headers; the persisted-reply or 426-before-auth assertion turns red',
 } as const satisfies PillarManifest
 
 const CUSTOMER = 'c252abcd-0000-4000-8000-000000000001'
@@ -285,32 +285,36 @@ describe('P252 Kael chat over the real mobile-api handler', () => {
     expect(provider.calls, pillarWhy(PILLAR, 'a refused turn must not reach a model')).toEqual([])
   })
 
-  it('streams and persists a Customer turn from the exact authenticated localhost web preview', async () => {
-    const provider = providerFetch(JSON.stringify({
-      answer: REPLY,
-      public_reasoning_summary: ['Xác định nguyên nhân phổ biến gây chảy nước.'],
-    }))
-    vi.stubGlobal('fetch', provider.fetch)
-    const { client, send, authentications } = setup()
+  it.each(['http://localhost:8085', 'http://localhost:8086'])(
+    'streams and persists a Customer turn from guarded localhost Preview origin %s',
+    async (origin) => {
+      const provider = providerFetch(JSON.stringify({
+        answer: REPLY,
+        public_reasoning_summary: ['Xác định nguyên nhân phổ biến gây chảy nước.'],
+      }))
+      vi.stubGlobal('fetch', provider.fetch)
+      const { client, send, authentications } = setup()
 
-    const response = await send({
-      origin: 'http://localhost:8085',
-      'x-client-platform': 'web-preview',
-      'x-client-application-id': 'com.phanmanhtu.nestscout.web-preview',
-      'x-client-contract-epoch': '2',
-    })
-    const text = await response.text()
+      const response = await send({
+        origin,
+        'x-client-platform': 'web-preview',
+        'x-client-application-id': 'com.phanmanhtu.nestscout.web-preview',
+        'x-client-contract-epoch': '2',
+      })
+      const text = await response.text()
 
-    expect(response.status, pillarWhy(PILLAR, text.slice(0, 400))).toBe(200)
-    expect(authentications(), pillarWhy(PILLAR, 'Preview still traverses normal Supabase authentication')).toBe(1)
-    expect(provider.calls.length, pillarWhy(PILLAR, 'the authenticated Preview turn reaches a server-side model')).toBeGreaterThan(0)
-    expect(client.calls.some((call) => call.table === 'rpc:append_customer_kael_conversation_exchange'))
-      .toBe(true)
-    expect(sseEvents(text).map((event) => event.event)).toContain('result')
-  })
+      expect(response.status, pillarWhy(PILLAR, text.slice(0, 400))).toBe(200)
+      expect(authentications(), pillarWhy(PILLAR, 'Preview still traverses normal Supabase authentication')).toBe(1)
+      expect(provider.calls.length, pillarWhy(PILLAR, 'the authenticated Preview turn reaches a server-side model')).toBeGreaterThan(0)
+      expect(client.calls.some((call) => call.table === 'rpc:append_customer_kael_conversation_exchange'))
+        .toBe(true)
+      expect(sseEvents(text).map((event) => event.event)).toContain('result')
+    },
+  )
 
   it.each([
-    ['another localhost port', 'http://localhost:8086', 'com.phanmanhtu.nestscout.web-preview', '2'],
+    ['unapproved localhost port', 'http://localhost:8087', 'com.phanmanhtu.nestscout.web-preview', '2'],
+    ['loopback IP origin', 'http://127.0.0.1:8086', 'com.phanmanhtu.nestscout.web-preview', '2'],
     ['wrong preview application id', 'http://localhost:8085', 'com.phanmanhtu.nestscout', '2'],
     ['stale contract epoch', 'http://localhost:8085', 'com.phanmanhtu.nestscout.web-preview', '1'],
   ])('refuses Preview with %s before authentication or side effects', async (_label, origin, applicationId, epoch) => {

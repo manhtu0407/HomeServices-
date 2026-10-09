@@ -4,6 +4,11 @@ import type {
 } from "./contracts.ts";
 import { apiFailure } from "../platform/api-failure.ts";
 
+const WEB_PREVIEW_ORIGINS = new Set([
+  "http://localhost:8085",
+  "http://localhost:8086",
+]);
+
 export function enforceClientCompatibility(
   request: Request,
   deps: MobileApiHandlerDeps,
@@ -43,7 +48,7 @@ function enforceStage1ClientCompatibility(
     ];
     if (
       epoch === compatibility.contractEpoch &&
-      request.headers.get("origin") === "http://localhost:8085" &&
+      WEB_PREVIEW_ORIGINS.has(request.headers.get("origin") ?? "") &&
       applicationId === "com.phanmanhtu.nestscout.web-preview" &&
       nativeIdentityHeaders.every((header) => !request.headers.has(header))
     ) return;
