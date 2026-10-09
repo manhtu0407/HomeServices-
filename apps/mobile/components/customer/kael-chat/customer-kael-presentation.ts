@@ -277,9 +277,11 @@ export function deriveCustomerKaelPresentation({
     serverPriceReviewBlocked,
     serverSafetyMessages,
     showCaseConversation: mode === 'case' && (caseAssistantTurns.length > 0 || (Boolean(deal) && caseEditOpen)),
+    // The evidence card hides while it submits; the composer must not take its place with the same drafts.
     showComposer: (mode === 'normal' || mode === 'case') &&
       !intakeConfirmationActive &&
-      !agenticEvidenceGateActive,
+      !agenticEvidenceGateActive &&
+      !(agenticIntakeModeActive && submittingAgenticEvidence),
     showNormalGreeting,
     showPendingDraftBubble,
     workIntakeActive,

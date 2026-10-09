@@ -83,6 +83,13 @@ export async function prepareKaelChatPrePipeline(
       progressTarget,
     },
   )) return { handled: true };
+  // Reads only the turn history, so it overlaps the analysis-state load. A handled
+  // early return below discards it; the no-op catch keeps that from surfacing as
+  // an unhandled rejection while the later await still observes any error.
+  const conversationPromise = llmClarificationEnabled
+    ? buildKaelConversationContext(client, sessionId)
+    : null;
+  conversationPromise?.catch(() => undefined);
   const { artifact: initialArtifact, currentCostUsd, persistedTurnCount } = await loadKaelChatAnalysisState(
     client,
     sessionId,
@@ -128,8 +135,8 @@ export async function prepareKaelChatPrePipeline(
   let conversationContext: string | undefined;
   let priorClarificationCount = 0;
   let previousAnalysisReceipt: Record<string, unknown> | undefined;
-  if (llmClarificationEnabled) {
-    const convo = await buildKaelConversationContext(client, sessionId);
+  if (conversationPromise) {
+    const convo = await conversationPromise;
     conversationContext = convo.context;
     priorClarificationCount = convo.clarificationCount;
     previousAnalysisReceipt = convo.previousAnalysisReceipt;
