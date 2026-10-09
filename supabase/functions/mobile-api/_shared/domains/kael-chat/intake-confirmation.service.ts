@@ -12,6 +12,7 @@ import {
   kaelDiagnosisScopeArtifactSchema,
   type EdgeAiSecrets,
 } from "../../kael/index.ts";
+import type { KaelDiagnosisScopeArtifact } from "../../kael/contracts/artifact-contract.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import {
@@ -139,25 +140,45 @@ export async function decideKaelIntakeConfirmation(
     refreshedConfirmation,
     "confirmed",
   );
-  await insertKaelTurn(client, {
-    session_id: sessionId,
-    turn_index: previousTurns + 1,
-    role: "customer",
-    content_type: "text",
-    text_content: "Đã xác nhận thông tin.",
-    media_refs: [],
-    safe_metadata: { intake_decision: "confirmed" },
-  });
-  await updateKaelSession(client, sessionId, {
-    status: "active",
-    total_turns: previousTurns + 1,
-    safe_metadata: compactMetadata({
-      ...metadata,
-      intake_confirmation: updatedConfirmation,
-    }),
-  });
+  const diagnosisScope = kaelDiagnosisScopeArtifactSchema.safeParse(session.diagnosis_scope);
+  const visionEvidence = diagnosisScope.success ? diagnosisScope.data.evidence : [];
+  // Signing media URLs is independent of the session writes, so it overlaps them.
+  // The writes stay ordered: no session update if the turn insert fails.
+  const persistConfirmation = async () => {
+    await insertKaelTurn(client, {
+      session_id: sessionId,
+      turn_index: previousTurns + 1,
+      role: "customer",
+      content_type: "text",
+      text_content: "Đã xác nhận thông tin.",
+      media_refs: [],
+      safe_metadata: { intake_decision: "confirmed" },
+    });
+    await updateKaelSession(client, sessionId, {
+      status: "active",
+      total_turns: previousTurns + 1,
+      safe_metadata: compactMetadata({
+        ...metadata,
+        intake_confirmation: updatedConfirmation,
+      }),
+    });
+  };
+  const [, photoUrls] = await Promise.all([
+    persistConfirmation(),
+    diagnosisScope.success
+      ? createSignedVisionUrls(ctx, visionEvidence, asString(session.customer_id))
+      : Promise.resolve([] as string[]),
+  ]);
 
-  await advanceConfirmedIntakeEstimate(ctx, sessionId, session, metadata, confirmation, secrets);
+  await advanceConfirmedIntakeEstimate(
+    ctx,
+    sessionId,
+    metadata,
+    confirmation,
+    photoUrls,
+    visionEvidence,
+    secrets,
+  );
 
   return getKaelChat(ctx, sessionId);
 }
@@ -165,15 +186,12 @@ export async function decideKaelIntakeConfirmation(
 async function advanceConfirmedIntakeEstimate(
   ctx: MobileApiContext,
   sessionId: string,
-  session: Record<string, unknown>,
   metadata: Record<string, unknown>,
   confirmation: EdgeKaelIntakeConfirmation,
+  photoUrls: string[],
+  visionEvidence: KaelDiagnosisScopeArtifact["evidence"],
   secrets: EdgeAiSecrets,
 ) {
-  const diagnosisScope = kaelDiagnosisScopeArtifactSchema.safeParse(session.diagnosis_scope);
-  const photoUrls = diagnosisScope.success
-    ? await createSignedVisionUrls(ctx, diagnosisScope.data.evidence, asString(session.customer_id))
-    : [];
   const serviceType = asServiceType(confirmation.intake.service_type) as ServiceType;
   const safetySignals = persistentKaelSafetySignals(
     confirmation.intake.description,
@@ -186,7 +204,7 @@ async function advanceConfirmedIntakeEstimate(
     message: confirmation.intake.description,
     problem_chips: confirmation.intake.problem_chips,
     photo_urls: photoUrls,
-    vision_evidence: diagnosisScope.success ? diagnosisScope.data.evidence : [],
+    vision_evidence: visionEvidence,
     address_district: nullableString(confirmation.intake.address_district) ?? undefined,
     language: metadata.language === "en" ? "en" : "vi",
     persisted_safety_signals: safetySignals,

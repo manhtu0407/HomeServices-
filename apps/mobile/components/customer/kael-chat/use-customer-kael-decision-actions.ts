@@ -32,6 +32,7 @@ import {
   localizeKaelRequestFailure,
   makeAssistantTurnId,
 } from './customer-kael-chat-helpers'
+import { queuedKaelProgress, startKaelProgressPolling } from './kael-progress-polling'
 import type { CustomerKaelRequestGuard } from './customer-kael-state-scope'
 import { totalMediaRefs } from './kael-chat-turn-display-model'
 import type { CustomerKaelMode } from '../ui/types'
@@ -110,7 +111,8 @@ export function useCustomerKaelDecisionActions({
     submittingAgenticRejectReason,
     submittingCaseQuoteRejectReason,
   } = chatUi
-  const { startProcessLines, stopProcessLines } = processController
+  const { startBackendProcessLines, startProcessLines, stopProcessLines, updateBackendProcessProgress } =
+    processController
   const decisionOwnerKey = `${chat?.session.id ?? 'no-session'}:${deal?.id ?? 'no-case'}`
   const decisionOperationRef = useRef<{ kind: string; ownerKey: string } | null>(null)
   const pendingConfirmationRef = useRef<Awaited<ReturnType<typeof getOrCreatePendingConfirmation>> | null>(null)
@@ -291,17 +293,14 @@ export function useCustomerKaelDecisionActions({
     const requestToken = kaelRequestGuard.begin('conversation')
     setLoading(true)
     setError(null)
-    const processDone = startProcessLines(
-      language === 'vi'
-        ? 'Đã xác nhận thông tin. Kael đang bắt đầu phân tích.'
-        : 'Information confirmed. Kael is beginning the analysis.',
-      {
-        complexity: null,
-        mediaCount: totalMediaRefs(turns),
-        mode: mode === 'case' ? 'case' : 'normal',
-        serviceType: chat.session.service_type,
-      },
-    )
+    const sessionId = chat.session.id
+    startBackendProcessLines()
+    updateBackendProcessProgress(queuedKaelProgress())
+    const stopProgressPolling = startKaelProgressPolling({
+      isCurrent: () => kaelRequestGuard.isCurrent(requestToken),
+      onProgress: updateBackendProcessProgress,
+      sessionId,
+    })
     try {
       const result = await kaelChatService.decideIntakeConfirmation(
         chat.session.id,
@@ -314,8 +313,6 @@ export function useCustomerKaelDecisionActions({
         setError(localizeKaelRequestFailure(result, language))
         return
       }
-      await processDone
-      if (!kaelRequestGuard.isCurrent(requestToken)) return
       setChat(result.data)
       setTurns(result.data.turns)
       if (
@@ -327,6 +324,7 @@ export function useCustomerKaelDecisionActions({
     } catch {
       if (kaelRequestGuard.isCurrent(requestToken)) setError(decisionFailure)
     } finally {
+      stopProgressPolling()
       finishDecisionOperation(operation)
       if (kaelRequestGuard.isCurrent(requestToken)) {
         setLoading(false)
