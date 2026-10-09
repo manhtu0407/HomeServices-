@@ -7,6 +7,8 @@ import type { JobDetailResponse } from '../api-types'
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { useCustomerJobActions } from '../frontend-workflow/use-customer-job-actions'
 import { listMatchingRetries, prepareMatchingRetry } from '../frontend-workflow/matching-retry-recovery'
+import { api } from '../api'
+import { recoverLegacyConfirmation } from '../services/legacy-confirmation-recovery'
 
 export const PILLAR = {
   id: 'P105-customer-matching-retry-mobile',
@@ -22,12 +24,19 @@ const OWNER = '11111111-1111-4111-8111-111111111111'
 const JOB = '22222222-2222-4222-8222-222222222222'
 const PARENT = '33333333-3333-4333-8333-333333333333'
 const OPERATION = '44444444-4444-4444-8444-444444444444'
+const SESSION = '66666666-6666-4666-8666-666666666666'
+const mockGetChat = jest.fn()
+const mockRecoverConfirmation = jest.fn()
 const mockConfirmSearch = jest.fn()
 const mockGetMatchingRetry = jest.fn()
 const mockGetMatchingOperation = jest.fn()
 const mockGetJob = jest.fn()
 
 jest.mock('../services', () => ({
+  kaelChatService: {
+    get: (...args: unknown[]) => mockGetChat(...args),
+    recoverConfirmation: (...args: unknown[]) => mockRecoverConfirmation(...args),
+  },
   jobService: {
     confirmSearch: (...args: unknown[]) => mockConfirmSearch(...args),
     getMatchingRetry: (...args: unknown[]) => mockGetMatchingRetry(...args),
@@ -83,9 +92,127 @@ async function persistedValues() {
   return Promise.all(keys.map(async (key) => JSON.parse((await AsyncStorage.getItem(key))!)))
 }
 
+function legacyChat() {
+  return { success: true, status: 200, data: { session: {
+    id: SESSION, customer_id: OWNER, job_id: JOB,
+    estimate: { price_reasoning_receipt: { receipt_id: 'original-price-receipt' } },
+  } } }
+}
+
 describe('Customer durable matching retry mobile boundary', () => {
+  it('explicit retry recovers the original server-bound confirmation before reading the real matching parent', async () => {
+    mockGetMatchingOperation.mockResolvedValueOnce({ success: true, status: 200, data: { job_id: JOB, operation: null } })
+    mockGetChat.mockResolvedValue({ success: true, status: 200, data: {
+      session: { id: SESSION, customer_id: OWNER, job_id: JOB, estimate: {
+        price_reasoning_receipt: { receipt_id: 'original-price-receipt' },
+      } },
+    } })
+    mockRecoverConfirmation.mockResolvedValue({ success: true, status: 200, data: { operation: {
+      operation_id: OPERATION, idempotency_key: `kael-confirm:${SESSION}:${OWNER}`, session_id: SESSION,
+      job_id: JOB, quote_mode: 'kael_auto_quote', state: 'no_reachable_worker', terminal: true,
+      accepted_at: '2026-10-09T00:00:00.000Z', updated_at: '2026-10-09T00:00:00.000Z',
+      retry_after_ms: null, support_code: 'RETRY123',
+    } } })
+    const view = setup()
+    await act(async () => { expect(await view.result.current.confirmRemoteSearch(JOB, SESSION)).toBe(true) })
+    expect(mockGetChat).toHaveBeenCalledWith(SESSION, `token-${OWNER}`)
+    expect(mockRecoverConfirmation).toHaveBeenCalledWith(SESSION, {
+      job_id: JOB, price_reasoning_receipt_id: 'original-price-receipt',
+    }, `token-${OWNER}`)
+    expect(mockGetMatchingOperation).toHaveBeenCalledTimes(2)
+    expect(mockConfirmSearch).toHaveBeenCalledWith(JOB, expect.objectContaining({ expected_matching_operation_id: PARENT }), `token-${OWNER}`)
+    view.unmount()
+  })
+  it('does not fabricate a parent operation or send a retry for a legacy job without confirmation receipts', async () => {
+    mockGetMatchingOperation.mockResolvedValue({ success: true, status: 200, data: { job_id: JOB, operation: null } })
+    const view = setup()
+    await act(async () => { expect(await view.result.current.confirmRemoteSearch(JOB)).toBe(false) })
+    expect(mockConfirmSearch).not.toHaveBeenCalled()
+    expect(mockGetMatchingRetry).not.toHaveBeenCalled()
+    expect(view.result.current.customerMatchingRetryFeedback?.message).toContain('Cần khôi phục xác nhận')
+    view.unmount()
+  })
+
+  it.each(['LEGACY_OFFER_CHANGED', 'POLICY_BLOCKED', 'KAEL_PRICE_EVIDENCE_REQUIRED', 'LEGACY_RECOVERY_OUTCOME_UNKNOWN'])(
+    'does not send matching when recovery returns %s', async (code) => {
+      mockGetMatchingOperation.mockResolvedValue({ success: true, status: 200, data: { job_id: JOB, operation: null } })
+      mockGetChat.mockResolvedValue(legacyChat())
+      mockRecoverConfirmation.mockResolvedValue({ success: false, status: 409, code, error: '' })
+      const view = setup()
+      await act(async () => { expect(await view.result.current.confirmRemoteSearch(JOB, SESSION)).toBe(false) })
+      expect(mockConfirmSearch).not.toHaveBeenCalled()
+      expect(await listMatchingRetries(OWNER)).toHaveLength(0)
+      expect(view.setRemoteError).toHaveBeenLastCalledWith(expect.objectContaining({ code }))
+      expect(view.result.current.customerMatchingRetryFeedback?.message).not.toContain(code)
+      view.unmount()
+    },
+  )
+
+  it.each(['job', 'account'] as const)('does not recover after the visible %s changes during the session read', async (changed) => {
+    mockGetMatchingOperation.mockResolvedValue({ success: true, status: 200, data: { job_id: JOB, operation: null } })
+    let finish!: (value: ReturnType<typeof legacyChat>) => void
+    mockGetChat.mockImplementation(() => new Promise((resolve) => { finish = resolve }))
+    const view = setup()
+    let pending!: Promise<boolean>
+    act(() => { pending = view.result.current.confirmRemoteSearch(JOB, SESSION) })
+    await waitFor(() => expect(mockGetChat).toHaveBeenCalled())
+    if (changed === 'account') view.rerender({ userId: 'another-account' })
+    else (view.stateRef as { current: { deal: { id: string } } }).current.deal.id = 'another-job'
+    await act(async () => { finish(legacyChat()); expect(await pending).toBe(false) })
+    expect(mockRecoverConfirmation).not.toHaveBeenCalled()
+    expect(mockConfirmSearch).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it.each(['job_id', 'customer_id', 'id'] as const)('rejects a session with mismatched %s before recovery', async (field) => {
+    mockGetMatchingOperation.mockResolvedValue({ success: true, status: 200, data: { job_id: JOB, operation: null } })
+    const chat = legacyChat()
+    chat.data.session[field] = 'foreign-identity'
+    mockGetChat.mockResolvedValue(chat)
+    const view = setup()
+    await act(async () => { expect(await view.result.current.confirmRemoteSearch(JOB, SESSION)).toBe(false) })
+    expect(mockRecoverConfirmation).not.toHaveBeenCalled()
+    expect(mockConfirmSearch).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('never adopts a legacy confirmation automatically on mount or foreground', async () => {
+    const view = setup()
+    await act(async () => {})
+    expect(mockGetChat).not.toHaveBeenCalled()
+    expect(mockRecoverConfirmation).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it('binds the recovery HTTP command to the explicit token and rejects a foreign receipt', async () => {
+    const post = jest.spyOn(api, 'postAuthenticated').mockResolvedValue({ success: true, status: 200, data: { operation: {
+      operation_id: OPERATION, idempotency_key: `kael-confirm:${SESSION}:${OWNER}`, session_id: SESSION,
+      job_id: PARENT, quote_mode: 'kael_auto_quote', state: 'no_reachable_worker', terminal: true,
+      accepted_at: '2026-10-09T00:00:00.000Z', updated_at: '2026-10-09T00:00:00.000Z',
+      retry_after_ms: null, support_code: 'RETRY123',
+    } } })
+    const input = { job_id: JOB, price_reasoning_receipt_id: 'original-price-receipt' }
+    expect(await recoverLegacyConfirmation(SESSION, input, `token-${OWNER}`)).toMatchObject({
+      success: false, code: 'LEGACY_RECOVERY_OUTCOME_UNKNOWN',
+    })
+    expect(post).toHaveBeenCalledWith(`/kael/chat/${SESSION}/recover-confirmation`, input, `token-${OWNER}`)
+  })
+
+  it('does not keep retry failure visible after the same job has been cancelled', async () => {
+    mockGetMatchingOperation.mockResolvedValue({ success: true, status: 200, data: { job_id: JOB, operation: null } })
+    const view = setup()
+    await act(async () => { await view.result.current.confirmRemoteSearch(JOB) })
+    expect(view.result.current.customerMatchingRetryFeedback).not.toBeNull()
+    const stateRef = view.stateRef as { current: { deal: { status: string } } }
+    stateRef.current.deal.status = 'cancelled'
+    view.rerender({ userId: OWNER })
+    expect(view.result.current.customerMatchingRetryFeedback).toBeNull()
+    view.unmount()
+  })
   beforeEach(async () => {
     jest.clearAllMocks()
+    mockGetChat.mockReset()
+    mockRecoverConfirmation.mockReset()
     await AsyncStorage.clear()
     Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'active' })
     jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }))

@@ -392,9 +392,10 @@ describe('customer Kael decision concurrency', () => {
     expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenLastCalledWith('job-a')
   })
 
-  it('sends only one worker-search retry while the expired broadcast is being renewed', async () => {
+  it.each([true, false])('sends one retry with a session hint only when its job is linked (linked=%s)', async (linked) => {
     let resolveRetry!: (value: boolean) => void
     const harness = decisionHarness()
+    harness.input.conversation.chat.session.job_id = linked ? 'job-a' : 'another-job'
     harness.input.deal = {
       ...harness.input.deal,
       broadcast: { status: 'expired' },
@@ -413,7 +414,8 @@ describe('customer Kael decision concurrency', () => {
     })
 
     expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenCalledTimes(1)
-    expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenLastCalledWith('job-a')
+    if (linked) expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenLastCalledWith('job-a', 'session-a')
+    else expect(harness.workflow.actions.confirmRemoteSearch).toHaveBeenLastCalledWith('job-a')
     await act(async () => {
       resolveRetry(true)
       await Promise.all([firstRetry, secondRetry])

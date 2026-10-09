@@ -1992,6 +1992,19 @@ describe('active customer Kael chat surface wiring', () => {
     expect(screen.getByText('Chưa thể tải công việc. Vui lòng thử lại.')).toBeOnTheScreen()
   })
 
+  it('retries a failed Case read and restores its server-confirmed job panel', async () => {
+    mockRouteParams = { jobId: 'job-old-session', mode: 'case' }
+    mockWorkflowDeal = makeWorkflowDeal()
+    mockJobMessages = [{ content: 'Kael Công việc: Công việc đã được xác nhận', id: 'confirmed-message', sender_role: 'kael' }]
+    mockHydrateRemoteJobById.mockResolvedValueOnce(false).mockResolvedValue(true)
+    render(<CustomerKaelSurface />)
+    await waitFor(() => expect(screen.getByText('Chưa thể tải công việc. Vui lòng thử lại.')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('customer-v21-kael-retry-job-load'))
+    await waitFor(() => expect(screen.queryByTestId('customer-v21-kael-error')).toBeNull())
+    expect(screen.getByTestId('customer-v21-case-work-thread')).toBeOnTheScreen()
+    expect(mockHydrateRemoteJobById).toHaveBeenCalledTimes(2)
+  })
+
   it('does not let a cached intake draft take ownership from an explicit Case Work job route', async () => {
     await setPendingKaelChatDraft(mockCustomerId, {
       message: 'Stale intake draft that does not belong to the routed job.',

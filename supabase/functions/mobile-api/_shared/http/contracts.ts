@@ -1,5 +1,6 @@
 import type { EdgeRfqPriceProposalInput as RfqPriceProposalInput, EdgeRfqPriceDecisionInput as RfqPriceDecisionInput,
   EdgeRfqPriceProposal as RfqPriceProposal, EdgeRfqPriceStatus as RfqPriceStatus } from "../../../_shared/contracts/rfq-price.ts";
+import type { LegacyConfirmationRecoveryServices } from "./routes/legacy-confirmation-recovery-services-contract.ts";
 import type {
   EdgeApartmentAccessAuthorizationInput,
   EdgeApartmentAccessAuthorizationReceipt,
@@ -202,7 +203,7 @@ import type {
 } from "../domains/contracts/admin-activation.ts";
 export * from "./contract-reexports.ts";
 
-export type MobileApiServices = AdminControlServices & ProgramServices & {
+export type MobileApiServices = AdminControlServices & ProgramServices & LegacyConfirmationRecoveryServices & {
   getAdminActivation(ctx: MobileApiContext): Promise<AdminActivationStatusResponse>;
   activateAdminOperator(
     ctx: MobileApiContext,

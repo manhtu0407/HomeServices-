@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
-    "fileCount": 21,
-    "sha256": "435115edc2d6f6151557f38e36f02512bc37772a28223d0e08ff61bbac6d1850"
+    "fileCount": 22,
+    "sha256": "86ff46517f0efb3de15a18be5d55069a932537b2fc25fda85c96ea9fffbf857f"
   },
   "entries": [
     {
@@ -4085,6 +4085,29 @@
       "operationClass": "database_read",
       "sideEffectClass": "read-only",
       "privileged": false,
+      "resourceType": "session",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/kael-chat-session-routes.ts"
+      ]
+    },
+    {
+      "kind": "kael.chat.recoverConfirmation",
+      "capability": "mobile.route.kael.chat.recoverConfirmation",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
       "resourceType": "session",
       "requiresResourceCheck": true,
       "confirmationGate": "none",

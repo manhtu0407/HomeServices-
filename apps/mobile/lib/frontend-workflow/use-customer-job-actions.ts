@@ -58,12 +58,13 @@ export function useCustomerJobActions({
   stateRef,
 }: CustomerJobActionsInput) {
   const currentJobRefreshInFlightRef = useRef<(JobReadFlight & { jobId: string }) | null>(null)
+  const selectedJobHydrationInFlightRef = useRef<(JobReadFlight & { jobId: string; token: string }) | null>(null)
   const cancellationInFlightRef = useRef<(JobReadFlight & { jobId: string }) | null>(null)
   const activeJobHydrationInFlightRef = useRef<JobReadFlight | null>(null)
   const confirmationRecoveryInFlightRef = useRef<JobReadFlight | null>(null)
   const selectedJobReadRef = useRef(0)
   // An old callback must stay retired even if the same account signs in again.
-  const jobSession = useMemo(() => ({ active: false, generation: 0 }), [role, sessionUserId])
+  const jobSession = useMemo(() => ({ active: false, generation: 0 }), [role, sessionUserId, sessionAccessToken])
   useEffect(() => {
     jobSession.active = true
     jobSession.generation += 1
@@ -98,20 +99,24 @@ export function useCustomerJobActions({
 
   // The caller can pass its own access token so a just-confirmed job hydrates
   // even when the shared client still holds a stale session.
-  const hydrateRemoteJobById = useCallback(async (jobId: string, accessToken?: string) => {
+  const hydrateRemoteJobById = useCallback((jobId: string, accessToken?: string): Promise<boolean> => {
     const token = accessToken ?? sessionAccessToken
-    if (!captureJobRead()() || !token) return false
-    if (!jobId) return setRemoteError('Chưa có yêu cầu để tải lại')
+    if (!captureJobRead()() || !token) return Promise.resolve(false)
+    if (!jobId) return Promise.resolve(setRemoteError('Chưa có yêu cầu để tải lại'))
+    const flight = selectedJobHydrationInFlightRef.current
+    if (flight?.jobId === jobId && flight.token === token && flight.current()) return flight.request
     selectedJobReadRef.current += 1
     const current = captureJobRead()
-    try {
+    const request = (async () => {
       const result = await jobService.getJob(jobId, token)
       if (!current()) return false
       if (result.success && result.data.job?.id !== jobId) return reportReadFailure('INVALID_RESPONSE')
       return hydrateJobResult(result)
-    } catch {
-      return current() ? reportReadFailure('NETWORK_ERROR') : false
-    }
+    })().catch(() => current() ? reportReadFailure('NETWORK_ERROR') : false).finally(() => {
+      if (selectedJobHydrationInFlightRef.current?.request === request) selectedJobHydrationInFlightRef.current = null
+    })
+    selectedJobHydrationInFlightRef.current = { jobId, token, current, request }
+    return request
   }, [captureJobRead, hydrateJobResult, reportReadFailure, sessionAccessToken, setRemoteError])
 
   const reconcilePendingConfirmations = useCallback(() => {
@@ -270,7 +275,8 @@ export function useCustomerJobActions({
   }, [captureJobRead, reportReadFailure, role, sessionAccessToken, setRemoteError, stateRef])
 
   const cancelRemoteJob = useCallback(() => {
-    const inSession = captureJobRead()
+    const generation = jobSession.generation
+    const inSession = () => Boolean(sessionUserId && jobSession.active && jobSession.generation === generation)
     if (!inSession() || role !== 'customer' || !sessionAccessToken) return Promise.resolve(false)
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) {
@@ -350,7 +356,7 @@ export function useCustomerJobActions({
     })
     cancellationInFlightRef.current = { jobId, current, request }
     return request
-  }, [captureJobRead, dispatch, hydrateJobResult, hydrateRemoteJobById, language, role, sessionAccessToken, setRemoteError, stateRef])
+  }, [dispatch, hydrateJobResult, hydrateRemoteJobById, jobSession, language, role, sessionAccessToken, sessionUserId, setRemoteError, stateRef])
 
   // On customer login/cold start, hydrate the active job once; polling keeps it
   // fresh while the deal remains active.

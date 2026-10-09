@@ -6,6 +6,13 @@ import { getCustomerThemeTokens } from '../customer-theme'
 import { AgenticCaseThreadPanel } from '../kael-chat/chat-case-thread-stateful-surfaces'
 
 describe('Case Work phase controls', () => {
+  it('locks retry and stop while the workflow is still reconciling a retry', () => {
+    const deal = dealFixture('broadcasting', 'waiting_customer_decision', 'expired')
+    deal.matchingState = { stage: 'exhausted', strategy: 'general', batch: null, checks: [], event_history: [] }
+    renderPanel(deal, jest.fn(), jest.fn(), jest.fn(), { retryingWorkerSearch: true })
+    expect(screen.getByTestId('customer-v21-finding-workers-exhausted-retry')).toBeDisabled()
+    expect(screen.getByTestId('customer-v21-finding-workers-stop')).toBeDisabled()
+  })
   it('shows Worker and Kael scope-review progress before any Customer decision is available', () => {
     const deal = dealFixture('inspecting')
     deal.finalPrice = 350_000
@@ -279,6 +286,7 @@ function renderPanel(
   onRetryWorkerSearch = jest.fn(),
   onAuthorizeApartmentAccess = jest.fn(),
   options: {
+    retryingWorkerSearch?: boolean
     onClaimManualBankPayment?: () => Promise<boolean>
     onCreateManualBankPaymentOrder?: () => Promise<boolean>
     onRefreshPayment?: () => Promise<boolean>
@@ -319,7 +327,7 @@ function renderPanel(
       onStopMatching={jest.fn(async () => false)}
       onSubmitReview={options.onSubmitReview ?? jest.fn(async () => false)}
       reduceMotion
-      retryingWorkerSearch={false}
+      retryingWorkerSearch={options.retryingWorkerSearch ?? false}
       submittingCaseQuoteRejectReason={false}
       paymentRailProvider={options.paymentRailProvider ?? null}
       textInputStyle={{}}

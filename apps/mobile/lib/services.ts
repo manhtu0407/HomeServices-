@@ -1,5 +1,6 @@
 import { api, mobileApiUrl } from './api'
 import { customerMatchingRetryService } from './services/customer-matching-retry'
+import { recoverLegacyConfirmation } from './services/legacy-confirmation-recovery'
 import { customerMatchingSelectionService } from './services/customer-matching-selection'
 import { customerNormalChatSessionMethods, workerNormalChatSessionMethods } from './services/normal-chat-suggestions'
 import type { ApartmentAccessAuthorizationInput, CandidateDecisionStatus } from '@nestscout/shared'
@@ -258,6 +259,7 @@ export const jobService = {
 }
 
 export const kaelChatService = {
+  recoverConfirmation: recoverLegacyConfirmation,
   create({ profileId, scheduledAt, scheduleWindow, profile_id, scheduled_at, ...input }: MobileKaelChatCreateInput) {
     return api.post<KaelChatResponse>('/kael/chat', {
       ...input,

@@ -214,6 +214,7 @@ import {
   confirmKaelChat,
   recoverKaelConfirmationOperation,
 } from "./domains/kael-chat/confirm.service.ts";
+import { recoverLegacyKaelConfirmation } from "./domains/kael-chat/legacy-confirmation-recovery.ts";
 import { getCustomerProfileInsights } from "./domains/customer/profile-insights.ts";
 import { getWorkerPerformanceInsights } from "./domains/worker/profile-insights.ts";
 import {
@@ -308,6 +309,7 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
   | "decideKaelIntakeConfirmation"
   | "confirmKaelChat"
   | "getKaelConfirmationOperation"
+  | "recoverLegacyKaelConfirmation"
   | "submitKaelChatEvidence"
 > {
   return {
@@ -344,6 +346,7 @@ function createKaelChatServices(secrets: EdgeServiceSecrets): Pick<
       confirmKaelChat(ctx, sessionId, input, aiRuntime(ctx, secrets)),
     getKaelConfirmationOperation: (ctx, sessionId) =>
       recoverKaelConfirmationOperation(ctx, sessionId, aiRuntime(ctx, secrets)),
+    recoverLegacyKaelConfirmation,
     submitKaelChatEvidence: (ctx, sessionId, input) =>
       submitKaelChatEvidence(ctx, sessionId, input, aiRuntime(ctx, secrets)),
   };

@@ -10,6 +10,7 @@ import { KaelLiquidReveal } from './kael-liquid-reveal'
 export function CaseWorkResponse({
   controls,
   details,
+  hideNoteSummary = false,
   model,
   reduceMotion,
   testID = 'customer-v21-case-work-response',
@@ -18,6 +19,7 @@ export function CaseWorkResponse({
 }: {
   controls?: ReactNode
   details?: ReactNode
+  hideNoteSummary?: boolean
   model: CaseWorkResponseModel
   reduceMotion: boolean
   testID?: string
@@ -67,7 +69,7 @@ export function CaseWorkResponse({
 
           <View
             accessible={!details && !controls}
-            accessibilityLabel={`${model.noteTitle}. ${model.noteCopy}`}
+            accessibilityLabel={hideNoteSummary ? undefined : `${model.noteTitle}. ${model.noteCopy}`}
             style={[
               styles.note,
               compact ? styles.noteCompact : null,
@@ -75,13 +77,17 @@ export function CaseWorkResponse({
             ]}
             testID="customer-v21-case-work-response-note"
           >
-            <Text style={[styles.noteTitle, { color: tokens.primary }]}>{model.noteTitle}</Text>
-            <Text
-              style={[styles.noteCopy, compact ? styles.noteCopyCompact : null, { color: tokens.muted }]}
-              testID="customer-v21-case-work-response-note-copy"
-            >
-              {model.noteCopy}
-            </Text>
+            {!hideNoteSummary ? (
+              <>
+                <Text style={[styles.noteTitle, { color: tokens.primary }]}>{model.noteTitle}</Text>
+                <Text
+                  style={[styles.noteCopy, compact ? styles.noteCopyCompact : null, { color: tokens.muted }]}
+                  testID="customer-v21-case-work-response-note-copy"
+                >
+                  {model.noteCopy}
+                </Text>
+              </>
+            ) : null}
             {details ? <View style={styles.details}>{details}</View> : null}
             {controls ? (
               <View accessible={false} style={styles.controls} testID="customer-v21-case-work-response-controls">

@@ -97,6 +97,7 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
       headers: { 'Content-Type': 'text/event-stream; charset=utf-8' },
     })),
     createKaelChat: vi.fn(),
+    recoverLegacyKaelConfirmation: vi.fn(),
     answerKaelAssistant: vi.fn(),
     createKaelChatMediaUpload: vi.fn(async () => ({
       bucket_id: 'kael-chat-media' as const,

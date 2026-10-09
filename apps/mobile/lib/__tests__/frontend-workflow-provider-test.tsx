@@ -1,9 +1,13 @@
-import { act, render, screen, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { useEffect } from 'react'
 import { AppState, Text } from 'react-native'
 import type { LocalWorkflowAction } from '@nestscout/shared'
 import type { JobDetailResponse } from '../api-types'
 import { FrontendWorkflowProvider, useFrontendWorkflow } from '../frontend-workflow-provider'
+import { useCustomerCaseHydration } from '@/components/customer/kael-chat/use-customer-case-hydration'
+import { FindingWorkersReceipt } from '@/components/customer/kael-chat/finding-workers-receipt'
+import { getCustomerThemeTokens } from '@/components/customer/customer-theme'
+import { KaelButton } from '@/components/ui/kael-primitives'
 
 const mockGetProfile = jest.fn()
 const mockGetEarnings = jest.fn()
@@ -112,6 +116,19 @@ function WorkflowDealIdProbe() {
     latestWorkflowActions = actions
   }, [actions])
   return <Text testID="workflow-deal-id">{state.deal?.id ?? 'none'}</Text>
+}
+
+function CustomerCaseReadProbe() {
+  const { actions, state } = useFrontendWorkflow()
+  useEffect(() => { latestWorkflowActions = actions }, [actions])
+  const hydration = useCustomerCaseHydration({ active: true, hydrate: actions.hydrateRemoteJobById,
+    routeJobId: 'job-shared', sessionAccessToken: `token-${mockAuth.session.user.id}` })
+  if (hydration.failed) return <KaelButton label="Tải lại công việc" onPress={hydration.retry} testID="retry-case-read" />
+  if (hydration.hydrating || !state.deal?.matchingState) return <Text>Đang tải công việc</Text>
+  return <FindingWorkersReceipt language="vi" matchingState={state.deal.matchingState}
+    selectionState={{ jobId: state.deal.id, scopeKey: `customer-1:${state.deal.id}`, ready: true, choice: null }}
+    onChoosePreference={async () => false} onLoadSavedWorkers={async () => []}
+    onRetry={() => undefined} onStop={() => false} reduceMotion tokens={getCustomerThemeTokens('light')} />
 }
 
 function WorkflowStatusProbe() {
@@ -251,6 +268,7 @@ function buildCustomerJobDetail(
 describe('FrontendWorkflowProvider worker bootstrap', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockGetJob.mockReset()
     latestWorkflowDispatch = null
     latestWorkflowActions = null
     mockGetCustomerAvatar.mockReset()
@@ -469,6 +487,79 @@ describe('FrontendWorkflowProvider worker bootstrap', () => {
     expect(screen.getByTestId('workflow-deal-id')).toHaveTextContent('job-next')
     await act(async () => { delayed.resolve({ success: true, status: 200, data: firstJob }); await refresh })
     expect(screen.getByTestId('workflow-deal-id')).toHaveTextContent('job-next')
+    view.unmount()
+  })
+
+  it.each([false, true])('shares a same-job read across callers (reverse resolution=%s)', async (reverse) => {
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+    mockAuth = { role: 'customer', session: { user: { id: 'customer-1' } } }
+    const responses = [0, 1].map(() => deferred<{ success: true; status: number; data: JobDetailResponse }>())
+    let reads = 0
+    mockGetJob.mockImplementation(() => responses[reads++].promise)
+    const view = render(<FrontendWorkflowProvider><WorkflowDealIdProbe /></FrontendWorkflowProvider>)
+    let first!: Promise<boolean>
+    let second!: Promise<boolean>
+    act(() => {
+      first = latestWorkflowActions!.hydrateRemoteJobById('job-shared')
+      second = latestWorkflowActions!.hydrateRemoteJobById('job-shared')
+    })
+    await act(async () => {
+      for (const response of reverse ? [...responses].reverse() : responses) {
+        response.resolve({ success: true, status: 200, data: buildCustomerJobDetail('job-shared', 'broadcasting') })
+      }
+      expect(await Promise.all([first, second])).toEqual([true, true])
+    })
+    expect(mockGetJob).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('workflow-deal-id')).toHaveTextContent('job-shared')
+    view.unmount()
+  })
+
+  it('restores the real matching receipt after a failed API read and a shared retry', async () => {
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+    mockAuth = { role: 'customer', session: { user: { id: 'customer-1' } } }
+    mockGetJob.mockRejectedValueOnce(new Error('network unavailable'))
+    const response = deferred<{ success: true; status: number; data: JobDetailResponse }>()
+    mockGetJob.mockReturnValueOnce(response.promise)
+    const view = render(<FrontendWorkflowProvider><CustomerCaseReadProbe /></FrontendWorkflowProvider>)
+    await waitFor(() => expect(screen.getByTestId('retry-case-read')).toBeOnTheScreen())
+    fireEvent.press(screen.getByTestId('retry-case-read'))
+    await waitFor(() => expect(mockGetJob).toHaveBeenCalledTimes(2))
+    let joined!: Promise<boolean>
+    act(() => { joined = latestWorkflowActions!.hydrateRemoteJobById('job-shared') })
+    const job = buildCustomerJobDetail('job-shared', 'broadcasting')
+    job.matching_state = { stage: 'exhausted', strategy: 'general', batch: null,
+      checks: [{ kind: 'availability', state: 'verified' }],
+      event_history: [{ kind: 'no_worker_found', occurred_at: '2026-10-09T00:01:21.000Z' }] }
+    await act(async () => { response.resolve({ success: true, status: 200, data: job }); expect(await joined).toBe(true) })
+    await waitFor(() => expect(screen.getByText('Chưa có thợ phù hợp')).toBeOnTheScreen())
+    expect(screen.getByTestId('customer-v21-finding-workers-exhausted-retry')).toBeOnTheScreen()
+    expect(screen.queryByTestId('retry-case-read')).toBeNull()
+    expect(mockGetJob).toHaveBeenCalledTimes(2)
+    view.unmount()
+  })
+
+  it.each(['account', 'role', 'token'] as const)('retires an in-flight same-job read on %s change', async (change) => {
+    Object.defineProperty(AppState, 'currentState', { configurable: true, value: 'background' })
+    mockAuth = { role: 'customer', session: { access_token: 'token-old', user: { id: 'customer-1' } } }
+    const delayed = deferred<{ success: true; status: number; data: JobDetailResponse }>()
+    mockGetJob.mockReturnValueOnce(delayed.promise)
+      .mockResolvedValueOnce({ success: true, status: 200, data: buildCustomerJobDetail('job-shared', 'reviewed') })
+    const view = render(<FrontendWorkflowProvider><WorkflowStatusProbe /></FrontendWorkflowProvider>)
+    const retiredHydrate = latestWorkflowActions!.hydrateRemoteJobById
+    let oldRead!: Promise<boolean>
+    act(() => { oldRead = retiredHydrate('job-shared') })
+    mockAuth = { role: change === 'role' ? 'admin' : 'customer', session: {
+      access_token: change === 'token' ? 'token-new' : 'token-old',
+      user: { id: change === 'account' ? 'customer-2' : 'customer-1' } } }
+    view.rerender(<FrontendWorkflowProvider><WorkflowStatusProbe /></FrontendWorkflowProvider>)
+    await act(async () => { expect(await latestWorkflowActions!.hydrateRemoteJobById('job-shared')).toBe(true) })
+    await act(async () => {
+      delayed.resolve({ success: true, status: 200, data: buildCustomerJobDetail('job-shared', 'broadcasting') })
+      expect(await oldRead).toBe(false)
+      expect(await retiredHydrate('job-shared')).toBe(false)
+    })
+    expect(screen.getByTestId('workflow-status')).toHaveTextContent('reviewed')
+    expect(mockGetJob).toHaveBeenCalledTimes(2)
     view.unmount()
   })
 

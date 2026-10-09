@@ -3,6 +3,7 @@ import { useCallback, useMemo, useReducer, useRef, useSyncExternalStore } from '
 import { Image } from 'expo-image'
 import {
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -85,6 +86,7 @@ type FindingWorkersReceiptProps = {
   onRetry: () => Promise<void> | void
   onStop: () => Promise<boolean | void> | boolean | void
   reduceMotion: boolean
+  retryingWorkerSearch?: boolean
   tokens: CustomerThemeTokens
 }
 
@@ -102,6 +104,7 @@ function ScopedFindingWorkersReceipt({
   onRetry,
   onStop,
   reduceMotion,
+  retryingWorkerSearch = false,
   tokens,
 }: FindingWorkersReceiptProps) {
   const [state, dispatch] = useReducer(findingWorkersUiReducer, initialFindingWorkersUiState)
@@ -167,8 +170,10 @@ function ScopedFindingWorkersReceipt({
     }
   }
 
+  const actionBusy = retryBusy || stopBusy || retryingWorkerSearch
+
   const retry = async () => {
-    if (retryBusy) return
+    if (actionBusy) return
     dispatch({ type: 'retryBusy', value: true })
     try {
       await onRetry()
@@ -178,7 +183,7 @@ function ScopedFindingWorkersReceipt({
   }
 
   const stop = async () => {
-    if (stopBusy) return
+    if (actionBusy) return
     dispatch({ type: 'stopBusy', value: true })
     try {
       await onStop()
@@ -190,7 +195,7 @@ function ScopedFindingWorkersReceipt({
   return (
     <View style={styles.root} testID="customer-v21-finding-workers-receipt">
       <KaelLiquidStatusTransition
-        reduceMotion={reduceMotion}
+        reduceMotion={reduceMotion || Platform.OS === 'web'}
         style={[styles.signal, { backgroundColor: tokens.service, borderColor: tokens.border }]}
         transitionKey={transitionKey}
       >
@@ -285,16 +290,16 @@ function ScopedFindingWorkersReceipt({
       {matchingState.stage === 'exhausted' || matchingState.stage === 'recovery_required' ? (
         <View style={styles.actions} testID="customer-v21-finding-workers-exhausted-actions">
           <KaelButton
-            accessibilityState={{ busy: retryBusy, disabled: retryBusy || stopBusy }}
-            disabled={retryBusy || stopBusy}
-            label={retryBusy ? copy.retrying : copy.retry}
+            accessibilityState={{ busy: retryBusy || retryingWorkerSearch, disabled: actionBusy }}
+            disabled={actionBusy}
+            label={retryBusy || retryingWorkerSearch ? copy.retrying : copy.retry}
             onPress={() => void retry()}
             size="small"
             testID="customer-v21-finding-workers-exhausted-retry"
           />
           <KaelButton
-            accessibilityState={{ busy: stopBusy, disabled: retryBusy || stopBusy }}
-            disabled={retryBusy || stopBusy}
+            accessibilityState={{ busy: stopBusy, disabled: actionBusy }}
+            disabled={actionBusy}
             label={stopBusy ? copy.stopping : copy.stop}
             onPress={() => void stop()}
             size="small"
@@ -585,7 +590,7 @@ function receiptCopy(language: AppLanguage) {
       stages: {
         awaiting_choice: { body: 'Choose whether to start with a saved worker or let Kael search the suitable group.', title: 'Kael is ready to begin matching' },
         candidate_ready: { body: 'A worker responded. Review and confirm them before the official match.', title: 'A worker is ready for your review' },
-        exhausted: { body: 'The current search has no available response. You can try again or stop the search.', title: 'No worker has responded yet' },
+        exhausted: { body: 'The current search has no available response. You can try again or stop the search.', title: 'No suitable worker available' },
         recovery_required: { body: 'Kael could not confirm a worker request. You can retry safely or stop the search.', title: 'A worker request needs your decision' },
         general_search: { body: 'Kael is checking real availability and sending the current batch only to eligible workers.', title: 'Kael is finding suitable workers' },
         saved_worker_search: { body: 'Kael is giving your selected saved worker the first response window.', title: 'Kael is contacting your saved worker' },
@@ -652,7 +657,7 @@ function receiptCopy(language: AppLanguage) {
     stages: {
         awaiting_choice: { body: 'Chọn bắt đầu với thợ đã lưu hoặc để Kael tìm nhóm thợ phù hợp.', title: 'Kael sẵn sàng bắt đầu ghép thợ' },
         candidate_ready: { body: 'Một thợ đã phản hồi. Hãy xem và xác nhận trước khi ghép chính thức.', title: 'Đã có thợ chờ bạn xem xét' },
-        exhausted: { body: 'Lượt tìm hiện tại chưa có phản hồi khả dụng. Bạn có thể tìm lại hoặc dừng tìm.', title: 'Chưa có thợ phản hồi' },
+        exhausted: { body: 'Lượt tìm hiện tại chưa có phản hồi khả dụng. Bạn có thể tìm lại hoặc dừng tìm.', title: 'Chưa có thợ phù hợp' },
         recovery_required: { body: 'Kael chưa xác nhận được lượt gửi đến thợ. Bạn có thể tìm lại an toàn hoặc dừng tìm.', title: 'Lượt gửi cần quyết định của bạn' },
         general_search: { body: 'Kael đang kiểm tra khả năng nhận việc thật và chỉ gửi lượt hiện tại cho thợ đủ điều kiện.', title: 'Kael đang tìm thợ phù hợp' },
       saved_worker_search: { body: 'Kael đang dành cửa sổ phản hồi đầu tiên cho thợ đã lưu bạn chọn.', title: 'Kael đang liên hệ thợ đã lưu' },

@@ -72,6 +72,20 @@ function setup(role: UserRole = 'customer', token: string | undefined = 'custome
 }
 
 describe('Customer job command isolation', () => {
+  it('keeps a cancellation receipt authoritative when the same job hydrates during the command', async () => {
+    const view = setup()
+    const pending = deferred<unknown>()
+    mockCancel.mockReturnValue(pending.promise)
+    const cancellation = view.result.current.cancelRemoteJob()
+    mockGetJob.mockResolvedValue({ success: true, status: 200, data: detail('broadcasting') })
+    await act(async () => { await view.result.current.hydrateRemoteJobById(JOB) })
+    await act(async () => {
+      pending.resolve({ success: true, status: 200, data: { job_id: JOB, status: 'cancelled' } })
+      expect(await cancellation).toBe(true)
+    })
+    expect(view.dispatch).toHaveBeenLastCalledWith(expect.objectContaining({ job: expect.objectContaining({ id: JOB, status: 'cancelled' }) }))
+    view.unmount()
+  })
   beforeEach(async () => {
     jest.clearAllMocks()
     for (const mock of [mockCancel, mockRequestCancellation, mockGetJob, mockFavorites]) mock.mockReset()

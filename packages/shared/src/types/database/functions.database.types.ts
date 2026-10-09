@@ -3831,6 +3831,15 @@ export type DatabaseFunctions = {
           server_time: string
         }[]
       }
+      recover_legacy_kael_confirmation_atomic: {
+        Args: {
+          p_customer_id: string
+          p_job_id: string
+          p_price_reasoning_receipt_id: string
+          p_session_id: string
+        }
+        Returns: Json
+      }
       recover_worker_cancellation_replacement: {
         Args: { p_cancellation_id: string; p_worker_id: string }
         Returns: {

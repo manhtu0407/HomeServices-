@@ -96,7 +96,7 @@ export function AgenticCaseThreadPanel({
   onQuoteRejectReasonSubmit: () => void
   onRejectScopeChange: (id: string) => void
   onRejectQuote: () => void
-  onRetryWorkerSearch: () => void
+  onRetryWorkerSearch: () => Promise<void> | void
   onStopMatching: () => Promise<boolean>
   onSubmitReview: (input: { rating: number; tags: string[]; comment?: string }) => Promise<boolean>
   reduceMotion: boolean
@@ -164,6 +164,7 @@ export function AgenticCaseThreadPanel({
       onChoosePreference={onChooseMatchingPreference}
       onLoadSavedWorkers={onLoadSavedWorkers}
       onRetry={() => onRetryWorkerSearch()}
+      retryingWorkerSearch={retryingWorkerSearch}
       onStop={onStopMatching}
       reduceMotion={reduceMotion}
       tokens={tokens}
@@ -257,6 +258,7 @@ export function AgenticCaseThreadPanel({
           />
         ) : undefined)}
         details={scopeReviewingDetails ?? scopeProposalDetails ?? matchingReceipt}
+        hideNoteSummary={Boolean(matchingReceipt)}
         model={model}
         reduceMotion={reduceMotion}
         tokens={tokens}

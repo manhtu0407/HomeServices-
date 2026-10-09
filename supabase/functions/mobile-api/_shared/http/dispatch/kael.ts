@@ -12,6 +12,7 @@ import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
 import type { MobileApiContext, MobileApiServices } from "../contracts.ts";
 import { assertNever, type KaelDispatchRoute } from "./kinds.ts";
+import { legacyConfirmationRecoverySchema } from "../../../../_shared/contracts/legacy-confirmation-recovery.ts";
 
 export async function dispatchKaelRoute(
   route: KaelDispatchRoute,
@@ -79,6 +80,11 @@ export async function dispatchKaelRoute(
     }
     case "kael.chat.operation":
       return services.getKaelConfirmationOperation(ctx, route.sessionId);
+    case "kael.chat.recoverConfirmation": {
+      const input = legacyConfirmationRecoverySchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu khôi phục xác nhận không hợp lệ.", 400);
+      return services.recoverLegacyKaelConfirmation(ctx, route.sessionId, input.data);
+    }
     case "kael.chat.evidence": {
       const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);

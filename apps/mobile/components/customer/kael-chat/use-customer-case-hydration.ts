@@ -7,6 +7,7 @@ type CustomerCaseHydrationSnapshot = {
 
 type CustomerCaseHydrationOwner = {
   targetJobId: string
+  token: string | undefined
 }
 
 export function useCustomerCaseHydration({
@@ -29,13 +30,13 @@ export function useCustomerCaseHydration({
     ? routeJobId
     : null
   const [snapshot, setSnapshot] = useState<CustomerCaseHydrationSnapshot>(() => ({
-    owner: targetJobId ? { targetJobId } : null,
+    owner: targetJobId ? { targetJobId, token: sessionAccessToken } : null,
     status: null,
   }))
   let visibleSnapshot = snapshot
-  if ((snapshot.owner?.targetJobId ?? null) !== targetJobId) {
+  if ((snapshot.owner?.targetJobId ?? null) !== targetJobId || (snapshot.owner && snapshot.owner.token !== sessionAccessToken)) {
     visibleSnapshot = {
-      owner: targetJobId ? { targetJobId } : null,
+      owner: targetJobId ? { targetJobId, token: sessionAccessToken } : null,
       status: null,
     }
     setSnapshot(visibleSnapshot)
@@ -46,9 +47,10 @@ export function useCustomerCaseHydration({
     if (!hydrate || !owner) return undefined
 
     let cancelled = false
-    const request = sessionAccessToken
-      ? hydrate(owner.targetJobId, sessionAccessToken)
-      : hydrate(owner.targetJobId)
+    // Let the provider activate its session before a newly mounted Case reads it.
+    const request = Promise.resolve().then(() => cancelled
+      ? false
+      : hydrate(owner.targetJobId, sessionAccessToken))
     void request.then((hydrated) => {
       if (cancelled) return
       setSnapshot({
@@ -68,5 +70,9 @@ export function useCustomerCaseHydration({
     authRequired,
     failed: visibleSnapshot.status === 'failed',
     hydrating: Boolean(owner && !visibleSnapshot.status),
+    retry: () => {
+      if (!owner || visibleSnapshot.status !== 'failed') return
+      setSnapshot({ owner: { ...owner }, status: null })
+    },
   }
 }
