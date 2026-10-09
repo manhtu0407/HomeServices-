@@ -73,3 +73,13 @@ Hosted read-only structure checks also verified all NOT NULL columns used by the
 - Required fixes/proof: replay SQL against current baseline and check generated types/Edge; deploy through the governed release lane, then verify retry/stop and a genuine invitation on authenticated Preview; retain native evidence as unverified until captured. Full mobile and shared gates are now green.
 
 This is an ongoing implementation record, not a session-complete or Production-ready claim. Session-memory drafting remains pending user review under the repository memory contract.
+
+## Publication and CI follow-up
+
+Tu authorized scoped commit/push, a draft PR and CI, with the prior no-merge boundary retained. Commit `542fd039` contains the recovery package. Merge commit `326223ba` integrates current main `fe1326a3` without conflicts. PR #344 was created as a draft, attached to this task, confirmed non-conflicting, then marked ready once. The committed-tree `ship:check` reports all ten gates passed.
+
+CI run `37898511980` passed repository controls, empty-state migration replay, all 131 SQL files (including recovery), database type generation and the collected integration test. The database job failed on generated-type drift and one schema-lint warning: `private.validate_legacy_kael_offer` assigned an unread UUID variable. The actual generated artifact was imported through `split-database-types.mjs`; only the new recovery RPC was added. The lint repair retains the UUID cast through `perform`. Shared type-check and exact generated-type comparison passed locally after this repair; the SQL/lint rerun remains pending.
+
+Read-only hosted reconciliation found 248 statically resolved Edge RPC names, zero unscannable call sites and exactly one absent function, the undeployed recovery RPC. This is a pending release dependency, not deployed Edge/DB drift. The HVAC job still has zero broadcasts and no worker assignment. The inspected real worker has no active job, but its approved profile stores four plumbing specializations, no HVAC diagnosis capability and no current reachability proof. The other available profile belongs to a synthetic cohort and cannot match this real job. There is only one approved non-synthetic profile.
+
+The active `water_leak` price-knowledge row has the original 225,000–375,000 aggregate and a two-source quorum marker, but its stored evidence has one URL to a removal/relocation price page (`https://1fix.vn/di-doi-may-lanh-tai-nha`) and one source without a URL. Direct inspection confirms the linked page concerns removal/relocation. That row is not sufficient proof to publish a verified repair baseline. No price publication, capability grant, new invitation, merge or Production deployment was performed in this follow-up.

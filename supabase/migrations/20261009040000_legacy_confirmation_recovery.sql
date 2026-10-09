@@ -13,7 +13,6 @@ declare
   v_analysis_receipt jsonb;
   v_price_reasoning_receipt jsonb;
   v_components jsonb;
-  v_service_problem_id uuid;
   v_address_district text;
 begin
   select session.* into strict v_session from public.kael_chat_sessions session where session.id=p_session_id;
@@ -56,7 +55,7 @@ begin
     v_price_card -> 'price_reasoning_receipt',
     '{}'::jsonb
   );
-  v_service_problem_id := nullif(
+  perform nullif(
     v_estimate_turn.safe_metadata ->> 'service_problem_id',
     ''
   )::uuid;

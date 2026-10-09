@@ -74,10 +74,10 @@
       }
     ]
   },
-  "migrationsSha256": "f1b4de04b9f4b0f5d22e981a331d5f8cdd4e1ba8e9b249dda593ec798f828864",
+  "migrationsSha256": "4a6d647fe23ee24010a065b2ca5c1787ec0338394c4595d42e2e0eabe48108d8",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "81880f524afc694ded1bea7fa0b85f23c50cd99a64d7c788917d45c58c353507"
+    "sha256": "bda1bfc5e9462fee4e9a617aed2fcd09dfba5fae2dec5e47334bec546a750dca"
   },
   "entries": [
     {
@@ -3115,8 +3115,8 @@
       "version": "20261009040000",
       "name": "legacy_confirmation_recovery",
       "file": "supabase/migrations/20261009040000_legacy_confirmation_recovery.sql",
-      "sha256": "db3aae4a115433a4fa8576edd93831852c92e63c78b518b1d16f51fa0376238a",
-      "bytes": 20212
+      "sha256": "6f35f1dbc5b83f770a85c54c1092eb3d68a8bcabb58d9a08b6ae9581424a449c",
+      "bytes": 20167
     }
   ]
 }
