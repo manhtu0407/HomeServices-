@@ -28,6 +28,22 @@ export type GroundedServiceProblem = {
   labelVi: string;
 };
 
+export function matchingWorkerRequirementsForCase(
+  serviceCapabilities: readonly string[],
+  caseRequirements: readonly string[],
+) {
+  const supportedCapabilities = new Set(serviceCapabilities);
+  const requirements = [...new Set(caseRequirements)];
+  if (requirements.some((requirement) => !supportedCapabilities.has(requirement))) {
+    apiFailure(
+      "POLICY_UNAVAILABLE",
+      "Chính sách dịch vụ không tương thích với hồ sơ dịch vụ",
+      503,
+    );
+  }
+  return requirements;
+}
+
 export async function loadActiveIntakePolicy(
   input: {
     client: DbClient;

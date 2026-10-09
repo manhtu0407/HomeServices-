@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 434,
+  "migrationCount": 436,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "4a6d647fe23ee24010a065b2ca5c1787ec0338394c4595d42e2e0eabe48108d8",
+  "migrationsSha256": "25a55c1a07c7684cbbb79c178f7c2ecbe19bc84deda747bf1eebf1f67c43a058",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "bda1bfc5e9462fee4e9a617aed2fcd09dfba5fae2dec5e47334bec546a750dca"
@@ -3117,6 +3117,20 @@
       "file": "supabase/migrations/20261009040000_legacy_confirmation_recovery.sql",
       "sha256": "6f35f1dbc5b83f770a85c54c1092eb3d68a8bcabb58d9a08b6ae9581424a449c",
       "bytes": 20167
+    },
+    {
+      "version": "20261009050000",
+      "name": "worker_six_service_capability_limit",
+      "file": "supabase/migrations/20261009050000_worker_six_service_capability_limit.sql",
+      "sha256": "6a1c18d3ebd787975b4b10491d26fcef04658402eb2a2744b166261b3770ca57",
+      "bytes": 13310
+    },
+    {
+      "version": "20261009060000",
+      "name": "service_case_specific_worker_capabilities",
+      "file": "supabase/migrations/20261009060000_service_case_specific_worker_capabilities.sql",
+      "sha256": "5b98d97bbfbcff52ad0b6a87388fe3d7f59823f54aab9dd166e0cea6cb1f03f4",
+      "bytes": 10706
     }
   ]
 }

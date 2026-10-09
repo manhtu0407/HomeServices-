@@ -4332,7 +4332,9 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerProfileSurface />)
 
-    expect(screen.getByText('Chỉ ghép việc cho dịch vụ đã chọn và đủ điều kiện chất lượng.')).toBeTruthy()
+    expect(screen.getByText('Chọn dịch vụ muốn nhận. Kael còn kiểm tra kỹ năng phù hợp, chất lượng và khả năng nhận việc.')).toBeTruthy()
+    expect(screen.getByTestId('worker-v5-quick-action-0').props.accessibilityLabel).toContain('Đã chọn')
+    expect(screen.queryByText('Đang nhận')).toBeNull()
     expect(screen.getByTestId('worker-v5-skills-service-count')).toHaveTextContent('1 / 6 dịch vụ')
     expect(screen.getByTestId('worker-v5-skills-hero-detail')).toHaveTextContent(/Đã lưu/)
     expect(screen.getByTestId('worker-v5-quick-action-0').props.accessibilityState).toMatchObject({ checked: true })
@@ -4348,6 +4350,7 @@ describe('Worker runtime surface wiring', () => {
 
     await waitFor(() => {
       expect(mockWorkerUpdateServicePreferences).toHaveBeenCalledWith({
+        problem_specializations: [],
         selected_service_types: ['electrical', 'plumbing'],
       })
     })

@@ -60,14 +60,18 @@ export async function updateWorkerServicePreferences(
   ctx: MobileApiContext,
   input: WorkerServicePreferencesUpdateInput,
 ) {
+  const update: Record<string, unknown> = {
+    active_service_types: input.selected_service_types,
+    selected_service_types: input.selected_service_types,
+    updated_at: new Date().toISOString(),
+  };
+  if (input.problem_specializations !== undefined) {
+    update.problem_specializations = input.problem_specializations;
+  }
   const result = await dbQuery<{ id: string }>(
     db(ctx)
       .from("worker_profiles")
-      .update({
-        active_service_types: input.selected_service_types,
-        selected_service_types: input.selected_service_types,
-        updated_at: new Date().toISOString(),
-      })
+      .update(update)
       .eq("id", ctx.user.id)
       .select("id")
       .maybeSingle(),

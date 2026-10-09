@@ -115,6 +115,32 @@ const ACTIVE: ActivePriceKnowledge = {
 }
 
 describe('P344 Kael price knowledge', () => {
+  it('preserves the www host of a trusted source through storage and reuse', async () => {
+    const { client, writes } = recordingClient()
+    const result = quorumResult()
+    result.market.citations[1] = 'https://www.thoviet.com.vn/bang-gia?tracking=1#price'
+    result.market.citations.unshift('http://thoviet.com.vn/unsafe-first')
+    await recordPriceKnowledgeOutcome(client, {
+      serviceType: 'electrical', problemSlug: 'breaker_trip', serviceProblemId: null,
+      fingerprint: 'd'.repeat(64), result, existingGap: null,
+      now: new Date('2026-10-08T00:00:00.000Z'),
+    })
+    const sources = writes.find(write => write.op === 'insert')?.row.sources as ActivePriceKnowledge['sources']
+    expect(sources[1].url, pillarWhy(PILLAR, 'the same trusted www citation must survive persistence')).toBe('https://www.thoviet.com.vn/bang-gia')
+    const reused = marketResultFromKnowledge({ ...ACTIVE, sources })
+    expect(reused.success && reused.safeMetadata?.source_trust_accepted_sources).toEqual(
+      expect.arrayContaining([expect.objectContaining({ verified_domain: 'thoviet.com.vn', verified_url: 'https://www.thoviet.com.vn/bang-gia' })]),
+    )
+  })
+
+  it.each(['https://thoviet.com.vn.attacker.example/prices', 'https://unknown.thoviet.com.vn/prices', 'http://www.thoviet.com.vn/prices', 'https://user:secret@www.thoviet.com.vn/prices'])(
+    'does not expose an unverified or unsafe cached URL: %s', url => {
+      const reused = marketResultFromKnowledge({ ...ACTIVE, sources: [ACTIVE.sources[0], { ...ACTIVE.sources[1], url }] })
+      const sources = reused.success ? reused.safeMetadata?.source_trust_accepted_sources as Array<Record<string, unknown>> : []
+      expect(sources[1]).not.toHaveProperty('verified_url')
+    },
+  )
+
   it('stores a quorum-backed lookup as active knowledge with its sources and an audit trail', async () => {
     const { client, writes } = recordingClient()
     const outcome = await recordPriceKnowledgeOutcome(client, {

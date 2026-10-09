@@ -14,6 +14,15 @@ declare
   v_attempt public.worker_profiles%rowtype;
   v_before_row jsonb;
   v_before_queue jsonb;
+  v_services constant public.service_type[] := array['electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']::public.service_type[];
+  v_capabilities constant text[] := array[
+    'electrical_fault_isolation', 'fixed_wiring_and_panel_safety', 'device_repair_or_replacement', 'electrical_installation',
+    'leak_and_flow_diagnosis', 'pipe_and_fixture_repair', 'drain_clearing', 'fixture_installation',
+    'home_cleaning', 'deep_cleaning', 'surface_safe_cleaning', 'cleaning_equipment_operation',
+    'hvac_cleaning', 'hvac_fault_diagnosis', 'hvac_electrical_and_control_repair', 'refrigerant_system_service', 'safe_height_access',
+    'upholstery_material_identification', 'colorfastness_and_patch_testing', 'fabric_safe_extraction_cleaning', 'stain_and_odor_treatment',
+    'minor_home_repairs', 'safe_drilling_and_mounting', 'small_fixture_and_furniture_installation', 'multi_task_scope_management'
+  ];
 begin
   insert into auth.users (
     id,
@@ -101,13 +110,13 @@ begin
     'Nguyen Van A',
     '1990-01-15'::date,
     'male',
-    array['electrical'::public.service_type],
+    v_services,
     5,
     array['q1'],
     10.775,
     106.7,
     8,
-    array['outlet_repair'],
+    v_capabilities,
     'supabase://worker-verification/96000000-0000-4000-8000-000000000001/cccd-front/front.jpg',
     'supabase://worker-verification/96000000-0000-4000-8000-000000000001/cccd-back/back.jpg',
     'supabase://worker-verification/96000000-0000-4000-8000-000000000001/selfie/selfie.jpg',
@@ -118,7 +127,7 @@ begin
   if v_result.ok is not true
      or v_result.verification_status_out <> 'submitted'::public.worker_verification_status
      or v_result.idempotent_out is true then
-    raise exception 'initial worker registration did not submit atomically';
+    raise exception 'six-service registration rejected 25 explicitly declared capabilities: %', row_to_json(v_result);
   end if;
 
   select ctid::text into v_before_ctid
@@ -132,13 +141,13 @@ begin
     'Nguyen Van A',
     '1990-01-15'::date,
     'male',
-    array['electrical'::public.service_type],
+    v_services,
     5,
     array['q1'],
     10.775,
     106.7,
     8,
-    array['outlet_repair'],
+    v_capabilities,
     'supabase://worker-verification/96000000-0000-4000-8000-000000000001/cccd-front/front.jpg',
     'supabase://worker-verification/96000000-0000-4000-8000-000000000001/cccd-back/back.jpg',
     'supabase://worker-verification/96000000-0000-4000-8000-000000000001/selfie/selfie.jpg',

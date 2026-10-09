@@ -12,6 +12,7 @@ import { type DbClient, dbQuery, type DbResult } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import type { ServiceType } from "../../../../_shared/domain.ts";
 import { isWorkerServiceQualityLocked } from "../worker/service-preferences.ts";
+import { getKaelPerformanceProfile } from "../../kael/learning/performance-profiles.ts";
 
 const BROADCAST_RETRY_LEASE_SECONDS = 180;
 const BROADCAST_RETRY_CLAIM_FAILURE_CODES = [
@@ -254,12 +255,16 @@ export async function loadAllFavoriteWorkerIds(
   );
 }
 
-export async function loadJobGeoForMatching(client: DbClient, jobId: string) {
+export async function loadJobGeoForMatching(
+  client: DbClient,
+  jobId: string,
+  serviceType: ServiceType,
+) {
   const result = await dbQuery<Record<string, unknown>>(
     client
       .from("jobs")
       .select(
-        "customer_id, address_lat, address_lng, problem_chips, service_problem_id, kael_problem_identified, diagnosis_scope, intake_scope_snapshot, quote_mode, synthetic_cohort_id",
+        "customer_id, address_lat, address_lng, problem_chips, service_type, service_problem_id, kael_problem_identified, diagnosis_scope, intake_scope_snapshot, quote_mode, synthetic_cohort_id",
       )
       .eq("id", jobId)
       .maybeSingle(),
@@ -274,6 +279,37 @@ export async function loadJobGeoForMatching(client: DbClient, jobId: string) {
   if (!result.data) return null;
   const diagnosisScope = nullableRecord(result.data.diagnosis_scope) ??
     nullableRecord(result.data.intake_scope_snapshot) ?? {};
+  let workerRequirements = asStringArray(diagnosisScope.worker_requirements);
+  const profileCapabilities = getKaelPerformanceProfile(serviceType)?.worker_capabilities ?? [];
+  if (isLegacyServiceWideRequirements(workerRequirements, profileCapabilities)) {
+    let policyQuery = client.from("service_intake_policies")
+      .select("capability_requirements")
+      .eq("status", "active");
+    const serviceProblemId = nullableString(result.data.service_problem_id);
+    const problemSlug = nullableString(result.data.kael_problem_identified);
+    if (serviceProblemId) {
+      policyQuery = policyQuery.eq("service_problem_id", serviceProblemId);
+    } else if (problemSlug) {
+      policyQuery = policyQuery.eq("service_type", serviceType).eq("problem_slug", problemSlug);
+    }
+    if (serviceProblemId || problemSlug) {
+      const policyResult = await dbQuery<Record<string, unknown>>(
+        policyQuery.maybeSingle(),
+      );
+      if (policyResult.error) {
+        console.warn("mobile-api legacy matching-policy lookup failed", {
+          jobId,
+          errorCode: policyResult.error.code,
+        });
+      } else if (policyResult.data) {
+        workerRequirements = resolveMatchingWorkerRequirements(
+          serviceType,
+          workerRequirements,
+          asStringArray(policyResult.data.capability_requirements),
+        );
+      }
+    }
+  }
   return {
     customerId: nullableString(result.data.customer_id),
     quoteMode: nullableString(result.data.quote_mode),
@@ -282,12 +318,34 @@ export async function loadJobGeoForMatching(client: DbClient, jobId: string) {
     lng: nullableNumber(result.data.address_lng),
     problemKeys: specializationKeys([
       ...asStringArray(result.data.problem_chips),
-      ...asStringArray(diagnosisScope.worker_requirements),
+      ...workerRequirements,
       nullableString(result.data.service_problem_id),
       nullableString(result.data.kael_problem_identified),
     ]),
-    workerRequirements: asStringArray(diagnosisScope.worker_requirements),
+    workerRequirements,
   };
+}
+
+export function resolveMatchingWorkerRequirements(
+  serviceType: ServiceType,
+  persistedRequirements: readonly string[],
+  activeCaseRequirements: readonly string[],
+) {
+  const profileCapabilities = getKaelPerformanceProfile(serviceType)?.worker_capabilities ?? [];
+  return isLegacyServiceWideRequirements(persistedRequirements, profileCapabilities)
+    ? [...new Set(activeCaseRequirements)]
+    : [...new Set(persistedRequirements)];
+}
+
+function isLegacyServiceWideRequirements(
+  requirements: readonly string[],
+  serviceCapabilities: readonly string[],
+) {
+  const normalizedRequirements = new Set(requirements.map((value) => value.trim().toLowerCase()));
+  const normalizedCapabilities = new Set(serviceCapabilities.map((value) => value.trim().toLowerCase()));
+  return normalizedCapabilities.size > 0 &&
+    normalizedRequirements.size === normalizedCapabilities.size &&
+    [...normalizedCapabilities].every((capability) => normalizedRequirements.has(capability));
 }
 
 export function specializationKeys(values: Array<string | null>) {

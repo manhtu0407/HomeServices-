@@ -35,6 +35,7 @@ import {
 } from "./estimate-evidence.ts";
 import {
   loadActiveIntakePolicy,
+  matchingWorkerRequirementsForCase,
   publicMissingTierA,
   type ActiveIntakePolicy,
 } from "./estimate-intake-policy.ts";
@@ -70,6 +71,7 @@ export {
   buildKaelEstimateAnalysisEvidence,
   hasValidatedKaelPriceEvidence,
 } from "./estimate-evidence.ts";
+
 export async function finalizeKaelChatEstimate(
   input: FinalizeKaelChatEstimateInput,
 ) {
@@ -164,6 +166,7 @@ export async function finalizeKaelChatEstimate(
       client,
       sessionId,
       artifact,
+      profile,
       serviceProblemId: pipeline.serviceProblemId,
       problemSummary: estimate.problem_summary,
       customerAnalysisDetail,
@@ -361,7 +364,10 @@ async function persistPreviousReleaseValidatedEstimate(input: {
     scope_summary: confirmedWorkerScope,
     quote_ready: quoteReady,
     quote_blockers: quoteBlockers,
-    worker_requirements: input.profile.worker_capabilities,
+    worker_requirements: matchingWorkerRequirementsForCase(
+      input.profile.worker_capabilities,
+      [],
+    ),
     confidence: input.estimate.confidence,
     next_action: quoteReady
       ? { kind: "prepare_offer" }
@@ -461,6 +467,7 @@ export async function finalizeUnpricedStage1Intake(input: {
     client: input.client,
     sessionId: input.sessionId,
     artifact: input.artifact,
+    profile,
     serviceProblemId: input.serviceProblemId,
     problemSummary: input.customerAnalysisDetail,
     customerAnalysisDetail: input.customerAnalysisDetail,
@@ -479,6 +486,7 @@ async function persistUnpricedRequestReview(input: {
   client: DbClient;
   sessionId: string;
   artifact: KaelDiagnosisScopeArtifact;
+  profile: KaelPerformanceProfile;
   serviceProblemId: string;
   problemSummary: string;
   customerAnalysisDetail: string;
@@ -520,7 +528,10 @@ async function persistUnpricedRequestReview(input: {
     scope_summary: scopeSummary || input.problemSummary,
     quote_ready: false,
     quote_blockers: safetyStop ? [`safety_gate:${safetyStop.code}`] : input.policy.missingTierA,
-    worker_requirements: input.policy.capabilityRequirements,
+    worker_requirements: matchingWorkerRequirementsForCase(
+      input.profile.worker_capabilities,
+      input.policy.capabilityRequirements,
+    ),
     confidence: input.confidence,
     next_action: safetyStop
       ? { kind: "escalate", reason: safetyStop.customer_message ?? safetyStop.code }
@@ -652,10 +663,10 @@ async function persistValidatedEstimate(input: {
     scope_summary: confirmedWorkerScope,
     quote_ready: quoteReady,
     quote_blockers: quoteBlockers,
-    worker_requirements: [...new Set([
-      ...input.profile.worker_capabilities,
-      ...policy.capabilityRequirements,
-    ])],
+    worker_requirements: matchingWorkerRequirementsForCase(
+      input.profile.worker_capabilities,
+      policy.capabilityRequirements,
+    ),
     confidence: estimate.confidence,
     next_action: quoteReady
       ? { kind: "prepare_offer" }

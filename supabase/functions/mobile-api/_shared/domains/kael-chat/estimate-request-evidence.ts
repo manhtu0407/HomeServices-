@@ -54,7 +54,7 @@ export async function maybeRequestEstimateEvidence(input: {
       problemSummary: input.estimate.problem_summary,
       complexity: input.estimate.complexity,
       problemChips: input.input.problemChips,
-      workerRequirements: input.profile.worker_capabilities,
+      workerRequirements: [],
       confidence: input.estimate.confidence,
     },
   );

@@ -11,6 +11,7 @@ import {
   SERVICE_TYPES,
   type ServiceType,
   type WorkerServicePreferencesUpdateInput,
+  WORKER_SERVICE_CAPABILITIES,
 } from '@nestscout/shared'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
@@ -24,6 +25,7 @@ import { textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './services-styles'
+import { WorkerCapabilitySelector } from './worker-capability-selector'
 import { WorkerV5ProfileFormulaCard } from './worker-profile-formula-surfaces'
 import { getReducedTransparencyWorkerTokens, getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 
@@ -70,23 +72,35 @@ function workerV5QualityByService(profile: WorkerV5ServicesProfile) {
 type WorkerV5ServiceCardState = {
   selectedServices: ServiceType[]
   savedServices: ServiceType[]
+  selectedCapabilities: string[]
+  savedCapabilities: string[]
   saving: boolean
   status: WorkerV5ServicePreferenceInteraction['status']
   message: string
 }
 
 type WorkerV5ServiceCardAction =
-  | { type: 'selection-changed'; selectedServices: ServiceType[] }
+  | { type: 'selection-changed'; selectedServices: ServiceType[]; selectedCapabilities: string[] }
+  | { type: 'capabilities-changed'; selectedCapabilities: string[] }
   | { type: 'message'; message: string }
   | { type: 'save-start' }
-  | { type: 'save-finish'; message: string; saved: boolean; savedServices: ServiceType[] }
+  | { type: 'save-finish'; message: string; saved: boolean; savedServices: ServiceType[]; savedCapabilities: string[] }
 
 function workerV5ServiceCardReducer(
   state: WorkerV5ServiceCardState,
   action: WorkerV5ServiceCardAction,
 ): WorkerV5ServiceCardState {
   if (action.type === 'selection-changed') {
-    return { ...state, message: '', selectedServices: action.selectedServices, status: 'dirty' }
+    return {
+      ...state,
+      message: '',
+      selectedCapabilities: action.selectedCapabilities,
+      selectedServices: action.selectedServices,
+      status: 'dirty',
+    }
+  }
+  if (action.type === 'capabilities-changed') {
+    return { ...state, message: '', selectedCapabilities: action.selectedCapabilities, status: 'dirty' }
   }
   if (action.type === 'message') return { ...state, message: action.message }
   if (action.type === 'save-start') return { ...state, message: '', saving: true, status: 'saving' }
@@ -94,6 +108,7 @@ function workerV5ServiceCardReducer(
     ...state,
     message: action.message,
     savedServices: action.saved ? action.savedServices : state.savedServices,
+    savedCapabilities: action.saved ? action.savedCapabilities : state.savedCapabilities,
     saving: false,
     status: action.saved ? 'saved' : 'error',
   }
@@ -151,7 +166,7 @@ export function WorkerV5SkillsServiceHero({
       : interaction?.status === 'dirty' || interaction?.status === 'error'
         ? textByLanguage(language, `${activeServiceCount} dịch vụ đang chọn`, `${activeServiceCount} services selected`)
         : activeServiceCount > 0
-          ? textByLanguage(language, `${activeServiceCount} dịch vụ đang nhận`, `${activeServiceCount} active services`)
+          ? textByLanguage(language, `${activeServiceCount} dịch vụ muốn nhận`, `${activeServiceCount} preferred services`)
           : textByLanguage(language, 'Chọn dịch vụ muốn nhận', 'Choose services to receive')
     : textByLanguage(language, 'Chờ hồ sơ', 'Waiting for profile')
   const interactionStatus = interaction
@@ -221,18 +236,21 @@ export function WorkerV5ServiceCardGrid({
   const tokens = reduceTransparency ? getReducedTransparencyWorkerTokens(baseTokens) : baseTokens
   const serviceOptions = profile ? [...SERVICE_TYPES] : []
   const savedSelectedServices = workerV5SelectedServices(profile)
+  const savedSelectedCapabilities = profile?.problem_specializations ?? []
   const qualityByService = workerV5QualityByService(profile)
   const [state, dispatch] = useReducer(workerV5ServiceCardReducer, {
     selectedServices: [...savedSelectedServices],
     savedServices: [...savedSelectedServices],
+    selectedCapabilities: [...savedSelectedCapabilities],
+    savedCapabilities: [...savedSelectedCapabilities],
     saving: false,
     status: 'saved',
     message: '',
   })
-  const { message, savedServices, saving, selectedServices, status } = state
+  const { message, savedCapabilities, savedServices, saving, selectedCapabilities, selectedServices, status } = state
   const hasChanges = SERVICE_TYPES.some((service) =>
     selectedServices.includes(service) !== savedServices.includes(service)
-  )
+  ) || !sameWorkerCapabilityList(selectedCapabilities, savedCapabilities)
 
   const toggleService = (service: ServiceType) => {
     if (saving) return
@@ -247,26 +265,38 @@ export function WorkerV5ServiceCardGrid({
     const nextSelectedServices = SERVICE_TYPES.filter((item) =>
       item === service ? !selectedServices.includes(item) : selectedServices.includes(item)
     )
-    dispatch({ type: 'selection-changed', selectedServices: nextSelectedServices })
+    const allowedCapabilities = new Set(nextSelectedServices.flatMap(item =>
+      Object.keys(WORKER_SERVICE_CAPABILITIES[item]),
+    ))
+    dispatch({
+      type: 'selection-changed',
+      selectedServices: nextSelectedServices,
+      selectedCapabilities: selectedCapabilities.filter(capability => allowedCapabilities.has(capability)),
+    })
   }
 
   const savePreferences = async () => {
     if (saving || !hasChanges || selectedServices.length === 0) return
     const servicesToSave = [...selectedServices]
+    const capabilitiesToSave = [...selectedCapabilities]
     dispatch({ type: 'save-start' })
     let saved = false
     try {
-      saved = await onSave({ selected_service_types: servicesToSave })
+      saved = await onSave({
+        selected_service_types: servicesToSave,
+        problem_specializations: capabilitiesToSave,
+      })
     } catch {
       saved = false
     }
     dispatch({
       type: 'save-finish',
       message: saved
-        ? textByLanguage(language, 'Đã lưu dịch vụ muốn nhận.', 'Active services saved.')
+        ? textByLanguage(language, 'Đã lưu dịch vụ muốn nhận.', 'Service preferences saved.')
         : textByLanguage(language, 'Chưa lưu được. Lựa chọn của bạn vẫn được giữ lại.', 'Could not save yet. Your selection is preserved.'),
       saved,
       savedServices: servicesToSave,
+      savedCapabilities: capabilitiesToSave,
     })
   }
 
@@ -316,7 +346,7 @@ export function WorkerV5ServiceCardGrid({
             const itemStatusLabel = isQualityLocked
               ? textByLanguage(language, 'Tạm khóa', 'Paused')
               : isSelected
-                ? textByLanguage(language, 'Đang nhận', 'Active')
+                ? textByLanguage(language, 'Đã chọn', 'Selected')
                 : textByLanguage(language, 'Chưa chọn', 'Not selected')
             return (
               <View key={service}>
@@ -378,8 +408,20 @@ export function WorkerV5ServiceCardGrid({
         </View>
       )}
 
+      <Text style={[styles.serviceFormIntroTitle, { color: tokens.text }]}>
+        {textByLanguage(language, 'Kỹ năng có thể thực hiện', 'Skills you can perform')}
+      </Text>
+      <WorkerCapabilitySelector
+        disabled={saving}
+        isDark={workerThemeMode === 'dark'}
+        language={language}
+        onChange={keys => dispatch({ type: 'capabilities-changed', selectedCapabilities: keys })}
+        selected={selectedCapabilities}
+        services={selectedServices}
+      />
+
       <Text style={[styles.serviceFormHelper, { color: tokens.muted }]}>
-        {textByLanguage(language, 'Chỉ ghép việc cho dịch vụ đã chọn và đủ điều kiện chất lượng.', 'Matching uses selected services that meet quality requirements.')}
+        {textByLanguage(language, 'Chọn dịch vụ muốn nhận. Kael còn kiểm tra kỹ năng phù hợp, chất lượng và khả năng nhận việc.', 'Choose your preferred services. Kael also checks matching skills, quality and availability.')}
       </Text>
       {message ? (
         <Text accessibilityLiveRegion="polite" style={[styles.servicePreferenceMessage, { color: tokens.muted }]} testID="worker-v5-service-preferences-message">
@@ -403,6 +445,12 @@ export function WorkerV5ServiceCardGrid({
       ) : null}
     </View>
   )
+}
+
+function sameWorkerCapabilityList(left: readonly string[], right: readonly string[]) {
+  if (left.length !== right.length) return false
+  const rightSet = new Set(right)
+  return left.every(capability => rightSet.has(capability))
 }
 
 function ServiceCollectionGlyph({ color, testID }: { color: string; testID?: string }) {

@@ -160,7 +160,7 @@ export function buildInitialDiagnosisScopeArtifact(input: {
     scope_summary: null,
     quote_ready: false,
     quote_blockers: missingFacts,
-    worker_requirements: input.workerRequirements ?? profile.worker_capabilities,
+    worker_requirements: input.workerRequirements ?? [],
     confidence: 0.2,
     next_action: {
       kind: "ask_question",
