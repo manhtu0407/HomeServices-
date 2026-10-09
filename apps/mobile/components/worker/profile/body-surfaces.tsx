@@ -117,6 +117,7 @@ export function WorkerV5SkillsServiceAreaBody({
     profile?.service_types?.join('|') ?? '',
     profile?.selected_service_types?.join('|') ?? '',
     profile?.active_service_types?.join('|') ?? '',
+    profile?.problem_specializations?.join('|') ?? '',
     profile?.service_quality?.map((quality) =>
       `${quality.service_type}:${quality.status}:${quality.locked_until ?? ''}`
     ).join('|') ?? '',

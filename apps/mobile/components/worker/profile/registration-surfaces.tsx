@@ -17,6 +17,7 @@ import { textByLanguage } from '../ui/format'
 import { useWorkerThemeMode } from '../worker-theme'
 import { workerNeedsRegistration } from './registration-model'
 import { styles } from './registration-styles'
+import { WorkerCapabilitySelector } from './worker-capability-selector'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 type WorkerVerificationFileSlot = 'cccdFront' | 'cccdBack' | 'selfie'
@@ -354,8 +355,15 @@ export function WorkerV5WorkerRegistrationBody({
             ))}
           </View>
         </Field>
-        <Field label={textByLanguage(language, 'Mô tả kỹ năng chính', 'Main skills')}>
-          <KaelTextField editable={!locked} accessibilityLabel={textByLanguage(language, 'Mô tả kỹ năng chính', 'Main skills')} inputShellStyle={[styles.fieldShell, isDark ? styles.fieldShellDark : null]} placeholderTextColor={isDark ? customerTheme.darkLayer.subtleText : undefined} style={isDark ? styles.fieldInputDark : undefined} onChangeText={setField('problemSpecializations')} placeholder={textByLanguage(language, 'Ngăn cách bằng dấu phẩy', 'Separate items with commas')} testID="worker-v5-registration-specializations" value={state.problemSpecializations} />
+        <Field label={textByLanguage(language, 'Kỹ năng có thể thực hiện', 'Skills you can perform')}>
+          <WorkerCapabilitySelector
+            disabled={locked}
+            isDark={isDark}
+            language={language}
+            onChange={keys => setField('problemSpecializations')(keys.join(', '))}
+            selected={commaSeparatedValues(state.problemSpecializations)}
+            services={state.serviceTypes}
+          />
         </Field>
         <Field label={textByLanguage(language, 'Tài khoản nhận tiền', 'Payout account')}>
           <View style={styles.formGap}>

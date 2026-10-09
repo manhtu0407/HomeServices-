@@ -29,6 +29,25 @@ begin
   if (select count(*) from public.service_intake_policy_floors) <> 6 then
     raise exception 'expected locked floors for all six supported services';
   end if;
+  if not exists (
+    select 1 from public.service_intake_policies policy
+    where policy.service_type = 'hvac' and policy.problem_slug = 'water_leak'
+      and policy.status = 'active'
+      and policy.capability_requirements = '["hvac_fault_diagnosis"]'::jsonb
+  ) then
+    raise exception 'HVAC water-leak policy must require diagnosis, not every HVAC specialty';
+  end if;
+  if exists (
+    select 1 from public.service_intake_policy_floors floor
+    where not exists (
+      select 1 from public.service_intake_policies policy
+      where policy.service_type = floor.service_type
+        and policy.status = 'active'
+        and not policy.capability_requirements @> floor.capability_requirements
+    )
+  ) then
+    raise exception 'every service must have at least one case policy narrower than its full capability catalog';
+  end if;
   if exists (
     select 1 from public.service_problems sp
     where sp.is_active and not exists (
@@ -66,6 +85,26 @@ begin
   from public.service_intake_policies p
   where p.service_type = 'electrical' and p.status = 'active'
   order by p.problem_slug limit 1;
+  perform public.assert_intake_policy_floor(
+    v_active.service_type,
+    v_active.tier_a_fields,
+    v_active.tier_b_slots,
+    v_active.question_overrides,
+    v_active.safety_requirements,
+    '["electrical_fault_isolation"]'::jsonb
+  );
+  begin
+    perform public.assert_intake_policy_floor(
+      v_active.service_type,
+      v_active.tier_a_fields,
+      v_active.tier_b_slots,
+      v_active.question_overrides,
+      v_active.safety_requirements,
+      '["unknown_electrical_capability"]'::jsonb
+    );
+    raise exception 'expected capability outside service catalog rejection';
+  exception when check_violation then null;
+  end;
   v_problem := v_active.service_problem_id;
   select revision into v_revision from public.service_intake_policy_heads where service_problem_id = v_problem;
 

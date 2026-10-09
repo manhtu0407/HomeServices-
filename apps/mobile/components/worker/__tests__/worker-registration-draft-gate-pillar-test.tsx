@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native'
 import { Alert } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { SERVICE_TYPES, WORKER_SERVICE_CAPABILITIES } from '@nestscout/shared'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import type { WorkerProfileResponse } from '@/lib/api-types'
@@ -55,6 +56,40 @@ afterEach(() => {
   jest.useRealTimers()
   jest.restoreAllMocks()
   jest.clearAllMocks()
+})
+
+it('saves explicit HVAC selections as Matching capability keys without selecting skills from the service toggle', async () => {
+  const workerSubmitRegistration = jest.fn(async () => true)
+  const workerSaveRegistrationDraft = jest.fn(async () => true)
+  const runtime = { actions: { workerSubmitRegistration, workerSaveRegistrationDraft } } as unknown as ReturnType<typeof useFrontendWorkflow>
+  render(<WorkerV5WorkerRegistrationBody language="vi" profile={{ ...profile, service_types: ['hvac'], has_cccd: true, has_selfie: true, bank_account_masked: '***6789' }} reduceTransparency runtime={runtime} />)
+  const diagnosis = screen.getByTestId('worker-capability-hvac_fault_diagnosis')
+  expect(diagnosis).toHaveProp('accessibilityState', expect.objectContaining({ selected: false }))
+  fireEvent.press(diagnosis)
+  fireEvent.press(screen.getByTestId('worker-capability-hvac_cleaning'))
+  await act(async () => { jest.advanceTimersByTime(700) })
+  expect(workerSaveRegistrationDraft).toHaveBeenCalledWith(expect.objectContaining({
+    problem_specializations: ['hvac_fault_diagnosis', 'hvac_cleaning'],
+  }))
+  await act(async () => { fireEvent.press(screen.getByTestId('worker-v5-registration-submit')) })
+  expect(workerSubmitRegistration).toHaveBeenCalledWith(expect.objectContaining({
+    service_types: ['hvac'], problem_specializations: ['hvac_fault_diagnosis', 'hvac_cleaning'],
+  }))
+})
+
+it.each(['vi', 'en'] as const)('submits all six services and 25 explicitly selected skills without truncation (%s)', async language => {
+  const workerSubmitRegistration = jest.fn(async () => true)
+  const workerSaveRegistrationDraft = jest.fn(async () => true)
+  const runtime = { actions: { workerSubmitRegistration, workerSaveRegistrationDraft } } as unknown as ReturnType<typeof useFrontendWorkflow>
+  render(<WorkerV5WorkerRegistrationBody language={language} profile={{ ...profile, service_types: [...SERVICE_TYPES], has_cccd: true, has_selfie: true, bank_account_masked: '***6789' }} reduceTransparency runtime={runtime} />)
+  const keys = SERVICE_TYPES.flatMap(service => Object.keys(WORKER_SERVICE_CAPABILITIES[service]))
+  for (const key of keys) fireEvent.press(screen.getByTestId(`worker-capability-${key}`))
+  await act(async () => { fireEvent.press(screen.getByTestId('worker-v5-registration-submit')) })
+  expect(keys).toHaveLength(25)
+  expect(workerSubmitRegistration).toHaveBeenCalledWith(expect.objectContaining({
+    service_types: [...SERVICE_TYPES], problem_specializations: keys,
+  }))
+  expect(screen.queryByTestId('worker-v5-registration-specializations')).toBeNull()
 })
 
 it.each(['vi', 'en'] as const)('resumes the server draft without requesting stored bank details or uploading documents again (%s)', async (language) => {

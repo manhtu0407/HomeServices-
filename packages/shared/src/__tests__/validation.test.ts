@@ -279,6 +279,21 @@ describe('workerServicePreferencesUpdateSchema', () => {
       selected_service_types: ['painting'],
     }).success).toBe(false)
   })
+
+  it('accepts only declared capabilities that belong to a selected service', () => {
+    expect(workerServicePreferencesUpdateSchema.safeParse({
+      selected_service_types: ['hvac'],
+      problem_specializations: ['hvac_fault_diagnosis'],
+    }).success).toBe(true)
+    expect(workerServicePreferencesUpdateSchema.safeParse({
+      selected_service_types: ['hvac'],
+      problem_specializations: ['electrical_fault_isolation'],
+    }).success).toBe(false)
+    expect(workerServicePreferencesUpdateSchema.safeParse({
+      selected_service_types: ['hvac'],
+      problem_specializations: ['hvac_fault_diagnosis', 'hvac_fault_diagnosis'],
+    }).success).toBe(false)
+  })
 })
 
 describe('jobCreateSchema', () => {

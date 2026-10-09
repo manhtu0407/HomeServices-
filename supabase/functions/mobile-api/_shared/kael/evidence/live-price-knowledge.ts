@@ -536,7 +536,7 @@ function acceptedSources(value: unknown, market: MarketPriceResult): PriceKnowle
     if (!domain || priceMin === null || priceMax === null || !unit || !date || autoTier === null) {
       return [];
     }
-    const citation = citations.find((item) => citationDomainMatches(item, domain));
+    const citation = citations.find((item) => Boolean(publicSourceLink(item, domain).verified_url));
     const url = citation ? publicSourceLink(citation, domain).verified_url ?? null : null;
     return [{ domain, url, price_min: priceMin, price_max: priceMax, unit, date, auto_tier: autoTier }];
   });
@@ -558,7 +558,7 @@ function publicSourceLink(value: string | null, expectedDomain: string): {
       url.username ||
       url.password ||
       url.port ||
-      url.hostname.toLowerCase() !== domain
+      (url.hostname.toLowerCase() !== domain && url.hostname.toLowerCase() !== `www.${domain}`)
     ) return {};
     url.search = "";
     url.hash = "";
@@ -570,15 +570,6 @@ function publicSourceLink(value: string | null, expectedDomain: string): {
     };
   } catch {
     return {};
-  }
-}
-
-function citationDomainMatches(citation: string, domain: string): boolean {
-  try {
-    const host = new URL(citation).hostname.toLowerCase().replace(/^www\./, "");
-    return host === domain || host.endsWith(`.${domain}`);
-  } catch {
-    return false;
   }
 }
 

@@ -358,7 +358,8 @@ export type ServiceTables = {
       }
       service_intake_policy_audit: {
         Row: {
-          actor_id: string
+          actor_id: string | null
+          actor_kind: string
           created_at: string
           event: string
           from_version: number | null
@@ -370,7 +371,8 @@ export type ServiceTables = {
           to_version: number
         }
         Insert: {
-          actor_id: string
+          actor_id?: string | null
+          actor_kind?: string
           created_at?: string
           event: string
           from_version?: number | null
@@ -382,7 +384,8 @@ export type ServiceTables = {
           to_version: number
         }
         Update: {
-          actor_id?: string
+          actor_id?: string | null
+          actor_kind?: string
           created_at?: string
           event?: string
           from_version?: number | null

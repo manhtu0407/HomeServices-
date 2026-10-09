@@ -1,5 +1,6 @@
 export * from './types'
 export * from './constants'
+export * from './worker-capabilities'
 export * from './mobile-workflow'
 export * from './workflow'
 export * from './service-intake'

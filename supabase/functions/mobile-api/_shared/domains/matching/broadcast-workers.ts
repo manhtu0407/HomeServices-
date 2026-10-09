@@ -222,7 +222,7 @@ async function loadMatchingCandidates(
 ): Promise<MatchingCandidateLoad> {
   const candidateLimit = Math.max(limit, DEFAULT_WORKER_CANDIDATE_POOL_SIZE);
   const districtCode = normalizeDistrict(district);
-  const jobGeo = options.jobId ? await loadJobGeoForMatching(client, options.jobId) : null;
+  const jobGeo = options.jobId ? await loadJobGeoForMatching(client, options.jobId, serviceType) : null;
   if (options.jobId && !jobGeo) {
     return { success: false, reason: "Không thể kiểm tra phạm vi ghép thợ" };
   }

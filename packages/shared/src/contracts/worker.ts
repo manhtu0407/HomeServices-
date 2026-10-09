@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { HCMC_DISTRICTS, normalizeDistrict, SERVICE_TYPES, WORKER_VERIFICATION_STATUSES } from '../constants'
 import type { ServiceType, WorkerVerificationStatus } from '../constants'
+import { WORKER_SERVICE_CAPABILITIES } from '../worker-capabilities'
 import {
   clientRequestIdSchema,
   serviceTypeSchema,
@@ -184,7 +185,7 @@ const workerRegistrationFieldsSchema = z.object({
   home_lat: z.number().min(-90).max(90).optional(),
   home_lng: z.number().min(-180).max(180).optional(),
   service_radius_km: z.number().int().min(1).max(30).optional(),
-  problem_specializations: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
+  problem_specializations: z.array(z.string().trim().min(1).max(100)).max(25).optional(),
   cccd_front_url: workerVerificationRefSchema('cccd-front'),
   cccd_back_url: workerVerificationRefSchema('cccd-back'),
   selfie_url: workerVerificationRefSchema('selfie'),
@@ -196,12 +197,34 @@ function validateWorkerRegistrationRelations(
   value: {
     home_lat?: number
     home_lng?: number
+    service_types?: ServiceType[]
+    problem_specializations?: string[]
     cccd_front_url?: string
     cccd_back_url?: string
     selfie_url?: string
   },
   ctx: z.RefinementCtx,
 ) {
+  if (value.problem_specializations) {
+    if (new Set(value.problem_specializations).size !== value.problem_specializations.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['problem_specializations'],
+        message: 'problem_specializations must not contain duplicates',
+      })
+    }
+    const allowedServices = value.service_types ?? SERVICE_TYPES
+    const allowedCapabilities = new Set(allowedServices.flatMap(service =>
+      Object.keys(WORKER_SERVICE_CAPABILITIES[service]),
+    ))
+    if (value.problem_specializations.some(capability => !allowedCapabilities.has(capability))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['problem_specializations'],
+        message: 'problem_specializations must belong to a selected service',
+      })
+    }
+  }
   if ((value.home_lat === undefined) !== (value.home_lng === undefined)) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
@@ -251,6 +274,7 @@ export const workerServiceAreaUpdateSchema = z.object({
 
 export const workerServicePreferencesUpdateSchema = z.object({
   selected_service_types: z.array(serviceTypeSchema).min(1).max(SERVICE_TYPES.length),
+  problem_specializations: z.array(z.string().trim().min(1).max(100)).max(25).optional(),
 }).strict().superRefine((value, ctx) => {
   if (new Set(value.selected_service_types).size !== value.selected_service_types.length) {
     ctx.addIssue({
@@ -258,6 +282,25 @@ export const workerServicePreferencesUpdateSchema = z.object({
       path: ['selected_service_types'],
       message: 'selected_service_types must not contain duplicates',
     })
+  }
+  if (value.problem_specializations) {
+    if (new Set(value.problem_specializations).size !== value.problem_specializations.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['problem_specializations'],
+        message: 'problem_specializations must not contain duplicates',
+      })
+    }
+    const allowedCapabilities = new Set(value.selected_service_types.flatMap(service =>
+      Object.keys(WORKER_SERVICE_CAPABILITIES[service]),
+    ))
+    if (value.problem_specializations.some(capability => !allowedCapabilities.has(capability))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['problem_specializations'],
+        message: 'problem_specializations must belong to a selected service',
+      })
+    }
   }
 })
 
