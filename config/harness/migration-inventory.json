@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 437,
+  "migrationCount": 438,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "334c1249b143cbf8b19a931703e1fe48feb63ef47895507341c0b0057c950d3b",
+  "migrationsSha256": "8b1c9aa75a5025fb7526122735aaf7616a4be093c43bafaaa3ededd6be62a997",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
@@ -3138,6 +3138,13 @@
       "file": "supabase/migrations/20261010100000_kael_matching_recovery_capacity_alignment.sql",
       "sha256": "44f57e3defe326abb38dcd7ccc6adaf2ececd1613685e153cf439b4710d243be",
       "bytes": 14426
+    },
+    {
+      "version": "20261010110000",
+      "name": "worker_matching_terminal_capacity_release",
+      "file": "supabase/migrations/20261010110000_worker_matching_terminal_capacity_release.sql",
+      "sha256": "0af8f9666d31af5a15f4f7c8958faf0549891e7cb928b1167952590ac9c6b344",
+      "bytes": 3391
     }
   ]
 }

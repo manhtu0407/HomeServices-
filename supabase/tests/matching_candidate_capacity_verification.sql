@@ -1,10 +1,10 @@
 -- @pillar id: P96-matching-candidate-capacity-sql
--- @pillar invariant: Initial and replacement matching require current eligibility and a live same-operation capacity lease; payment-pending jobs no longer occupy physical Worker capacity.
+-- @pillar invariant: Initial and replacement matching require current eligibility and a live same-operation capacity lease; customer-confirmed completion and payment-pending jobs release physical Worker capacity, while unconfirmed completion remains busy.
 -- @pillar authority: approved Production Agentic Transaction Readiness plan | governance/RULES.md #7 and #8
--- @pillar target: supabase/migrations/20260905115000_matching_candidate_capacity.sql
+-- @pillar target: supabase/migrations/20261010100000_kael_matching_recovery_capacity_alignment.sql
 -- @pillar layer: sql
 -- @pillar siblings: P84-worker-cancellation-matching-outbox, P91-matching-replacement-capacity-http
--- @pillar mutation: Remove the initial-operation lease check; a released reservation still creates a candidate and P96 raises, or count payment_pending as busy and the eligible Worker fixture fails.
+-- @pillar mutation: Count confirmed_by_customer as busy; the confirmed-completion fixture is excluded. Count payment_pending as busy; the existing payment-pending fixture is excluded. Remove the initial-operation lease check; a released reservation still creates a candidate and P96 raises.
 
 begin;
 set local statement_timeout = '20s';
@@ -13,7 +13,7 @@ insert into public.synthetic_matching_cohorts(cohort_id) values ('synthetic-cand
 do $fixtures$
 declare v_actor uuid;
 begin
-  for i in 1..3 loop
+  for i in 1..4 loop
     v_actor := ('d9600000-0000-4000-8000-' || lpad(i::text, 12, '0'))::uuid;
     insert into auth.users(id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
     values (v_actor, 'authenticated', 'authenticated', 'candidate-p96-' || i || '@example.test',
@@ -36,7 +36,7 @@ end;
 $fixtures$;
 
 insert into auth.users(id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
-values ('d9600000-0000-4000-8000-000000000004', 'authenticated', 'authenticated',
+values ('d9600000-0000-4000-8000-000000000005', 'authenticated', 'authenticated',
   'candidate-capacity-external-customer@example.test',
   '{"provider":"email","providers":["email"]}', '{}', now(), now());
 
@@ -48,11 +48,39 @@ insert into public.jobs (
   final_price, kael_price_max, gross_amount, platform_fee, worker_net,
   payment_provider, payment_status
 ) values (
-  'd9600000-0000-4000-8000-000000000103', 'd9600000-0000-4000-8000-000000000004',
+  'd9600000-0000-4000-8000-000000000103', 'd9600000-0000-4000-8000-000000000005',
   'd9600000-0000-4000-8000-000000000003', 'plumbing', 'Completed work awaiting payment', 'q7',
   'payment_pending', 'rfq', 300000, 300000, 300000, 45000, 255000,
   'platform_bank_manual', 'manual_qr_ready'
 );
+insert into public.jobs (
+  id, customer_id, worker_id, service_type, description, address_district, status,
+  quote_mode, final_price, kael_price_max, completed_at, confirmed_at
+) values
+  (
+    'd9600000-0000-4000-8000-000000000104', 'd9600000-0000-4000-8000-000000000005',
+    'd9600000-0000-4000-8000-000000000003', 'plumbing', 'Customer-confirmed completed work', 'q7',
+    'confirmed_by_customer', 'rfq', 300000, 300000, now() - interval '1 day', now() - interval '1 day'
+  ),
+  (
+    'd9600000-0000-4000-8000-000000000105', 'd9600000-0000-4000-8000-000000000005',
+    'd9600000-0000-4000-8000-000000000004', 'plumbing', 'Awaiting customer completion confirmation', 'q7',
+    'completed_by_worker', 'rfq', 300000, 300000, now() - interval '1 hour', null
+  );
+do $completion_capacity$
+begin
+  if not exists (
+    select 1 from private.eligible_matching_worker_ids(
+      'plumbing', 'q7', 'rfq', '{}'::jsonb, '{}'::jsonb, 'synthetic-candidate-p96', now(), null, null
+    ) eligible where eligible.worker_id='d9600000-0000-4000-8000-000000000003'
+  ) then raise exception 'P96_CUSTOMER_CONFIRMED_COMPLETION_STILL_BLOCKS_WORKER'; end if;
+  if exists (
+    select 1 from private.eligible_matching_worker_ids(
+      'plumbing', 'q7', 'rfq', '{}'::jsonb, '{}'::jsonb, 'synthetic-candidate-p96', now(), null, null
+    ) eligible where eligible.worker_id='d9600000-0000-4000-8000-000000000004'
+  ) then raise exception 'P96_UNCONFIRMED_COMPLETION_DID_NOT_BLOCK_WORKER'; end if;
+end;
+$completion_capacity$;
 do $payment_pending_capacity$
 begin
   if not exists (

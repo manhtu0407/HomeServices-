@@ -22,7 +22,6 @@ const ACTIVE_JOB_STATUSES = [
   "repairing",
   "scope_change_pending",
   "completed_by_worker",
-  "confirmed_by_customer",
 ];
 
 type ReadinessSnapshot = {
