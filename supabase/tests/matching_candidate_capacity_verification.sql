@@ -1,10 +1,10 @@
 -- @pillar id: P96-matching-candidate-capacity-sql
--- @pillar invariant: Initial and replacement matching cannot propose or assign a Worker without a live same-operation capacity lease and current eligibility.
+-- @pillar invariant: Initial and replacement matching require current eligibility and a live same-operation capacity lease; payment-pending jobs no longer occupy physical Worker capacity.
 -- @pillar authority: approved Production Agentic Transaction Readiness plan | governance/RULES.md #7 and #8
 -- @pillar target: supabase/migrations/20260905115000_matching_candidate_capacity.sql
 -- @pillar layer: sql
 -- @pillar siblings: P84-worker-cancellation-matching-outbox, P91-matching-replacement-capacity-http
--- @pillar mutation: Remove the initial-operation lease check; a released reservation still creates a candidate and P96 raises.
+-- @pillar mutation: Remove the initial-operation lease check; a released reservation still creates a candidate and P96 raises, or count payment_pending as busy and the eligible Worker fixture fails.
 
 begin;
 set local statement_timeout = '20s';
@@ -35,9 +35,33 @@ begin
 end;
 $fixtures$;
 
+insert into auth.users(id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+values ('d9600000-0000-4000-8000-000000000004', 'authenticated', 'authenticated',
+  'candidate-capacity-external-customer@example.test',
+  '{"provider":"email","providers":["email"]}', '{}', now(), now());
+
 insert into public.jobs(id, customer_id, service_type, description, address_district, status, quote_mode)
 values ('d9600000-0000-4000-8000-000000000101', 'd9600000-0000-4000-8000-000000000001',
   'plumbing', 'Candidate capacity fixture', 'q7', 'broadcasting', 'rfq');
+insert into public.jobs (
+  id, customer_id, worker_id, service_type, description, address_district, status, quote_mode,
+  final_price, kael_price_max, gross_amount, platform_fee, worker_net,
+  payment_provider, payment_status
+) values (
+  'd9600000-0000-4000-8000-000000000103', 'd9600000-0000-4000-8000-000000000004',
+  'd9600000-0000-4000-8000-000000000003', 'plumbing', 'Completed work awaiting payment', 'q7',
+  'payment_pending', 'rfq', 300000, 300000, 300000, 45000, 255000,
+  'platform_bank_manual', 'manual_qr_ready'
+);
+do $payment_pending_capacity$
+begin
+  if not exists (
+    select 1 from private.eligible_matching_worker_ids(
+      'plumbing', 'q7', 'rfq', '{}'::jsonb, '{}'::jsonb, 'synthetic-candidate-p96', now(), null, null
+    ) eligible where eligible.worker_id='d9600000-0000-4000-8000-000000000003'
+  ) then raise exception 'P96_PAYMENT_PENDING_JOB_BLOCKED_AVAILABLE_WORKER'; end if;
+end;
+$payment_pending_capacity$;
 insert into public.kael_chat_sessions(id, customer_id, service_type, status, case_phase)
 values ('d9600000-0000-4000-8000-000000000201', 'd9600000-0000-4000-8000-000000000001',
   'plumbing', 'active', 'matching');

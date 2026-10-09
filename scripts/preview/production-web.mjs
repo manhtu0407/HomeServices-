@@ -128,6 +128,7 @@ export function buildPreviewEnv(envText, envFilePath, baseEnv = process.env) {
     EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: publishableKey,
     EXPO_PUBLIC_API_BASE_URL: apiBase,
     EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED: 'false',
+    EXPO_PUBLIC_WEB_PREVIEW_CLIENT: 'true',
     EXPO_NO_DOTENV: '1',
     NESTSCOUT_MOBILE_ENV_FILE: envFilePath,
     BROWSER: 'none',

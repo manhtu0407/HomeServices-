@@ -416,23 +416,28 @@ function idempotencyKeyForRequest(method: string, body: unknown, explicitKey?: s
 }
 
 function createClientReleaseHeaders() {
+  const platform = releaseClientPlatform()
+  const isWebPreview = platform === 'web-preview'
   const runtimeBuildInfo = mobileRuntimeConfig.runtimeBuildInfo as typeof mobileRuntimeConfig.runtimeBuildInfo & {
     releaseId?: string
   }
-  const releaseId = safeResponseIdentity(runtimeBuildInfo?.releaseId ?? null)
-  const gitSha = safeResponseIdentity(runtimeBuildInfo?.gitSha ?? null)
-  const contractEpoch = safeNumericHeader(runtimeBuildInfo?.contractEpoch)
-  const easBuildId = safeUuidHeader(runtimeBuildInfo?.easBuildId)
-  const runtimeVersion = safeResponseIdentity(runtimeBuildInfo?.runtimeVersion ?? null)
-  const buildNumber = Platform.OS === 'ios'
+  const releaseId = isWebPreview ? null : safeResponseIdentity(runtimeBuildInfo?.releaseId ?? null)
+  const gitSha = isWebPreview ? null : safeResponseIdentity(runtimeBuildInfo?.gitSha ?? null)
+  const contractEpoch = isWebPreview ? '2' : safeNumericHeader(runtimeBuildInfo?.contractEpoch)
+  const easBuildId = isWebPreview ? null : safeUuidHeader(runtimeBuildInfo?.easBuildId)
+  const runtimeVersion = isWebPreview ? null : safeResponseIdentity(runtimeBuildInfo?.runtimeVersion ?? null)
+  const buildNumber = !isWebPreview && Platform.OS === 'ios'
     ? Constants.expoConfig?.ios?.buildNumber
-    : Constants.expoConfig?.android?.versionCode
-  const applicationId = Platform.OS === 'ios'
-    ? Constants.expoConfig?.ios?.bundleIdentifier
-    : Platform.OS === 'android'
-      ? Constants.expoConfig?.android?.package
+    : !isWebPreview && Platform.OS === 'android'
+      ? Constants.expoConfig?.android?.versionCode
       : null
-  const platform = releaseClientPlatform()
+  const applicationId = isWebPreview
+    ? 'com.phanmanhtu.nestscout.web-preview'
+    : Platform.OS === 'ios'
+      ? Constants.expoConfig?.ios?.bundleIdentifier
+      : Platform.OS === 'android'
+        ? Constants.expoConfig?.android?.package
+        : null
   return {
     ...(platform ? { 'x-client-platform': platform } : {}),
     ...(applicationId ? { 'x-client-application-id': applicationId } : {}),

@@ -43,7 +43,7 @@ export type MobileApiAuthResult =
     requestProjectRef?: string;
     releaseId?: string;
     deploymentId?: string;
-    clientPlatform?: "ios" | "android";
+    clientPlatform?: "ios" | "android" | "web-preview";
     clientApplicationId?: string;
     clientBuildNumber?: number;
     clientContractEpoch?: number;
@@ -69,7 +69,7 @@ export type MobileApiContext = Extract<MobileApiAuthResult, { success: true }> &
   traceContext?: HarnessTraceContext;
   releaseId?: string;
   deploymentId?: string;
-  clientPlatform?: "ios" | "android";
+  clientPlatform?: "ios" | "android" | "web-preview";
   clientApplicationId?: string;
   clientBuildNumber?: number;
   clientContractEpoch?: number;

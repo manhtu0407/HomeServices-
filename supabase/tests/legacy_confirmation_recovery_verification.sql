@@ -104,7 +104,7 @@ select '{
     "high": {"total": 400000}
   },
   "fairness": {
-    "price_source": "baseline_with_market",
+    "price_source": "perplexity_validated",
     "confidence": "medium",
     "cap_statement": "Giá cuối không vượt mức tối đa trừ khi khách duyệt thay đổi phạm vi",
     "quorum_met": true,
@@ -139,7 +139,7 @@ begin
       jsonb_build_object('id',gen_random_uuid(),'version',v_policy.version+1,'status','active',
         'quote_mode','kael_auto_quote','tier_a_fields',
         '["service_type","problem_slug","address_district","address_label","scheduled_at","description_min"]'::jsonb,
-        'evidence_requirements','{"minimum_source_count":2,"minimum_high_trust_source_count":1,"requires_active_baseline":true}'::jsonb))).*;
+        'evidence_requirements','{"minimum_source_count":2,"minimum_high_trust_source_count":2,"requires_active_baseline":false,"allow_live_market_evidence":true}'::jsonb))).*;
   update public.price_baseline_versions set status='retired'
     where service_problem_id=v_problem and district_code='q7' and complexity='medium' and status='active';
   insert into public.price_baseline_versions
@@ -148,7 +148,7 @@ begin
         from public.price_baseline_versions where service_problem_id=v_problem and district_code='q7' and complexity='medium'),0),
         'status','active','district_code','q7','complexity','medium','price_min',250000,'price_max',400000,
         'reason','Rollback-only recovery verification fixture'))).*;
-  v_card:=jsonb_build_object('card',jsonb_build_object('price_source','baseline_with_market',
+  v_card:=jsonb_build_object('card',jsonb_build_object('price_source','perplexity_validated',
     'kael_reasoning',jsonb_build_object('baseline_used','plumbing.fixture','complexity_reasoning','Một điểm rò rỉ'),
     'analysis_receipt',(select value from p20_analysis),
     'price_reasoning_receipt',(select value from p20_reasoning)));
@@ -166,6 +166,8 @@ begin
   if not v_result.ok then raise exception 'Fixture confirmation refused: %',v_result.error_code; end if;
   update public.jobs set status='broadcasting' where id=v_result.job_id;
   insert into public.job_events(job_id,event_type) values(v_result.job_id,'no_worker_found');
+  update public.price_baseline_versions set status='retired'
+    where service_problem_id=v_problem and district_code='q7' and complexity='medium' and status='active';
   insert into recovery_fixture values(v_session,v_result.job_id,v_problem);
 end;
 $fixture$;
@@ -192,6 +194,40 @@ begin
   then raise exception 'Recovery duplicated job, changed identity, or sent matching without consent'; end if;
 end;
 $replay$;
+rollback to recovery_base;
+
+do $insufficient_live_evidence$
+declare
+  v_fixture record;
+  v_metadata jsonb;
+  v_card jsonb;
+begin
+  select * into strict v_fixture from recovery_fixture;
+  select safe_metadata into strict v_metadata from public.kael_chat_turns
+    where session_id=v_fixture.session_id and role='kael' and content_type='estimate';
+  v_card:=v_metadata->'estimate_card_v3';
+  v_card:=jsonb_set(v_card,'{card,analysis_receipt,market,accepted_source_count}','1'::jsonb);
+  v_card:=jsonb_set(v_card,'{card,analysis_receipt,market,high_trust_source_count}','1'::jsonb);
+  v_card:=jsonb_set(v_card,'{card,analysis_receipt,market,quorum_met}','false'::jsonb);
+  v_card:=jsonb_set(v_card,'{card,price_reasoning_receipt,fairness,market_source_count}','1'::jsonb);
+  v_card:=jsonb_set(v_card,'{card,price_reasoning_receipt,fairness,high_trust_source_count}','1'::jsonb);
+  v_card:=jsonb_set(v_card,'{card,price_reasoning_receipt,fairness,quorum_met}','false'::jsonb);
+  update public.kael_chat_turns set safe_metadata=jsonb_set(v_metadata,'{estimate_card_v3}',v_card)
+    where session_id=v_fixture.session_id and role='kael' and content_type='estimate';
+  update public.jobs set kael_estimate_card_v3=v_card where id=v_fixture.job_id;
+  begin
+    perform public.recover_legacy_kael_confirmation_atomic(v_fixture.session_id,
+      'b7400000-0000-4000-8000-000000000001',v_fixture.job_id,'p20-receipt-0001');
+    raise exception 'Recovery accepted live-market evidence below the current policy quorum';
+  exception when check_violation then
+    if sqlerrm<>'KAEL_PRICE_EVIDENCE_REQUIRED' then raise; end if;
+  end;
+  if exists(select 1 from public.confirmation_operations where job_id=v_fixture.job_id)
+    or (select quote_mode from public.jobs where id=v_fixture.job_id) is not null then
+    raise exception 'Insufficient live-market evidence left partial recovery state';
+  end if;
+end;
+$insufficient_live_evidence$;
 rollback to recovery_base;
 
 do $ownership$
@@ -270,8 +306,30 @@ update public.price_baseline_versions set status='retired'
   where service_problem_id=(select problem_id from recovery_fixture) and status='active';
 do $missing_price$
 declare v_fixture record;
+  v_policy public.service_intake_policies%rowtype;
+  v_baseline public.price_baseline_versions%rowtype;
 begin
   select * into strict v_fixture from recovery_fixture;
+  select * into strict v_baseline from public.price_baseline_versions
+    where service_problem_id=v_fixture.problem_id and district_code='q7' and complexity='medium'
+      and price_min=250000 and price_max=400000
+    order by version desc limit 1;
+  insert into public.price_baseline_versions
+    select (jsonb_populate_record(null::public.price_baseline_versions,to_jsonb(v_baseline)||
+      jsonb_build_object('id',gen_random_uuid(),'version',1+coalesce((select max(version)
+        from public.price_baseline_versions where service_problem_id=v_fixture.problem_id
+          and district_code='q7' and complexity='medium'),0),'status','active'))).*;
+  select * into strict v_policy from public.service_intake_policies
+    where service_problem_id=v_fixture.problem_id and status='active' order by version desc limit 1;
+  update public.service_intake_policies set status='retired' where id=v_policy.id;
+  insert into public.service_intake_policies
+    select (jsonb_populate_record(null::public.service_intake_policies,to_jsonb(v_policy)||
+      jsonb_build_object('id',gen_random_uuid(),'version',v_policy.version+1,'status','active',
+        'evidence_requirements',
+        '{"minimum_source_count":2,"minimum_high_trust_source_count":2,"requires_active_baseline":true}'::jsonb))).*;
+  update public.price_baseline_versions set status='retired'
+    where service_problem_id=v_fixture.problem_id and district_code='q7' and complexity='medium'
+      and status='active';
   begin
     perform public.recover_legacy_kael_confirmation_atomic(v_fixture.session_id,
       'b7400000-0000-4000-8000-000000000001',v_fixture.job_id,'p20-receipt-0001');

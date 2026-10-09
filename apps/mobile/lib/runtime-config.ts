@@ -108,6 +108,7 @@ const stagingPaymentRailRequested = ['1', 'true', 'yes', 'on'].includes(
   envString('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED').toLowerCase(),
 ) || extraBoolean('stagingPaymentRailEnabled')
 const stagingPaymentRailEnabled = isLocalRuntime && stagingPaymentRailRequested
+const webPreviewClientEnabled = envString('EXPO_PUBLIC_WEB_PREVIEW_CLIENT') === 'true'
 const runtimeBuildInfoExtra = extraRecord('runtimeBuildInfo')
 const runtimeBuildInfo: RuntimeBuildInfo = {
   builtAt: envString('EXPO_PUBLIC_NESTSCOUT_BUILD_CREATED_AT') || recordString(runtimeBuildInfoExtra, 'builtAt'),
@@ -124,6 +125,7 @@ const runtimeBuildInfo: RuntimeBuildInfo = {
 
 export const mobileRuntimeConfig = {
   apiBaseUrl,
+  webPreviewClientEnabled,
   runtimeBuildInfo,
   stagingPaymentRailEnabled,
   supabasePublishableKey,

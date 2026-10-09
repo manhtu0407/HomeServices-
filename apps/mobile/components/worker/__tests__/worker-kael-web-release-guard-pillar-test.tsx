@@ -5,7 +5,7 @@ import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manif
 
 export const PILLAR = {
   id: 'P249-worker-kael-release-client-guard',
-  invariant: 'A Worker on a client that mobile-api refuses (web) gets the compatibility message before any Kael session create or send request leaves the device; released iOS/Android clients still create and send',
+  invariant: 'Ordinary web cannot create or send Worker Kael turns; the explicitly enabled localhost Preview and released iOS/Android clients can reach the API',
   authority: ['supabase/functions/mobile-api/_shared/http/request-runtime.ts enforceStage1ClientCompatibility', 'governance/RULES.md #8 (honest unavailable state, no silent failure)'],
   target: 'apps/mobile/components/worker/chat/use-kael-orb-chat.ts',
   layer: 'integration',
@@ -69,6 +69,7 @@ jest.mock('expo-image-picker', () => ({
 }))
 
 import { useWorkerV5KaelOrbChat } from '../chat/use-kael-orb-chat'
+import { mobileRuntimeConfig } from '@/lib/runtime-config'
 
 function workerNormalChatSuccess(sessionId = 'session-general', turns: unknown[] = []) {
   return {
@@ -94,6 +95,8 @@ function workerNormalChatSuccess(sessionId = 'session-general', turns: unknown[]
 }
 
 const originalPlatform = Platform.OS
+const runtimeConfig = mobileRuntimeConfig as typeof mobileRuntimeConfig & { webPreviewClientEnabled?: boolean }
+const originalWebPreviewClientEnabled = runtimeConfig.webPreviewClientEnabled
 const COMPATIBILITY_COPY = 'Phiên bản NestScout hiện tại chưa tương thích với dịch vụ. Hãy cập nhật hoặc mở bản ứng dụng đã phát hành để tiếp tục.'
 
 describe('Worker Kael on a client mobile-api refuses', () => {
@@ -110,6 +113,7 @@ describe('Worker Kael on a client mobile-api refuses', () => {
 
   afterEach(() => {
     Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform })
+    runtimeConfig.webPreviewClientEnabled = originalWebPreviewClientEnabled
   })
 
   it('names the compatibility block instead of requesting a new session from web', async () => {
@@ -159,5 +163,24 @@ describe('Worker Kael on a client mobile-api refuses', () => {
       expect(mockWorkerKaelChatCreate).toHaveBeenCalledTimes(1)
       expect(mockWorkerKaelChatStreamTurn).toHaveBeenCalledTimes(1)
     }, 'ios is not blocked')
+  })
+
+  it('creates and sends from the explicitly enabled web-preview client', async () => {
+    runtimeConfig.webPreviewClientEnabled = true
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    mockWorkerKaelChatStreamTurn.mockResolvedValue({
+      code: 'CLIENT_UPDATE_REQUIRED', error: 'x', status: 426, success: false,
+    })
+    const { result } = renderHook(() => useWorkerV5KaelOrbChat(null, 'vi', 'normal', true))
+    await act(async () => {
+      expect(await result.current.startNewSession()).toBe(true)
+    })
+    await act(async () => {
+      await result.current.send('Xin chào Kael')
+    })
+    withPillarContext(PILLAR, () => {
+      expect(mockWorkerKaelChatCreate).toHaveBeenCalledTimes(1)
+      expect(mockWorkerKaelChatStreamTurn).toHaveBeenCalledTimes(1)
+    }, 'guarded web-preview requests reach the API')
   })
 })

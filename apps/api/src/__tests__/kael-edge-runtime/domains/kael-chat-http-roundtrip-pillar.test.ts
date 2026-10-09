@@ -10,7 +10,7 @@ import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 export const PILLAR = {
   id: 'P252-kael-chat-http-roundtrip',
   invariant:
-    'A released client\'s Customer normal-chat turn travels the real mobile-api handler to a streamed, persisted Kael reply, while the same request from a client without a released identity (web) is refused with 426 before authentication, the database, or any AI provider is reached',
+    'Released mobile clients and the exact authenticated localhost web-preview identity traverse the real mobile-api handler, while ordinary web and malformed preview identities are refused before authentication, the database, or any AI provider is reached',
   authority: [
     'governance/RULES.md #0 (mobile -> mobile-api -> server-side AI)',
     'governance/RULES.md #8 (no fake success, no silent failure)',
@@ -285,6 +285,73 @@ describe('P252 Kael chat over the real mobile-api handler', () => {
     expect(provider.calls, pillarWhy(PILLAR, 'a refused turn must not reach a model')).toEqual([])
   })
 
+  it('streams and persists a Customer turn from the exact authenticated localhost web preview', async () => {
+    const provider = providerFetch(JSON.stringify({
+      answer: REPLY,
+      public_reasoning_summary: ['Xác định nguyên nhân phổ biến gây chảy nước.'],
+    }))
+    vi.stubGlobal('fetch', provider.fetch)
+    const { client, send, authentications } = setup()
+
+    const response = await send({
+      origin: 'http://localhost:8085',
+      'x-client-platform': 'web-preview',
+      'x-client-application-id': 'com.phanmanhtu.nestscout.web-preview',
+      'x-client-contract-epoch': '2',
+    })
+    const text = await response.text()
+
+    expect(response.status, pillarWhy(PILLAR, text.slice(0, 400))).toBe(200)
+    expect(authentications(), pillarWhy(PILLAR, 'Preview still traverses normal Supabase authentication')).toBe(1)
+    expect(provider.calls.length, pillarWhy(PILLAR, 'the authenticated Preview turn reaches a server-side model')).toBeGreaterThan(0)
+    expect(client.calls.some((call) => call.table === 'rpc:append_customer_kael_conversation_exchange'))
+      .toBe(true)
+    expect(sseEvents(text).map((event) => event.event)).toContain('result')
+  })
+
+  it.each([
+    ['another localhost port', 'http://localhost:8086', 'com.phanmanhtu.nestscout.web-preview', '2'],
+    ['wrong preview application id', 'http://localhost:8085', 'com.phanmanhtu.nestscout', '2'],
+    ['stale contract epoch', 'http://localhost:8085', 'com.phanmanhtu.nestscout.web-preview', '1'],
+  ])('refuses Preview with %s before authentication or side effects', async (_label, origin, applicationId, epoch) => {
+    const provider = providerFetch('{}')
+    vi.stubGlobal('fetch', provider.fetch)
+    const { client, send, authentications } = setup()
+
+    const response = await send({
+      origin,
+      'x-client-platform': 'web-preview',
+      'x-client-application-id': applicationId,
+      'x-client-contract-epoch': epoch,
+    })
+    const body = await response.json() as { code?: string }
+
+    expect(response.status, pillarWhy(PILLAR, JSON.stringify(body))).toBe(426)
+    expect(body.code).toBe('CLIENT_UPDATE_REQUIRED')
+    expect(authentications()).toBe(0)
+    expect(client.calls).toEqual([])
+    expect(provider.calls).toEqual([])
+  })
+
+  it('refuses a Preview identity that also claims native release attestation', async () => {
+    const provider = providerFetch('{}')
+    vi.stubGlobal('fetch', provider.fetch)
+    const { client, send, authentications } = setup()
+
+    const response = await send({
+      origin: 'http://localhost:8085',
+      'x-client-platform': 'web-preview',
+      'x-client-application-id': 'com.phanmanhtu.nestscout.web-preview',
+      'x-client-contract-epoch': '2',
+      'x-client-eas-build-id': 'b14c8cd0-a3f8-4ec6-ad64-6893b371af67',
+    })
+
+    expect(response.status).toBe(426)
+    expect(authentications()).toBe(0)
+    expect(client.calls).toEqual([])
+    expect(provider.calls).toEqual([])
+  })
+
   it('streams and persists a Worker normal-chat reply for a released client', async () => {
     const provider = providerFetch(JSON.stringify({
       answer: WORKER_REPLY,
@@ -331,5 +398,31 @@ describe('P252 Kael chat over the real mobile-api handler', () => {
     expect(authentications()).toBe(0)
     expect(client.calls).toEqual([])
     expect(provider.calls).toEqual([])
+  })
+
+  it('streams and persists a Worker turn from the exact authenticated localhost web preview', async () => {
+    const provider = providerFetch(JSON.stringify({
+      answer: WORKER_REPLY,
+      safety_notes: [],
+      redirect_scope_change: false,
+      public_reasoning_summary: ['Ưu tiên an toàn điện trước khi thao tác.'],
+    }))
+    vi.stubGlobal('fetch', provider.fetch)
+    const { client, send, authentications } = setupWorker()
+
+    const response = await send({
+      origin: 'http://localhost:8085',
+      'x-client-platform': 'web-preview',
+      'x-client-application-id': 'com.phanmanhtu.nestscout.web-preview',
+      'x-client-contract-epoch': '2',
+    })
+    const text = await response.text()
+
+    expect(response.status, pillarWhy(PILLAR, text.slice(0, 400))).toBe(200)
+    expect(authentications(), pillarWhy(PILLAR, 'Worker Preview keeps normal role and ownership authentication')).toBe(1)
+    expect(provider.calls.length).toBeGreaterThan(0)
+    expect(client.calls.some((call) => call.table === 'rpc:complete_worker_kael_general_turn_atomic'))
+      .toBe(true)
+    expect(sseEvents(text).map((event) => event.event)).toContain('result')
   })
 })

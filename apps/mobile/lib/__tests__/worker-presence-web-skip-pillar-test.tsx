@@ -5,7 +5,7 @@ import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manif
 
 export const PILLAR = {
   id: 'P248-worker-presence-release-client-only',
-  invariant: 'Worker presence writes (matching heartbeat and activity minute) are sent only by a released iOS/Android client; a web client, which mobile-api always refuses with 426, sends none',
+  invariant: 'Worker presence writes are sent by released iOS/Android clients and the exact guarded localhost web-preview identity; ordinary web clients send none',
   authority: ['supabase/functions/mobile-api/_shared/http/request-runtime.ts enforceStage1ClientCompatibility', 'governance/RULES.md #8 (no silent failure loops)'],
   target: 'apps/mobile/lib/frontend-workflow/use-worker-board-actions.ts',
   layer: 'integration',
@@ -55,6 +55,7 @@ jest.mock('../services', () => ({
 
 import { getMobileApiAuthHeaders } from '../api'
 import { FrontendWorkflowProvider, useFrontendWorkflow } from '../frontend-workflow-provider'
+import { mobileRuntimeConfig } from '../runtime-config'
 
 const { workerService: mockWorkerService } = jest.requireMock('../services') as {
   workerService: Record<'recordActiveMinute' | 'sendMatchingHeartbeat', jest.Mock>
@@ -67,6 +68,8 @@ function RefreshProbe() {
 
 const originalPlatform = Platform.OS
 const originalAppState = AppState.currentState
+const runtimeConfig = mobileRuntimeConfig as typeof mobileRuntimeConfig & { webPreviewClientEnabled?: boolean }
+const originalWebPreviewClientEnabled = runtimeConfig.webPreviewClientEnabled
 
 async function renderForPlatform(platform: typeof Platform.OS) {
   Object.defineProperty(Platform, 'OS', { configurable: true, value: platform })
@@ -94,16 +97,31 @@ describe('Worker presence writes are limited to released clients', () => {
   afterEach(() => {
     Object.defineProperty(Platform, 'OS', { configurable: true, value: originalPlatform })
     Object.defineProperty(AppState, 'currentState', { configurable: true, value: originalAppState })
+    runtimeConfig.webPreviewClientEnabled = originalWebPreviewClientEnabled
     jest.useRealTimers()
   })
 
   it('sends no heartbeat and no activity minute from a web client', async () => {
+    runtimeConfig.webPreviewClientEnabled = false
     const view = await renderForPlatform('web')
     try {
       withPillarContext(PILLAR, () => {
         expect(mockWorkerService.sendMatchingHeartbeat).not.toHaveBeenCalled()
         expect(mockWorkerService.recordActiveMinute).not.toHaveBeenCalled()
       }, 'web client')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('sends worker presence from the explicitly enabled web-preview client', async () => {
+    runtimeConfig.webPreviewClientEnabled = true
+    const view = await renderForPlatform('web')
+    try {
+      withPillarContext(PILLAR, () => {
+        expect(mockWorkerService.sendMatchingHeartbeat).toHaveBeenCalled()
+        expect(mockWorkerService.recordActiveMinute).toHaveBeenCalledTimes(1)
+      }, 'guarded web-preview client')
     } finally {
       view.unmount()
     }
@@ -137,5 +155,22 @@ describe('The release platform header uses the same client decision', () => {
     withPillarContext(PILLAR, () => {
       expect(headers['x-client-platform']).toBe(expected)
     }, 'header and presence guard must agree on which clients can write')
+  })
+
+  it('sends only the explicit web-preview identity and no native release identity', async () => {
+    runtimeConfig.webPreviewClientEnabled = true
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    const headers = await getMobileApiAuthHeaders()
+    withPillarContext(PILLAR, () => {
+      expect(headers).toMatchObject({
+        'x-client-platform': 'web-preview',
+        'x-client-application-id': 'com.phanmanhtu.nestscout.web-preview',
+        'x-client-contract-epoch': '2',
+      })
+      expect(headers).not.toHaveProperty('x-client-build-number')
+      expect(headers).not.toHaveProperty('x-client-eas-build-id')
+      expect(headers).not.toHaveProperty('x-client-runtime-version')
+      expect(headers).not.toHaveProperty('x-client-release-id')
+    }, 'Preview identity is distinct from a native release identity')
   })
 })

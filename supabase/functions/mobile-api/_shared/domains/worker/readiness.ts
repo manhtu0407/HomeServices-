@@ -23,7 +23,6 @@ const ACTIVE_JOB_STATUSES = [
   "scope_change_pending",
   "completed_by_worker",
   "confirmed_by_customer",
-  "payment_pending",
 ];
 
 type ReadinessSnapshot = {

@@ -32,6 +32,23 @@ function enforceStage1ClientCompatibility(
 ): void {
   const epoch = positiveHeaderInteger(request, "x-client-contract-epoch");
   const platform = request.headers.get("x-client-platform")?.trim().toLowerCase();
+  if (platform === "web-preview") {
+    const applicationId = request.headers.get("x-client-application-id")?.trim() ?? "";
+    const nativeIdentityHeaders = [
+      "x-client-build-number",
+      "x-client-eas-build-id",
+      "x-client-runtime-version",
+      "x-client-git-sha",
+      "x-client-release-id",
+    ];
+    if (
+      epoch === compatibility.contractEpoch &&
+      request.headers.get("origin") === "http://localhost:8085" &&
+      applicationId === "com.phanmanhtu.nestscout.web-preview" &&
+      nativeIdentityHeaders.every((header) => !request.headers.has(header))
+    ) return;
+    rejectIncompatibleClient(compatibility.contractEpoch, null, platform);
+  }
   const platformPolicy = platform === "ios" || platform === "android"
     ? compatibility[platform]
     : null;
@@ -105,7 +122,7 @@ function requestClientIdentity(request: Request): Partial<Pick<
   "clientGitSha" | "clientReleaseId"
 >> {
   const platform = request.headers.get("x-client-platform")?.trim().toLowerCase();
-  const clientPlatform: "ios" | "android" | undefined = platform === "ios" || platform === "android"
+  const clientPlatform: "ios" | "android" | "web-preview" | undefined = platform === "ios" || platform === "android" || platform === "web-preview"
     ? platform
     : undefined;
   const buildNumber = positiveHeaderInteger(request, "x-client-build-number");

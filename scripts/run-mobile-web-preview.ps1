@@ -83,6 +83,7 @@ if ([string]::IsNullOrWhiteSpace($apiBase)) {
 
 Assert-ProductionSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase
 [Environment]::SetEnvironmentVariable('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED', 'false', 'Process')
+[Environment]::SetEnvironmentVariable('EXPO_PUBLIC_WEB_PREVIEW_CLIENT', 'true', 'Process')
 Assert-SupabasePublishableKey -Value $publishableKey
 
 $env:EXPO_NO_DOTENV = '1'

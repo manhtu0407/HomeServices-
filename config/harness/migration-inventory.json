@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 436,
+  "migrationCount": 437,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -74,7 +74,7 @@
       }
     ]
   },
-  "migrationsSha256": "25a55c1a07c7684cbbb79c178f7c2ecbe19bc84deda747bf1eebf1f67c43a058",
+  "migrationsSha256": "334c1249b143cbf8b19a931703e1fe48feb63ef47895507341c0b0057c950d3b",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
@@ -3131,6 +3131,13 @@
       "file": "supabase/migrations/20261009060000_service_case_specific_worker_capabilities.sql",
       "sha256": "5b98d97bbfbcff52ad0b6a87388fe3d7f59823f54aab9dd166e0cea6cb1f03f4",
       "bytes": 10706
+    },
+    {
+      "version": "20261010100000",
+      "name": "kael_matching_recovery_capacity_alignment",
+      "file": "supabase/migrations/20261010100000_kael_matching_recovery_capacity_alignment.sql",
+      "sha256": "44f57e3defe326abb38dcd7ccc6adaf2ececd1613685e153cf439b4710d243be",
+      "bytes": 14426
     }
   ]
 }

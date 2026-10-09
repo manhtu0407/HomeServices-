@@ -14,7 +14,7 @@ import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 export const PILLAR = {
   id: 'P324-production-preview-guard',
   invariant:
-    'Every Production web preview launcher loads only the public allowlist, refuses any non-Production Supabase origin or server-authority key, and forces the staging payment rail off',
+    'Every Production web preview launcher loads only the public allowlist, opts into only the guarded localhost web-preview client identity, refuses any non-Production Supabase origin or server-authority key, and forces the staging payment rail off',
   authority: [
     'governance/RULES.md (no client secrets; Production backend only)',
     'scripts/lib/staging-target-safety.ps1 (Windows twin of the same checks)',
@@ -71,6 +71,7 @@ describe(PILLAR.id, () => {
       EXPO_PUBLIC_SUPABASE_URL: PROD,
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: `"${PUBLISHABLE}"`,
       EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED: 'true',
+      EXPO_PUBLIC_WEB_PREVIEW_CLIENT: 'false',
       SECTION32_NATIVE_CUSTOMER_PASSWORD: 'never-export-me',
     })
     expect(Object.keys(parseEnvFile(text)).sort(), pillarWhy(PILLAR)).toEqual([
@@ -86,10 +87,18 @@ describe(PILLAR.id, () => {
     expect(env.SECTION32_NATIVE_CUSTOMER_PASSWORD, pillarWhy(PILLAR)).toBeUndefined()
     expect(env.SECTION32_NATIVE_WORKER_PASSWORD, pillarWhy(PILLAR)).toBeUndefined()
     expect(env.EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED, pillarWhy(PILLAR)).toBe('false')
+    expect(env.EXPO_PUBLIC_WEB_PREVIEW_CLIENT, pillarWhy(PILLAR)).toBe('true')
     expect(env.EXPO_PUBLIC_API_BASE_URL, pillarWhy(PILLAR)).toBe(`${PROD}/functions/v1/mobile-api`)
     expect(env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY, pillarWhy(PILLAR)).toBe(PUBLISHABLE)
     expect(env.EXPO_NO_DOTENV, pillarWhy(PILLAR)).toBe('1')
     expect(env.PATH, pillarWhy(PILLAR)).toBe('/usr/bin')
+  })
+
+  it('sets web-preview identity only in the guarded launcher and never accepts it from env files', () => {
+    const runner = readFileSync(resolve(root, 'scripts/run-mobile-web-preview.ps1'), 'utf8')
+    expect(runner, pillarWhy(PILLAR)).toContain("SetEnvironmentVariable('EXPO_PUBLIC_WEB_PREVIEW_CLIENT', 'true', 'Process')")
+    expect(runner, pillarWhy(PILLAR)).not.toContain("'EXPO_PUBLIC_WEB_PREVIEW_CLIENT',\n")
+    expect(runner, pillarWhy(PILLAR)).toContain('$allowedEnvNames')
   })
 
   it('refuses to build an env that targets a non-Production origin or carries a server key', () => {
