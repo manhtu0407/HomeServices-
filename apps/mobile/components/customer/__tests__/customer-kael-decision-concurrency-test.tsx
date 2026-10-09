@@ -131,7 +131,6 @@ describe('customer Kael decision concurrency', () => {
   it('shows backend progress as soon as the intake is confirmed and keeps it live until the response', async () => {
     const harness = decisionHarness()
     harness.conversation.chat.session.intake_confirmation = { blocking: false, status: 'pending' }
-    harness.conversation.pendingDraft = { photoDrafts: [{ type: 'image', uri: 'file:///sent.jpg' }] }
     harness.conversation.setComposerMediaDrafts = jest.fn()
     let resolveDecision: (value: unknown) => void = () => undefined
     mockDecideIntake.mockReturnValue(new Promise((resolve) => { resolveDecision = resolve }))
@@ -159,11 +158,7 @@ describe('customer Kael decision concurrency', () => {
       await pending
     })
     expect(harness.conversation.setChat).toHaveBeenCalled()
-    const updateDrafts = harness.conversation.setComposerMediaDrafts.mock.calls[0][0] as (
-      current: Array<{ uri: string; type: string }>,
-    ) => Array<{ uri: string }>
-    expect(updateDrafts([{ type: 'image', uri: 'file:///sent.jpg' }, { type: 'image', uri: 'file:///new.jpg' }]))
-      .toEqual([{ type: 'image', uri: 'file:///new.jpg' }])
+    expect(harness.conversation.setComposerMediaDrafts).toHaveBeenCalledWith([])
     expect(processController.stopProcessLines).toHaveBeenCalled()
     const callsAfterDone = mockProgressGet.mock.calls.length
     await new Promise((resolve) => setTimeout(resolve, 1300))

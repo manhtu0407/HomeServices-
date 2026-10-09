@@ -29,7 +29,6 @@ import {
   localizeKaelRequestFailure,
   makeAssistantTurnId,
 } from './customer-kael-chat-helpers'
-import { withoutSubmittedMediaDrafts } from './intake-media-drafts'
 import { queuedKaelProgress, startKaelProgressPolling } from './kael-progress-polling'
 import type { CustomerKaelRequestGuard } from './customer-kael-state-scope'
 import { totalMediaRefs } from './kael-chat-turn-display-model'
@@ -75,7 +74,6 @@ export function useCustomerKaelDecisionActions({
   const {
     chat,
     setAssistantTurns,
-    pendingDraft,
     setChat,
     setComposerMediaDrafts,
     setError,
@@ -319,7 +317,8 @@ export function useCustomerKaelDecisionActions({
         pendingDraftOwnerId &&
         result.data.session.intake_confirmation?.status === 'confirmed'
       ) {
-        setComposerMediaDrafts((current) => withoutSubmittedMediaDrafts(current, pendingDraft?.photoDrafts))
+        // The composer is hidden during intake confirmation, so what it still holds was sent with the intake.
+        setComposerMediaDrafts([])
         await clearPendingKaelChatDraft(pendingDraftOwnerId)
       }
     } catch {
