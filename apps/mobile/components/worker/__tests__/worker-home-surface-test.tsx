@@ -1377,7 +1377,7 @@ describe('Worker runtime surface wiring', () => {
 
     render(<WorkerChatSurface />)
 
-    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent('Công việc')
+    expect(screen.getByTestId('worker-v5-kael-active-mode')).toHaveTextContent('Work')
     expect(screen.getByTestId('worker-v5-kael-empty-hero-copy'))
       .toHaveTextContent(/You are working on .* Current status: .* Complete the lobby photo check-in/)
     expect(screen.getByTestId('worker-v5-kael-orb-input'))
