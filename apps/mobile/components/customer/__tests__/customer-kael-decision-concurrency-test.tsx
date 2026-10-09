@@ -131,7 +131,6 @@ describe('customer Kael decision concurrency', () => {
   it('shows backend progress as soon as the intake is confirmed and keeps it live until the response', async () => {
     const harness = decisionHarness()
     harness.conversation.chat.session.intake_confirmation = { blocking: false, status: 'pending' }
-    harness.conversation.setComposerMediaDrafts = jest.fn()
     let resolveDecision: (value: unknown) => void = () => undefined
     mockDecideIntake.mockReturnValue(new Promise((resolve) => { resolveDecision = resolve }))
     const livePhase = { current_stage: 'vision_analysis', progress: 0.3, status: 'running', updated_at: 'now' }
@@ -151,14 +150,10 @@ describe('customer Kael decision concurrency', () => {
     }, { timeout: 3000 })
 
     await act(async () => {
-      resolveDecision({
-        success: true,
-        data: { session: { id: 'session-a', intake_confirmation: { status: 'confirmed' } }, turns: [] },
-      })
+      resolveDecision({ success: true, data: { session: { id: 'session-a' }, turns: [] } })
       await pending
     })
     expect(harness.conversation.setChat).toHaveBeenCalled()
-    expect(harness.conversation.setComposerMediaDrafts).toHaveBeenCalledWith([])
     expect(processController.stopProcessLines).toHaveBeenCalled()
     const callsAfterDone = mockProgressGet.mock.calls.length
     await new Promise((resolve) => setTimeout(resolve, 1300))

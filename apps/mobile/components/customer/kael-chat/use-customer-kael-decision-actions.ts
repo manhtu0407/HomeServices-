@@ -75,7 +75,6 @@ export function useCustomerKaelDecisionActions({
     chat,
     setAssistantTurns,
     setChat,
-    setComposerMediaDrafts,
     setError,
     setLoading,
     setLocalMode,
@@ -317,8 +316,6 @@ export function useCustomerKaelDecisionActions({
         pendingDraftOwnerId &&
         result.data.session.intake_confirmation?.status === 'confirmed'
       ) {
-        // The composer is hidden during intake confirmation, so what it still holds was sent with the intake.
-        setComposerMediaDrafts([])
         await clearPendingKaelChatDraft(pendingDraftOwnerId)
       }
     } catch {
