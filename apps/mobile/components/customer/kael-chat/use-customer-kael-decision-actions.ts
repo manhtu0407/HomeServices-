@@ -21,10 +21,7 @@ import {
   reconcilePendingConfirmationRequest,
 } from '@/lib/frontend-workflow/confirmation-reconciliation'
 
-import {
-  clearPendingKaelChatDraft,
-  setPendingKaelChatDraft,
-} from '../kael-chat/pending-intake'
+import { clearPendingKaelChatDraft, setPendingKaelChatDraft } from '../kael-chat/pending-intake'
 import {
   appendKaelSupportCode,
   confirmationProcessPrompt,
@@ -32,6 +29,7 @@ import {
   localizeKaelRequestFailure,
   makeAssistantTurnId,
 } from './customer-kael-chat-helpers'
+import { withoutSubmittedMediaDrafts } from './intake-media-drafts'
 import { queuedKaelProgress, startKaelProgressPolling } from './kael-progress-polling'
 import type { CustomerKaelRequestGuard } from './customer-kael-state-scope'
 import { totalMediaRefs } from './kael-chat-turn-display-model'
@@ -77,7 +75,9 @@ export function useCustomerKaelDecisionActions({
   const {
     chat,
     setAssistantTurns,
+    pendingDraft,
     setChat,
+    setComposerMediaDrafts,
     setError,
     setLoading,
     setLocalMode,
@@ -319,6 +319,7 @@ export function useCustomerKaelDecisionActions({
         pendingDraftOwnerId &&
         result.data.session.intake_confirmation?.status === 'confirmed'
       ) {
+        setComposerMediaDrafts((current) => withoutSubmittedMediaDrafts(current, pendingDraft?.photoDrafts))
         await clearPendingKaelChatDraft(pendingDraftOwnerId)
       }
     } catch {
