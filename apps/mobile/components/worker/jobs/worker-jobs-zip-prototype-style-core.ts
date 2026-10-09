@@ -34,7 +34,6 @@ export const prototypeCoreStyles = StyleSheet.create({
   opportunityActionPrimary: {
     backgroundColor: color.brand.primary,
     borderColor: component.button.primary.border,
-    boxShadow: component.button.primary.boxShadow,
     overflow: 'hidden',
   },
   opportunityActionDisabled: {
