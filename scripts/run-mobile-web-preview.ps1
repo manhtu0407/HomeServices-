@@ -5,8 +5,8 @@ param(
   [string]$Environment,
   [Parameter(Mandatory = $true)]
   [string]$EnvFile,
-  [ValidateRange(1, 65535)]
-  [int]$Port,
+  [ValidateSet('8085','8086')]
+  [int]$Port = 8085,
   [switch]$NoClear
 )
 

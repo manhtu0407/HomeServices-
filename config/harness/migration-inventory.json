@@ -83,7 +83,7 @@
       }
     ]
   },
-  "migrationsSha256": "e6cb6e770ce660b08dbe8f6baee530d99a2e626a01145e584755d31d953cafe7",
+  "migrationsSha256": "b5f0bad7436a8a5e18061ae44b489a9878a1d2c0668aadc823f17f1efd47a32f",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
@@ -3180,8 +3180,8 @@
       "version": "20261010130000",
       "name": "resolve_case_requirements_for_matching_retry",
       "file": "supabase/migrations/20261010130000_resolve_case_requirements_for_matching_retry.sql",
-      "sha256": "b6ce96ac5c59a95f02f589ca9ec75fccbc64fc69e5b03a1e34e45c17ab4abba0",
-      "bytes": 5764
+      "sha256": "c56043cf8b8d53eb4fb0db4e0238e637f801451ecafbabc6b5ffbf1ad3f4603c",
+      "bytes": 5968
     }
   ]
 }

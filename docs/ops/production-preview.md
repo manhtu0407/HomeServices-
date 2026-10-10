@@ -46,4 +46,4 @@ Pillar `P324-production-preview-guard` (`apps/api/src/__tests__/unit/production-
 | `must use the exact production Supabase origin` | `.env.local` points at another project; correct the URL |
 | `must not contain server authority` | You pasted a secret or `service_role` key; use the publishable key |
 | `dependencies are not installed` | `pnpm install` |
-| `port 8085 is already in use` | Stop the old preview, or pass `--port <n>` |
+| `port 8085 is already in use` | Stop the old preview; Production web-preview writes are registered only on ports `8085` and `8086` |

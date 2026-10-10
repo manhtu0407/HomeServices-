@@ -260,6 +260,7 @@ declare
   v_actor uuid;
   v_receipt jsonb;
   v_claim record;
+  v_dispatch jsonb;
   v_problem_id uuid;
   v_service_requirements jsonb;
   v_case_requirements jsonb;
@@ -362,7 +363,7 @@ begin
   insert into public.jobs(id,customer_id,service_type,service_problem_id,description,address_district,
     status,quote_mode,diagnosis_scope)
     values('dd000000-0000-4000-8000-000000000108','dd000000-0000-4000-8000-000000000007',
-      'hvac',v_problem_id,'Legacy HVAC capability retry fixture','q7','broadcasting','kael_auto_quote',
+      'hvac',v_problem_id,'Legacy HVAC capability retry fixture','q7','broadcasting','rfq',
       v_legacy_scope);
   insert into public.kael_chat_sessions(id,customer_id,service_type,status,case_phase,diagnosis_scope)
     values('dd000000-0000-4000-8000-000000000208','dd000000-0000-4000-8000-000000000007',
@@ -371,7 +372,7 @@ begin
     quote_mode,confirmation_kind,state,support_code)
     values('dd000000-0000-4000-8000-000000000308','legacy-hvac-retry-p103',
       'dd000000-0000-4000-8000-000000000208','dd000000-0000-4000-8000-000000000007',
-      'dd000000-0000-4000-8000-000000000108','kael_auto_quote','priced_offer','no_reachable_worker','P1030108');
+      'dd000000-0000-4000-8000-000000000108','rfq','rfq_request','no_reachable_worker','P1030108');
   insert into public.matching_operations(id,confirmation_operation_id,job_id,state)
     values('dd000000-0000-4000-8000-000000000408','dd000000-0000-4000-8000-000000000308',
       'dd000000-0000-4000-8000-000000000108','no_reachable_worker');
@@ -385,6 +386,15 @@ begin
       where job_id='dd000000-0000-4000-8000-000000000108'
         and worker_id='dd000000-0000-4000-8000-000000000011' and status='held')
   then raise exception 'P103_LEGACY_HVAC_JOB_DID_NOT_RESERVE_CASE_CAPABLE_WORKER'; end if;
+
+  select * into strict v_claim from public.claim_worker_replacement_outbox_batch('sql:p103-legacy-hvac',1,45);
+  v_dispatch := public.activate_worker_replacement_outbox_claim(v_claim.outbox_id,v_claim.lease_token);
+  if v_dispatch->>'state'<>'broadcasting'
+    or jsonb_array_length(v_dispatch->'targets')<>1
+    or v_dispatch#>>'{targets,0,worker_id}'<>'dd000000-0000-4000-8000-000000000011'
+    or (select diagnosis_scope->'worker_requirements' from public.jobs
+      where id='dd000000-0000-4000-8000-000000000108') is distinct from v_case_requirements
+  then raise exception 'P103_LEGACY_HVAC_CASE_CAPABLE_WORKER_WAS_NOT_DISPATCHED: %',v_dispatch; end if;
 end;
 $public_coverage$;
 

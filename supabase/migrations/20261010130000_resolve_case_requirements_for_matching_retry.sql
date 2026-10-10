@@ -54,6 +54,8 @@ begin
           and v_service_capabilities @> v_case_capabilities
         then
           v_matching_scope := jsonb_set(v_matching_scope,'{worker_requirements}',v_case_capabilities,true);
+          -- Dispatch reloads the persisted job scope, so keep it aligned with the reservation scope.
+          update public.jobs set diagnosis_scope=v_matching_scope,updated_at=v_now where id=v_job.id;
         end if;
       end if;
     end if;

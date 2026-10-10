@@ -144,7 +144,7 @@ function portIsFree(port) {
   })
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const options = { check: false, envFile: DEFAULT_ENV_FILE, port: DEFAULT_PORT, clear: true }
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
@@ -155,8 +155,8 @@ function parseArgs(argv) {
     else throw new Error(`Unknown argument: ${arg}`)
   }
   if (!options.envFile) throw new Error('--env-file needs a path.')
-  if (!Number.isInteger(options.port) || options.port < 1 || options.port > 65535) {
-    throw new Error('--port must be an integer between 1 and 65535.')
+  if (!Number.isInteger(options.port) || ![8085, 8086].includes(options.port)) {
+    throw new Error('--port must be 8085 or 8086.')
   }
   return options
 }
@@ -180,7 +180,7 @@ async function main() {
     problems.push('apps/mobile dependencies are not installed (run pnpm install)')
   }
   if (!(await portIsFree(options.port))) {
-    problems.push(`port ${options.port} is already in use (stop the running preview or pass --port)`)
+    problems.push(`port ${options.port} is already in use (stop the existing preview; only ports 8085 and 8086 are accepted)`)
   }
 
   if (problems.length > 0) {

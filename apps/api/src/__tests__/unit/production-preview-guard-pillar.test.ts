@@ -7,6 +7,7 @@ import {
   assertProductionSupabaseTargets,
   assertSupabasePublishableKey,
   buildPreviewEnv,
+  parseArgs,
   parseEnvFile,
 } from '../../../../../scripts/preview/production-web.mjs'
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
@@ -96,9 +97,26 @@ describe(PILLAR.id, () => {
 
   it('sets web-preview identity only in the guarded launcher and never accepts it from env files', () => {
     const runner = readFileSync(resolve(root, 'scripts/run-mobile-web-preview.ps1'), 'utf8')
+    const productionRunner = readFileSync(resolve(root, 'scripts/run-mobile-web-production-preview.ps1'), 'utf8')
+    const posixRunner = readFileSync(resolve(root, 'scripts/preview/production-web.mjs'), 'utf8')
+    const runtimeConfig = readFileSync(resolve(root, 'apps/mobile/lib/runtime-config.ts'), 'utf8')
+    const runbook = readFileSync(resolve(root, 'docs/ops/production-preview.md'), 'utf8')
     expect(runner, pillarWhy(PILLAR)).toContain("SetEnvironmentVariable('EXPO_PUBLIC_WEB_PREVIEW_CLIENT', 'true', 'Process')")
     expect(runner, pillarWhy(PILLAR)).not.toContain("'EXPO_PUBLIC_WEB_PREVIEW_CLIENT',\n")
     expect(runner, pillarWhy(PILLAR)).toContain('$allowedEnvNames')
+    expect(runner, pillarWhy(PILLAR)).toMatch(/ValidateSet\('8085','8086'\)/)
+    expect(productionRunner, pillarWhy(PILLAR)).toMatch(/ValidateSet\('8085','8086'\)/)
+    expect(posixRunner, pillarWhy(PILLAR)).toContain("EXPO_PUBLIC_WEB_PREVIEW_CLIENT: 'true'")
+    expect(posixRunner, pillarWhy(PILLAR)).toContain('only ports 8085 and 8086 are accepted')
+    expect(runbook, pillarWhy(PILLAR)).toContain('Production web-preview writes are registered only on ports `8085` and `8086`')
+    expect(runtimeConfig, pillarWhy(PILLAR)).toContain('process.env.EXPO_PUBLIC_WEB_PREVIEW_CLIENT')
+    expect(runtimeConfig, pillarWhy(PILLAR)).not.toContain("envString('EXPO_PUBLIC_WEB_PREVIEW_CLIENT')")
+  })
+
+  it('allows only API-registered localhost Preview origins', () => {
+    expect(parseArgs(['--port', '8085']).port, pillarWhy(PILLAR)).toBe(8085)
+    expect(parseArgs(['--port', '8086']).port, pillarWhy(PILLAR)).toBe(8086)
+    expect(() => parseArgs(['--port', '8087']), pillarWhy(PILLAR)).toThrow(/8085 or 8086/)
   })
 
   it('refuses to build an env that targets a non-Production origin or carries a server key', () => {

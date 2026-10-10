@@ -104,7 +104,8 @@ export function useCustomerMatchingRetry({
       }
       if (!current()) return false
       if (!result.success) {
-        const rejection = MATCHING_RETRY_REJECTIONS.find((code) => code === result.code)
+        const transientStatus = [408, 425, 429].includes(result.status)
+        const rejection = transientStatus ? undefined : MATCHING_RETRY_REJECTIONS.find((code) => code === result.code)
           ?? (result.status >= 400 && result.status < 500 && result.status !== 401 && result.status !== 403
             ? result.code : undefined)
         if (posted && rejection) {
