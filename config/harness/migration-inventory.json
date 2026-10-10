@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 443,
+  "migrationCount": 445,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -83,7 +83,7 @@
       }
     ]
   },
-  "migrationsSha256": "6fdeb07742b71b6c3529aaf13dc4e20d3c0a1c39f9780b4f4e6e82dfb3926759",
+  "migrationsSha256": "062dc1f7989aaf441a22e2c2ed81052f5a0313ff3e1b3c66d2de941b630d4fcc",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
@@ -3189,6 +3189,20 @@
       "file": "supabase/migrations/20261010130000_resolve_case_requirements_for_matching_retry.sql",
       "sha256": "c56043cf8b8d53eb4fb0db4e0238e637f801451ecafbabc6b5ffbf1ad3f4603c",
       "bytes": 5968
+    },
+    {
+      "version": "20261010140000",
+      "name": "reuse_expired_worker_on_customer_retry",
+      "file": "supabase/migrations/20261010140000_reuse_expired_worker_on_customer_retry.sql",
+      "sha256": "620e12695722f022099f3c47b660a9f4103fb115c94ff925127873086fdb6b38",
+      "bytes": 13326
+    },
+    {
+      "version": "20261010150000",
+      "name": "reuse_expired_candidate_on_customer_retry",
+      "file": "supabase/migrations/20261010150000_reuse_expired_candidate_on_customer_retry.sql",
+      "sha256": "4e5ce61f6baa6d05921ac8ace9f8303c4cbae1cdb1138b8aac1096f3a26d89e3",
+      "bytes": 6598
     }
   ]
 }
