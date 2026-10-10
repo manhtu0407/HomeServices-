@@ -481,6 +481,20 @@ describe('Customer durable matching retry mobile boundary', () => {
     resumed.unmount()
   })
 
+  it('persists an unrecognized client contract rejection and stops automatic POST retries', async () => {
+    const view = setup()
+    mockConfirmSearch.mockResolvedValue({ success: false, status: 409, code: 'CLIENT_UPDATE_REQUIRED', error: '' })
+    await act(async () => { await view.result.current.confirmRemoteSearch(JOB) })
+    expect((await listMatchingRetries(OWNER))[0].rejectedCode).toBe('CLIENT_UPDATE_REQUIRED')
+    expect(view.setRemoteError).toHaveBeenLastCalledWith(expect.objectContaining({ code: 'CLIENT_UPDATE_REQUIRED' }))
+    view.unmount()
+
+    const resumed = setup()
+    await act(async () => { await Promise.resolve() })
+    expect(mockConfirmSearch).toHaveBeenCalledTimes(1)
+    resumed.unmount()
+  })
+
   it('foreground reconciliation uses the same receipt and never sends a new request', async () => {
     const onForeground: Array<(state: AppStateStatus) => void> = []
     const listener = jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => {

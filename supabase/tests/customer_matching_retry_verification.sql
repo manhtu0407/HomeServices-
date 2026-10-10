@@ -256,7 +256,14 @@ $identity$;
 rollback to retry_fixture;
 
 do $public_coverage$
-declare v_actor uuid; v_receipt jsonb; v_claim record;
+declare
+  v_actor uuid;
+  v_receipt jsonb;
+  v_claim record;
+  v_problem_id uuid;
+  v_service_requirements jsonb;
+  v_case_requirements jsonb;
+  v_legacy_scope jsonb;
 begin
   -- Public-shaped fixtures are isolated by rollback; they are not real-account launch evidence.
   update public.worker_profiles set is_available=false
@@ -321,6 +328,63 @@ begin
     or (select count(*) from public.matching_recipient_deliveries where job_id='dd000000-0000-4000-8000-000000000107'
       and worker_id='dd000000-0000-4000-8000-000000000008' and status in ('queued','delivered','seen'))<>1
   then raise exception 'P103_PUBLIC_RETRY_DID_NOT_RECORD_ONE_REAL_RECIPIENT'; end if;
+
+  update public.worker_profiles set is_available=false
+    where synthetic_cohort_id is null and is_available and 'hvac'=any(selected_service_types)
+      and ('q7'=any(districts) or 'hcmc_all'=any(districts));
+  v_actor := 'dd000000-0000-4000-8000-000000000011';
+  insert into auth.users(id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+    values(v_actor,'authenticated','authenticated','case-specific-p103@example.test',
+      '{"provider":"email","providers":["email"]}','{}',now(),now());
+  update public.profiles set role='worker' where id=v_actor;
+  insert into public.worker_profiles(id,service_types,selected_service_types,years_experience,districts,
+    problem_specializations,is_approved,is_available,legal_name,date_of_birth,verification_status)
+    values(v_actor,array['hvac']::public.service_type[],array['hvac']::public.service_type[],5,
+      array['q7'],array['hvac_fault_diagnosis'],true,true,'Case-specific HVAC fixture','1990-01-01','approved');
+  perform public.record_worker_matching_heartbeat(v_actor,now());
+
+  select problem.id,floor.capability_requirements,policy.capability_requirements
+    into strict v_problem_id,v_service_requirements,v_case_requirements
+  from public.service_problems problem
+  join public.service_intake_policy_floors floor on floor.service_type=problem.service_type
+  join public.service_intake_policies policy on policy.service_problem_id=problem.id and policy.status='active'
+  where problem.service_type='hvac' and problem.slug='water_leak' and problem.is_active
+  order by policy.version desc limit 1;
+  if jsonb_array_length(v_service_requirements)<=jsonb_array_length(v_case_requirements)
+    or v_case_requirements<>'["hvac_fault_diagnosis"]'::jsonb
+  then raise exception 'P103_HVAC_CASE_REQUIREMENTS_NOT_SCOPED'; end if;
+  v_legacy_scope := jsonb_build_object(
+    'version',1,'service_type','hvac','profile_id','air_scope','case_phase','matching',
+    'facts','{}'::jsonb,'missing_facts','[]'::jsonb,'evidence','[]'::jsonb,
+    'scope_summary','Legacy HVAC case scope','quote_ready',true,'quote_blockers','[]'::jsonb,
+    'worker_requirements',v_service_requirements,'next_action',jsonb_build_object('kind','prepare_offer'));
+
+  insert into public.jobs(id,customer_id,service_type,service_problem_id,description,address_district,
+    status,quote_mode,diagnosis_scope)
+    values('dd000000-0000-4000-8000-000000000108','dd000000-0000-4000-8000-000000000007',
+      'hvac',v_problem_id,'Legacy HVAC capability retry fixture','q7','broadcasting','kael_auto_quote',
+      v_legacy_scope);
+  insert into public.kael_chat_sessions(id,customer_id,service_type,status,case_phase,diagnosis_scope)
+    values('dd000000-0000-4000-8000-000000000208','dd000000-0000-4000-8000-000000000007',
+      'hvac','active','matching',v_legacy_scope);
+  insert into public.confirmation_operations(id,idempotency_key,session_id,customer_id,job_id,
+    quote_mode,confirmation_kind,state,support_code)
+    values('dd000000-0000-4000-8000-000000000308','legacy-hvac-retry-p103',
+      'dd000000-0000-4000-8000-000000000208','dd000000-0000-4000-8000-000000000007',
+      'dd000000-0000-4000-8000-000000000108','kael_auto_quote','priced_offer','no_reachable_worker','P1030108');
+  insert into public.matching_operations(id,confirmation_operation_id,job_id,state)
+    values('dd000000-0000-4000-8000-000000000408','dd000000-0000-4000-8000-000000000308',
+      'dd000000-0000-4000-8000-000000000108','no_reachable_worker');
+  v_receipt := public.request_job_matching_retry_atomic('dd000000-0000-4000-8000-000000000108',
+    'dd000000-0000-4000-8000-000000000007','dd000000-0000-4000-8000-000000000608',
+    'dd000000-0000-4000-8000-000000000408');
+  if v_receipt->>'state'<>'queued'
+    or (select count(*) from public.matching_capacity_reservations
+      where job_id='dd000000-0000-4000-8000-000000000108' and status='held')<>1
+    or not exists(select 1 from public.matching_capacity_reservations
+      where job_id='dd000000-0000-4000-8000-000000000108'
+        and worker_id='dd000000-0000-4000-8000-000000000011' and status='held')
+  then raise exception 'P103_LEGACY_HVAC_JOB_DID_NOT_RESERVE_CASE_CAPABLE_WORKER'; end if;
 end;
 $public_coverage$;
 

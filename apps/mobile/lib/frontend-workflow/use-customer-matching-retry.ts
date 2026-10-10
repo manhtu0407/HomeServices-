@@ -105,10 +105,12 @@ export function useCustomerMatchingRetry({
       if (!current()) return false
       if (!result.success) {
         const rejection = MATCHING_RETRY_REJECTIONS.find((code) => code === result.code)
+          ?? (result.status >= 400 && result.status < 500 && result.status !== 401 && result.status !== 403
+            ? result.code : undefined)
         if (posted && rejection) {
           try { await storeMatchingRetry({ ...pending, rejectedCode: rejection }) }
           catch { return report('MATCHING_RETRY_STORAGE_UNAVAILABLE', result.meta) }
-          return report(rejection, result.meta)
+          return report(result.code, result.meta)
         }
         return report('MATCHING_RETRY_OUTCOME_UNKNOWN', result.meta)
       }

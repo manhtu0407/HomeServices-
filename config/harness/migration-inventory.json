@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 441,
+  "migrationCount": 442,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -83,7 +83,7 @@
       }
     ]
   },
-  "migrationsSha256": "0343b1148df0ba4d431a5a83cdc2e911386a7eca44189290bc9034f8f2725333",
+  "migrationsSha256": "e6cb6e770ce660b08dbe8f6baee530d99a2e626a01145e584755d31d953cafe7",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
@@ -3175,6 +3175,13 @@
       "file": "supabase/migrations/20261010120000_allow_available_worker_for_confirmed_matching_retry.sql",
       "sha256": "580ac1c558e63bcd8a9473ea7029c65a16982637b25b04958dbf4715fdc80685",
       "bytes": 3977
+    },
+    {
+      "version": "20261010130000",
+      "name": "resolve_case_requirements_for_matching_retry",
+      "file": "supabase/migrations/20261010130000_resolve_case_requirements_for_matching_retry.sql",
+      "sha256": "b6ce96ac5c59a95f02f589ca9ec75fccbc64fc69e5b03a1e34e45c17ab4abba0",
+      "bytes": 5764
     }
   ]
 }
