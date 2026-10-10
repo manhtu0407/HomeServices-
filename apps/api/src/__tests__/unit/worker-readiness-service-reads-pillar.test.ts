@@ -160,6 +160,22 @@ describe('P201 worker readiness — the reads only the service client can make',
     ).toEqual([`service:admin_worker_application_reviews.eq("queue_id","${APPLICATION}")`])
   })
 
+  it('does not count completed jobs awaiting payment as current Worker capacity', async () => {
+    const { context, log } = setup({
+      rpc: { get_current_worker_application: APPLICATION_ROW },
+      tables: {
+        matching_capacity_reservations: [{ data: [], error: null }],
+        admin_worker_application_reviews: [REVIEW_ROW],
+      },
+    })
+
+    await getWorkerReadiness(context)
+
+    const statusFilter = log.find((entry) => entry.startsWith('user:jobs.in("status",'))
+    expect(statusFilter).toBeDefined()
+    expect(statusFilter).not.toContain('"payment_pending"')
+  })
+
   it('does not read a review when the worker has no application', async () => {
     const { context, calls } = setup({
       rpc: { get_current_worker_application: { data: [], error: null } },

@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
   [string]$EnvFile = 'apps/mobile/.env.local',
-  [ValidateRange(1, 65535)]
+  [ValidateSet('8085','8086')]
   [int]$Port = 8085,
   [switch]$NoClear
 )

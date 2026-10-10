@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 436,
+  "migrationCount": 442,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -71,10 +71,19 @@
           "20260823190100"
         ],
         "semanticSha256": "3939768f0a8fc0b4fd77f8e023d4de819fc8c0a0051d1ca0f863cdd7a76bc07b"
+      },
+      {
+        "id": "confirmed-matching-retry-operation-time-alias-20261010",
+        "canonicalVersion": "20261010120000",
+        "versions": [
+          "20261009204030",
+          "20261010120000"
+        ],
+        "semanticSha256": "580ac1c558e63bcd8a9473ea7029c65a16982637b25b04958dbf4715fdc80685"
       }
     ]
   },
-  "migrationsSha256": "25a55c1a07c7684cbbb79c178f7c2ecbe19bc84deda747bf1eebf1f67c43a058",
+  "migrationsSha256": "b5f0bad7436a8a5e18061ae44b489a9878a1d2c0668aadc823f17f1efd47a32f",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
@@ -3131,6 +3140,48 @@
       "file": "supabase/migrations/20261009060000_service_case_specific_worker_capabilities.sql",
       "sha256": "5b98d97bbfbcff52ad0b6a87388fe3d7f59823f54aab9dd166e0cea6cb1f03f4",
       "bytes": 10706
+    },
+    {
+      "version": "20261009192934",
+      "name": "worker_matching_terminal_capacity_release",
+      "file": "supabase/migrations/20261009192934_worker_matching_terminal_capacity_release.sql",
+      "sha256": "0af8f9666d31af5a15f4f7c8958faf0549891e7cb928b1167952590ac9c6b344",
+      "bytes": 3391
+    },
+    {
+      "version": "20261009204030",
+      "name": "allow_available_worker_for_confirmed_matching_retry",
+      "file": "supabase/migrations/20261009204030_allow_available_worker_for_confirmed_matching_retry.sql",
+      "sha256": "580ac1c558e63bcd8a9473ea7029c65a16982637b25b04958dbf4715fdc80685",
+      "bytes": 3977
+    },
+    {
+      "version": "20261010100000",
+      "name": "kael_matching_recovery_capacity_alignment",
+      "file": "supabase/migrations/20261010100000_kael_matching_recovery_capacity_alignment.sql",
+      "sha256": "44f57e3defe326abb38dcd7ccc6adaf2ececd1613685e153cf439b4710d243be",
+      "bytes": 14426
+    },
+    {
+      "version": "20261010110000",
+      "name": "worker_matching_terminal_capacity_release",
+      "file": "supabase/migrations/20261010110000_worker_matching_terminal_capacity_release.sql",
+      "sha256": "0af8f9666d31af5a15f4f7c8958faf0549891e7cb928b1167952590ac9c6b344",
+      "bytes": 3391
+    },
+    {
+      "version": "20261010120000",
+      "name": "allow_available_worker_for_confirmed_matching_retry",
+      "file": "supabase/migrations/20261010120000_allow_available_worker_for_confirmed_matching_retry.sql",
+      "sha256": "580ac1c558e63bcd8a9473ea7029c65a16982637b25b04958dbf4715fdc80685",
+      "bytes": 3977
+    },
+    {
+      "version": "20261010130000",
+      "name": "resolve_case_requirements_for_matching_retry",
+      "file": "supabase/migrations/20261010130000_resolve_case_requirements_for_matching_retry.sql",
+      "sha256": "c56043cf8b8d53eb4fb0db4e0238e637f801451ecafbabc6b5ffbf1ad3f4603c",
+      "bytes": 5968
     }
   ]
 }

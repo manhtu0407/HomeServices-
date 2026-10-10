@@ -16,7 +16,7 @@ import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 export const PILLAR = {
   id: 'P71-worker-readiness-onboarding',
   invariant:
-    'worker access and KYC survive relaunch, one pending application cannot duplicate, and only an approved, available, reachable, unreserved real worker is dispatchable',
+    'worker access and KYC survive relaunch, one pending application cannot duplicate, and only an approved, available, reachable, unreserved real worker without unconfirmed active work is dispatchable',
   authority: [
     'governance/RULES.md #0 (workflow-sensitive writes belong to the server)',
     'governance/RULES.md #7 (human authority remains explicit)',
@@ -25,7 +25,7 @@ export const PILLAR = {
   layer: 'integration',
   siblings: ['P67-public-coverage-reservation', 'P10-per-actor-rls'],
   mutation:
-    'restore the timestamp-only application read instead of the lineage RPC — the HTTP resume assertion turns red',
+    'count confirmed_by_customer as active worker capacity — the HTTP readiness query includes the terminal work status and the matching-capacity SQL pillar rejects that worker',
 } as const satisfies PillarManifest
 
 const OBSERVED_AT = '2026-09-04T12:00:00.000Z'
@@ -304,6 +304,40 @@ describe('worker readiness and onboarding', () => {
     expect(result.reason_codes, pillarWhy(PILLAR, 'a complete worker still has an unexplained blocker')).toEqual([])
     expect(result.ready_for_matching).toBe(true)
     expect(result.next_action).toBe('ready')
+  })
+
+  it('does not treat customer-confirmed completion as an active worker-capacity blocker', async () => {
+    const { client, read } = applicationHttp({
+      role: 'worker',
+      tableResults: {
+        profiles: [{ data: { role: 'worker' }, error: null }],
+        worker_profiles: [{ data: completeWorker({
+          matching_foreground_active_until: null,
+          matching_push_proven_at: '2026-09-04T11:30:00.000Z',
+        }), error: null }],
+        device_push_tokens: [{ data: [{ id: 'token' }], error: null }],
+        jobs: [{ data: [], error: null }],
+        job_worker_candidates: [{ data: [], error: null }],
+        matching_capacity_reservations: [{ data: [], error: null }],
+      },
+    })
+
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    const body = await response.json()
+    expect(body.capacity, pillarWhy(PILLAR)).toMatchObject({
+      active_job: false, active_candidate: false, active_reservation: false,
+    })
+    expect(body.reason_codes, pillarWhy(PILLAR)).not.toContain('ACTIVE_JOB')
+
+    const jobQuery = client.calls.find((call) => call.table === 'jobs')
+    const statusFilter = jobQuery?.operations.find((operation) => operation[0] === 'in' && operation[1] === 'status')
+    expect(statusFilter, pillarWhy(PILLAR, 'worker readiness must use the same physical-capacity lifecycle as dispatch')).toEqual([
+      'in', 'status', [
+        'worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending',
+        'completed_by_worker',
+      ],
+    ])
   })
 
   it.each([

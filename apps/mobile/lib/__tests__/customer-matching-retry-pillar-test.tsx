@@ -481,6 +481,37 @@ describe('Customer durable matching retry mobile boundary', () => {
     resumed.unmount()
   })
 
+  it('persists an unrecognized client contract rejection and stops automatic POST retries', async () => {
+    const view = setup()
+    mockConfirmSearch.mockResolvedValue({ success: false, status: 409, code: 'CLIENT_UPDATE_REQUIRED', error: '' })
+    await act(async () => { await view.result.current.confirmRemoteSearch(JOB) })
+    expect((await listMatchingRetries(OWNER))[0].rejectedCode).toBe('CLIENT_UPDATE_REQUIRED')
+    expect(view.setRemoteError).toHaveBeenLastCalledWith(expect.objectContaining({ code: 'CLIENT_UPDATE_REQUIRED' }))
+    view.unmount()
+
+    const resumed = setup()
+    await act(async () => { await Promise.resolve() })
+    expect(mockConfirmSearch).toHaveBeenCalledTimes(1)
+    resumed.unmount()
+  })
+
+  it.each([408, 425, 429])('keeps HTTP %i retry commands recoverable with the same request identity', async (status) => {
+    const view = setup()
+    const code = status === 429 ? 'COVERAGE_UNAVAILABLE' : 'RATE_LIMITED'
+    mockConfirmSearch.mockResolvedValueOnce({ success: false, status, code, error: '' })
+    await act(async () => { await view.result.current.confirmRemoteSearch(JOB) })
+    const saved = (await listMatchingRetries(OWNER))[0]
+    expect(saved.rejectedCode).toBeNull()
+    const request = saved.request
+
+    mockGetMatchingRetry.mockResolvedValueOnce({ success: false, status: 404, code: 'NOT_FOUND', error: '' })
+    mockConfirmSearch.mockResolvedValueOnce({ success: true, status: 202, data: { operation: receipt(request) } })
+    await act(async () => { await view.result.current.confirmRemoteSearch(JOB) })
+    expect(mockConfirmSearch).toHaveBeenLastCalledWith(JOB, request, `token-${OWNER}`)
+    expect((await listMatchingRetries(OWNER))[0].request).toEqual(request)
+    view.unmount()
+  })
+
   it('foreground reconciliation uses the same receipt and never sends a new request', async () => {
     const onForeground: Array<(state: AppStateStatus) => void> = []
     const listener = jest.spyOn(AppState, 'addEventListener').mockImplementation((_event, callback) => {

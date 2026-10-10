@@ -1,12 +1,15 @@
 import { Platform } from 'react-native'
+import { mobileRuntimeConfig } from './runtime-config'
 
-export type ReleaseClientPlatform = 'ios' | 'android'
+export type ReleaseClientPlatform = 'ios' | 'android' | 'web-preview'
 
 /**
- * mobile-api accepts writes only from a released iOS/Android build and answers every other
- * client with 426 CLIENT_UPDATE_REQUIRED (enforceStage1ClientCompatibility). A null result
- * means no write from this client can succeed, so callers skip it instead of looping on 426.
+ * The Production API accepts native writes only from an attested release. The guarded local
+ * Preview uses a distinct identity accepted only from the API's allowlisted localhost origins.
  */
 export function releaseClientPlatform(): ReleaseClientPlatform | null {
-  return Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : null
+  if (Platform.OS === 'ios' || Platform.OS === 'android') return Platform.OS
+  return Platform.OS === 'web' && mobileRuntimeConfig.webPreviewClientEnabled
+    ? 'web-preview'
+    : null
 }

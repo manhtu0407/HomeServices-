@@ -54,7 +54,11 @@ API paths below are relative to /functions/v1/mobile-api.
    services/districts/capabilities, no suspension or active-job/reservation blocker,
    availability, and proven push delivery or a valid foreground heartbeat.
    Public booking requires three distinct real eligible/reachable Workers per
-   service × district; synthetic actors do not count.
+   service × district; synthetic actors do not count. After an existing job has
+   passed Customer confirmation, an explicit retry or replacement search may
+   proceed with any real eligible/reachable Worker currently available. Zero
+   eligible Workers still fails closed and does not reserve capacity or create
+   a dispatch operation.
 
 ## Failure handling and current proof limits
 

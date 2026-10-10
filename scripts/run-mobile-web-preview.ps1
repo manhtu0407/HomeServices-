@@ -5,8 +5,8 @@ param(
   [string]$Environment,
   [Parameter(Mandatory = $true)]
   [string]$EnvFile,
-  [ValidateRange(1, 65535)]
-  [int]$Port,
+  [ValidateSet('8085','8086')]
+  [int]$Port = 8085,
   [switch]$NoClear
 )
 
@@ -83,6 +83,7 @@ if ([string]::IsNullOrWhiteSpace($apiBase)) {
 
 Assert-ProductionSupabaseTargets -SupabaseUrl $supabaseUrl -MobileApiUrl $apiBase
 [Environment]::SetEnvironmentVariable('EXPO_PUBLIC_STAGING_PAYMENT_RAIL_ENABLED', 'false', 'Process')
+[Environment]::SetEnvironmentVariable('EXPO_PUBLIC_WEB_PREVIEW_CLIENT', 'true', 'Process')
 Assert-SupabasePublishableKey -Value $publishableKey
 
 $env:EXPO_NO_DOTENV = '1'

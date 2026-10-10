@@ -6,6 +6,7 @@ import { generateClientRequestId } from '../client-request-id'
 const PREFIX = 'nestscout.customer.matching-retry.v1'
 const MAX_RECORDS = 20
 const writes = new Map<string, Promise<unknown>>()
+const matchingRetryErrorCodeSchema = z.string().regex(/^[A-Z][A-Z0-9_]{0,63}$/)
 export const MATCHING_RETRY_REJECTIONS = [
   'COVERAGE_UNAVAILABLE', 'MATCHING_RETRY_PARENT_CHANGED', 'MATCHING_RETRY_NOT_READY',
   'MATCHING_RETRY_REQUEST_CONFLICT', 'MATCHING_RETRY_CONFIRMATION_UNAVAILABLE', 'MATCHING_PREFERENCE_PENDING',
@@ -13,7 +14,7 @@ export const MATCHING_RETRY_REJECTIONS = [
 
 const pendingSchema = z.object({
   ownerId: z.string().uuid(), jobId: z.string().uuid(), request: matchingRetryRequestSchema,
-  receipt: matchingRetryReceiptSchema.nullable(), rejectedCode: z.enum(MATCHING_RETRY_REJECTIONS).nullable(),
+  receipt: matchingRetryReceiptSchema.nullable(), rejectedCode: matchingRetryErrorCodeSchema.nullable(),
 }).strict().refine((record) => !record.receipt || (
   record.receipt.job_id === record.jobId
   && record.receipt.request_id === record.request.client_request_id
