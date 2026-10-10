@@ -12,12 +12,12 @@ import { recoverLegacyConfirmation } from '../services/legacy-confirmation-recov
 
 export const PILLAR = {
   id: 'P105-customer-matching-retry-mobile',
-  invariant: 'Customer retry persists one actor/job-bound command before POST and reconciles the same request after interruption without inventing delivery or crossing accounts',
+  invariant: 'Customer retry persists one actor/job-bound command, advances only after the server confirms exhaustion, and clears stale errors after a valid job read',
   authority: ['governance/RULES.md #7 (Customer confirmation)', 'governance/RULES.md #8 (no fake success)'],
   target: 'apps/mobile/lib/frontend-workflow/use-customer-job-actions.ts',
   layer: 'integration',
   siblings: ['P74-customer-confirmation-relaunch-recovery'],
-  mutation: 'send the bodyless legacy POST before durable storage — persist-before-send and exact request replay assertions fail',
+  mutation: 'reuse a queued receipt after the server reports exhaustion — the explicit fresh-request assertion fails',
 } as const satisfies PillarManifest
 
 const OWNER = '11111111-1111-4111-8111-111111111111'
@@ -261,6 +261,8 @@ describe('Customer durable matching retry mobile boundary', () => {
 
   it('hydrates the real job response through the shared reducer, not the retry receipt', async () => {
     const view = setup()
+    const stateRef = view.stateRef as { current: { lastError?: string | null } }
+    stateRef.current.lastError = 'Yêu cầu cần được đối soát trước khi tiếp tục.'
     mockConfirmSearch.mockImplementation(async (_job, input) => ({ success: true, status: 202, data: {
       operation: { ...receipt(input, 'broadcasting'), broadcast_sent: true },
     } }))
@@ -268,6 +270,7 @@ describe('Customer durable matching retry mobile boundary', () => {
     await act(async () => { await view.result.current.confirmRemoteSearch(JOB) })
     const action = view.dispatch.mock.calls.find(([value]) => value.type === 'hydrate_remote_job')?.[0]
     expect(action).toBeDefined()
+    expect(view.dispatch).toHaveBeenCalledWith({ type: 'set_workflow_error', error: null })
     const state = localWorkflowReducer(createInitialLocalWorkflowState(), action)
     expect(state.deal).toMatchObject({ id: JOB, status: 'broadcasting', broadcast: { status: 'sent' }, estimate: null })
     expect(state.lastError).toBeNull()
@@ -429,6 +432,30 @@ describe('Customer durable matching retry mobile boundary', () => {
     const secondInput = mockConfirmSearch.mock.calls[1][1]
     expect(secondInput.expected_matching_operation_id).toBe(OPERATION)
     expect(secondInput.client_request_id).not.toBe(firstInput.client_request_id)
+    view.unmount()
+  })
+
+  it('starts a fresh retry when an explicit action discovers that the queued request later exhausted', async () => {
+    const view = setup()
+    await act(async () => { await view.result.current.confirmRemoteSearch(JOB) })
+    const firstInput = mockConfirmSearch.mock.calls[0][1]
+    expect((await listMatchingRetries(OWNER))[0].receipt?.state).toBe('queued')
+
+    mockGetMatchingOperation.mockResolvedValue({ success: true, status: 200, data: {
+      job_id: JOB, operation: { operation_id: OPERATION, state: 'no_reachable_worker', updated_at: '2026-09-05T01:00:00.000Z' },
+    } })
+    mockGetMatchingRetry.mockResolvedValueOnce({ success: true, status: 200, data: {
+      operation: receipt(firstInput, 'no_reachable_worker'),
+    } })
+
+    await act(async () => { await view.result.current.confirmRemoteSearch(JOB) })
+
+    expect(mockConfirmSearch).toHaveBeenCalledTimes(2)
+    const secondInput = mockConfirmSearch.mock.calls[1][1]
+    expect(secondInput.client_request_id).not.toBe(firstInput.client_request_id)
+    expect(secondInput.expected_matching_operation_id).toBe(OPERATION)
+    expect(mockGetMatchingRetry).toHaveBeenLastCalledWith(JOB, secondInput.client_request_id, `token-${OWNER}`)
+    expect((await listMatchingRetries(OWNER))[0].request).toEqual(secondInput)
     view.unmount()
   })
 

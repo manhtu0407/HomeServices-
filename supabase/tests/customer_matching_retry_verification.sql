@@ -1,7 +1,7 @@
 -- @pillar id: P103-customer-matching-retry-sql
 -- @pillar invariant: An explicit retry after exhausted matching dispatches to one or more real eligible public Workers, keeps zero-worker retries fail-closed, and records a durable outbox receipt without inventing delivery.
 -- @pillar authority: approved Production Agentic Transaction Readiness plan | governance/RULES.md #7 and #8
--- @pillar target: supabase/migrations/20260905153000_customer_matching_retry_command.sql
+-- @pillar target: supabase/migrations/20261010150000_reuse_expired_candidate_on_customer_retry.sql
 -- @pillar layer: sql
 -- @pillar siblings: P100-matching-expiry-maintenance-sql, P102-replacement-outbox-lease-authority-sql
 -- @pillar mutation: Omit the atomic retry command or its request identity; exhausted matching cannot create one recoverable next operation.
@@ -194,6 +194,78 @@ end;
 $next_attempt$;
 rollback to retry_fixture;
 
+savepoint expired_worker_retry;
+update public.worker_profiles set is_available=false
+  where id in ('dd000000-0000-4000-8000-000000000003','dd000000-0000-4000-8000-000000000004');
+insert into public.job_worker_candidates(job_id,worker_id,status,proposed_at,expires_at)
+  values('dd000000-0000-4000-8000-000000000101','dd000000-0000-4000-8000-000000000002',
+    'expired',clock_timestamp()-interval '2 minutes',clock_timestamp()-interval '1 minute');
+do $expired_worker_retry$
+declare
+  v_receipt jsonb;
+  v_replayed jsonb;
+  v_claim record;
+  v_parent uuid;
+  v_operation uuid;
+  v_before integer;
+begin
+  select matching.id into strict v_parent from public.matching_operations matching
+    where matching.job_id='dd000000-0000-4000-8000-000000000101' and matching.state='no_reachable_worker'
+    order by matching.created_at desc,matching.id desc limit 1;
+  v_receipt := public.request_job_matching_retry_atomic(
+    'dd000000-0000-4000-8000-000000000101','dd000000-0000-4000-8000-000000000001',
+    'dd000000-0000-4000-8000-000000000603',v_parent);
+  v_operation := (v_receipt->>'operation_id')::uuid;
+  if v_receipt->>'state'<>'queued'
+    or (select count(*) from public.matching_capacity_reservations where job_id='dd000000-0000-4000-8000-000000000101'
+      and status='held')<>1
+    or not exists(select 1 from public.matching_capacity_reservations where operation_id='dd000000-0000-4000-8000-000000000301'
+      and job_id='dd000000-0000-4000-8000-000000000101'
+      and worker_id='dd000000-0000-4000-8000-000000000002' and status='held')
+    or (select count(*) from public.workflow_outbox where retry_matching_operation_id=v_operation and status='queued')<>1
+    or exists(select 1 from public.job_broadcasts where job_id='dd000000-0000-4000-8000-000000000101'
+      and worker_id='dd000000-0000-4000-8000-000000000002' and status<>'expired')
+  then raise exception 'P103_EXPIRED_ELIGIBLE_WORKER_RETRY_NOT_RESERVED_DURABLY'; end if;
+
+  select * into strict v_claim from public.claim_worker_replacement_outbox_batch('sql:p103-expired-worker-retry',1,45);
+  v_replayed := public.activate_worker_replacement_outbox_claim(v_claim.outbox_id,v_claim.lease_token);
+  if v_replayed->>'state'<>'broadcasting' or jsonb_array_length(v_replayed->'targets')<>1
+    or v_replayed#>>'{targets,0,worker_id}'<>'dd000000-0000-4000-8000-000000000002'
+    or v_replayed->>'matching_reason'<>'customer_retry'
+  then raise exception 'P103_EXPIRED_ELIGIBLE_WORKER_RETRY_NOT_REINVITED'; end if;
+  if public.settle_worker_replacement_outbox_claim(v_claim.outbox_id,v_claim.lease_token,'broadcasting')<>'completed'
+  then raise exception 'P103_EXPIRED_WORKER_RETRY_OUTBOX_NOT_SETTLED'; end if;
+
+  update public.matching_recipient_deliveries set expires_at=clock_timestamp()-interval '1 microsecond'
+    where job_id='dd000000-0000-4000-8000-000000000101';
+  update public.job_broadcasts set expires_at=clock_timestamp()-interval '1 microsecond'
+    where job_id='dd000000-0000-4000-8000-000000000101' and status='sent';
+  update public.matching_capacity_reservations set expires_at=clock_timestamp()-interval '1 microsecond'
+    where job_id='dd000000-0000-4000-8000-000000000101';
+  perform private.reconcile_job_matching_expiry('dd000000-0000-4000-8000-000000000101');
+  update public.job_broadcasts set status='declined',responded_at=clock_timestamp()
+    where job_id='dd000000-0000-4000-8000-000000000101'
+      and worker_id in ('dd000000-0000-4000-8000-000000000002','dd000000-0000-4000-8000-000000000003');
+  select matching.id into strict v_parent from public.matching_operations matching
+    where matching.job_id='dd000000-0000-4000-8000-000000000101' and matching.state='no_reachable_worker'
+    order by matching.created_at desc,matching.id desc limit 1;
+  select count(*) into v_before from public.matching_operations where job_id='dd000000-0000-4000-8000-000000000101';
+  begin
+    perform public.request_job_matching_retry_atomic(
+      'dd000000-0000-4000-8000-000000000101','dd000000-0000-4000-8000-000000000001',
+      'dd000000-0000-4000-8000-000000000604',v_parent);
+    raise exception 'P103_DECLINED_WORKER_REUSED_FOR_CUSTOMER_RETRY';
+  exception when object_not_in_prerequisite_state then
+    if sqlerrm<>'COVERAGE_UNAVAILABLE' then raise; end if;
+  end;
+  if (select count(*) from public.matching_operations where job_id='dd000000-0000-4000-8000-000000000101')<>v_before
+    or exists(select 1 from public.matching_operations where retry_request_id='dd000000-0000-4000-8000-000000000604')
+    or exists(select 1 from public.matching_capacity_reservations where job_id='dd000000-0000-4000-8000-000000000101' and status='held')
+  then raise exception 'P103_DECLINED_WORKER_RETRY_LEFT_PARTIAL_STATE'; end if;
+end;
+$expired_worker_retry$;
+rollback to expired_worker_retry;
+
 do $negative$
 declare v_before integer;
 begin
@@ -210,7 +282,9 @@ begin
   exception when object_not_in_prerequisite_state then
     if sqlerrm<>'MATCHING_RETRY_PARENT_CHANGED' then raise; end if;
   end;
-  update public.worker_profiles set is_available=false where id='dd000000-0000-4000-8000-000000000004';
+  update public.worker_profiles set is_available=false
+    where id in ('dd000000-0000-4000-8000-000000000002','dd000000-0000-4000-8000-000000000003',
+      'dd000000-0000-4000-8000-000000000004');
   begin
     perform public.request_job_matching_retry_atomic('dd000000-0000-4000-8000-000000000101',
       'dd000000-0000-4000-8000-000000000001','dd000000-0000-4000-8000-000000000601','dd000000-0000-4000-8000-000000000401');
@@ -250,6 +324,7 @@ begin
   if has_function_privilege('authenticated','public.request_job_matching_retry_atomic(uuid,uuid,uuid,uuid)','execute')
     or has_function_privilege('anon','public.get_job_matching_retry_operation(uuid,uuid,uuid)','execute')
     or has_function_privilege('service_role','private.reserve_fresh_matching_workers(uuid,uuid)','execute')
+    or has_function_privilege('service_role','private.reserve_fresh_matching_workers(uuid,uuid,boolean)','execute')
   then raise exception 'P103_RETRY_AUTHORITY_EXPOSED'; end if;
 end;
 $identity$;

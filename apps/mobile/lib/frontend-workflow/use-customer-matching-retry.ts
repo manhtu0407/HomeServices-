@@ -91,12 +91,34 @@ export function useCustomerMatchingRetry({
         } catch { return report('MATCHING_RETRY_STORAGE_UNAVAILABLE') }
       }
       if (!pending || !authorized() || !isAppForeground()) return false
-      report('MATCHING_RETRY_OUTCOME_UNKNOWN', pending.receipt ? { ...createClientDiagnosticMetadata(), supportCode: pending.receipt.support_code } : undefined)
       let result = validateMatchingRetryResult(
         await jobService.getMatchingRetry(jobId, pending.request.client_request_id, sessionAccessToken), jobId, pending.request,
       )
       if (!authorized() || !isAppForeground()) return false
       let posted = false
+      if (result.success && explicit && result.data.operation.state === 'no_reachable_worker') {
+        const exhausted = result.data.operation
+        const exhaustedMeta = { ...createClientDiagnosticMetadata(), ...result.meta, supportCode: exhausted.support_code }
+        try {
+          if (!await storeMatchingRetry({ ...pending, receipt: exhausted, rejectedCode: null })) {
+            return report('RECOVERY_REQUIRED', exhaustedMeta)
+          }
+        } catch { return report('MATCHING_RETRY_STORAGE_UNAVAILABLE', exhaustedMeta) }
+        let latest = await jobService.getMatchingOperation(jobId, sessionAccessToken)
+        if (!authorized() || !isAppForeground()) return false
+        if (!latest.success) return report(latest.code, latest.meta)
+        if (latest.data.operation?.operation_id === exhausted.operation_id
+          && latest.data.operation.state === 'no_reachable_worker') {
+          try {
+            pending = await prepareMatchingRetry(sessionUserId, jobId, latest.data.operation.operation_id)
+          } catch { return report('MATCHING_RETRY_STORAGE_UNAVAILABLE', exhaustedMeta) }
+          if (!authorized() || !isAppForeground()) return false
+          result = validateMatchingRetryResult(
+            await jobService.getMatchingRetry(jobId, pending.request.client_request_id, sessionAccessToken), jobId, pending.request,
+          )
+          if (!authorized() || !isAppForeground()) return false
+        }
+      }
       // A missing receipt may replay the persisted command, never invent a new identity.
       if (!result.success && result.status === 404 && result.code === 'NOT_FOUND' && !pending.receipt) {
         posted = true
@@ -122,7 +144,11 @@ export function useCustomerMatchingRetry({
       } catch { return report('MATCHING_RETRY_STORAGE_UNAVAILABLE', meta) }
       if (!current()) return false
       const knownCode = receiptCode(receipt)
-      if (knownCode) report(knownCode, meta)
+      if (knownCode) {
+        setFeedback({ ownerId: sessionUserId, jobId, error: {
+          success: false, code: knownCode, error: '', status: 0, meta,
+        } })
+      }
       // A receipt proves acceptance, not delivery. Only a fresh job snapshot may change the timeline.
       if (visible() && isAppForeground()) {
         const job = await jobService.getJob(jobId, sessionAccessToken)
@@ -130,11 +156,11 @@ export function useCustomerMatchingRetry({
         const validJob = job.success && job.data.job?.id === jobId
         if (validJob) {
           dispatch({ type: 'hydrate_remote_job', job: jobDetailToSnapshot(job.data, false) })
+          if (stateRef.current.lastError) dispatch({ type: 'set_workflow_error', error: null })
           if (isMatchingRetryTerminal(receipt)) hydratedTerminals.current.add(receipt.request_id)
         }
-        const code = knownCode ?? (!validJob ? 'MATCHING_RETRY_READ_UNAVAILABLE' : null)
-        if (code) report(code, meta)
-        else setFeedback(null)
+        if (!validJob && !knownCode) report('MATCHING_RETRY_READ_UNAVAILABLE', meta)
+        else if (!knownCode) setFeedback(null)
       }
       return true
     })().catch(() => report('MATCHING_RETRY_OUTCOME_UNKNOWN')).finally(() => {
