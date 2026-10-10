@@ -59,6 +59,22 @@ test('rejects unknown remote migrations before deriving a pending set', () => {
   assert.ok(problems.some((problem) => problem.includes('unknown versions')))
 })
 
+test('recognizes the hosted matching-retry migration without aliasing the corrected migration', () => {
+  const inventory = buildMigrationInventory()
+  const hostedLegacy = inventory.entries.find((entry) => entry.version === '20261010010053')
+  const corrected = inventory.entries.find((entry) => entry.version === '20261010130000')
+
+  assert.equal(hostedLegacy?.sha256, '33753526b986c17254dfd84668a7a84f87fc102318adec369cdb3076836b23d4',
+    'the repository must preserve the exact normalized SQL already recorded by Production')
+  assert.ok(corrected, 'the corrected matching migration must remain a separate pending migration')
+  assert.notEqual(hostedLegacy?.version, corrected.version)
+
+  const problems = compareRemoteMigrations(inventory, [{ version: '20261010010053' }])
+  assert.equal(problems.some((problem) => problem.includes('unknown versions')), false)
+  assert.ok(problems.some((problem) => problem.includes('20261010130000')),
+    'the corrected migration must still be pending when Production only has the earlier implementation')
+})
+
 test('reports known migrations that remain pending', () => {
   const inventory = {
     migrationEquivalences: { version: '1.0.0', groups: [] },
