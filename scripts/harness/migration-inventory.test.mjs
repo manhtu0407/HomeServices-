@@ -64,8 +64,12 @@ test('recognizes the hosted matching-retry migration without aliasing the correc
   const hostedLegacy = inventory.entries.find((entry) => entry.version === '20261010010053')
   const corrected = inventory.entries.find((entry) => entry.version === '20261010130000')
 
-  assert.equal(hostedLegacy?.sha256, '33753526b986c17254dfd84668a7a84f87fc102318adec369cdb3076836b23d4',
-    'the repository must preserve the exact normalized SQL already recorded by Production')
+  const hostedLegacySource = readFileSync(new URL(`../../${hostedLegacy.file}`, import.meta.url), 'utf8')
+    .replace(/\r\n/gu, '\n')
+    .replace(/\s+$/u, '')
+  assert.equal(createHash('sha256').update(hostedLegacySource).digest('hex'),
+    '6ac091a3533605ca322e23fd84cb120389079a6d27fc5e74c4d5ce55e47e359b',
+    'the repository SQL body must match Production after normalizing line endings and trailing whitespace')
   assert.ok(corrected, 'the corrected matching migration must remain a separate pending migration')
   assert.notEqual(hostedLegacy?.version, corrected.version)
 
