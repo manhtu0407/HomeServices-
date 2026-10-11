@@ -629,13 +629,26 @@ test('a stdout-only Desktop updater failure keeps its diagnostic and exit code',
   }
 })
 
-test('all six canonical Edge targets are checked exactly once', () => {
+test('all seven canonical Edge targets are checked exactly once', () => {
   const fake = fakeDocker('edge-pass')
   try {
     const result = runRunner(['docker/scripts/edge-check'], { env: fake.env })
     assert.equal(result.status, 0, combinedOutput(result))
-    assert.match(combinedOutput(result), /discovered=6 selected=6 checked=6 failed=0/)
-    assert.equal(readFileSync(fake.log, 'utf8').trim().split(/\r?\n/).length, 7)
+    const output = combinedOutput(result)
+    assert.match(output, /discovered=7 selected=7 checked=7 failed=0/)
+    assert.deepEqual(
+      output.match(/^check (.+)$/gmu)?.map((line) => line.slice('check '.length)),
+      [
+        'kael-learning-monitor',
+        'kael-matching-maintainer',
+        'kael-media-retention',
+        'mobile-api',
+        'payment-maintainer',
+        'system-monitor',
+        'sepay-webhook',
+      ],
+    )
+    assert.equal(readFileSync(fake.log, 'utf8').trim().split(/\r?\n/).length, 8)
   } finally {
     rmSync(fake.directory, { recursive: true, force: true })
   }

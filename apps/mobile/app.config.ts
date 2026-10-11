@@ -81,6 +81,11 @@ const configuredApiBaseUrl = fromEnv('EXPO_PUBLIC_API_BASE_URL')
 const vietmapDisplayKey = fromEnv('EXPO_PUBLIC_VIETMAP_DISPLAY_KEY', 'VIETMAP_DISPLAY_KEY')
 const vietmapMapStyleUrl = fromEnv('EXPO_PUBLIC_VIETMAP_MAP_STYLE_URL')
 const mapProxyBaseUrl = fromEnv('EXPO_PUBLIC_MAP_PROXY_BASE_URL')
+const sentryDsn = fromEnv('EXPO_PUBLIC_SENTRY_DSN')
+const sentryProject = fromEnv('SENTRY_HEALTH_PROJECT_SLUG')
+const sentryExpoPlugin: NonNullable<ExpoConfig['plugins']>[number] | null = sentryDsn && sentryProject
+  ? ['@sentry/react-native/expo', { organization: 'nestscout-organization', project: sentryProject, url: 'https://sentry.io/' }]
+  : null
 const nativeArchitectureConfig = { newArchEnabled: true } as unknown as Partial<ExpoConfig>
 const stagingPaymentRailEnabled = false
 const iosPushNotificationsEnabled = true
@@ -192,6 +197,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-secure-store',
+    ...(sentryExpoPlugin ? [sentryExpoPlugin] : []),
     'expo-status-bar',
     '@vietmap/vietmap-gl-react-native',
     [
@@ -215,6 +221,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     vietmapDisplayKey,
     vietmapMapStyleUrl,
     mapProxyBaseUrl,
+    sentryDsn,
     iosPushNotificationsEnabled,
     stagingPaymentRailEnabled,
     runtimeBuildInfo,

@@ -11,13 +11,13 @@ import { adminControlService } from '@/lib/services'
 export const PILLAR = {
   id: 'P54-admin-team-system-workspaces',
   invariant:
-    'Team and four dedicated System capabilities render list-detail-review flows in one sheet with semantic controls, honest data quality and capability-gated mutations',
+    'Team and five dedicated System capabilities render focused workspaces with semantic controls, honest data quality and capability-gated mutations',
   authority: [
     'user-approved Team and System implementation plan',
     'governance/design/screen-recipes.md (list to detail in one sheet)',
     'governance/design/accessible-content.md (large text reflows without clipping)',
   ],
-  target: 'apps/mobile/components/admin/admin-team-workspace.tsx; apps/mobile/components/admin/admin-system-workspace.tsx',
+  target: 'apps/mobile/components/admin/admin-team-workspace.tsx; apps/mobile/components/admin/admin-system-workspace.tsx; apps/mobile/components/admin/admin-system-health-workspace.tsx',
   layer: 'ui-visual',
   siblings: ['P44-admin-production-sections', 'P50-admin-operations-support-workspaces', 'P52-admin-finance-focused-capabilities'],
   mutation:
@@ -58,6 +58,11 @@ jest.mock('@/lib/services', () => ({
     updateSystemTaxonomy: jest.fn(),
     previewSystemLearningAction: jest.fn(),
     applySystemLearningAction: jest.fn(),
+    getSystemHealth: jest.fn(),
+    listSystemIncidents: jest.fn(),
+    getSystemIncident: jest.fn(),
+    exportSystemIncident: jest.fn(),
+    refreshSystemHealth: jest.fn(),
     nominateManager: jest.fn(),
     provisionOperator: jest.fn(),
     resetPendingOperatorPassword: jest.fn(),
@@ -65,6 +70,11 @@ jest.mock('@/lib/services', () => ({
     setSubAdminAccess: jest.fn(),
   },
 }))
+
+jest.mock('expo-router', () => {
+  const React = jest.requireActual('react') as typeof import('react')
+  return { useFocusEffect: (callback: () => void | (() => void)) => React.useEffect(callback, [callback]) }
+})
 
 import { AdminSystemWorkspace } from '../admin-system-workspace'
 import { AdminTeamWorkspace } from '../admin-team-workspace'
@@ -189,6 +199,8 @@ describe('Admin Team and System focused workspaces', () => {
       status: 200,
       success: true,
     })
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: false, error: 'Unavailable', code: 'UNAVAILABLE', status: 503 })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: false, error: 'Unavailable', code: 'UNAVAILABLE', status: 503 })
   })
 
   it('uses dedicated capability workspaces without a nested Modal', () => {
@@ -236,18 +248,88 @@ describe('Admin Team and System focused workspaces', () => {
     expect(workspaces).not.toMatch(/Tìm (rule|provider)/)
   })
 
-  it('keeps the four System capabilities visible to Managers', () => {
+  it('keeps the five System capabilities visible to Managers', () => {
     const copy = read('components/admin/admin-sections-production-copy.ts')
     for (const capability of [
       'system-price-baseline',
       'system-taxonomy',
       'system-learning-rules',
       'system-model-health',
+      'system-health-monitor',
     ]) {
       const line = copy.split('\n').find((candidate) => candidate.includes(`id: '${capability}'`))
       expect(line).toBeDefined()
       expect(line).not.toContain('ownerOnly: true')
     }
+  })
+
+  it('shows expired evidence as unverified and lets only the Owner request a refresh', async () => {
+    const now = Date.now()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: new Date(now).toISOString(),
+      observer: { observer_heartbeat_at: null, dispatcher_status: 'gray', d1_status: 'gray', last_snapshot_at: null, last_error_code: null },
+      snapshot: {
+        schema_version: 1, environment: 'production', project_ref: 'abcdefgh1234', release_id: 'release-qa',
+        scheduled_at: new Date(now - 240_000).toISOString(), completed_at: new Date(now - 240_000).toISOString(), expires_at: new Date(now - 60_000).toISOString(), overall_status: 'green',
+        checks: [{ check_id: 'backend-core', component: 'backend', status: 'green', reason_code: 'CORE_HEALTHY', observed_at: new Date(now - 240_000).toISOString(), evidence_window: null, sample_count: 1, metrics: {}, incident_id: null }],
+      },
+    } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+    jest.mocked(adminControlService.refreshSystemHealth).mockResolvedValue({ success: true, status: 202, data: { accepted: true, scheduled_at: new Date(now).toISOString() } })
+
+    const view = render(<AdminSystemWorkspace actor={{ access_level: 'owner', capabilities: ['system.read', 'system.manage'] }} capability="system-health-monitor" language="vi" />)
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
+    expect(await screen.findByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
+    expect(screen.getByText(/Bằng chứng đã cũ/u)).toBeTruthy()
+    fireEvent.press(screen.getByText('Chạy kiểm tra ngay'))
+    await waitFor(() => expect(adminControlService.refreshSystemHealth).toHaveBeenCalledTimes(1))
+
+    view.unmount()
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
+    expect(screen.queryByText('Chạy kiểm tra ngay')).toBeNull()
+  })
+
+  it('passes component filters to the incident API and keeps missing sources gray', async () => {
+    const now = Date.now()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: new Date(now).toISOString(), observer: null,
+      snapshot: {
+        schema_version: 1, environment: 'production', project_ref: 'abcdefgh1234', release_id: null,
+        scheduled_at: new Date(now).toISOString(), completed_at: new Date(now).toISOString(), expires_at: new Date(now + 180_000).toISOString(), overall_status: 'gray',
+        checks: [{ check_id: 'app-native-sentry', component: 'app', status: 'gray', reason_code: 'SENTRY_NOT_CONFIGURED', observed_at: null, evidence_window: null, sample_count: null, metrics: {}, incident_id: null }],
+      },
+    } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
+
+    expect(await screen.findByLabelText(/Sentry chưa được cấu hình/u)).toBeTruthy()
+    fireEvent.press(screen.getByText('Ứng dụng'))
+    await waitFor(() => expect(adminControlService.listSystemIncidents).toHaveBeenLastCalledWith(expect.objectContaining({ component: 'app' })))
+    expect(screen.getByTestId('admin-system-health-check-app-native-sentry').props.accessibilityLabel).toContain('Chưa xác minh')
+  })
+
+  it.each([
+    ['vi', 'Các phép kiểm tra phần máy chủ đã đạt', 'Backend checks passed'],
+    ['en', 'Backend checks passed', 'Các phép kiểm tra phần máy chủ đã đạt'],
+  ] as const)('localizes system health reason evidence in %s mode', async (language, visibleReason, hiddenReason) => {
+    const now = Date.now()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: new Date(now).toISOString(), observer: null,
+      snapshot: {
+        schema_version: 1, environment: 'production', project_ref: 'abcdefgh1234', release_id: 'release-qa',
+        scheduled_at: new Date(now).toISOString(), completed_at: new Date(now).toISOString(), expires_at: new Date(now + 180_000).toISOString(), overall_status: 'green',
+        checks: [{ check_id: 'backend-core', component: 'backend', status: 'green', reason_code: 'CORE_HEALTHY', observed_at: new Date(now).toISOString(), evidence_window: null, sample_count: 1, metrics: {}, incident_id: null }],
+      },
+    } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language={language} />)
+
+    const checkRow = await screen.findByTestId('admin-system-health-check-backend-core')
+    expect(checkRow.props.accessibilityLabel).toContain(visibleReason)
+    expect(checkRow.props.accessibilityLabel).not.toContain(hiddenReason)
   })
 
   it.each([

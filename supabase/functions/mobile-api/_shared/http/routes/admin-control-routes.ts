@@ -1,3 +1,5 @@
+import { matchSystemHealthAdminRoute, type SystemHealthAdminRoute } from "./system-health-routes.ts";
+
 type AdminReadRoles = ["admin", "admin_operator"];
 
 export type AdminControlRoute =
@@ -85,6 +87,7 @@ export type AdminControlRoute =
   | { kind: "admin.system.learningRules.revoke"; method: "POST"; ruleId: string; roles: AdminReadRoles }
   | { kind: "admin.system.modelHealth.list"; method: "GET"; roles: AdminReadRoles }
   | { kind: "admin.system.modelHealth.detail"; method: "GET"; roles: AdminReadRoles }
+  | SystemHealthAdminRoute
   | { kind: "admin.workerApplications.list"; method: "GET"; roles: AdminReadRoles }
   | {
     kind: "admin.workerApplications.detail";
@@ -245,6 +248,8 @@ export function matchAdminControlRoute(
 }
 
 function matchAdminSystemRoute(path: string, method: string): AdminControlRoute | null {
+  const systemHealthRoute = matchSystemHealthAdminRoute(path, method);
+  if (systemHealthRoute) return systemHealthRoute;
   if (method === "GET" && path === "/admin/system/price-baselines") return { kind: "admin.system.priceBaselines.list", method: "GET", roles: adminReadRoles };
   if (method === "GET" && path === "/admin/system/price-evidence-packages") return { kind: "admin.system.priceBaselines.evidencePackages", method: "GET", roles: adminReadRoles };
   if (method === "POST" && path === "/admin/system/price-baselines/validate") return { kind: "admin.system.priceBaselines.validate", method: "POST", roles: adminReadRoles };

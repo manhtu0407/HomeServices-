@@ -7,6 +7,8 @@ import { AdminActivationProvider } from '@/lib/admin-activation-provider'
 import { FrontendWorkflowProvider } from '@/lib/frontend-workflow-provider'
 import { LaunchSplashGate, preventLaunchSplashAutoHide } from '@/components/ui/launch-splash-gate'
 import { SessionOfflineGate } from '@/components/ui/session-offline-screen'
+import { MobileHealthTelemetry } from '@/lib/mobile-health-telemetry'
+import { Sentry } from '@/lib/sentry-runtime'
 
 preventLaunchSplashAutoHide()
 
@@ -40,13 +42,14 @@ function installSystemTypographyWebStyle() {
   document.head.appendChild(style)
 }
 
-export default function RootLayout() {
+function RootLayout() {
   useEffect(() => {
     installSystemTypographyWebStyle()
   }, [])
 
   return (
     <AuthProvider>
+      <MobileHealthTelemetry />
       <AdminActivationProvider>
         <FrontendWorkflowProvider>
           <Slot />
@@ -57,3 +60,5 @@ export default function RootLayout() {
     </AuthProvider>
   )
 }
+
+export default Sentry.wrap(RootLayout)

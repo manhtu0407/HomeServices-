@@ -2,7 +2,7 @@
 # POSIX mirror of edge-check.ps1. Selection is validated before Docker is called.
 set -uo pipefail
 
-canonical_functions=(kael-learning-monitor kael-matching-maintainer kael-media-retention mobile-api payment-maintainer sepay-webhook)
+canonical_functions=(kael-learning-monitor kael-matching-maintainer kael-media-retention mobile-api payment-maintainer system-monitor sepay-webhook)
 only=()
 while [ $# -gt 0 ]; do
   case "$1" in

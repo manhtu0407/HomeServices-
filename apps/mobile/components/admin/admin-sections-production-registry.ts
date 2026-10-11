@@ -114,7 +114,7 @@ const ADMIN_PRODUCTION_CAPABILITY_IDS: readonly AdminProductionCapabilityId[] = 
   'workers-applications', 'workers-profile-review', 'workers-access', 'workers-finance', 'workers-discipline', 'workers-ambassador',
   'finance-overview', 'finance-reconciliation', 'finance-payouts', 'finance-tax',
   'team-directory', 'team-provisioning', 'team-capabilities', 'team-access-audit',
-  'system-price-baseline', 'system-taxonomy', 'system-learning-rules', 'system-model-health',
+  'system-price-baseline', 'system-taxonomy', 'system-learning-rules', 'system-model-health', 'system-health-monitor',
 ]
 
 function isAdminProductionCapabilityId(value: string | undefined): value is AdminProductionCapabilityId {

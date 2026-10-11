@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 447,
+  "migrationCount": 448,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "47ddeef2ac5f0519b13d9e6e6de809df9fe0e211f797418b8f8efb0afa839999",
+  "migrationsSha256": "9854c89a31f2c7721312897106f863120559af89fdfa2150ba9c92c0584b26b4",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
@@ -3236,6 +3236,13 @@
       "file": "supabase/migrations/20261010150000_reuse_expired_candidate_on_customer_retry.sql",
       "sha256": "4e5ce61f6baa6d05921ac8ace9f8303c4cbae1cdb1138b8aac1096f3a26d89e3",
       "bytes": 6598
+    },
+    {
+      "version": "20261011100000",
+      "name": "system_health_monitor",
+      "file": "supabase/migrations/20261011100000_system_health_monitor.sql",
+      "sha256": "b28294f368b682f1e530ee248993b57757b028cbe840d6792ef047d4d6008b51",
+      "bytes": 56515
     }
   ]
 }
