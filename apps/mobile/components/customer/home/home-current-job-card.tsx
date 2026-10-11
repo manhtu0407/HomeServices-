@@ -115,11 +115,11 @@ export function HomeCurrentJobCard({ caseCode, deal, language, onOpen, problemLa
           <View style={[styles.metaIcon, { height: q(18), width: q(17) }]}>
             <HomeIcon color={tokens.muted} name="calendar" size={q(17)} />
           </View>
-          <Text ellipsizeMode="tail" numberOfLines={1} style={[styles.metaText, scaledTypography('footnote', scale), { color: tokens.muted, height: q(18), lineHeight: q(18) }]}>{scheduleLabel}</Text>
+          <Text ellipsizeMode="tail" numberOfLines={1} style={[styles.metaText, scaledTypography('footnote', scale), { color: tokens.muted, lineHeight: q(18) }]}>{scheduleLabel}</Text>
         </View>
         <View style={[styles.metaDivider, { backgroundColor: tokens.border, height: q(18), marginLeft: q(12) }]} />
         <View style={[styles.detailValues, { height: q(18), marginLeft: q(18) }]} testID="customer-v21-active-case-meta-details">
-          <Text ellipsizeMode="tail" numberOfLines={1} style={[styles.metaText, styles.metaDetailLine, scaledTypography('footnote', scale), { color: tokens.muted, height: q(18), lineHeight: q(18) }]} testID="customer-v21-active-case-meta-detail-line">
+          <Text ellipsizeMode="tail" numberOfLines={1} style={[styles.metaText, styles.metaDetailLine, scaledTypography('footnote', scale), { color: tokens.muted, lineHeight: q(18) }]} testID="customer-v21-active-case-meta-detail-line">
             {detailValues.length > 0 ? detailValues.join(' · ') : language === 'vi' ? 'Kael đang cập nhật thông tin' : 'Kael is updating the details'}
           </Text>
         </View>
