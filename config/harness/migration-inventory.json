@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 446,
+  "migrationCount": 449,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -80,13 +80,32 @@
           "20261010120000"
         ],
         "semanticSha256": "580ac1c558e63bcd8a9473ea7029c65a16982637b25b04958dbf4715fdc80685"
+      },
+      {
+        "id": "worker-expired-retry-production-ledger-marker-20261011",
+        "canonicalVersion": "20261010140000",
+        "versions": [
+          "20261010081826",
+          "20261010140000"
+        ],
+        "semanticSha256": "620e12695722f022099f3c47b660a9f4103fb115c94ff925127873086fdb6b38",
+        "allowMultipleHostedVersions": true
+      },
+      {
+        "id": "candidate-expired-retry-production-alias-20261011",
+        "canonicalVersion": "20261010150000",
+        "versions": [
+          "20261010090340",
+          "20261010150000"
+        ],
+        "semanticSha256": "4e5ce61f6baa6d05921ac8ace9f8303c4cbae1cdb1138b8aac1096f3a26d89e3"
       }
     ]
   },
-  "migrationsSha256": "3c47c5ad726695f228b9b458a29aacbf00fb8d902794e3072512bbbdd6610f9a",
+  "migrationsSha256": "59337cc1884709278f8c9749cb252248b08b0e64e4079f6769ae3276ff68254b",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "a01c32c904aa19fbb8a976a93235301b1718ffdbd3893af54e57421fc281ac13"
+    "sha256": "3437b9bce74171997903835275454e478b4f379484f065e3b2317d1c97c94538"
   },
   "entries": [
     {
@@ -3163,6 +3182,20 @@
       "bytes": 5764
     },
     {
+      "version": "20261010081826",
+      "name": "reuse_expired_worker_on_customer_retry",
+      "file": "supabase/migrations/20261010081826_reuse_expired_worker_on_customer_retry.sql",
+      "sha256": "620e12695722f022099f3c47b660a9f4103fb115c94ff925127873086fdb6b38",
+      "bytes": 13326
+    },
+    {
+      "version": "20261010090340",
+      "name": "reuse_expired_candidate_on_customer_retry",
+      "file": "supabase/migrations/20261010090340_reuse_expired_candidate_on_customer_retry.sql",
+      "sha256": "4e5ce61f6baa6d05921ac8ace9f8303c4cbae1cdb1138b8aac1096f3a26d89e3",
+      "bytes": 6598
+    },
+    {
       "version": "20261010100000",
       "name": "kael_matching_recovery_capacity_alignment",
       "file": "supabase/migrations/20261010100000_kael_matching_recovery_capacity_alignment.sql",
@@ -3206,8 +3239,15 @@
     },
     {
       "version": "20261011100000",
+      "name": "system_health_monitor",
+      "file": "supabase/migrations/20261011100000_system_health_monitor.sql",
+      "sha256": "b28294f368b682f1e530ee248993b57757b028cbe840d6792ef047d4d6008b51",
+      "bytes": 56515
+    },
+    {
+      "version": "20261011110000",
       "name": "admin_data_revision_signal",
-      "file": "supabase/migrations/20261011100000_admin_data_revision_signal.sql",
+      "file": "supabase/migrations/20261011110000_admin_data_revision_signal.sql",
       "sha256": "e9f3dc689cfd4a5805984a135036c8fd6d09ff77c79f574256decccc7aa9ac47",
       "bytes": 10346
     }

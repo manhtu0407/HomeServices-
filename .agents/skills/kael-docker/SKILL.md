@@ -56,15 +56,23 @@ Docker-data repair, or a prerelease channel.
 The local-runtime precondition is **gated and bounded**. Measure it only when Lane A or B is required:
 
 1. Complete the version policy above once for the current local attempt.
-2. Run one doctor probe with profile `lean` or `full`. The Docker daemon probe times out after exactly
-   **15 seconds** and must reap its child process.
-3. Report available RAM for capacity context only. There is no minimum for either profile, no RAM
+2. For a Lane A attempt that will start Supabase, invoke `up` as the sole bounded doctor probe. The
+   `up` runner checks the daemon with profile `lean` or `full`, then starts the stack once if the
+   check passes. Do not run standalone `doctor` first. The daemon probe times out after exactly
+   **15 seconds** and must reap its child process. Use standalone `doctor` only for a diagnostic
+   attempt that will stop after the preflight report.
+3. Report available RAM from the preflight for capacity context only. There is no minimum for either profile, no RAM
    override, and RAM alone must never block a local-runtime attempt.
-4. If the doctor passes its daemon, disk, and port checks, run the required runtime lane immediately.
-5. If Tu explicitly asks to launch or restart Docker Desktop, do that at most once before the final
-   bounded doctor probe. A plain **“Next Step”** does not authorize another launch, restart, or probe.
-6. After that final probe, the attempt budget is exhausted. Retry only after Tu explicitly identifies
-   a changed environment and authorizes a new attempt.
+4. If `up` passes its daemon, disk, and port checks, continue the required runtime lane immediately.
+   `up` validates the canonical migration workdir against the current inventory. When stale, it
+   builds and verifies a replacement, archives the prior snapshot beside it, then installs the
+   replacement without deleting the old contents.
+5. If Tu explicitly asks to launch or restart Docker Desktop, do that at most once before invoking
+   `up` (or standalone `doctor` for a diagnostic-only attempt). A plain **“Next Step”** does not
+   authorize another launch, restart, or probe.
+6. The probe budget is consumed by either standalone `doctor` or `up`; never run both in one local
+   attempt. Retry only after Tu explicitly identifies a changed environment and authorizes a new
+   attempt.
 
 ### Windows launch-origin gate
 
@@ -114,8 +122,8 @@ The canonical package commands and direct Windows/POSIX dispatcher forms are equ
 | Canonical | Direct form | Contract |
 |---|---|---|
 | `pnpm docker:version:ensure` | `node scripts/run.mjs docker/scripts/ensure-version` | One latest-stable Desktop update or capability-proven suitable install |
-| `pnpm db:local:doctor -- --profile lean` | `node scripts/run.mjs docker/scripts/doctor --profile lean` | One bounded daemon probe; only `lean` or `full` |
-| `pnpm db:local:up -- --profile lean` | `node scripts/run.mjs docker/scripts/up --profile lean` | Always doctor first; one `supabase start` |
+| `pnpm db:local:doctor --profile lean` | `node scripts/run.mjs docker/scripts/doctor --profile lean` | One bounded diagnostic-only probe; only `lean` or `full` |
+| `pnpm db:local:up --profile lean` | `node scripts/run.mjs docker/scripts/up --profile lean` | One bounded probe, then one `supabase start` |
 | `pnpm db:local:down` | `node scripts/run.mjs docker/scripts/down` | Stop only; no purge or `--no-backup` |
 | `pnpm db:local:reset` | `node scripts/run.mjs run-supabase db reset --local` | Explicitly local migration replay and seed |
 | `pnpm db:local:test` | `node scripts/run.mjs docker/scripts/run-sql-tests` | Fail on zero SQL files; honest execution summary |
@@ -133,9 +141,10 @@ Runner exit codes are part of the interface:
 ## Lane A — local Supabase behavior
 
 Use only when behavior has not already been proved for the exact commit and hosted mutation is not
-allowed. Sequence: doctor → up → reset → test or types → down.
+allowed. Sequence: `up` (its preflight is the single daemon probe) → reset → test or types → down.
 
-- `up` always runs doctor and invokes `supabase start` once.
+- `up` runs the bounded doctor preflight and invokes `supabase start` once. Do not run standalone
+  `doctor` first in the same attempt; that would consume the one-probe budget before `up` checks again.
 - `reset` always spells out `--local`; never pass `--linked` or `--db-url`.
 - The SQL runner discovers every `supabase/tests/*.sql` first. Zero files is invalid selection. Its
   closeout is `discovered/executed/passed/failed/stopped_early` on both platforms.

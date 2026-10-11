@@ -416,6 +416,10 @@ verify_jwt = false
 # maintenance call cannot impersonate a customer, worker, or finance operator.
 verify_jwt = false
 
+[functions.system-monitor]
+# Scheduled collection and observer callbacks authenticate with separate server secrets.
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 55327

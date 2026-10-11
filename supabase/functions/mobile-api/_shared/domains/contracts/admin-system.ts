@@ -47,6 +47,50 @@ type AdminSystemModelHealthInput = AdminSystemListInput & {
   circuit: "all" | "open" | "closed";
 };
 
+type AdminSystemIncidentListInput = {
+  limit: number;
+  cursor?: string;
+  component: string;
+  status: "all" | "open" | "resolved";
+  severity: "all" | "yellow" | "red";
+  from?: string;
+  to?: string;
+  release_id?: string;
+  build_id?: string;
+};
+
+type AdminSystemObserverStatus = {
+  observer_heartbeat_at: string | null;
+  dispatcher_status: "green" | "yellow" | "red" | "gray";
+  d1_status: "green" | "yellow" | "red" | "gray";
+  last_snapshot_at: string | null;
+  last_error_code: string | null;
+};
+
+type AdminSystemHealthResponse = {
+  generated_at: string;
+  snapshot: import("../../../../_shared/contracts/system-health.ts").SystemHealthSnapshot | null;
+  observer: AdminSystemObserverStatus | null;
+};
+
+type AdminSystemIncidentPacket = import("../../../../_shared/contracts/system-health.ts").SystemIncidentPacket;
+
+type AdminSystemIncidentListResponse = {
+  generated_at: string;
+  data_quality: "available" | "partial" | "unavailable";
+  records: AdminSystemIncidentPacket[];
+  has_more: boolean;
+  next_cursor: string | null;
+};
+
+type AdminSystemIncidentDetailResponse = {
+  generated_at: string;
+  record: AdminSystemIncidentPacket;
+  history: Array<{ event: "opened" | "updated" | "resolved"; at: string; status: "open" | "resolved"; severity: "yellow" | "red"; reason_code: string }>;
+};
+
+type AdminSystemRefreshResponse = { accepted: boolean; scheduled_at: string | null };
+
 type AdminSystemMutationInput = {
   expected_version: number;
   client_request_id: string;
@@ -326,6 +370,7 @@ export type AdminSystemContracts = {
   taxonomyListInput: AdminSystemTaxonomyListInput;
   learningListInput: AdminSystemLearningListInput;
   modelHealthInput: AdminSystemModelHealthInput;
+  incidentListInput: AdminSystemIncidentListInput;
   mutationInput: AdminSystemMutationInput;
   priceMutationInput: AdminSystemPriceMutationInput;
   taxonomyMutationInput: AdminSystemTaxonomyMutationInput;
@@ -342,5 +387,10 @@ export type AdminSystemContracts = {
   learningPreviewResponse: AdminSystemLearningPreviewResponse;
   modelHealthResponse: AdminSystemModelHealthResponse;
   modelHealthDetailResponse: AdminSystemModelHealthDetailResponse;
+  healthResponse: AdminSystemHealthResponse;
+  incidentPacket: AdminSystemIncidentPacket;
+  incidentListResponse: AdminSystemIncidentListResponse;
+  incidentDetailResponse: AdminSystemIncidentDetailResponse;
+  refreshResponse: AdminSystemRefreshResponse;
   receipt: AdminSystemReceipt;
 };

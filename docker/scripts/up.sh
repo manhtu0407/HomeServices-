@@ -34,7 +34,8 @@ bash "$repo_root/scripts/run-node.sh" \
   --empty-reset \
   --inventory config/harness/migration-inventory.json \
   --output "$local_workdir" \
-  --reuse
+  --reuse \
+  --refresh-stale
 prepare_code=$?
 if [ "$prepare_code" -ne 0 ]; then
   echo "canonical migration workdir preparation failed with exit code $prepare_code"

@@ -107,6 +107,13 @@ import type {
   AdminSystemTaxonomyMutationInput,
   AdminSystemTaxonomyValidationResponse,
 } from '../api-types/admin-system'
+import type {
+  AdminSystemHealthResponse,
+  AdminSystemIncidentFilters,
+  AdminSystemIncidentListResponse,
+  AdminSystemIncidentDetailResponse,
+  AdminSystemRefreshResponse,
+} from '../api-types/system-health'
 
 export type AdminGovernanceActionInput = { expected_revision: number; reason: string }
 export type AdminGovernanceCapabilities = { read: boolean; draft: boolean; approve: boolean; publish: boolean }
@@ -419,6 +426,31 @@ export const adminControlService = {
 
   getSystemModelHealthDetail(detailKey: string) {
     return api.get<AdminSystemModelHealthDetailResponse>(`/admin/system/model-health/details?key=${encodeURIComponent(detailKey)}`)
+  },
+
+  getSystemHealth() {
+    return api.get<AdminSystemHealthResponse>('/admin/system/health')
+  },
+
+  listSystemIncidents(filters: AdminSystemIncidentFilters = {}) {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(filters)) {
+      if (value !== undefined && value !== '') params.set(key, String(value))
+    }
+    const query = params.toString()
+    return api.get<AdminSystemIncidentListResponse>(`/admin/system/incidents${query ? `?${query}` : ''}`)
+  },
+
+  getSystemIncident(incidentId: string) {
+    return api.get<AdminSystemIncidentDetailResponse>(`/admin/system/incidents/${encodeURIComponent(incidentId)}`)
+  },
+
+  exportSystemIncident(incidentId: string) {
+    return api.get<import('@nestscout/shared').SystemIncidentPacket>(`/admin/system/incidents/${encodeURIComponent(incidentId)}/export`)
+  },
+
+  refreshSystemHealth() {
+    return api.post<AdminSystemRefreshResponse>('/admin/system/health/refresh', {})
   },
 
   listWorkerApplications(params: {

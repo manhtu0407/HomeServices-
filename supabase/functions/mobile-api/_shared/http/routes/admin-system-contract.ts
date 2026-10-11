@@ -58,6 +58,22 @@ export const adminSystemModelHealthQuerySchema = z.object({
   circuit: z.enum(["all", "open", "closed"]).default("all"),
 }).strict();
 
+export const adminSystemIncidentListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  cursor: opaqueCursorSchema.optional(),
+  component: z.string().trim().regex(/^(?:all|[a-z0-9][a-z0-9._-]{0,39})$/).default("all"),
+  status: z.enum(["all", "open", "resolved"]).default("all"),
+  severity: z.enum(["all", "yellow", "red"]).default("all"),
+  from: z.iso.datetime({ offset: true }).optional(),
+  to: z.iso.datetime({ offset: true }).optional(),
+  release_id: z.string().trim().regex(/^[A-Za-z0-9._:+-]{1,100}$/).optional(),
+  build_id: z.string().trim().regex(/^[A-Za-z0-9._:+-]{1,100}$/).optional(),
+}).strict().superRefine((value, context) => {
+  if (value.from && value.to && Date.parse(value.from) > Date.parse(value.to)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["to"], message: "End time must follow start time." });
+  }
+});
+
 export const adminSystemMutationSchema = z.object({
   expected_version: z.number().int().min(0),
   client_request_id: z.string().uuid(),
@@ -131,4 +147,8 @@ export function parseAdminSystemLearningListQuery(url: URL) {
 
 export function parseAdminSystemModelHealthQuery(url: URL) {
   return adminSystemModelHealthQuerySchema.safeParse(Object.fromEntries(url.searchParams));
+}
+
+export function parseAdminSystemIncidentListQuery(url: URL) {
+  return adminSystemIncidentListQuerySchema.safeParse(Object.fromEntries(url.searchParams));
 }

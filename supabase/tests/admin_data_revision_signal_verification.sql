@@ -1,7 +1,7 @@
 -- @pillar id: P347-admin-data-revision-signal-sql
 -- @pillar invariant: Admin section revisions expose only authorized section counters and source writes increment the matching counter
 -- @pillar authority: governance/RULES.md #5 and #8 | Admin Gates live-refresh plan
--- @pillar target: supabase/migrations/20261011100000_admin_data_revision_signal.sql
+-- @pillar target: supabase/migrations/20261011110000_admin_data_revision_signal.sql
 -- @pillar layer: sql
 -- @pillar siblings: P52-admin-finance-focused-capabilities
 -- @pillar mutation: Combine profile INSERT and DELETE in one trigger condition that references NEW; PostgreSQL rejects the migration
@@ -184,4 +184,3 @@ $source_triggers$;
 
 select 'PASS: Admin revision rows are capability scoped, read-only, and source writes advance their section counter' as result;
 rollback;
-

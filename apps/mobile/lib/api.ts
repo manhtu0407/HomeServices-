@@ -6,6 +6,8 @@ import { mobileRuntimeConfig } from './runtime-config'
 import { releaseClientPlatform } from './release-client-platform'
 import { generateClientRequestId } from './client-request-id'
 import { isConnectivityOffline, reportTransportFailure, reportTransportSuccess } from './connectivity'
+import { noteMobileHealthFailure } from './mobile-health-state'
+import { Sentry } from './sentry-runtime'
 import type { ApiResponseMetadata } from './api-types/shared'
 import {
   readResponseTextBounded,
@@ -114,6 +116,7 @@ async function request<T>(
   }
 
   let responseMetadata = clientMetadata
+  const requestStartedAt = Date.now()
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController()
     const forwardAbort = () => controller.abort()
@@ -140,6 +143,7 @@ async function request<T>(
       })
       responseStatus = response.status
       reportTransportSuccess()
+      if (path !== '/telemetry/mobile-health') addSafeApiBreadcrumb(method, path, response.status, requestStartedAt)
       responseMetadata = { ...clientMetadata, ...extractApiResponseMetadata(response.headers) }
 
       const responseText = await readResponseTextBounded(response, MAX_API_RESPONSE_BYTES)
@@ -150,6 +154,9 @@ async function request<T>(
         if (attempt < retryBudget && shouldRetryResponse(response.status, method, path)) {
           await waitForRetry(method, path, attempt, `HTTP_${response.status}`)
           continue
+        }
+        if (response.status >= 500 && path !== '/telemetry/mobile-health') {
+          noteMobileHealthFailure('API_HTTP_5XX', Date.now() - requestStartedAt)
         }
         return {
           success: false,
@@ -208,6 +215,10 @@ async function request<T>(
         }
       }
       if (isAbortError(err)) {
+        if (path !== '/telemetry/mobile-health') {
+          noteMobileHealthFailure('API_TIMEOUT', Date.now() - requestStartedAt)
+          addSafeApiBreadcrumb(method, path, 0, requestStartedAt, 'warning')
+        }
         return {
           success: false,
           error: 'Kết nối quá chậm, vui lòng thử lại',
@@ -215,6 +226,10 @@ async function request<T>(
           status: 0,
           meta: responseMetadata,
         }
+      }
+      if (path !== '/telemetry/mobile-health') {
+        noteMobileHealthFailure('API_NETWORK_ERROR', Date.now() - requestStartedAt)
+        addSafeApiBreadcrumb(method, path, 0, requestStartedAt, 'warning')
       }
       return {
         success: false,
@@ -236,6 +251,29 @@ async function request<T>(
     status: 0,
     meta: responseMetadata,
   }
+}
+
+function addSafeApiBreadcrumb(method: string, path: string, status: number, startedAt: number, level: 'info' | 'warning' = status >= 500 ? 'warning' : 'info') {
+  Sentry.addBreadcrumb({
+    category: 'mobile-api',
+    type: 'http',
+    level,
+    data: { method, route: safeRouteTemplate(path), status_code: status, duration_ms: Math.max(0, Math.min(60_000, Date.now() - startedAt)) },
+  })
+}
+
+function safeRouteTemplate(path: string) {
+  const pathOnly = path.split('?', 1)[0] ?? ''
+  if (/^\/admin\/system\/incidents\/[^/]+\/export$/u.test(pathOnly)) return '/admin/system/incidents/:id/export'
+  if (/^\/admin\/system\/incidents\/[^/]+$/u.test(pathOnly)) return '/admin/system/incidents/:id'
+  if (pathOnly.startsWith('/admin/system/')) return '/admin/system/:operation'
+  if (pathOnly.startsWith('/workers/me/')) return '/workers/me/:operation'
+  if (pathOnly.startsWith('/jobs/')) return '/jobs/:id/:operation'
+  if (pathOnly.startsWith('/notifications/')) return '/notifications/:operation'
+  if (pathOnly.startsWith('/me/')) return '/me/:operation'
+  if (pathOnly.startsWith('/kael/')) return '/kael/:operation'
+  const firstSegment = pathOnly.split('/').filter(Boolean)[0]
+  return firstSegment && /^[a-z-]{1,30}$/u.test(firstSegment) ? `/${firstSegment}/:operation` : '/other'
 }
 
 export const api = {

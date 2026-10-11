@@ -39,6 +39,7 @@ import {
   adminSystemTaxonomyValidateSchema,
   parseAdminSystemLearningListQuery,
   parseAdminSystemModelHealthQuery,
+  parseAdminSystemIncidentListQuery,
   parseAdminSystemPriceListQuery,
   parseAdminSystemTaxonomyListQuery,
 } from "../routes/admin-system-contract.ts";
@@ -420,6 +421,19 @@ async function dispatchAdminControlRoute(
       if (!detailKey || !/^[0-9a-f]{64}$/.test(detailKey)) apiFailure("VALIDATION", "Khóa chi tiết mô hình không hợp lệ", 400);
       return services.getAdminSystemModelHealthDetail(ctx, detailKey);
     }
+    case "admin.system.health.get":
+      return services.getAdminSystemHealth(ctx);
+    case "admin.system.health.refresh":
+      return services.refreshAdminSystemHealth(ctx);
+    case "admin.system.incidents.list": {
+      const input = parseAdminSystemIncidentListQuery(new URL(request.url));
+      if (!input.success) apiFailure("VALIDATION", "Bộ lọc sự cố hệ thống không hợp lệ", 400);
+      return services.listAdminSystemIncidents(ctx, input.data);
+    }
+    case "admin.system.incidents.detail":
+      return services.getAdminSystemIncident(ctx, route.incidentId);
+    case "admin.system.incidents.export":
+      return services.exportAdminSystemIncident(ctx, route.incidentId);
     case "admin.workerApplications.list": {
       const input = parseAdminWorkerApplicationListQuery(new URL(request.url));
       if (!input.success) apiFailure("VALIDATION", "Bộ lọc hồ sơ thợ không hợp lệ", 400);

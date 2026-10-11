@@ -20,4 +20,3 @@ export async function readAdminDataRevisions(): Promise<{ revisions: AdminDataRe
   }
   return { revisions, success: true }
 }
-

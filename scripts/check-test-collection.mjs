@@ -20,6 +20,8 @@ import { fileURLToPath } from 'node:url'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const WORKFLOWS = resolve(root, '.github/workflows')
+const SYSTEM_MONITOR_TEST_CONFIG = 'packages/shared/system-monitor.vitest.config.mts'
+const SYSTEM_MONITOR_TEST_FILE = 'scripts/system-monitor/observer-pillar.test.ts'
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.expo', '.turbo', 'ios', 'android'])
 
 // Package name → where its sources live and which config declares collection.
@@ -45,6 +47,28 @@ const REQUIRED_COLLECTIONS = [
 
 const problems = []
 const declaredGaps = []
+
+const rootPackage = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
+const systemMonitorTestConfig = resolve(root, SYSTEM_MONITOR_TEST_CONFIG)
+if (rootPackage.scripts?.['test:system-monitor-worker'] !== `vitest run --config ${SYSTEM_MONITOR_TEST_CONFIG}`) {
+  problems.push(`root test:system-monitor-worker must run the pinned Worker Vitest config (${SYSTEM_MONITOR_TEST_CONFIG})`)
+}
+if (!existsSync(systemMonitorTestConfig)) {
+  problems.push(`missing Cloudflare D1 test config: ${SYSTEM_MONITOR_TEST_CONFIG}`)
+} else {
+  const config = readFileSync(systemMonitorTestConfig, 'utf8')
+  if (!config.includes(`'${SYSTEM_MONITOR_TEST_FILE}'`)) {
+    problems.push(`${SYSTEM_MONITOR_TEST_CONFIG} does not collect ${SYSTEM_MONITOR_TEST_FILE}`)
+  }
+}
+const systemMonitorTestFile = resolve(root, SYSTEM_MONITOR_TEST_FILE)
+if (!existsSync(systemMonitorTestFile) || !readFileSync(systemMonitorTestFile, 'utf8').includes("id: 'P354-system-health-cloudflare-observer-d1'")) {
+  problems.push(`${SYSTEM_MONITOR_TEST_FILE} must exist and declare P354-system-health-cloudflare-observer-d1`)
+}
+const ciWorkflow = resolve(WORKFLOWS, 'ci.yml')
+if (!existsSync(ciWorkflow) || !/name:\s*Run all workspace tests[\s\S]*?pnpm test:system-monitor-worker/u.test(readFileSync(ciWorkflow, 'utf8'))) {
+  problems.push('ci.yml must execute pnpm test:system-monitor-worker in the full workspace test step')
+}
 
 function walk(dir, acc = []) {
   let entries

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs'
+import { basename, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { canonicalMigrationEntries, resolveHostedMigrationState } from './migration-history.mjs'
@@ -86,7 +86,13 @@ export function materializeEmptyMigrationWorkdir(input) {
   const plan = buildEmptyMigrationApplyPlan(input)
   if (existsSync(output)) {
     if (!input.reuseExisting) throw new Error('empty reset migration workdir already exists')
-    assertReusableEmptyMigrationWorkdir({ root, output, plan })
+    try {
+      assertReusableEmptyMigrationWorkdir({ root, output, plan })
+    } catch (error) {
+      if (!input.refreshStaleExisting) throw error
+      const archivedPath = refreshStaleEmptyMigrationWorkdir({ root, output, plan })
+      input.onStaleSnapshotArchived?.(relative(root, archivedPath))
+    }
     return plan
   }
   materializeMigrationWorkdir({ root, output, plan, includeSeed: true })
@@ -127,6 +133,37 @@ function assertReusableEmptyMigrationWorkdir(input) {
       throw new Error(`existing local migration workdir source checksum mismatch: ${entry.version}`)
     }
   }
+}
+
+function refreshStaleEmptyMigrationWorkdir(input) {
+  const staged = uniqueSiblingPath(input.output, 'refresh')
+  const archived = uniqueSiblingPath(input.output, 'stale')
+  materializeMigrationWorkdir({ root: input.root, output: staged, plan: input.plan, includeSeed: true })
+  assertReusableEmptyMigrationWorkdir({ ...input, output: staged })
+
+  renameSync(input.output, archived)
+  try {
+    renameSync(staged, input.output)
+  } catch (error) {
+    if (!existsSync(input.output)) renameSync(archived, input.output)
+    throw new Error(`could not install refreshed local migration workdir; prior snapshot remains at ${archived}`, {
+      cause: error,
+    })
+  }
+  return archived
+}
+
+function uniqueSiblingPath(path, label) {
+  const parent = dirname(path)
+  const name = basename(path)
+  const prefix = `${name}-${label}-${Date.now()}-${process.pid}`
+  let candidate = resolve(parent, prefix)
+  let suffix = 0
+  while (existsSync(candidate)) {
+    suffix += 1
+    candidate = resolve(parent, `${prefix}-${suffix}`)
+  }
+  return candidate
 }
 
 function materializeMigrationWorkdir(input) {
@@ -179,6 +216,10 @@ function parseArgs(args) {
       options.reuse = true
       continue
     }
+    if (key === '--refresh-stale') {
+      options.refreshStale = true
+      continue
+    }
     if (!['--inventory', '--hosted', '--receipt', '--output'].includes(key)) {
       throw new Error(`unknown argument: ${key}`)
     }
@@ -197,6 +238,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       if (!options[required]) throw new Error(`--${required} is required`)
     }
     if (options.reuse && !options.emptyReset) throw new Error('--reuse requires --empty-reset')
+    if (options.refreshStale && (!options.emptyReset || !options.reuse)) {
+      throw new Error('--refresh-stale requires --empty-reset and --reuse')
+    }
     if (options.emptyReset && (options.stagingCatchup || options.receipt || options.hosted)) {
       throw new Error('--empty-reset cannot be combined with hosted release options')
     }
@@ -215,6 +259,8 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       mode: options.stagingCatchup ? 'staging-catchup' : 'expand-only-release',
       output: options.output,
       reuseExisting: options.reuse,
+      refreshStaleExisting: options.refreshStale,
+      onStaleSnapshotArchived: (path) => console.log(`archived stale local migration workdir: ${path}`),
     }
     const plan = options.emptyReset
       ? materializeEmptyMigrationWorkdir(input)
