@@ -9,6 +9,10 @@ import {
   checkHistoricalMigrationBaseline,
   compareRemoteMigrations,
 } from './migration-inventory.mjs'
+import {
+  resolveHostedMigrationState,
+  validateMigrationEquivalences,
+} from './migration-history.mjs'
 
 test('builds a deterministic repository migration inventory', () => {
   const first = buildMigrationInventory()
@@ -122,6 +126,63 @@ test('rejects duplicate remote migration entries', () => {
     { version: '20260101000000' },
   ])
   assert.ok(problems.some((problem) => problem.includes('duplicate versions')))
+})
+
+test('permits only an explicitly documented two-version hosted alias pair', () => {
+  const group = {
+    id: 'worker-retry-ledger-marker',
+    canonicalVersion: '20261010140000',
+    versions: ['20261010081826', '20261010140000'],
+    semanticSha256: 'a'.repeat(64),
+    allowMultipleHostedVersions: true,
+  }
+  const inventory = {
+    migrationEquivalences: { version: '1.0.0', groups: [group] },
+    entries: group.versions.map((version) => ({ version })),
+  }
+
+  const state = resolveHostedMigrationState(inventory, group.versions.map((version) => ({ version })))
+
+  assert.deepEqual(state.rawVersions, group.versions)
+  assert.deepEqual([...state.appliedCanonicalVersions], [group.canonicalVersion])
+  assert.equal(state.appliedEquivalenceGroups.get(group.id), group.canonicalVersion)
+})
+
+test('keeps duplicate hosted equivalence versions blocked without the explicit policy', () => {
+  const versions = ['20261010081826', '20261010140000']
+  const inventory = {
+    migrationEquivalences: {
+      version: '1.0.0',
+      groups: [{
+        id: 'worker-retry-ledger-marker',
+        canonicalVersion: versions[1],
+        versions,
+        semanticSha256: 'a'.repeat(64),
+      }],
+    },
+    entries: versions.map((version) => ({ version })),
+  }
+
+  assert.throws(
+    () => resolveHostedMigrationState(inventory, versions.map((version) => ({ version }))),
+    /applied multiple equivalent versions/u,
+  )
+})
+
+test('limits the duplicate-hosted policy to exactly two versions', () => {
+  const versions = ['20261010081826', '20261010090340', '20261010140000']
+  const problems = validateMigrationEquivalences({
+    version: '1.0.0',
+    groups: [{
+      id: 'worker-retry-ledger-marker',
+      canonicalVersion: versions[2],
+      versions,
+      semanticSha256: 'a'.repeat(64),
+      allowMultipleHostedVersions: true,
+    }],
+  }, versions.map((version) => ({ version })))
+
+  assert.ok(problems.some((problem) => problem.includes('must contain exactly two versions')))
 })
 
 
