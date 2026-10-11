@@ -7,14 +7,11 @@ import { radius, spacing } from '@/design/theme'
 import type { AdminViewCaseTimelineEntry, AdminViewEvidenceMetadata } from '@/lib/api-types/admin'
 
 import { AdminText } from './admin-text'
-import { FinanceChoiceChip, FinanceSecondaryButton } from './admin-finance-controls'
+import { FinanceChoiceChip } from './admin-finance-controls'
 
-export function WorkspaceSearch({ label, onChange, onRefresh, refreshLabel, refreshing, tokens, value }: {
+export function WorkspaceSearch({ label, onChange, tokens, value }: {
   label: string
   onChange: (value: string) => void
-  onRefresh: () => void
-  refreshLabel: string
-  refreshing: boolean
   tokens: CustomerThemeTokens
   value: string
 }) {
@@ -29,7 +26,6 @@ export function WorkspaceSearch({ label, onChange, onRefresh, refreshLabel, refr
       shellStyle={styles.searchField}
       value={value}
     />
-    <FinanceSecondaryButton disabled={refreshing} label={refreshLabel} loading={refreshing} onPress={onRefresh} size="small" />
   </View>
 }
 
@@ -78,13 +74,13 @@ export function WorkspaceMetrics({ items, tokens }: {
   </View>
 }
 
-export function WorkspaceFeedback({ compact, error, loading, loadingLabel, onRetry, retryLabel, tokens }: {
+export function WorkspaceFeedback({ actionRetryLabel, compact, error, loading, loadingLabel, onActionRetry, tokens }: {
   compact?: boolean
   error: string | null
   loading: boolean
   loadingLabel: string
-  onRetry: () => void
-  retryLabel: string
+  onActionRetry?: () => void
+  actionRetryLabel?: string
   tokens: CustomerThemeTokens
 }) {
   if (loading) return <View style={[styles.feedback, compact && styles.feedbackCompact]}>
@@ -95,9 +91,9 @@ export function WorkspaceFeedback({ compact, error, loading, loadingLabel, onRet
   return <View accessibilityRole="alert" style={[styles.feedback, styles.errorFeedback, compact && styles.feedbackCompact, { borderColor: tokens.border }]}>
     <View style={[styles.errorDot, { backgroundColor: tokens.danger }]} />
     <AdminText textRole="subheadline" style={[styles.feedbackText, { color: tokens.text }]}>{error}</AdminText>
-    <Pressable accessibilityRole="button" onPress={onRetry}>
-      <AdminText textRole="headline" style={{ color: tokens.primary }}>{retryLabel}</AdminText>
-    </Pressable>
+    {onActionRetry && actionRetryLabel ? <Pressable accessibilityRole="button" onPress={onActionRetry}>
+      <AdminText textRole="headline" style={{ color: tokens.primary }}>{actionRetryLabel}</AdminText>
+    </Pressable> : null}
   </View>
 }
 

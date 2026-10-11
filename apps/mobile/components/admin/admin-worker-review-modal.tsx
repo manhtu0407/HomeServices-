@@ -14,6 +14,7 @@ import type {
 } from '@/lib/api-types/admin'
 import { shouldRetainClientRequestId } from '@/lib/client-request-id'
 import { useAuth } from '@/lib/auth-provider'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { createClientDiagnosticMetadata, type ApiResult } from '@/lib/api'
 import { adminControlService } from '@/lib/services'
 import type { AdminSectionsCopy } from './admin-sections-copy'
@@ -46,10 +47,13 @@ type WorkerReviewModalProps = {
 
 type WorkerReviewState = {
   detail: AdminViewWorkerReviewDetail | null
+  detailReadFailed: boolean
   error: string | null
   finance: AdminWorkerFinanceSnapshotResponse | null
   financeError: string | null
   financeLoading: boolean
+  financeReadFailed: boolean
+  listReadFailed: boolean
   loading: boolean
   profilePending: boolean
   reason: string
@@ -91,10 +95,13 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
     (current: WorkerReviewState, next: Partial<WorkerReviewState>) => ({ ...current, ...next }),
     {
       detail: null,
+      detailReadFailed: false,
       error: null,
       finance: null,
       financeError: null,
       financeLoading: false,
+      financeReadFailed: false,
+      listReadFailed: false,
       loading: Boolean(worker),
       profilePending: false,
       reason: '',
@@ -104,7 +111,7 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
       supportCode: null,
     },
   )
-  const { detail, error, finance, financeError, financeLoading, loading, profilePending, reason, requestingChanges, unresolved, decisionSaved, supportCode } = state
+  const { detail, detailReadFailed, error, finance, financeError, financeLoading, financeReadFailed, listReadFailed, loading, profilePending, reason, requestingChanges, unresolved, decisionSaved, supportCode } = state
   const reviewCopy = workerReviewCopy[props.language]
   const snapshotReady = Boolean(detail && detail.application.id === worker?.id
     && detail.application.worker_id === worker?.worker_id
@@ -113,15 +120,15 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
   const loadDetail = useCallback(async () => {
     const request = {}
     detailRequest.current = request
-    patch({ detail: null, error: null, supportCode: null, loading: true })
+    patch({ loading: true })
     try {
       const result = await adminControlService.getWorkerReviewDetail(applicationId, accessToken)
       if (detailRequest.current !== request) return
       patch(result.success && result.data.application.id === applicationId && result.data.application.worker_id === workerId
-        ? { detail: result.data, error: null, loading: false }
-        : { error: reviewCopy.error, supportCode: reviewSupportCode(result), loading: false })
+        ? { detail: result.data, detailReadFailed: false, error: null, loading: false }
+        : { detailReadFailed: true, error: reviewCopy.error, supportCode: reviewSupportCode(result), loading: false })
     } catch {
-      if (detailRequest.current === request) patch({ error: reviewCopy.error, supportCode: reviewSupportCode(), loading: false })
+      if (detailRequest.current === request) patch({ detailReadFailed: true, error: reviewCopy.error, supportCode: reviewSupportCode(), loading: false })
     }
   }, [applicationId, workerId, reviewCopy.error, accessToken])
 
@@ -129,15 +136,15 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
     if (!props.canReadFinance) return
     const request = {}
     financeRequest.current = request
-    patch({ financeLoading: true, financeError: null })
+    patch({ financeLoading: true })
     try {
       const result = await adminControlService.getWorkerFinanceSnapshot(workerId, {}, accessToken)
       if (financeRequest.current !== request) return
       patch(result.success && result.data.worker_id === workerId
-        ? { finance: result.data, financeError: null, financeLoading: false }
-        : { finance: null, financeError: `${reviewCopy.financeError} (${reviewSupportCode(result)})`, financeLoading: false })
+        ? { finance: result.data, financeError: null, financeLoading: false, financeReadFailed: false }
+        : { financeError: `${reviewCopy.financeError} (${reviewSupportCode(result)})`, financeLoading: false, financeReadFailed: true })
     } catch {
-      if (financeRequest.current === request) patch({ finance: null, financeError: `${reviewCopy.financeError} (${reviewSupportCode()})`, financeLoading: false })
+      if (financeRequest.current === request) patch({ financeError: `${reviewCopy.financeError} (${reviewSupportCode()})`, financeLoading: false, financeReadFailed: true })
     }
   }, [props.canReadFinance, workerId, reviewCopy.financeError, accessToken])
 
@@ -147,24 +154,23 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
   }, [loadDetail])
 
   useEffect(() => {
-    patch({ finance: null, financeError: null, financeLoading: props.canReadFinance })
+    patch({ finance: null, financeError: null, financeLoading: props.canReadFinance, financeReadFailed: false })
     if (props.canReadFinance) void loadFinance()
     return () => { financeRequest.current = null }
   }, [loadFinance, props.canReadFinance])
 
-  useEffect(() => () => { profileRequest.current = null }, [])
+  useAdminSectionAutoRefresh('workers', loadDetail, detailReadFailed, loadDetail)
+  useAdminSectionAutoRefresh('finance', loadFinance, financeReadFailed, loadFinance)
 
-  const retryDetail = () => {
-    if (profileRequest.current || unresolved || decisionSaved) return
-    void loadDetail()
-  }
+  useEffect(() => () => { profileRequest.current = null }, [])
 
   const refreshAfterDecision = async (request: object) => {
     try {
       await props.onRefresh()
+      if (profileRequest.current === request) patch({ listReadFailed: false })
       if (profileRequest.current === request) props.onClose()
     } catch {
-      if (profileRequest.current === request) patch({ error: reviewCopy.savedRefreshError, supportCode: reviewSupportCode() })
+      if (profileRequest.current === request) patch({ error: reviewCopy.savedRefreshError, listReadFailed: true, supportCode: reviewSupportCode() })
     }
   }
 
@@ -179,6 +185,8 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
       patch({ profilePending: false })
     }
   }
+
+  useAdminSectionAutoRefresh('workers', retryList, listReadFailed, retryList)
 
   const decideProfile = async (decision: 'approve' | 'request_changes') => {
     if (profileRequest.current || !props.canReview || decisionSaved) return
@@ -237,7 +245,7 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
   return <Modal animationType={props.reduceMotion ? 'none' : 'fade'} transparent visible onRequestClose={props.onClose}>
     <View style={styles.modalBackdrop}><View style={styles.modalCard} testID="admin-worker-review-detail">
       <ModalHeader copy={props.copy} onClose={props.onClose} worker={worker} reviewCopy={reviewCopy} />
-      {loading ? <View style={styles.detailLoading}><ActivityIndicator color={color.brand.primary} /></View> : error && !detail ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{reviewCopy.error}</AdminText><KaelButton label={reviewCopy.actions.retry} onPress={retryDetail} variant="secondary" /></View> : detail ? <>
+      {loading && !detail ? <View style={styles.detailLoading}><ActivityIndicator color={color.brand.primary} /></View> : error && !detail ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{reviewCopy.error}</AdminText></View> : detail ? <>
         <ScrollView style={styles.modalBodyScroll} contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
           <LoginSection detail={detail} copy={props.copy} formatDate={props.formatDate} reviewCopy={reviewCopy} />
           <ChecklistSection worker={detail.application} reviewCopy={reviewCopy} />
@@ -249,9 +257,7 @@ function WorkerReviewSession(props: WorkerReviewModalProps & { worker: AdminView
         {error ? <AdminText textRole="subheadline" accessibilityRole="alert" style={styles.errorText}>{error}</AdminText> : null}
         {decisionSaved ? <>
           {!error ? <AdminText textRole="subheadline" accessibilityRole="alert">{reviewCopy.success}</AdminText> : null}
-          <KaelButton label={reviewCopy.actions.reloadList} onPress={() => { void retryList() }} disabled={profilePending} variant="secondary" />
         </> : <>
-          {(!snapshotReady || error) && !unresolved ? <KaelButton label={reviewCopy.actions.reload} onPress={retryDetail} disabled={profilePending} variant="secondary" /> : null}
           <WorkerReviewActions {...props} worker={detail.application} snapshotReady={snapshotReady} unresolved={Boolean(unresolved)} profilePending={profilePending} reason={reason} requestingChanges={requestingChanges} setReason={(value) => { if (!profileRequest.current && !unresolved) patch({ reason: value }) }} setRequestingChanges={(value) => { if (!profileRequest.current && !unresolved) patch({ requestingChanges: value }) }} decideProfile={decideProfile} reviewCopy={reviewCopy} />
         </>}
       </> : null}

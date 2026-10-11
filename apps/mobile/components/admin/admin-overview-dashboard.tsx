@@ -24,6 +24,7 @@ import type { AdminProductionCapabilityId } from './admin-sections-production-co
 import type { AdminProductionSectionId } from './admin-sections-production-registry'
 import { createFinanceFormatters } from './admin-finance-formatters'
 import { AdminText } from './admin-text'
+import { useAdminSectionsAutoRefresh } from '@/lib/admin-data-sync'
 
 export type AdminOverviewRange = 'day' | 'week' | 'month'
 
@@ -122,7 +123,6 @@ function overviewCopy(language: AppLanguage) {
       financeError: 'Business results could not be loaded.',
       operationsError: 'The current operations snapshot could not be loaded.',
       detailError: 'Details could not be loaded.',
-      retry: 'Try again',
       loadingFinance: 'Loading business results…',
       loadingOperations: 'Loading current operations…',
       unavailable: 'Not recorded',
@@ -173,7 +173,6 @@ function overviewCopy(language: AppLanguage) {
     financeError: 'Không thể tải kết quả kinh doanh.',
     operationsError: 'Không thể tải trạng thái vận hành hiện tại.',
     detailError: 'Không thể tải dữ liệu chi tiết.',
-    retry: 'Thử lại',
     loadingFinance: 'Đang tải kết quả kinh doanh…',
     loadingOperations: 'Đang tải trạng thái vận hành…',
     unavailable: 'Chưa ghi nhận',
@@ -248,7 +247,7 @@ export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, on
   const loadFinance = useCallback(async (range: AdminOverviewRange) => {
     const requestId = financeRequestIdRef.current + 1
     financeRequestIdRef.current = requestId
-    patch({ financeError: null, financeLoading: true })
+    patch({ financeLoading: true })
     try {
       const result = await adminControlService.getFinanceOverview({ range })
       if (requestId === financeRequestIdRef.current) {
@@ -265,7 +264,7 @@ export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, on
   const loadOperations = useCallback(async () => {
     const requestId = operationsRequestIdRef.current + 1
     operationsRequestIdRef.current = requestId
-    patch({ operationsError: null, operationsLoading: true })
+    patch({ operationsLoading: true })
     try {
       const result = await adminControlService.getOperations()
       if (requestId === operationsRequestIdRef.current) {
@@ -278,6 +277,21 @@ export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, on
       if (requestId === operationsRequestIdRef.current) patch({ operationsLoading: false })
     }
   }, [copy.operationsError, onSessionMissing])
+
+  const refreshOverview = useCallback(() => Promise.all([
+    loadFinance(rangeRef.current),
+    loadOperations(),
+  ]).then(() => undefined), [loadFinance, loadOperations])
+  const retryFailedOverviewSources = useCallback(() => Promise.all([
+    state.financeError ? loadFinance(rangeRef.current) : Promise.resolve(),
+    state.operationsError ? loadOperations() : Promise.resolve(),
+  ]).then(() => undefined), [loadFinance, loadOperations, state.financeError, state.operationsError])
+  useAdminSectionsAutoRefresh(
+    ['overview', 'finance', 'operations', 'workers'],
+    refreshOverview,
+    Boolean(state.financeError || state.operationsError),
+    retryFailedOverviewSources,
+  )
 
   const invalidateRequests = useCallback(() => {
     financeRequestIdRef.current += 1
@@ -306,7 +320,7 @@ export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, on
     }
     const requestId = detailRequestIdRef.current + 1
     detailRequestIdRef.current = requestId
-    patchDetail({ detail: cached ?? null, error: null, loading: true })
+    patchDetail({ detail: cached ?? null, loading: true })
     const result = await adminControlService.getOverviewDetails({ key, limit: 5 })
     if (requestId === detailRequestIdRef.current && detailKeyRef.current === key) {
       if (isMissingAdminSession(result)) onSessionMissing()
@@ -320,6 +334,10 @@ export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, on
       }
     }
   }, [copy.detailError, detailCache, onSessionMissing])
+
+  useAdminSectionsAutoRefresh(['overview', 'finance', 'operations', 'workers'], () => {
+    if (detailState.selection) return loadDetail(detailState.selection.key, true)
+  }, Boolean(detailState.error && detailState.selection))
 
   const openDetail = useCallback((selection: AdminOverviewDetailSelection) => {
     detailRequestIdRef.current += 1
@@ -399,7 +417,7 @@ export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, on
     </View>
 
     <SectionHeading scope={copy.periodScope} title={copy.financeTitle} tokens={tokens} />
-    {state.financeError ? <ErrorBanner copy={copy} message={state.financeError} onRetry={() => { void loadFinance(rangeRef.current) }} testID="admin-overview-finance-error" tokens={tokens} /> : null}
+    {state.financeError ? <ErrorBanner message={state.financeError} testID="admin-overview-finance-error" tokens={tokens} /> : null}
     {!state.finance && state.financeLoading ? <RegionLoading label={copy.loadingFinance} tokens={tokens} /> : null}
     {state.finance ? <>
       <KpiGrid cardStyle={kpiCardStyle} copy={copy} finance={state.finance} formatCount={formatters.formatCount} formatCurrency={formatters.formatCurrency} tokens={tokens} />
@@ -424,7 +442,7 @@ export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, on
     <View style={[styles.currentGrid, !compact && styles.currentGridWide]} testID="admin-overview-current-grid">
       <View style={[styles.currentColumn, !compact && styles.currentColumnWide]}>
         <SectionHeading scope={copy.currentScope} title={copy.operationsTitle} tokens={tokens} />
-        {state.operationsError ? <ErrorBanner copy={copy} message={state.operationsError} onRetry={() => { void loadOperations() }} testID="admin-overview-operations-error" tokens={tokens} /> : null}
+        {state.operationsError ? <ErrorBanner message={state.operationsError} testID="admin-overview-operations-error" tokens={tokens} /> : null}
         {!state.operations && state.operationsLoading ? <RegionLoading label={copy.loadingOperations} tokens={tokens} /> : null}
         {state.operations ? <OperationsPanel copy={copy} onSelectDetail={openDetail} operations={state.operations} tokens={tokens} /> : null}
       </View>
@@ -440,7 +458,6 @@ export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, on
       language={language}
       loading={detailState.loading}
       onClose={closeDetail}
-      onRetry={() => { if (detailState.selection) void loadDetail(detailState.selection.key, true) }}
       onViewAll={canOpenTarget ? () => {
         const target = detailTarget
         closeDetail()
@@ -461,21 +478,12 @@ function SectionHeading({ scope, title, tokens }: { scope: string; title: string
   </View>
 }
 
-function ErrorBanner({ copy, message, onRetry, testID, tokens }: { copy: AdminOverviewCopy; message: string; onRetry: () => void; testID: string; tokens: CustomerThemeTokens }) {
+function ErrorBanner({ message, testID, tokens }: { message: string; testID: string; tokens: CustomerThemeTokens }) {
   return <View accessibilityRole="alert" style={[styles.errorBanner, { backgroundColor: tokens.base, borderColor: tokens.borderStrong }]} testID={testID}>
     <View style={styles.errorMessage}>
       <View style={[styles.errorIndicator, { backgroundColor: tokens.danger }]} testID={`${testID}-indicator`} />
       <AdminText textRole="footnote" style={[styles.errorText, { color: tokens.text }]}>{message}</AdminText>
     </View>
-    <Pressable
-      accessibilityLabel={`${copy.retry}: ${message}`}
-      accessibilityRole="button"
-      onPress={onRetry}
-      style={({ pressed }) => [styles.retryAction, pressed && { backgroundColor: tokens.base }]}
-      testID={`${testID}-retry`}
-    >
-      <AdminText textRole="headline" style={[styles.retryLabel, { color: tokens.primary }]}>{copy.retry}</AdminText>
-    </Pressable>
   </View>
 }
 

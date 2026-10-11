@@ -9,6 +9,7 @@ import type {
   AdminViewPriceBaselineSummary,
 } from '@/lib/api-types/admin'
 import { type AppLanguage } from '@/lib/app-language'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { adminControlService } from '@/lib/services'
 
 import { AdminPagination } from './admin-pagination'
@@ -39,7 +40,6 @@ const copy = {
     policies: 'Chính sách',
     provider: 'Nhà cung cấp',
     purpose: 'Mục đích',
-    refresh: 'Tải lại',
     rollbackAvailable: 'Có thể hoàn tác',
     ruleEmpty: 'Chưa có quy tắc học nào.',
     rules: 'Quy tắc học',
@@ -65,7 +65,6 @@ const copy = {
     policies: 'Policies',
     provider: 'Provider',
     purpose: 'Purpose',
-    refresh: 'Refresh',
     rollbackAvailable: 'Rollback available',
     ruleEmpty: 'No learning rule is available.',
     rules: 'Learning rules',
@@ -161,7 +160,7 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
     if (!shouldBlock) backgroundLoads.add(requestedPanel)
     const requestId = (loadRequestIds[requestedPanel] ?? 0) + 1
     loadRequestIds[requestedPanel] = requestId
-    patch({ error: null, ...(shouldBlock ? { loading: true } : {}) })
+    patch({ ...(shouldBlock ? { loading: true } : {}) })
     try {
       if (requestedPanel === 'policies') {
         return
@@ -170,6 +169,7 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
         if (requestId === loadRequestIds[requestedPanel] && activePanelRef.current === requestedPanel) {
           if (result.success) {
             patch({
+              error: null,
               priceHasMore: result.data.has_more,
               prices: result.data.price_baselines,
               priceTotal: result.data.total_count,
@@ -198,7 +198,12 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
           }
           if (!costResult.success) patch({ error: costResult.error })
           else if (!ruleResult.success) patch({ error: ruleResult.error })
+          else patch({ error: null })
         }
+      }
+    } catch {
+      if (requestId === loadRequestIds[requestedPanel] && activePanelRef.current === requestedPanel) {
+        patch({ error: labels.error })
       }
     } finally {
       if (requestId === loadRequestIds[requestedPanel]) {
@@ -207,7 +212,10 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
         if (activePanelRef.current === requestedPanel) patch({ loading: false })
       }
     }
-  }, [activePanel, actor?.access_level, backgroundLoads, costPage, loadRequestIds, loadedPanels, pricePage, rulePage])
+  }, [activePanel, actor?.access_level, backgroundLoads, costPage, labels.error, loadRequestIds, loadedPanels, pricePage, rulePage])
+
+  const refreshActivePanel = useCallback(() => load({ blocking: false }), [load])
+  useAdminSectionAutoRefresh('system', refreshActivePanel, Boolean(error), refreshActivePanel)
 
   useEffect(() => {
     const panelAtStart = activePanel
@@ -229,9 +237,6 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
       <View>
         <AdminText textRole="headline" style={styles.title}>{labels.kael}</AdminText>
       </View>
-      <Pressable accessibilityLabel={labels.refresh} accessibilityRole="button" onPress={() => { void load() }} style={styles.refresh}>
-        <AdminText textRole="subheadline" style={styles.refreshText}>{labels.refresh}</AdminText>
-      </Pressable>
     </View>
     <AdminTabNavigation
       items={[
@@ -241,7 +246,7 @@ export function AdminGovernancePanel({ actor, initialPanel = 'prices', language 
       ]}
       testID="admin-governance-navigation"
     />
-    {loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.loadingText}>{labels.loading}</AdminText></View> : error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{labels.error}</AdminText><Pressable accessibilityRole="button" onPress={() => { void load() }}><AdminText textRole="headline" style={styles.retry}>{labels.refresh}</AdminText></Pressable></View> : activePanel === 'prices' ? <>
+    {loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.loadingText}>{labels.loading}</AdminText></View> : error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{labels.error}</AdminText></View> : activePanel === 'prices' ? <>
       {prices.length === 0 ? <EmptyState label={labels.priceEmpty} /> : prices.map((item) => <PriceCard item={item} key={item.id} language={language} />)}
       <Pagination hasMore={priceHasMore} language={language} loading={loading} onPageChange={(pricePage) => patch({ pricePage })} page={pricePage} prefix="admin-governance-price-page" total={priceTotal} />
     </> : activePanel === 'policies' ? <AdminPolicyGovernance language={language} /> : <>
@@ -388,8 +393,6 @@ const styles = StyleSheet.create({
   metricLabel: { color: color.text.muted, fontWeight: '600' },
   metricValue: { color: color.text.strong, fontWeight: '600' },
   pill: { backgroundColor: color.mint.mint50, borderColor: color.mint.mint300, borderRadius: radius.pill, borderWidth: 1, color: color.brand.primaryDark, fontWeight: '600', overflow: 'hidden', paddingHorizontal: spacing.sm, paddingVertical: spacing.xxs, textTransform: 'capitalize' },
-  refresh: { alignItems: 'center', borderColor: color.mint.mint300, borderRadius: radius.pill, borderWidth: 1, minHeight: 36, justifyContent: 'center', paddingHorizontal: spacing.md },
-  refreshText: { color: color.brand.primaryDark, fontWeight: '600' },
   retry: { color: color.brand.primaryDark, fontWeight: '600' },
   sectionTitle: { color: color.text.strong, marginTop: spacing.xs },
   stack: { gap: spacing.md },

@@ -91,9 +91,9 @@ export function AdminSystemTaxonomyWorkspace({ actor, language }: { actor: Admin
     contentContainerStyle={adminSystemStyles.listContent}
     data={list.records}
     keyExtractor={(item) => item.service_type}
-    ListEmptyComponent={list.loading ? <AdminSystemState label={labels.loading} loading /> : list.error ? <AdminSystemState actionLabel={labels.retry} label={list.error} onAction={list.retry} /> : <AdminSystemState compact label={labels.empty} />}
+    ListEmptyComponent={list.loading ? <AdminSystemState label={labels.loading} loading /> : list.error ? <AdminSystemState label={list.error} /> : <AdminSystemState compact label={labels.empty} />}
     ListHeaderComponent={<View style={styles.header}>
-      <AdminSystemToolbar language={language} onChangeQuery={(query) => patch({ query })} onRefresh={list.refresh} query={state.query} refreshing={list.refreshing} searchPlaceholder={labels.searchPlaceholder} />
+      <AdminSystemToolbar language={language} onChangeQuery={(query) => patch({ query })} query={state.query} searchPlaceholder={labels.searchPlaceholder} />
       <AdminSystemSummary generatedAt={list.generatedAt} language={language} quality={list.dataQuality}>
         <AdminSystemMetric label={labels.services} value={list.summary?.canonical_service_count ?? null} />
         <AdminSystemMetric label={labels.activeProblems} value={list.summary?.active_problem_count ?? null} />
@@ -103,7 +103,7 @@ export function AdminSystemTaxonomyWorkspace({ actor, language }: { actor: Admin
       <View style={styles.filterGroup}><AdminText textRole="caption1" style={styles.meta}>{labels.problemStatus}</AdminText><View style={adminSystemStyles.filterRow}>{(['all', 'active', 'inactive'] as const).map((value) => <FinanceChoiceChip key={value} label={labels.statusValue[value]} onPress={() => patch({ status: value })} selected={state.status === value} />)}</View></View>
       <View style={styles.filterGroup}><AdminText textRole="caption1" style={styles.meta}>{language === 'vi' ? 'Độ phức tạp' : 'Complexity'}</AdminText><View style={adminSystemStyles.filterRow}>{(['all', 'small', 'medium', 'large'] as const).map((value) => <FinanceChoiceChip key={value} label={value === 'all' ? labels.statusValue.all : adminSystemComplexityLabel(value, language)} onPress={() => patch({ complexity: value })} selected={state.complexity === value} />)}</View></View>
       <View style={styles.filterGroup}><AdminText textRole="caption1" style={styles.meta}>{language === 'vi' ? 'Giá tham chiếu' : 'Price baseline'}</AdminText><View style={adminSystemStyles.filterRow}>{(['all', 'available', 'missing'] as const).map((value) => <FinanceChoiceChip key={value} label={value === 'all' ? labels.statusValue.all : value === 'available' ? (language === 'vi' ? 'Đã ghi nhận' : 'Recorded') : (language === 'vi' ? 'Chưa ghi nhận' : 'Not recorded')} onPress={() => patch({ baseline: value })} selected={state.baseline === value} />)}</View></View>
-      {list.error && list.records.length > 0 ? <AdminSystemState actionLabel={labels.retry} compact label={list.error} onAction={list.retry} /> : null}
+      {list.error && list.records.length > 0 ? <AdminSystemState compact label={list.error} /> : null}
     </View>}
     renderItem={renderService}
     showsVerticalScrollIndicator={false}
@@ -129,7 +129,7 @@ function TaxonomyDetail({ actor, detail, language, onBack }: {
   const draft = editor.draft
 
   if (detail.loading && !record) return <AdminSystemState label={labels.loadingDetail} loading />
-  if (detail.error && !record) return <AdminSystemState actionLabel={labels.retry} label={detail.error} onAction={detail.retry} />
+  if (detail.error && !record) return <AdminSystemState label={detail.error} />
   if (!record || !response) return <AdminSystemState label={labels.chooseService} />
 
   const reset = () => {
@@ -209,7 +209,7 @@ function TaxonomyDetail({ actor, detail, language, onBack }: {
       <View style={styles.actions}><FinanceSecondaryButton label={labels.backToEdit} onPress={() => patchEditor({ preview: null })} /><KaelButton disabled={!editor.preview.valid || editor.pending} label={labels.confirm} loading={editor.pending} onPress={() => { void confirm() }} variant="primary" /></View>
     </> : null}
     {editor.receipt ? <><AdminSystemState compact label={labels.receiptRecorded} /><Section title={labels.receipt}><AdminSystemField label={labels.eventId} value={editor.receipt.event_id} /><AdminSystemField label={labels.recordedAt} value={adminSystemFormatDate(editor.receipt.recorded_at, language)} /><AdminSystemField label={labels.newRevision} numeric value={String(editor.receipt.new_version)} /></Section><FinanceSecondaryButton label={labels.done} onPress={reset} /></> : null}
-    {detail.error && record ? <AdminSystemState actionLabel={labels.retry} compact label={detail.error} onAction={detail.retry} /> : null}
+    {detail.error && record ? <AdminSystemState compact label={detail.error} /> : null}
   </AdminSystemDetailScroll>
 }
 

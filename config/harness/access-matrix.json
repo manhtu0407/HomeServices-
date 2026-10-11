@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 448,
-    "migrationDigest": "cfe83e4c1d24f1241ec1957e44b2576a87728655451c48cc9973a33dd5ea8de4"
+    "migrationCount": 449,
+    "migrationDigest": "2d0144907d001b0855223ae1205b047cca46dee5db4dd6e339f369b4783523ed"
   },
   "actors": [
     "anonymous",
@@ -15,6 +15,24 @@
     "service_role"
   ],
   "tables": [
+    {
+      "name": "admin_data_revisions",
+      "classification": "actor-scoped",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": [
+          "select"
+        ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": true
+    },
     {
       "name": "admin_finance_mutation_receipts",
       "classification": "internal",
@@ -6671,6 +6689,7 @@
     }
   ],
   "realtimeTables": [
+    "admin_data_revisions",
     "chat_messages",
     "disputes",
     "evidence_snapshots",

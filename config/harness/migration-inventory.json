@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 448,
+  "migrationCount": 449,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,10 +102,10 @@
       }
     ]
   },
-  "migrationsSha256": "9854c89a31f2c7721312897106f863120559af89fdfa2150ba9c92c0584b26b4",
+  "migrationsSha256": "59337cc1884709278f8c9749cb252248b08b0e64e4079f6769ae3276ff68254b",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "ff5a7a3740ad2207924893c89f9f8ca7dea8f3081489046adcdd361fd5756fb9"
+    "sha256": "3437b9bce74171997903835275454e478b4f379484f065e3b2317d1c97c94538"
   },
   "entries": [
     {
@@ -3243,6 +3243,13 @@
       "file": "supabase/migrations/20261011100000_system_health_monitor.sql",
       "sha256": "b28294f368b682f1e530ee248993b57757b028cbe840d6792ef047d4d6008b51",
       "bytes": 56515
+    },
+    {
+      "version": "20261011110000",
+      "name": "admin_data_revision_signal",
+      "file": "supabase/migrations/20261011110000_admin_data_revision_signal.sql",
+      "sha256": "e9f3dc689cfd4a5805984a135036c8fd6d09ff77c79f574256decccc7aa9ac47",
+      "bytes": 10346
     }
   ]
 }

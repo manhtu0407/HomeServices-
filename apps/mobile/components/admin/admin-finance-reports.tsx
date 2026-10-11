@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useReducer } from 'react'
+import { useCallback, useEffect, useReducer } from 'react'
 import { Platform, Pressable, Share, StyleSheet, View } from 'react-native'
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
@@ -10,6 +10,7 @@ import type {
   AdminFinanceTransaction,
   AdminFinanceTransactionDetailResponse,
 } from '@/lib/api-types/admin'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { adminControlService } from '@/lib/services'
 import { FinanceChoiceChip, FinanceSecondaryButton } from './admin-finance-controls'
@@ -25,7 +26,6 @@ type FinanceTaxReportsProps = Omit<CommonProps, 'formatCurrency'> & {
   canApproveTax: boolean
   canManageTax: boolean
   reduceMotion: boolean
-  refreshKey: number
 }
 
 type TaxPolicyRuleForm = {
@@ -40,7 +40,9 @@ type TaxPolicyRuleForm = {
 type FinanceTransactionsState = {
   cursor: string | null
   detail: AdminFinanceTransactionDetailResponse | null
+  detailJobId: string | null
   detailLoading: boolean
+  detailReadFailed: boolean
   error: string | null
   loading: boolean
   rows: AdminFinanceTransaction[]
@@ -52,7 +54,9 @@ type FinanceTransactionsPatch = Partial<FinanceTransactionsState> |
 const initialFinanceTransactionsState: FinanceTransactionsState = {
   cursor: null,
   detail: null,
+  detailJobId: null,
   detailLoading: false,
+  detailReadFailed: false,
   error: null,
   loading: true,
   rows: [],
@@ -154,7 +158,6 @@ const copy = {
     retire: 'Ngừng chính sách',
     retiredNotice: 'Chính sách đã được ngừng.',
     removeRule: 'Xóa quy tắc',
-    retry: 'Thử lại',
     shareFailed: 'Báo cáo đã tạo nhưng không thể mở bảng chia sẻ trên thiết bị này.',
     taxPoliciesUnavailable: 'Chưa thể tải chính sách thuế lúc này.',
     taxType: 'Mã loại thuế',
@@ -211,7 +214,6 @@ const copy = {
     retire: 'Retire policy',
     retiredNotice: 'The policy was retired.',
     removeRule: 'Remove rule',
-    retry: 'Try again',
     shareFailed: 'The report was generated, but sharing is unavailable on this device.',
     taxPoliciesUnavailable: 'Tax policy data is unavailable right now.',
     taxType: 'Tax type code',
@@ -233,14 +235,15 @@ const copy = {
 export function FinanceTransactionsPanel({ formatCurrency, language, period }: CommonProps) {
   const strings = copy[language]
   const [state, patch] = useReducer(financeTransactionsReducer, initialFinanceTransactionsState)
-  const { cursor, detail, detailLoading, error, loading, rows } = state
+  const { cursor, detail, detailJobId, detailLoading, detailReadFailed, error, loading, rows } = state
 
   const load = useCallback(async (nextCursor?: string) => {
-    patch({ error: null, loading: true })
+    patch({ loading: true })
     const result = await adminControlService.listFinanceTransactions({ ...period, cursor: nextCursor, limit: 25 })
     if (result.success) {
       patch((current) => ({
         cursor: result.data.next_cursor,
+        error: null,
         loading: false,
         rows: nextCursor ? [...current.rows, ...result.data.transactions] : result.data.transactions,
       }))
@@ -248,6 +251,8 @@ export function FinanceTransactionsPanel({ formatCurrency, language, period }: C
       patch({ error: result.error, loading: false })
     }
   }, [period])
+
+  useAdminSectionAutoRefresh('finance', load, Boolean(error), load)
 
   useEffect(() => {
     let cancelled = false
@@ -260,12 +265,21 @@ export function FinanceTransactionsPanel({ formatCurrency, language, period }: C
   }, [load])
 
   const openDetail = useCallback(async (row: AdminFinanceTransaction) => {
-    patch({ detailLoading: true, error: null })
+    patch({ detailJobId: row.job_id, detailLoading: true, detailReadFailed: false })
     const result = await adminControlService.getFinanceTransaction(row.job_id)
     patch(result.success
-      ? { detail: result.data, detailLoading: false }
-      : { detailLoading: false, error: result.error })
+      ? { detail: result.data, detailLoading: false, detailReadFailed: false, error: null }
+      : { detailLoading: false, detailReadFailed: true, error: result.error })
   }, [])
+
+  const refreshDetail = useCallback(async () => {
+    if (!detailJobId) return
+    const result = await adminControlService.getFinanceTransaction(detailJobId)
+    patch(result.success
+      ? { detail: result.data, detailLoading: false, detailReadFailed: false, error: null }
+      : { detailLoading: false, detailReadFailed: true, error: result.error })
+  }, [detailJobId])
+  useAdminSectionAutoRefresh('finance', refreshDetail, detailReadFailed, refreshDetail)
 
   if (detail) return <View style={styles.section} testID="admin-finance-transaction-detail">
     <Pressable accessibilityLabel={strings.back} accessibilityRole="button" onPress={() => patch({ detail: null })} style={styles.backRow}><AdminText textRole="headline" style={styles.backText}>‹ {strings.back}</AdminText></Pressable>
@@ -292,7 +306,7 @@ export function FinanceTransactionsPanel({ formatCurrency, language, period }: C
       <AdminText textRole="title2" style={styles.sectionTitle}>{strings.transactions}</AdminText>
       <AdminText textRole="footnote" style={styles.masked}>{strings.masked}</AdminText>
     </View>
-    {error ? <View accessibilityRole="alert" style={styles.stateCard}><AdminText textRole="subheadline" style={styles.error}>{strings.transactionsUnavailable}</AdminText><FinanceSecondaryButton label={strings.retry} onPress={() => { void load() }} size="small" /></View>
+    {error ? <View accessibilityRole="alert" style={styles.stateCard}><AdminText textRole="subheadline" style={styles.error}>{strings.transactionsUnavailable}</AdminText></View>
       : !loading && rows.length === 0 ? <View style={styles.stateCard}><AdminText textRole="subheadline" style={styles.secondary}>{strings.emptyTransactions}</AdminText></View>
         : rows.map((row) => <TransactionRow formatCurrency={formatCurrency} key={row.job_id} language={language} onPress={() => { void openDetail(row) }} row={row} />)}
     {loading || detailLoading ? <AdminText textRole="subheadline" accessibilityLiveRegion="polite" style={styles.secondary}>{strings.loading}…</AdminText> : null}
@@ -300,7 +314,7 @@ export function FinanceTransactionsPanel({ formatCurrency, language, period }: C
   </View>
 }
 
-export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, period, refreshKey }: FinanceTaxReportsProps) {
+export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, period }: FinanceTaxReportsProps) {
   const strings = copy[language]
   const [state, patch] = useReducer(financeTaxReportsReducer, initialFinanceTaxReportsState)
   const { editor, exporting, generatedAt, loading, notice, policies, policyError, saving } = state
@@ -313,11 +327,11 @@ export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, 
       : { loading: false, policies: [], policyError: true })
   }, [])
 
-  const loadPoliciesOnRefresh = useEffectEvent(loadPolicies)
+  useAdminSectionAutoRefresh('finance', loadPolicies, policyError, loadPolicies)
 
   useEffect(() => {
-    void loadPoliciesOnRefresh()
-  }, [refreshKey])
+    void loadPolicies()
+  }, [loadPolicies])
 
   const exportCsv = useCallback(async () => {
     patch({ exporting: true, notice: null })
@@ -470,7 +484,6 @@ export function FinanceTaxReportsPanel({ canApproveTax, canManageTax, language, 
     {notice ? <AdminText textRole="subheadline" accessibilityLiveRegion="polite" style={styles.secondary}>{notice}</AdminText> : null}
     {policyError ? <View accessibilityRole="alert" style={styles.stateCard}>
       <AdminText textRole="subheadline" style={styles.error}>{strings.taxPoliciesUnavailable}</AdminText>
-      <FinanceSecondaryButton label={strings.retry} onPress={() => { void loadPolicies() }} size="small" testID="admin-finance-tax-retry" />
     </View> : null}
     {loading ? <AdminText textRole="subheadline" style={styles.secondary}>{strings.loading}…</AdminText>
       : policyError ? null

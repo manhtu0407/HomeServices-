@@ -11,6 +11,9 @@ type RealtimeChannelHandle = {
   unsubscribe: () => Promise<string>
 }
 
+export type AdminRevisionSection = 'overview' | 'operations' | 'workers' | 'finance' | 'team' | 'system'
+export type AdminRevision = { revision: number; section: AdminRevisionSection }
+
 export function subscribeToJobMessages(
   jobId: string,
   onMessage: (payload: unknown) => void,
@@ -114,6 +117,40 @@ export function subscribeToWorkerEarnings(
       (payload) => onChange(payload),
     )
     .subscribe()
+
+  return {
+    unsubscribe: async () => {
+      const status = await supabase!.removeChannel(channel)
+      return String(status)
+    },
+  }
+}
+
+export function subscribeToAdminDataRevisions(
+  ownerId: string,
+  onChange: (revision: AdminRevision) => void,
+  onStatus: (status: string) => void,
+): RealtimeChannelHandle | null {
+  if (!supabase || !UUID_PATTERN.test(ownerId)) return null
+  const channel = supabase
+    .channel(`admin-data-revisions:${ownerId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'admin_data_revisions',
+      },
+      (payload) => {
+        const row = payload.new as Record<string, unknown>
+        const section = row.section
+        const revision = Number(row.revision)
+        if (typeof section !== 'string' || !['overview', 'operations', 'workers', 'finance', 'team', 'system'].includes(section)) return
+        if (!Number.isSafeInteger(revision) || revision < 1) return
+        onChange({ revision, section: section as AdminRevisionSection })
+      },
+    )
+    .subscribe((status) => onStatus(status))
 
   return {
     unsubscribe: async () => {

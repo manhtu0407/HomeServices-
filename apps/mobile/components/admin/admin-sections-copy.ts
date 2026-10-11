@@ -5,10 +5,8 @@ export type AdminSectionsCopy = {
     approve: string
     approving: string
     close: string
-    refresh: string
     reject: string
     requestChanges: string
-    retry: string
     signOut: string
     signingOut: string
     staySignedIn: string
@@ -100,10 +98,8 @@ export const adminSectionsCopy: Record<AppLanguage, AdminSectionsCopy> = {
       approve: 'Duyệt quyền vào luồng thợ',
       approving: 'Đang lưu...',
       close: 'Đóng',
-      refresh: 'Tải lại',
       reject: 'Từ chối',
       requestChanges: 'Yêu cầu bổ sung',
-      retry: 'Thử lại',
       signOut: 'Đăng xuất',
       signingOut: 'Đang đăng xuất...',
       staySignedIn: 'Ở lại',
@@ -250,10 +246,8 @@ export const adminSectionsCopy: Record<AppLanguage, AdminSectionsCopy> = {
       approve: 'Grant worker access',
       approving: 'Saving...',
       close: 'Close',
-      refresh: 'Refresh',
       reject: 'Reject',
       requestChanges: 'Request changes',
-      retry: 'Try again',
       signOut: 'Sign out',
       signingOut: 'Signing out...',
       staySignedIn: 'Stay signed in',

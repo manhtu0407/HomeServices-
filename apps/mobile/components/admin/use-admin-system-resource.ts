@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useAuth } from '@/lib/auth-provider'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { peekResource, writeResource } from '@/lib/resource-cache/resource-cache'
 
 type ApiResult<T> = { success: true; data: T } | { success: false; error?: string }
@@ -43,52 +44,65 @@ export function useAdminSystemResource<TRecord, TSummary, TEnvelope extends List
   const { session } = useAuth()
   const ownerId = session?.user.id ?? ANONYMOUS_OWNER
   const activeKey = `${cacheKey}:${debouncedQuery}`
+  const stateKey = `${ownerId}:${activeKey}`
   const requestId = useRef(0)
-  const [state, setState] = useState<ResourceState<TRecord, TSummary, TEnvelope>>(() => resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey))
-  const current = state.key === activeKey ? state : resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey)
+  const [state, setState] = useState<ResourceState<TRecord, TSummary, TEnvelope>>(() => resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey, stateKey))
+  const current = state.key === stateKey ? state : resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey, stateKey)
 
   useEffect(() => {
-    if (peekResource(ownerId, adminResourceKey(activeKey))) return
     const currentRequest = ++requestId.current
     let active = true
-    void fetchPage({ query: debouncedQuery }).then((result) => {
-      if (!active || currentRequest !== requestId.current) return
-      if (!result.success) {
-        setState({ ...resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey), error: result.error || errorMessage, loading: false })
-        return
+    const load = async (): Promise<void> => {
+      try {
+        const result = await fetchPage({ query: debouncedQuery })
+        if (!active || currentRequest !== requestId.current) return
+        if (!result.success) {
+          setState({ ...resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey, stateKey), error: result.error || errorMessage, loading: false, refreshing: false })
+          return
+        }
+        writeResource(ownerId, adminResourceKey(activeKey), result.data)
+        setState(resourceStateFromEnvelope(stateKey, result.data))
+      } catch {
+        if (!active || currentRequest !== requestId.current) return
+        setState({ ...resourceStateForKey<TRecord, TSummary, TEnvelope>(ownerId, activeKey, stateKey), error: errorMessage, loading: false, refreshing: false })
       }
-      writeResource(ownerId, adminResourceKey(activeKey), result.data)
-      setState(resourceStateFromEnvelope(activeKey, result.data))
-    })
+    }
+    void load()
     return () => {
       active = false
       if (currentRequest === requestId.current) requestId.current += 1
     }
-  }, [activeKey, debouncedQuery, errorMessage, fetchPage, ownerId])
+  }, [activeKey, debouncedQuery, errorMessage, fetchPage, ownerId, stateKey])
 
   const load = useCallback(async ({ append = false, refresh = false }: { append?: boolean; refresh?: boolean } = {}) => {
     const currentRequest = ++requestId.current
     setState({
       ...current,
-      error: null,
-      key: activeKey,
+      key: stateKey,
       loading: !append && !refresh && current.records.length === 0,
       loadingMore: append,
       refreshing: refresh,
     })
     const cursor = append ? current.response?.next_cursor ?? undefined : undefined
-    const result = await fetchPage({ cursor, query: debouncedQuery })
-    if (currentRequest !== requestId.current) return
-    if (!result.success) {
-      setState({ ...current, error: result.error || errorMessage, key: activeKey, loading: false, loadingMore: false, refreshing: false })
-      return
+    try {
+      const result = await fetchPage({ cursor, query: debouncedQuery })
+      if (currentRequest !== requestId.current) return
+      if (!result.success) {
+        setState({ ...current, error: result.error || errorMessage, key: stateKey, loading: false, loadingMore: false, refreshing: false })
+        return
+      }
+      const response = append
+        ? { ...result.data, records: [...current.records, ...result.data.records] } as TEnvelope
+        : result.data
+      writeResource(ownerId, adminResourceKey(activeKey), response)
+      setState(resourceStateFromEnvelope(stateKey, response))
+    } catch {
+      if (currentRequest !== requestId.current) return
+      setState({ ...current, error: errorMessage, key: stateKey, loading: false, loadingMore: false, refreshing: false })
     }
-    const response = append
-      ? { ...result.data, records: [...current.records, ...result.data.records] } as TEnvelope
-      : result.data
-    writeResource(ownerId, adminResourceKey(activeKey), response)
-    setState(resourceStateFromEnvelope(activeKey, response))
-  }, [activeKey, current, debouncedQuery, errorMessage, fetchPage, ownerId])
+  }, [activeKey, current, debouncedQuery, errorMessage, fetchPage, ownerId, stateKey])
+
+  useAdminSectionAutoRefresh('system', () => load({ refresh: true }), Boolean(current.error))
 
   return {
     dataQuality: current.dataQuality,
@@ -111,13 +125,13 @@ function adminResourceKey(key: string) {
   return `admin.system:${key}` as const
 }
 
-function resourceStateForKey<TRecord, TSummary, TEnvelope extends ListEnvelope<TRecord, TSummary>>(ownerId: string, key: string): ResourceState<TRecord, TSummary, TEnvelope> {
+function resourceStateForKey<TRecord, TSummary, TEnvelope extends ListEnvelope<TRecord, TSummary>>(ownerId: string, key: string, stateKey = key): ResourceState<TRecord, TSummary, TEnvelope> {
   const cached = peekResource<TEnvelope>(ownerId, adminResourceKey(key))?.data
-  return cached ? resourceStateFromEnvelope(key, cached) : {
+  return cached ? resourceStateFromEnvelope(stateKey, cached) : {
     dataQuality: 'unavailable',
     error: null,
     generatedAt: null,
-    key,
+    key: stateKey,
     loading: true,
     loadingMore: false,
     records: [],

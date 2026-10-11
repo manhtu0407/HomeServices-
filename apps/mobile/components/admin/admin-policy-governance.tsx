@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useReducer } from 'react'
+import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native'
 
 import { color, radius, spacing, typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import {
   adminControlService,
   type AdminIntakePolicy,
@@ -15,7 +16,7 @@ import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 const copy = {
   vi: {
-    actionError: 'Không thể hoàn tất thao tác. Hãy tải lại dữ liệu và thử lại.',
+    actionError: 'Không thể hoàn tất thao tác. Hãy rà soát nội dung rồi thử lại.',
     approve: 'Phê duyệt',
     blocked: 'Chặn nhận yêu cầu',
     draft: 'Tạo bản nháp',
@@ -28,13 +29,13 @@ const copy = {
     sourceCount: 'Tổng số nguồn tối thiểu',
     inspection: 'Chỉ khảo sát',
     loading: 'Đang tải chính sách...',
+    loadError: 'Chưa tải được dữ liệu hệ thống. Hệ thống đang tự thử lại.',
     missing: 'Thông tin còn thiếu',
     policies: 'Chính sách tiếp nhận',
     preview: 'Xem trước khi thiếu dữ liệu',
     pricePolicies: 'Phiên bản nền tảng giá',
     publish: 'Kích hoạt',
     reason: 'Lý do thay đổi (bắt buộc)',
-    refresh: 'Tải lại',
     rfq: 'Mời thợ báo giá',
     rollback: 'Hoàn tác về phiên bản này',
     routed: 'Kael báo giá có kiểm chứng',
@@ -43,7 +44,7 @@ const copy = {
     version: 'Phiên bản',
   },
   en: {
-    actionError: 'Unable to complete the action. Refresh and try again.',
+    actionError: 'Unable to complete the action. Review the details and try again.',
     approve: 'Approve',
     blocked: 'Block intake',
     draft: 'Create draft',
@@ -56,13 +57,13 @@ const copy = {
     sourceCount: 'Minimum total sources',
     inspection: 'Inspection only',
     loading: 'Loading policies...',
+    loadError: 'System data is unavailable. The system is retrying automatically.',
     missing: 'Missing information',
     policies: 'Intake policies',
     preview: 'Preview with missing data',
     pricePolicies: 'Price baseline versions',
     publish: 'Activate',
     reason: 'Change reason (required)',
-    refresh: 'Refresh',
     rfq: 'Request worker quotes',
     rollback: 'Roll back to this version',
     routed: 'Kael verified quote',
@@ -76,6 +77,7 @@ type AdminPolicyState = {
   acting: boolean
   baselines: AdminPriceBaselineVersion[]
   error: string | null
+  readError: string | null
   evidenceRequirements: AdminIntakePolicy['evidence_requirements']
   loading: boolean
   message: string | null
@@ -93,6 +95,7 @@ function initialAdminPolicyState(): AdminPolicyState {
     acting: false,
     baselines: [],
     error: null,
+    readError: null,
     evidenceRequirements: defaultEvidenceRequirements('rfq'),
     loading: true,
     message: null,
@@ -112,53 +115,38 @@ export function AdminPolicyGovernance({ language }: { language: AppLanguage }) {
   const labels = copy[language]
   const [state, dispatch] = useReducer(adminPolicyReducer, undefined, initialAdminPolicyState)
   const {
-    acting, baselines, error, evidenceRequirements, loading, message, policies,
+    acting, baselines, error, readError, evidenceRequirements, loading, message, policies,
     preview, quoteMode, reason, selectedPolicyId,
   } = state
 
-  const load = useCallback(async () => {
-    dispatch({ type: 'patch', patch: { error: null, loading: true } })
-    const [policyResult, priceResult] = await Promise.all([
-      adminControlService.listIntakePolicies(),
-      adminControlService.listPriceBaselineVersions(),
-    ])
-    const patch: Partial<AdminPolicyState> = {
-      error: !priceResult.success
-        ? priceResult.error
-        : !policyResult.success ? policyResult.error : null,
-      loading: false,
-    }
-    if (policyResult.success) {
-      patch.policies = policyResult.data.policies
-      const current = policyResult.data.policies.find((item) => item.id === selectedPolicyId)
-        ?? policyResult.data.policies.find((item) => item.status === 'active')
-        ?? policyResult.data.policies[0]
-      if (current) {
-        patch.selectedPolicyId = current.id
-        patch.quoteMode = current.quote_mode
-        patch.evidenceRequirements = current.evidence_requirements
-      }
-    }
-    if (priceResult.success) patch.baselines = priceResult.data.baselines
-    dispatch({ type: 'patch', patch })
-  }, [selectedPolicyId])
+  const selectedPolicyIdRef = useRef(selectedPolicyId)
+  const loadRequestId = useRef(0)
 
   useEffect(() => {
-    let active = true
-    void Promise.all([
-      adminControlService.listIntakePolicies(),
-      adminControlService.listPriceBaselineVersions(),
-    ]).then(([policyResult, priceResult]) => {
-      if (!active) return
+    selectedPolicyIdRef.current = selectedPolicyId
+  }, [selectedPolicyId])
+
+  const load = useCallback(async () => {
+    const requestId = ++loadRequestId.current
+    dispatch({ type: 'patch', patch: { loading: true } })
+    try {
+      // Both independent reads settle before the generation guard permits state changes.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const [policyResult, priceResult] = await Promise.all([
+        adminControlService.listIntakePolicies(),
+        adminControlService.listPriceBaselineVersions(),
+      ])
+      if (requestId !== loadRequestId.current) return
       const patch: Partial<AdminPolicyState> = {
-        error: !priceResult.success
+        readError: !priceResult.success
           ? priceResult.error
           : !policyResult.success ? policyResult.error : null,
         loading: false,
       }
       if (policyResult.success) {
         patch.policies = policyResult.data.policies
-        const current = policyResult.data.policies.find((item) => item.status === 'active')
+        const current = policyResult.data.policies.find((item) => item.id === selectedPolicyIdRef.current)
+          ?? policyResult.data.policies.find((item) => item.status === 'active')
           ?? policyResult.data.policies[0]
         if (current) {
           patch.selectedPolicyId = current.id
@@ -168,9 +156,19 @@ export function AdminPolicyGovernance({ language }: { language: AppLanguage }) {
       }
       if (priceResult.success) patch.baselines = priceResult.data.baselines
       dispatch({ type: 'patch', patch })
-    })
-    return () => { active = false }
-  }, [])
+    } catch {
+      if (requestId === loadRequestId.current) dispatch({ type: 'patch', patch: { loading: false, readError: labels.loadError } })
+    }
+  }, [labels.loadError])
+
+  useAdminSectionAutoRefresh('system', load, Boolean(readError), load)
+
+  // The stable ref intentionally invalidates whichever request is active when this view is left.
+  // react-doctor-disable-next-line react-doctor/exhaustive-deps
+  useEffect(() => {
+    void load()
+    return () => { loadRequestId.current += 1 }
+  }, [load])
 
   const selectedPolicy = policies.find((item) => item.id === selectedPolicyId) ?? null
   const run = async (action: () => Promise<{ success: boolean; error?: string }>) => {
@@ -255,7 +253,8 @@ export function AdminPolicyGovernance({ language }: { language: AppLanguage }) {
   if (loading) return <View style={styles.center}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.secondary}>{labels.loading}</AdminText></View>
 
   return <View style={styles.stack} testID="admin-policy-governance">
-    <View style={styles.heading}><AdminText textRole="title2" style={styles.sectionTitle}>{labels.policies}</AdminText><Action label={labels.refresh} onPress={() => { void load() }} /></View>
+    <View style={styles.heading}><AdminText textRole="title2" style={styles.sectionTitle}>{labels.policies}</AdminText></View>
+    {readError ? <AdminText accessibilityRole="alert" textRole="subheadline" style={styles.error}>{readError}</AdminText> : null}
     {error ? <AdminText accessibilityRole="alert" textRole="subheadline" style={styles.error}>{error || labels.actionError}</AdminText> : null}
     {message ? <AdminText accessibilityRole="alert" textRole="subheadline" style={styles.success}>{message}</AdminText> : null}
     {policies.length === 0 ? <AdminText textRole="subheadline" style={styles.empty}>{labels.empty}</AdminText> : <>

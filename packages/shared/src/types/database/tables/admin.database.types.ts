@@ -5,6 +5,24 @@ import type { Database } from '../schema.database.types'
 
 export type AdminTables = {
 /* @slice:begin tables:admin */
+      admin_data_revisions: {
+        Row: {
+          revision: number
+          section: string
+          updated_at: string
+        }
+        Insert: {
+          revision?: number
+          section: string
+          updated_at?: string
+        }
+        Update: {
+          revision?: number
+          section?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       admin_finance_mutation_receipts: {
         Row: {
           actor_id: string

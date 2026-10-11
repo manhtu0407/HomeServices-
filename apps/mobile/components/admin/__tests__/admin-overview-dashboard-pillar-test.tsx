@@ -317,7 +317,7 @@ describe('Admin Overview dashboard', () => {
     expect(adminControlService.getOverviewDetails).not.toHaveBeenCalled()
   })
 
-  it('keeps a detail error inside the sheet and retries only after an explicit press', async () => {
+  it('keeps a detail error inside the sheet and retries automatically', async () => {
     jest.mocked(adminControlService.getOverviewDetails)
       .mockResolvedValueOnce({ code: 'INTERNAL', error: 'unavailable', status: 500, success: false })
       .mockResolvedValueOnce({ data: overviewDetails('coordination'), status: 200, success: true })
@@ -328,9 +328,11 @@ describe('Admin Overview dashboard', () => {
     expect(await screen.findByTestId('admin-overview-detail-error')).toBeTruthy()
     expect(adminControlService.getOverviewDetails).toHaveBeenCalledTimes(1)
 
-    fireEvent.press(screen.getByTestId('admin-overview-detail-retry'))
-    expect(await screen.findByText('NS-WORK-1')).toBeTruthy()
-    expect(adminControlService.getOverviewDetails).toHaveBeenCalledTimes(2)
+    expect(screen.queryByTestId('admin-overview-detail-retry')).toBeNull()
+    await waitFor(() => {
+      expect(adminControlService.getOverviewDetails).toHaveBeenCalledTimes(2)
+      expect(screen.getByText('NS-WORK-1')).toBeTruthy()
+    }, { timeout: 4_000 })
   })
 
   it('renders a genuine zero-record detail response as an empty state', async () => {
@@ -554,12 +556,20 @@ describe('Admin Overview dashboard', () => {
   })
 
   it('uses one accessible period control and a compact retry status surface', async () => {
-    jest.mocked(adminControlService.getFinanceOverview).mockResolvedValue({
-      success: false,
-      code: 'UNAVAILABLE',
-      error: 'finance unavailable',
-      status: 503,
-    })
+    jest.mocked(adminControlService.getFinanceOverview)
+      .mockResolvedValueOnce({
+        success: false,
+        code: 'UNAVAILABLE',
+        error: 'finance unavailable',
+        status: 503,
+      })
+      .mockResolvedValueOnce({
+        success: false,
+        code: 'UNAVAILABLE',
+        error: 'finance unavailable',
+        status: 503,
+      })
+      .mockResolvedValueOnce(successfulFinance())
 
     render(<AdminOverviewDashboard language="vi" onSessionMissing={jest.fn()} />)
 
@@ -589,11 +599,9 @@ describe('Admin Overview dashboard', () => {
 
     fireEvent.press(screen.getByTestId('admin-overview-range-week'))
     await waitFor(() => expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(2))
-    const retry = await screen.findByTestId('admin-overview-finance-error-retry')
-    expect(retry.props.accessibilityRole).toBe('button')
-    expect(StyleSheet.flatten(retry.props.style).minHeight).toBeGreaterThanOrEqual(44)
-    fireEvent.press(retry)
-    await waitFor(() => expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(3))
+    expect(screen.queryByTestId('admin-overview-finance-error-retry')).toBeNull()
+    await waitFor(() => expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(3), { timeout: 3_000 })
+    await waitFor(() => expect(screen.queryByTestId('admin-overview-finance-error')).toBeNull())
     expect(jest.mocked(adminControlService.getFinanceOverview).mock.calls).toEqual([
       [{ range: 'month' }],
       [{ range: 'week' }],

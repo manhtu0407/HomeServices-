@@ -120,21 +120,23 @@ export function fetchResource<T>(
   if (pending) return pending as Promise<FetchOutcome<T>>
 
   const generation = ownerGeneration(ownerId)
-  const request = (async (): Promise<FetchOutcome<T>> => {
+  let resolveRequest!: (outcome: FetchOutcome<T>) => void
+  const request = new Promise<FetchOutcome<T>>((resolve) => { resolveRequest = resolve })
+  inFlight.set(id, request as Promise<FetchOutcome<unknown>>)
+  void (async () => {
+    let outcome: FetchOutcome<T>
     try {
-      const outcome = await fetcher()
+      outcome = await fetcher()
       // A response that lands after the owner was wiped belongs to a session that no longer exists.
       if (outcome.success && ownerGeneration(ownerId) === generation) {
         writeResource(ownerId, key, outcome.data)
       }
-      return outcome
     } catch {
-      return { success: false, code: 'RESOURCE_FETCH_FAILED' }
-    } finally {
-      inFlight.delete(id)
+      outcome = { success: false, code: 'RESOURCE_FETCH_FAILED' }
     }
+    if (inFlight.get(id) === request) inFlight.delete(id)
+    resolveRequest(outcome)
   })()
-  inFlight.set(id, request as Promise<FetchOutcome<unknown>>)
   return request
 }
 

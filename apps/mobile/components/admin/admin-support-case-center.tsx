@@ -19,6 +19,7 @@ import type {
   AdminViewSupportPreparationStatus,
 } from '@/lib/api-types/admin'
 import { ADMIN_VIEW_SUPPORT_QUEUE_TYPES } from '@/lib/api-types/admin'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import {
   clearStableClientRequestId,
   shouldRetainClientRequestId,
@@ -93,6 +94,12 @@ export function AdminSupportCaseCenter({ actor, language, onSessionMissing }: {
   const baseTokens = getCustomerThemeTokens(themeMode)
   const tokens = reduceTransparency ? getReducedTransparencyCustomerTokens(baseTokens) : baseTokens
   const copy = supportCopy[language]
+  const loadFailureMessage = language === 'vi'
+    ? 'Không thể tải danh sách ca hỗ trợ. Hệ thống đang tự cập nhật lại.'
+    : 'Unable to load support cases. The system is refreshing automatically.'
+  const detailFailureMessage = language === 'vi'
+    ? 'Không thể tải chi tiết ca hỗ trợ. Hệ thống đang tự cập nhật lại.'
+    : 'Unable to load support-case detail. The system is refreshing automatically.'
   const [state, patch] = useReducer(reducer, initialState)
   const [filters, setFilters] = useReducer((current: SupportFilters, next: Partial<SupportFilters>) => ({ ...current, ...next }), {
     assignee: 'all', preparation_status: 'all', priority: 'all', query: '', service_type: 'all', source_status: 'all', type: 'all',
@@ -138,25 +145,30 @@ export function AdminSupportCaseCenter({ actor, language, onSessionMissing }: {
     }
     const requestId = ++listRequestId.current
     const current = stateRef.current
-    patch({ error: null, ...(current.records.length === 0 ? { listLoading: true } : { refreshing: true }) })
-    const result = await adminControlService.listSupportCases({ ...queryInput, cursor: append ? current.nextCursor ?? undefined : undefined })
-    if (requestId === listRequestId.current) {
-      if (!result.success) {
-        if (result.status === 401 || result.status === 403) onSessionMissing()
-        patch({ error: result.error, listLoading: false, refreshing: false })
-      } else {
-        const snapshot = {
-          counts: result.data.counts,
-          generatedAt: result.data.generated_at,
-          hasMore: result.data.has_more,
-          nextCursor: result.data.next_cursor,
-          records: append ? [...stateRef.current.records, ...result.data.records] : result.data.records,
+    patch({ ...(current.records.length === 0 ? { listLoading: true } : { refreshing: true }) })
+    try {
+      const result = await adminControlService.listSupportCases({ ...queryInput, cursor: append ? current.nextCursor ?? undefined : undefined })
+      if (requestId === listRequestId.current) {
+        if (!result.success) {
+          if (result.status === 401 || result.status === 403) onSessionMissing()
+          patch({ error: result.error, listLoading: false, refreshing: false })
+        } else {
+          const snapshot = {
+            counts: result.data.counts,
+            error: null,
+            generatedAt: result.data.generated_at,
+            hasMore: result.data.has_more,
+            nextCursor: result.data.next_cursor,
+            records: append ? [...stateRef.current.records, ...result.data.records] : result.data.records,
+          }
+          if (!append) listCache.set(queryKey, snapshot)
+          patch({ ...snapshot, listLoading: false, refreshing: false })
         }
-        if (!append) listCache.set(queryKey, snapshot)
-        patch({ ...snapshot, listLoading: false, refreshing: false })
       }
+    } catch {
+      if (requestId === listRequestId.current) patch({ error: loadFailureMessage, listLoading: false, refreshing: false })
     }
-  }, [listCache, onSessionMissing, queryInput, queryKey])
+  }, [listCache, loadFailureMessage, onSessionMissing, queryInput, queryKey])
 
   const cancelListRequest = useCallback(() => {
     listRequestId.current += 1
@@ -169,25 +181,39 @@ export function AdminSupportCaseCenter({ actor, language, onSessionMissing }: {
 
   const loadDetail = useCallback(async (selection: { id: string; source: AdminViewSupportCaseSource }, force = false) => {
     const key = `${selection.source}:${selection.id}`
+    const sameSelection = stateRef.current.selected?.id === selection.id && stateRef.current.selected.source === selection.source
     failedAction.current = null
-    patch({ actionError: null, detail: null, detailError: null, detailLoading: true, noteDraft: '', selected: selection })
+    patch({ actionError: null, detail: sameSelection ? stateRef.current.detail : null, ...(sameSelection ? {} : { detailError: null }), detailLoading: true, noteDraft: sameSelection ? stateRef.current.noteDraft : '', selected: selection })
     const cached = detailCache.get(key)
     if (cached && !force) {
       patch({ detail: cached, detailLoading: false })
       return
     }
     const requestId = ++detailRequestId.current
-    const result = await adminControlService.getSupportCase(selection.source, selection.id)
-    if (requestId === detailRequestId.current) {
-      if (!result.success) {
-        if (result.status === 401 || result.status === 403) onSessionMissing()
-        patch({ detailError: result.error, detailLoading: false })
-      } else {
-        detailCache.set(key, result.data)
-        patch({ detail: result.data, detailLoading: false })
+    try {
+      const result = await adminControlService.getSupportCase(selection.source, selection.id)
+      if (requestId === detailRequestId.current) {
+        if (!result.success) {
+          if (result.status === 401 || result.status === 403) onSessionMissing()
+          patch({ detailError: result.error, detailLoading: false })
+        } else {
+          detailCache.set(key, result.data)
+          patch({ detail: result.data, detailError: null, detailLoading: false })
+        }
       }
+    } catch {
+      if (requestId === detailRequestId.current) patch({ detailError: detailFailureMessage, detailLoading: false })
     }
-  }, [detailCache, onSessionMissing])
+  }, [detailCache, detailFailureMessage, onSessionMissing])
+
+  const refreshSection = useCallback(async () => {
+    listCache.delete(queryKey)
+    await loadList({ force: true })
+    const selected = stateRef.current.selected
+    if (selected) await loadDetail(selected, true)
+  }, [listCache, loadDetail, loadList, queryKey])
+
+  useAdminSectionAutoRefresh('operations', refreshSection, Boolean(state.error || state.detailError), refreshSection)
 
   const closeDetail = () => {
     detailRequestId.current += 1
@@ -278,14 +304,14 @@ export function AdminSupportCaseCenter({ actor, language, onSessionMissing }: {
         { label: copy.metrics.noShow, value: count('worker_no_show') },
         { label: copy.metrics.cancellation, value: cancellationCount },
       ]} tokens={tokens} />
-      <WorkspaceSearch label={copy.search} onChange={(query) => setFilters({ query })} onRefresh={() => { listCache.delete(queryKey); void loadList({ force: true }) }} refreshLabel={copy.refresh} refreshing={state.refreshing} tokens={tokens} value={filters.query} />
+      <WorkspaceSearch label={copy.search} onChange={(query) => setFilters({ query })} tokens={tokens} value={filters.query} />
       <WorkspaceFilterRow label={copy.filters.type} onSelect={(type) => setFilters({ type })} options={supportTypeOptions(language)} selected={filters.type} tokens={tokens} />
       <WorkspaceFilterRow label={copy.filters.priority} onSelect={(priority) => setFilters({ priority })} options={priorityOptions(language)} selected={filters.priority} tokens={tokens} />
       <WorkspaceFilterRow label={copy.filters.preparation} onSelect={(preparation_status) => setFilters({ preparation_status })} options={preparationOptions(language)} selected={filters.preparation_status} tokens={tokens} />
       <WorkspaceFilterRow label={copy.filters.assignee} onSelect={(assignee) => setFilters({ assignee })} options={assigneeOptions(language)} selected={filters.assignee} tokens={tokens} />
       <WorkspaceFilterRow label={copy.filters.service} onSelect={(service_type) => setFilters({ service_type })} options={serviceOptions(language)} selected={filters.service_type} tokens={tokens} />
       <WorkspaceFilterRow label={copy.filters.sourceStatus} onSelect={(source_status) => setFilters({ source_status })} options={sourceStatusOptions(language)} selected={filters.source_status} tokens={tokens} />
-      <WorkspaceFeedback compact error={state.error} loading={state.listLoading && state.records.length === 0} loadingLabel={copy.loading} onRetry={() => { void loadList({ force: true }) }} retryLabel={copy.retry} tokens={tokens} />
+      <WorkspaceFeedback compact error={state.error} loading={state.listLoading && state.records.length === 0} loadingLabel={copy.loading} tokens={tokens} />
       {state.generatedAt ? <AdminText textRole="caption1" style={{ color: tokens.subtleText }}>{copy.generated}: {formatDate(state.generatedAt, language)}</AdminText> : null}
     </View>}
     renderItem={renderSupportItem}
@@ -305,7 +331,6 @@ export function AdminSupportCaseCenter({ actor, language, onSessionMissing }: {
     onBack={wide ? undefined : closeDetail}
     onChangeNote={(noteDraft) => patch({ noteDraft })}
     onOpenEvidence={openEvidence}
-    onRetry={() => state.selected && void loadDetail(state.selected, true)}
     onRetryAction={() => {
       const action = failedAction.current
       if (action?.kind === 'preparation') void savePreparation(action.input)
@@ -350,7 +375,7 @@ function SupportRow({ item, language, onPress, selected, tokens }: {
   </Pressable>
 }
 
-function SupportDetail({ actionError, actor, detail, error, language, loading, noteDraft, onBack, onChangeNote, onOpenEvidence, onRetry, onRetryAction, onSave, saving, tokens }: {
+function SupportDetail({ actionError, actor, detail, error, language, loading, noteDraft, onBack, onChangeNote, onOpenEvidence, onRetryAction, onSave, saving, tokens }: {
   actionError: string | null
   actor: AdminViewActor
   detail: AdminViewSupportCaseDetailResponse | null
@@ -361,19 +386,18 @@ function SupportDetail({ actionError, actor, detail, error, language, loading, n
   onBack?: () => void
   onChangeNote: (value: string) => void
   onOpenEvidence: (item: AdminViewEvidenceMetadata) => void
-  onRetry: () => void
   onRetryAction: () => void
   onSave: (input: SupportPreparationInput) => void
   saving: boolean
   tokens: ReturnType<typeof getCustomerThemeTokens>
 }) {
   const copy = supportCopy[language]
-  if (loading || error || !detail) return <WorkspaceFeedback error={error} loading={loading} loadingLabel={copy.detailLoading} onRetry={onRetry} retryLabel={copy.retry} tokens={tokens} />
+  if (loading || error || !detail) return <WorkspaceFeedback error={error} loading={loading} loadingLabel={copy.detailLoading} tokens={tokens} />
   const canEdit = actor.capabilities.includes('operations.triage') && detail.preparation.can_edit
   const assignedToMe = detail.preparation.assigned_to_me
   return <ScrollView contentContainerStyle={styles.detailContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.detailScroll}>
     <DetailHeading backLabel={copy.back} generatedAt={formatDate(detail.generated_at, language)} generatedLabel={copy.generated} onBack={onBack} title={detail.summary.display_code ?? detail.summary.case_id} tokens={tokens} />
-    <WorkspaceFeedback compact error={actionError} loading={false} loadingLabel={copy.saving} onRetry={onRetryAction} retryLabel={copy.retry} tokens={tokens} />
+    <WorkspaceFeedback actionRetryLabel={copy.retry} compact error={actionError} loading={false} loadingLabel={copy.saving} onActionRetry={onRetryAction} tokens={tokens} />
     <DetailSection title={copy.sections.summary} tokens={tokens}>
       <AdminText textRole="body" style={{ color: tokens.text }}>{detail.neutral_summary}</AdminText>
       <DetailField label={copy.fields.type} tokens={tokens} value={caseTypeLabel(detail.summary.type, language)} />
@@ -677,7 +701,7 @@ const serviceNames: Record<AppLanguage, Record<ServiceType, string>> = {
 
 const supportCopy = {
   vi: {
-    all: 'Tất cả', appendNote: 'Thêm ghi chú', appendOnly: 'Ghi chú đã lưu không thể sửa hoặc xóa.', assigned: 'Đã có người nhận', assignmentLocked: 'Ca đang do quản trị viên khác nhận xử lý.', back: 'Quay lại danh sách', claim: 'Nhận xử lý', decisionDisclaimer: 'Khoản hoàn tiền được phê duyệt là nghĩa vụ cần xử lý, không phải bằng chứng đã chuyển tiền. Xem tình trạng đối soát trong mục Tài chính.', detailLoading: 'Đang tải hồ sơ hỗ trợ…', empty: 'Không có ca hỗ trợ phù hợp.', evidenceError: 'Không thể mở bằng chứng.', generated: 'Dữ liệu tạo lúc', loadMore: 'Tải thêm', loading: 'Đang tải ca hỗ trợ…', locked: 'Đã khóa', mine: 'Tôi đang nhận', noEvidence: 'Chưa có bản chụp bằng chứng được ghi nhận.', noNotes: 'Chưa có ghi chú nội bộ.', noSignals: 'Không có tín hiệu tham khảo được ghi nhận.', notRecorded: 'Chưa ghi nhận', notePlaceholder: 'Ghi chú nội bộ mới (tối đa 1.000 ký tự)', open: 'Mở', readOnly: 'Bạn có quyền xem nhưng chưa được cấp quyền chuẩn bị hồ sơ.', refresh: 'Tải lại', retry: 'Thử lại', saving: 'Đang lưu…', select: 'Chọn một ca để xem hồ sơ chi tiết.', signalDisclaimer: 'Các tín hiệu này chỉ hỗ trợ rà soát, không phải kết luận tự động.', unassigned: 'Chưa có người nhận', unclaim: 'Bỏ nhận',
+    all: 'Tất cả', appendNote: 'Thêm ghi chú', appendOnly: 'Ghi chú đã lưu không thể sửa hoặc xóa.', assigned: 'Đã có người nhận', assignmentLocked: 'Ca đang do quản trị viên khác nhận xử lý.', back: 'Quay lại danh sách', claim: 'Nhận xử lý', decisionDisclaimer: 'Khoản hoàn tiền được phê duyệt là nghĩa vụ cần xử lý, không phải bằng chứng đã chuyển tiền. Xem tình trạng đối soát trong mục Tài chính.', detailLoading: 'Đang tải hồ sơ hỗ trợ…', empty: 'Không có ca hỗ trợ phù hợp.', evidenceError: 'Không thể mở bằng chứng.', generated: 'Dữ liệu tạo lúc', loadMore: 'Tải thêm', loading: 'Đang tải ca hỗ trợ…', locked: 'Đã khóa', mine: 'Tôi đang nhận', noEvidence: 'Chưa có bản chụp bằng chứng được ghi nhận.', noNotes: 'Chưa có ghi chú nội bộ.', noSignals: 'Không có tín hiệu tham khảo được ghi nhận.', notRecorded: 'Chưa ghi nhận', notePlaceholder: 'Ghi chú nội bộ mới (tối đa 1.000 ký tự)', open: 'Mở', readOnly: 'Bạn có quyền xem nhưng chưa được cấp quyền chuẩn bị hồ sơ.', retry: 'Thử lại', saving: 'Đang lưu…', select: 'Chọn một ca để xem hồ sơ chi tiết.', signalDisclaimer: 'Các tín hiệu này chỉ hỗ trợ rà soát, không phải kết luận tự động.', unassigned: 'Chưa có người nhận', unclaim: 'Bỏ nhận',
     filters: { assignee: 'Người nhận', preparation: 'Chuẩn bị hồ sơ', priority: 'Ưu tiên', service: 'Dịch vụ', sourceStatus: 'Trạng thái nguồn', type: 'Loại ca' },
     metrics: { cancellation: 'Ca hủy việc', noShow: 'Thợ không đến', total: 'Đang hiển thị' },
     priorities: { critical: 'Khẩn cấp', high: 'Cao', low: 'Thấp', medium: 'Trung bình' },
@@ -690,7 +714,7 @@ const supportCopy = {
     search: 'Tìm theo mã việc hoặc mã ca',
   },
   en: {
-    all: 'All', appendNote: 'Append note', appendOnly: 'Saved notes cannot be edited or deleted.', assigned: 'Assigned', assignmentLocked: 'This case is assigned to another administrator.', back: 'Back to list', claim: 'Claim case', decisionDisclaimer: 'An approved refund is an obligation to process, not proof of a transfer. Check reconciliation status in Finance.', detailLoading: 'Loading support-case detail…', empty: 'No support case matches these filters.', evidenceError: 'Unable to open evidence.', generated: 'Generated', loadMore: 'Load more', loading: 'Loading support cases…', locked: 'Locked', mine: 'Assigned to me', noEvidence: 'No immutable evidence snapshot is recorded.', noNotes: 'No internal note yet.', noSignals: 'No reference signal is recorded.', notRecorded: 'Not recorded', notePlaceholder: 'New internal note (1,000 characters maximum)', open: 'Open', readOnly: 'You can view this case but operations.triage is required to prepare it.', refresh: 'Refresh', retry: 'Retry', saving: 'Saving…', select: 'Select a case to review its details.', signalDisclaimer: 'These signals support human review and are not automatic conclusions.', unassigned: 'Unassigned', unclaim: 'Unclaim',
+    all: 'All', appendNote: 'Append note', appendOnly: 'Saved notes cannot be edited or deleted.', assigned: 'Assigned', assignmentLocked: 'This case is assigned to another administrator.', back: 'Back to list', claim: 'Claim case', decisionDisclaimer: 'An approved refund is an obligation to process, not proof of a transfer. Check reconciliation status in Finance.', detailLoading: 'Loading support-case detail…', empty: 'No support case matches these filters.', evidenceError: 'Unable to open evidence.', generated: 'Generated', loadMore: 'Load more', loading: 'Loading support cases…', locked: 'Locked', mine: 'Assigned to me', noEvidence: 'No immutable evidence snapshot is recorded.', noNotes: 'No internal note yet.', noSignals: 'No reference signal is recorded.', notRecorded: 'Not recorded', notePlaceholder: 'New internal note (1,000 characters maximum)', open: 'Open', readOnly: 'You can view this case but operations.triage is required to prepare it.', retry: 'Retry', saving: 'Saving…', select: 'Select a case to review its details.', signalDisclaimer: 'These signals support human review and are not automatic conclusions.', unassigned: 'Unassigned', unclaim: 'Unclaim',
     filters: { assignee: 'Assignee', preparation: 'Preparation', priority: 'Priority', service: 'Service', sourceStatus: 'Source status', type: 'Case type' },
     metrics: { cancellation: 'Cancellation cases', noShow: 'Worker no-show', total: 'Shown' },
     priorities: { critical: 'Critical', high: 'High', low: 'Low', medium: 'Medium' },

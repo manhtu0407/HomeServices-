@@ -20,6 +20,16 @@ import type {
 } from '@/lib/api-types/admin'
 import { adminControlService } from '@/lib/services'
 
+const mockReadAdminDataRevisions = jest.fn()
+const mockSubscribeToAdminDataRevisions = jest.fn()
+
+jest.mock('@/lib/admin-data-sync-source', () => ({
+  readAdminDataRevisions: (...args: unknown[]) => mockReadAdminDataRevisions(...args),
+}))
+jest.mock('@/lib/realtime', () => ({
+  subscribeToAdminDataRevisions: (...args: unknown[]) => mockSubscribeToAdminDataRevisions(...args),
+}))
+
 jest.mock('react-native-safe-area-context', () => {
   const actual = jest.requireActual('react-native-safe-area-context')
   return { ...actual, useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }) }
@@ -534,34 +544,94 @@ describe('AdminSections', () => {
     mockLocalSearchParams = {}
     mockFocusEffectCallback = undefined
     mockSignOut.mockResolvedValue(undefined)
+    mockReadAdminDataRevisions.mockResolvedValue({
+      success: true,
+      revisions: { finance: 1, operations: 1, overview: 1, system: 1, team: 1, workers: 1 },
+    })
+    mockSubscribeToAdminDataRevisions.mockReturnValue({ unsubscribe: jest.fn(async () => 'ok') })
   })
 
-  it('does not automatically reload the active Admin section as time passes', async () => {
+  it('refreshes the active Admin section when its backend revision changes', async () => {
     mockLocalSearchParams = { ns_admin_section: 'operations' }
     mockSuccessfulLoad()
+    let emitRevision!: (revision: { revision: number; section: 'operations' }) => void
+    mockSubscribeToAdminDataRevisions.mockImplementation((_ownerId, onChange) => {
+      emitRevision = onChange
+      return { unsubscribe: jest.fn(async () => 'ok') }
+    })
 
     render(<AdminSections />)
     await screen.findByTestId('admin-production-section-operations')
 
-    const actorCalls = jest.mocked(adminControlService.getActor).mock.calls.length
     const operationsCalls = jest.mocked(adminControlService.getOperations).mock.calls.length
-
-    jest.useFakeTimers()
-    let cleanup: void | (() => void) = undefined
     await act(async () => {
-      cleanup = mockFocusEffectCallback?.()
-      jest.advanceTimersByTime(5 * 60_000)
-      await Promise.resolve()
-      await Promise.resolve()
+      emitRevision({ section: 'operations', revision: 2 })
+    })
+    await waitFor(() => expect(adminControlService.getOperations).toHaveBeenCalledTimes(operationsCalls + 1))
+    expect(screen.getByTestId('admin-production-section-operations')).toBeTruthy()
+  })
+
+  it('refreshes an open transaction detail from the backend revision signal', async () => {
+    mockSuccessfulLoad()
+    mockLocalSearchParams = { ns_admin_section: 'operations' }
+    let emitRevision!: (revision: { revision: number; section: 'operations' }) => void
+    mockSubscribeToAdminDataRevisions.mockImplementation((_ownerId, onChange) => {
+      emitRevision = onChange
+      return { unsubscribe: jest.fn(async () => 'ok') }
+    })
+    jest.mocked(adminControlService.getTransaction)
+      .mockResolvedValueOnce({ success: true, data: transactionDetail, status: 200 })
+      .mockResolvedValueOnce({
+        success: true,
+        data: { ...transactionDetail, transaction: { ...transactionDetail.transaction, customer_name: 'Updated Customer' } },
+        status: 200,
+      })
+
+    render(<AdminSections />)
+    await screen.findByTestId('admin-production-section-operations')
+    await openAdminCapability({
+      capability: 'operations-service-transactions',
+      section: 'operations',
+      tab: 'admin-sections-transactions-tab',
+    })
+    fireEvent.press(screen.getByTestId('admin-transaction-job-1'))
+    expect(await screen.findByTestId('admin-transaction-detail')).toBeTruthy()
+    expect(screen.getAllByText('Customer One').length).toBeGreaterThan(0)
+
+    await act(async () => emitRevision({ section: 'operations', revision: 2 }))
+    await waitFor(() => expect(adminControlService.getTransaction).toHaveBeenCalledTimes(2))
+    expect(await screen.findByText('Updated Customer')).toBeTruthy()
+  })
+
+  it('keeps an Admin action failure visible after an automatic read refresh succeeds', async () => {
+    mockLocalSearchParams = { ns_admin_section: 'workers' }
+    mockSuccessfulLoad()
+    let emitRevision!: (revision: { revision: number; section: 'workers' }) => void
+    mockSubscribeToAdminDataRevisions.mockImplementation((_ownerId, onChange) => {
+      emitRevision = onChange
+      return { unsubscribe: jest.fn(async () => 'ok') }
+    })
+    jest.mocked(adminControlService.decideWorkerApplication).mockResolvedValue({
+      success: false,
+      code: 'INTERNAL_ERROR',
+      error: 'backend rejected the decision',
+      status: 500,
     })
 
-    expect(mockFocusEffectCallback).toBeUndefined()
-    expect(adminControlService.getActor).toHaveBeenCalledTimes(actorCalls)
-    expect(adminControlService.getOperations).toHaveBeenCalledTimes(operationsCalls)
-    expect(screen.getByTestId('admin-production-section-operations')).toBeTruthy()
-    const cleanupFn = cleanup as (() => void) | undefined
-    cleanupFn?.()
-    jest.useRealTimers()
+    render(<AdminSections />)
+    await screen.findByTestId('admin-production-section-workers')
+    await openAdminCapability({
+      capability: 'workers-applications',
+      section: 'workers',
+      tab: 'admin-sections-worker-tab',
+    })
+    fireEvent.press(screen.getByTestId('admin-worker-approve-worker-application-1'))
+    expect(await screen.findByText('Không thể lưu quyết định lúc này. Vui lòng thử lại.')).toBeTruthy()
+    const listCalls = jest.mocked(adminControlService.listWorkerApplications).mock.calls.length
+
+    await act(async () => emitRevision({ section: 'workers', revision: 2 }))
+    await waitFor(() => expect(adminControlService.listWorkerApplications).toHaveBeenCalledTimes(listCalls + 1))
+    expect(screen.getByText('Không thể lưu quyết định lúc này. Vui lòng thử lại.')).toBeTruthy()
   })
 
   it('updates all six Admin section params in place without replacing the mounted route', async () => {

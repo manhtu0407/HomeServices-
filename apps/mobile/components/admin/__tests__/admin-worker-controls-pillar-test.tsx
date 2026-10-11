@@ -29,15 +29,13 @@ export const PILLAR = {
 
 const filters = ['pending_access', 'missing_profile', 'ready_verification', 'verified', 'all'] as const
 
-function WorkerControlsHarness({ onRefresh }: { onRefresh: () => void }) {
+function WorkerControlsHarness() {
   const [selectedFilter, setSelectedFilter] = useState<(typeof filters)[number]>('pending_access')
 
   return <View>
     <AdminDataSearchToolbar
       copy={adminSectionsCopy.vi}
       onChangeSearch={() => undefined}
-      onRefresh={onRefresh}
-      refreshTestID="admin-worker-refresh"
       searchQuery=""
     />
     <View style={styles.filterRow}>
@@ -55,8 +53,7 @@ function WorkerControlsHarness({ onRefresh }: { onRefresh: () => void }) {
 
 describe('Admin Worker control grammar', () => {
   it('renders selected filters with a neutral surface, a visible checkmark, and accessibility state', () => {
-    const onRefresh = jest.fn()
-    render(<WorkerControlsHarness onRefresh={onRefresh} />)
+    render(<WorkerControlsHarness />)
 
     withPillarContext(PILLAR, () => {
       const pendingFilter = screen.getByTestId('admin-worker-filter-pending_access')
@@ -78,21 +75,13 @@ describe('Admin Worker control grammar', () => {
     }, 'changing a Worker filter must move both the semantic and visible selected state')
   })
 
-  it('keeps refresh neutral and allows the search toolbar to reflow', () => {
-    const onRefresh = jest.fn()
-    render(<WorkerControlsHarness onRefresh={onRefresh} />)
+  it('keeps the search toolbar reachable without a manual refresh control', () => {
+    render(<WorkerControlsHarness />)
 
     withPillarContext(PILLAR, () => {
-      const refresh = screen.getByTestId('admin-worker-refresh')
-      expect(refresh).toHaveStyle({
-        backgroundColor: color.surface.base,
-        borderColor: color.surface.strokeStrong,
-        minHeight: 44,
-      })
+      expect(screen.queryByText('Tải lại')).toBeNull()
       expect(styles.toolbar).toMatchObject({ flexWrap: 'wrap' })
       expect(styles.searchField).toMatchObject({ flexGrow: 1, flexShrink: 1, minWidth: 220 })
-      fireEvent.press(refresh)
-      expect(onRefresh).toHaveBeenCalledTimes(1)
-    }, 'refresh remains a secondary action while compact and large-text layouts can wrap')
+    }, 'search remains available while automatic revision refresh replaces the manual control')
   })
 })

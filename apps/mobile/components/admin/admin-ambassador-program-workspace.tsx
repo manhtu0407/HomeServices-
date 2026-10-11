@@ -9,6 +9,7 @@ import type {
   AdminAmbassadorProgramVersion,
 } from '@/lib/api-types/admin-program'
 import type { AppLanguage } from '@/lib/app-language'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { adminProgramService } from '@/lib/services/admin-program-service'
 
 import { AdminSystemField, AdminSystemState } from './admin-system-controls'
@@ -55,16 +56,18 @@ export function AdminAmbassadorProgramWorkspace({ language }: { language: AppLan
   const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    setError(null)
     const result = await adminProgramService.getAmbassadorProgram()
     if (!result.success) {
       setError(result.error || (vi ? 'Chưa tải được chương trình thưởng' : 'Could not load the reward program'))
       return
     }
     setProgram(result.data)
+    setError(null)
     const source = result.data.draft ?? result.data.approved
     setDraft(source ? draftFrom(source) : null)
   }, [vi])
+
+  useAdminSectionAutoRefresh('workers', load, Boolean(error))
 
   useEffect(() => {
     void load()
@@ -72,7 +75,7 @@ export function AdminAmbassadorProgramWorkspace({ language }: { language: AppLan
 
   if (!program || !draft) {
     return error
-      ? <AdminSystemState actionLabel={vi ? 'Thử lại' : 'Retry'} label={error} onAction={() => void load()} />
+      ? <AdminSystemState label={error} />
       : <AdminSystemState label={vi ? 'Đang tải' : 'Loading'} loading />
   }
 

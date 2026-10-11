@@ -12,7 +12,6 @@ import type {
 
 import { MetaItem } from './admin-section-cards'
 import type { AdminSectionsCopy } from './admin-sections-copy'
-import { FinanceSecondaryButton } from './admin-finance-controls'
 import { styles } from './admin-sections-styles'
 import { AdminText } from './admin-text'
 
@@ -26,11 +25,9 @@ export type WorkerAccessModal = {
   worker: AdminViewWorkerApplicationSummary
 } | null
 
-export function AdminDataSearchToolbar({ copy, onChangeSearch, onRefresh, refreshTestID, searchQuery }: {
+export function AdminDataSearchToolbar({ copy, onChangeSearch, searchQuery }: {
   copy: AdminSectionsCopy
   onChangeSearch: (value: string) => void
-  onRefresh: () => void
-  refreshTestID?: string
   searchQuery: string
 }) {
   return <View style={styles.toolbar}>
@@ -46,20 +43,16 @@ export function AdminDataSearchToolbar({ copy, onChangeSearch, onRefresh, refres
       style={styles.searchText}
       value={searchQuery}
     />
-    <FinanceSecondaryButton accessibilityLabel={copy.actions.refresh} label={copy.actions.refresh} onPress={onRefresh} size="small" style={styles.refreshButton} testID={refreshTestID} />
   </View>
 }
 
-export function AdminDataFeedback({ copy, error, notice, onDismissError, onRetry }: {
-  copy: AdminSectionsCopy
+export function AdminDataFeedback({ error, notice }: {
   error: string | null
   notice: string | null
-  onDismissError: () => void
-  onRetry: () => void
 }) {
   return <>
     {notice ? <View accessibilityRole="alert" style={styles.notice}><AdminText textRole="subheadline" style={styles.noticeText}>{notice}</AdminText></View> : null}
-    {error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{error}</AdminText><Pressable accessibilityRole="button" onPress={() => { onDismissError(); onRetry() }}><AdminText textRole="subheadline" style={styles.errorAction}>{copy.actions.retry}</AdminText></Pressable></View> : null}
+    {error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{error}</AdminText></View> : null}
   </>
 }
 
@@ -87,7 +80,7 @@ export function DecisionModalView({ copy, modal, reason, pending, onChangeReason
       <AdminText textRole="title2" style={styles.modalTitle}>{title}</AdminText>
       <AdminText textRole="headline" style={styles.modalSubtitle}>{modal.worker.full_name ?? copy.notRecorded}</AdminText>
       <KaelTextField testID="admin-worker-decision-reason" accessibilityLabel={copy.modal.decisionReasonPlaceholder} autoFocus multiline value={reason} onChangeText={onChangeReason} placeholder={copy.modal.decisionReasonPlaceholder} placeholderTextColor={color.text.muted} inputShellStyle={styles.reasonInput} style={styles.reasonText} />
-      <View style={styles.modalActionRow}><KaelButton label={copy.actions.close} onPress={onClose} style={styles.modalActionButton} variant="secondary" /><KaelButton label={pending ? copy.actions.approving : copy.actions.refresh} onPress={onSubmit} disabled={pending} style={styles.modalActionButton} variant="primary" /></View>
+      <View style={styles.modalActionRow}><KaelButton label={copy.actions.close} onPress={onClose} style={styles.modalActionButton} variant="secondary" /><KaelButton label={pending ? copy.actions.approving : modal.decision === 'reject' ? copy.actions.reject : copy.actions.requestChanges} onPress={onSubmit} disabled={pending} style={styles.modalActionButton} variant="primary" /></View>
     </View></View>
   </Modal>
 }
@@ -120,7 +113,7 @@ export function WorkerAccessModalView({ actionPending, language, modal, onChange
   </Modal>
 }
 
-export function TransactionDetailModal({ copy, detail, formatCurrency, formatDate, language, serviceLabel, statusLabel, paymentProviderLabel, disputeStatusLabel, jobStatusLabel, onClose, reduceTransparency }: {
+export function TransactionDetailModal({ copy, detail, formatCurrency, formatDate, language, serviceLabel, statusLabel, paymentProviderLabel, disputeStatusLabel, jobStatusLabel, onClose, readError, reduceTransparency }: {
   copy: AdminSectionsCopy
   detail: AdminViewTransactionDetailResponse | null
   formatCurrency: (value: number | null) => string
@@ -132,6 +125,7 @@ export function TransactionDetailModal({ copy, detail, formatCurrency, formatDat
   disputeStatusLabel: (value: string | null) => string
   jobStatusLabel: (value: AdminViewTransactionSummary['status']) => string
   onClose: () => void
+  readError: string | null
   reduceTransparency: boolean
 }) {
   if (!detail) return null
@@ -147,6 +141,7 @@ export function TransactionDetailModal({ copy, detail, formatCurrency, formatDat
       <View style={styles.transactionModalContent} testID="admin-transaction-detail-content">
         <View style={styles.modalHeader}><View><AdminText textRole="title2" style={styles.modalTitle}>{copy.modal.transactionTitle}</AdminText><AdminText textRole="headline" style={styles.modalSubtitle}>{transaction.display_code} · {serviceLabel(transaction.service_type)}</AdminText></View><Pressable accessibilityRole="button" accessibilityLabel={copy.actions.close} onPress={onClose}><AdminText textRole="subheadline" style={styles.closeLabel}>×</AdminText></Pressable></View>
         <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false} style={styles.transactionModalScroll} testID="admin-transaction-detail-scroll">
+          <AdminDataFeedback error={readError} notice={null} />
           <View style={styles.amountBlock}>
             <FormulaMintCardAura reduceTransparency={reduceTransparency} scope={`AdminTransactionAmount${transaction.job_id}`} testID="admin-transaction-detail-amount-formula-mint-aura" />
             <View style={styles.amountContent}><AdminText numeric textRole="headline" style={styles.amountLabel}>{copy.labels.paymentAmount}</AdminText><AdminText numeric textRole="headline" style={styles.amountValue}>{formatCurrency(transaction.gross_amount)}</AdminText></View>

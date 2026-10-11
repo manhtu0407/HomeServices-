@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native'
 import { AdminFinancePanel } from '../admin-finance'
+import { FinanceTaxReportsPanel } from '../admin-finance-reports'
 import { adminControlService } from '@/lib/services'
 
 jest.mock('@/lib/app-language', () => ({ useAppLanguage: () => 'vi' }))
@@ -235,14 +236,16 @@ describe('AdminFinancePanel', () => {
   })
 
   it('uses clear admin copy when tax policy data is unavailable', async () => {
-    jest.mocked(adminControlService.listFinanceTaxPolicies).mockResolvedValue({ success: false, code: 'NOT_FOUND', error: 'Không tìm thấy endpoint', status: 404 })
-    render(<AdminFinancePanel actor={{ access_level: 'operator', capabilities: ['finance.read'] }} initialView="tax" reduceMotion reduceTransparency />)
+    jest.mocked(adminControlService.listFinanceTaxPolicies)
+      .mockResolvedValueOnce({ success: false, code: 'NOT_FOUND', error: 'Không tìm thấy endpoint', status: 404 })
+      .mockResolvedValueOnce({ success: true, data: { generated_at: '2026-08-13T00:00:00.000Z', active_policy_ids: [], tax_policies: [draftTaxPolicy] }, status: 200 })
+    render(<FinanceTaxReportsPanel canApproveTax={false} canManageTax={false} language="vi" period={{ range: 'month' }} reduceMotion />)
 
-    expect(await screen.findByTestId('admin-finance-tax-reports')).toBeTruthy()
-    expect(screen.getByText('Chưa thể tải chính sách thuế lúc này.')).toBeTruthy()
+    expect(await screen.findByText('Chưa thể tải chính sách thuế lúc này.')).toBeTruthy()
     expect(screen.queryByText('Không tìm thấy endpoint')).toBeNull()
-    fireEvent.press(screen.getByTestId('admin-finance-tax-retry'))
-    await waitFor(() => expect(adminControlService.listFinanceTaxPolicies).toHaveBeenCalledTimes(2))
+    expect(screen.queryByTestId('admin-finance-tax-retry')).toBeNull()
+    await waitFor(() => expect(screen.getByText('Thuế giá trị gia tăng')).toBeTruthy(), { timeout: 3_000 })
+    expect(adminControlService.listFinanceTaxPolicies).toHaveBeenCalledTimes(2)
   })
 
   it('lets a tax manager save a valid draft through the server-backed workflow', async () => {

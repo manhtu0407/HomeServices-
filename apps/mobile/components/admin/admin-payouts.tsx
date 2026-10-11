@@ -18,9 +18,11 @@ import type {
   AdminViewSensitivePayoutAccessResponse,
 } from '@/lib/api-types/admin'
 import { useAppLanguage } from '@/lib/app-language'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
+import { adminPayoutCopyByLanguage } from './admin-payouts-copy'
 import { generateClientRequestId } from '@/lib/client-request-id'
 import { adminControlService } from '@/lib/services'
-import { FinanceChoiceChip, FinanceSecondaryButton } from './admin-finance-controls'
+import { FinanceChoiceChip } from './admin-finance-controls'
 import { EmptyPayoutState, PayoutMethodCard, WithdrawalRequestCard } from './admin-payout-list'
 import { PayoutMethodDetail, WithdrawalDetail, type WithdrawalResolution } from './admin-payout-details'
 import { adminPayoutStyles as styles } from './admin-payout-styles'
@@ -40,210 +42,9 @@ type AdminPayoutsPanelProps = {
 }
 const PAYOUTS_PER_PAGE = 8
 
-export type PanelCopy = {
-  accounts: string
-  accountsEmpty: string
-  accountStatus: Record<AdminViewPayoutMethodStatus, string>
-  amount: string
-  availableBalance: string
-  bankAccount: string
-  bankName: string
-  back: string
-  cancel: string
-  close: string
-  confirmPaid: string
-  confirmStatus: string
-  failed: string
-  holder: string
-  manualTransferHint: string
-  methodDecision: string
-  needReview: string
-  noProcessCapability: string
-  noticeAccount: string
-  noticeWithdrawal: string
-  openDetail: string
-  paid: string
-  pending: string
-  processing: string
-  processingBy: string
-  reason: string
-  reasonRequired: string
-  reference: string
-  referenceRequired: string
-  reveal: string
-  revealReason: string
-  revealReasonRequired: string
-  rejected: string
-  requestedAt: string
-  reviewAccount: string
-  reviewReason: string
-  save: string
-  status: string
-  transferReference: string
-  transferReview: string
-  transferReviewHint: string
-  verify: string
-  withdrawalDetail: string
-  withdrawalStatus: Record<AdminViewWithdrawalRequestStatus, string>
-  withdrawals: string
-  withdrawalsEmpty: string
-  withdrawer: string
-  claim: string
-  reload: string
-  loadError: string
-  actionError: string
-  allAssignees: string
-  assignedMine: string
-  unassigned: string
-  assignmentReason: string
-  release: string
-  takeover: string
-}
-
-const copyByLanguage: Record<'vi' | 'en', PanelCopy> = {
-  vi: {
-    accounts: 'Tài khoản nhận tiền',
-    accountsEmpty: 'Chưa có tài khoản nhận tiền nào cần hiển thị.',
-    accountStatus: {
-      pending_verification: 'Chờ xác minh',
-      verified: 'Đã xác minh',
-      rejected: 'Không được chấp nhận',
-    },
-    amount: 'Số tiền rút',
-    availableBalance: 'Số dư khi gửi yêu cầu',
-    bankAccount: 'Số tài khoản',
-    bankName: 'Ngân hàng',
-    back: 'Quay lại danh sách',
-    cancel: 'Hủy',
-    close: 'Đóng',
-    confirmPaid: 'Xác nhận đã chuyển',
-    confirmStatus: 'Xác nhận trạng thái',
-    failed: 'Chuyển tiền lỗi',
-    holder: 'Chủ tài khoản',
-    manualTransferHint: 'Chuyển tiền thủ công bên ngoài ứng dụng. Chỉ xác nhận sau khi đã đối chiếu tài khoản và hoàn tất chuyển khoản.',
-    methodDecision: 'Quyết định xác minh',
-    needReview: 'Cần xử lý',
-    noProcessCapability: 'Tài khoản này chỉ có quyền xem. Chỉ quản trị viên có quyền xử lý chi trả mới mở được thông tin để chuyển tiền.',
-    noticeAccount: 'Đã lưu quyết định xác minh tài khoản nhận tiền.',
-    noticeWithdrawal: 'Đã lưu kết quả xử lý yêu cầu rút tiền.',
-    openDetail: 'Mở để xử lý',
-    paid: 'Đã chuyển tiền',
-    pending: 'Chờ xử lý',
-    processing: 'Đang xử lý',
-    processingBy: 'Người đang xử lý',
-    reason: 'Lý do',
-    reasonRequired: 'Nhập lý do trước khi xác nhận.',
-    reference: 'Mã giao dịch ngân hàng',
-    referenceRequired: 'Nhập mã giao dịch ngân hàng trước khi xác nhận đã chuyển.',
-    reveal: 'Mở thông tin tài khoản',
-    revealReason: 'Lý do cần xem thông tin tài khoản',
-    revealReasonRequired: 'Nhập lý do nghiệp vụ trước khi mở thông tin tài khoản.',
-    rejected: 'Từ chối',
-    requestedAt: 'Gửi lúc',
-    reviewAccount: 'Xác minh tài khoản nhận tiền',
-    reviewReason: 'Lý do từ chối (bắt buộc khi từ chối)',
-    save: 'Lưu',
-    status: 'Trạng thái',
-    transferReference: 'Mã chuyển khoản',
-    transferReview: 'Rà soát kết quả',
-    transferReviewHint: 'Xác nhận bạn đã chuyển tiền bên ngoài NestScout và đã đối chiếu đúng tài khoản cùng mã giao dịch.',
-    verify: 'Xác minh',
-    withdrawalDetail: 'Xử lý yêu cầu rút tiền',
-    withdrawalStatus: {
-      pending: 'Chờ xử lý',
-      processing: 'Đang xử lý',
-      paid: 'Đã chi trả',
-      rejected: 'Đã từ chối',
-      failed: 'Chuyển tiền lỗi',
-    },
-    withdrawals: 'Yêu cầu rút tiền',
-    withdrawalsEmpty: 'Chưa có yêu cầu rút tiền nào cần hiển thị.',
-    withdrawer: 'Thợ yêu cầu',
-    claim: 'Nhận xử lý',
-    reload: 'Tải lại',
-    loadError: 'Không thể tải dữ liệu chi trả. Hãy thử lại.',
-    actionError: 'Không thể lưu thay đổi. Dữ liệu chưa được cập nhật.',
-    allAssignees: 'Mọi người xử lý',
-    assignedMine: 'Tôi đang xử lý',
-    unassigned: 'Chưa có người nhận',
-    assignmentReason: 'Lý do nhận thay hoặc bỏ nhận',
-    release: 'Bỏ nhận',
-    takeover: 'Nhận thay',
-  },
-  en: {
-    accounts: 'Payout accounts',
-    accountsEmpty: 'There are no payout accounts to show.',
-    accountStatus: {
-      pending_verification: 'Pending verification',
-      verified: 'Verified',
-      rejected: 'Rejected',
-    },
-    amount: 'Withdrawal amount',
-    availableBalance: 'Balance at request time',
-    bankAccount: 'Account number',
-    bankName: 'Bank',
-    back: 'Back to list',
-    cancel: 'Cancel',
-    close: 'Close',
-    confirmPaid: 'Confirm transfer',
-    confirmStatus: 'Confirm status',
-    failed: 'Transfer failed',
-    holder: 'Account holder',
-    manualTransferHint: 'Make the transfer outside the app. Confirm only after checking the account and completing the transfer.',
-    methodDecision: 'Verification decision',
-    needReview: 'Needs action',
-    noProcessCapability: 'This account can view only. Only an administrator with payout processing access can open transfer details.',
-    noticeAccount: 'The payout-account verification decision was saved.',
-    noticeWithdrawal: 'The withdrawal processing result was saved.',
-    openDetail: 'Open to process',
-    paid: 'Transfer completed',
-    pending: 'Pending',
-    processing: 'Processing',
-    processingBy: 'Processed by',
-    reason: 'Reason',
-    reasonRequired: 'Enter a reason before confirming.',
-    reference: 'Bank transfer reference',
-    referenceRequired: 'Enter the bank transfer reference before confirming the transfer.',
-    reveal: 'Open account details',
-    revealReason: 'Business reason for accessing account details',
-    revealReasonRequired: 'Enter a business reason before opening account details.',
-    rejected: 'Reject',
-    requestedAt: 'Requested at',
-    reviewAccount: 'Verify payout account',
-    reviewReason: 'Rejection reason (required when rejecting)',
-    save: 'Save',
-    status: 'Status',
-    transferReference: 'Transfer reference',
-    transferReview: 'Review result',
-    transferReviewHint: 'Confirm that you transferred funds outside NestScout and verified the destination account and transfer reference.',
-    verify: 'Verify',
-    withdrawalDetail: 'Process withdrawal request',
-    withdrawalStatus: {
-      pending: 'Pending',
-      processing: 'Processing',
-      paid: 'Paid',
-      rejected: 'Rejected',
-      failed: 'Transfer failed',
-    },
-    withdrawals: 'Withdrawal requests',
-    withdrawalsEmpty: 'There are no withdrawal requests to show.',
-    withdrawer: 'Worker',
-    claim: 'Claim processing',
-    reload: 'Reload',
-    loadError: 'Unable to load payout data. Please try again.',
-    actionError: 'Unable to save the change. The data was not updated.',
-    allAssignees: 'All assignees',
-    assignedMine: 'Assigned to me',
-    unassigned: 'Unassigned',
-    assignmentReason: 'Reason for takeover or release',
-    release: 'Release',
-    takeover: 'Take over',
-  },
-}
-
 function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayoutsPanelProps) {
   const language = useAppLanguage()
-  const copy = copyByLanguage[language]
+  const copy = adminPayoutCopyByLanguage[language]
   const [activeTab, setActiveTab] = useState<PayoutPanelTab>(initialTab)
   const [methodFilter, setMethodFilter] = useState<PayoutMethodFilter>('pending_verification')
   const [withdrawalFilter, setWithdrawalFilter] = useState<WithdrawalFilter>('pending')
@@ -270,6 +71,10 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
   const [withdrawalRequests, setWithdrawalRequests] = useState<AdminViewWithdrawalRequestSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [readError, setReadError] = useState<string | null>(null)
+  const [readFailed, setReadFailed] = useState(false)
+  const [detailReadError, setDetailReadError] = useState<string | null>(null)
+  const [detailReadFailed, setDetailReadFailed] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
   const [selectedPayoutMethod, setSelectedPayoutMethod] = useState<AdminViewPayoutMethodDetailResponse | null>(null)
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<AdminViewWithdrawalRequestDetailResponse | null>(null)
@@ -291,6 +96,8 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
   const backgroundLoads = useMemo(() => new Set<PayoutPanelTab>(), [])
   const loadRequestIds = useMemo<Partial<Record<PayoutPanelTab, number>>>(() => ({}), [])
   const activeTabRef = useRef(activeTab)
+  const detailTarget = useRef<{ kind: 'method'; id: string } | { kind: 'withdrawal'; id: string } | null>(null)
+  const detailRequest = useRef<object | null>(null)
   const setPayoutMethodPage = useCallback((page: number) => patchQueryState({ payoutMethodPage: page }), [])
   const setWithdrawalPage = useCallback((page: number) => patchQueryState({ withdrawalPage: page }), [])
 
@@ -317,7 +124,6 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
     const requestId = (loadRequestIds[requestedTab] ?? 0) + 1
     loadRequestIds[requestedTab] = requestId
     if (shouldBlock) setLoading(true)
-    setError(null)
     try {
       if (requestedTab === 'accounts') {
         const result = await adminControlService.listPayoutMethods({
@@ -332,7 +138,12 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
             setPayoutMethodsHasMore(result.data.has_more)
             setPayoutMethodsTotalCount(result.data.total_count)
             payoutCursors.current[payoutMethodPage + 1] = result.data.next_cursor ?? undefined
-          } else setError(copy.loadError)
+            setReadError(null)
+            setReadFailed(false)
+          } else {
+            setReadError(copy.loadError)
+            setReadFailed(true)
+          }
         }
       } else {
         const result = await adminControlService.listWithdrawalRequests({
@@ -348,8 +159,18 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
             setWithdrawalsHasMore(result.data.has_more)
             setWithdrawalsTotalCount(result.data.total_count)
             withdrawalCursors.current[withdrawalPage + 1] = result.data.next_cursor ?? undefined
-          } else setError(copy.loadError)
+            setReadError(null)
+            setReadFailed(false)
+          } else {
+            setReadError(copy.loadError)
+            setReadFailed(true)
+          }
         }
+      }
+    } catch {
+      if (requestId === loadRequestIds[requestedTab] && activeTabRef.current === requestedTab) {
+        setReadError(copy.loadError)
+        setReadFailed(true)
       }
     } finally {
       if (requestId === loadRequestIds[requestedTab]) {
@@ -359,6 +180,69 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
       }
     }
   }, [activeTab, backgroundLoads, copy.loadError, debouncedSearch, loadRequestIds, loadedTabs, methodFilter, payoutMethodPage, withdrawalAssignment, withdrawalFilter, withdrawalPage])
+
+  const loadSelectedDetail = useCallback(async () => {
+    const target = detailTarget.current
+    if (!target) return
+    const request = {}
+    detailRequest.current = request
+    setDetailLoading(true)
+    try {
+      if (target.kind === 'method') {
+        // The post-read identity guard prevents an old detail from replacing a newer selection.
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        const result = await adminControlService.getPayoutMethod(target.id)
+        if (detailRequest.current !== request || detailTarget.current?.id !== target.id) return
+        if (result.success && result.data.payout_method.id === target.id) {
+          setSelectedPayoutMethod(result.data)
+          setDetailReadError(null)
+          setDetailReadFailed(false)
+        } else {
+          setDetailReadError(copy.loadError)
+          setDetailReadFailed(true)
+        }
+      } else {
+        // The post-read identity guard prevents an old detail from replacing a newer selection.
+        // react-doctor-disable-next-line react-doctor/async-defer-await
+        const result = await adminControlService.getWithdrawalRequest(target.id)
+        if (detailRequest.current !== request || detailTarget.current?.id !== target.id) return
+        if (result.success && result.data.withdrawal_request.id === target.id) {
+          setSelectedWithdrawal(result.data)
+          setDetailReadError(null)
+          setDetailReadFailed(false)
+        } else {
+          setDetailReadError(copy.loadError)
+          setDetailReadFailed(true)
+        }
+      }
+    } catch {
+      if (detailRequest.current === request && detailTarget.current?.id === target.id) {
+        setDetailReadError(copy.loadError)
+        setDetailReadFailed(true)
+      }
+    } finally {
+      if (detailRequest.current === request) setDetailLoading(false)
+    }
+  }, [copy.loadError])
+
+  const refreshPayoutPanel = useCallback(async () => {
+    setSensitiveData(null)
+    await Promise.all([loadData({ blocking: false }), loadSelectedDetail()])
+  }, [loadData, loadSelectedDetail])
+
+  useAdminSectionAutoRefresh('finance', refreshPayoutPanel, readFailed || detailReadFailed, refreshPayoutPanel)
+
+  const closeDetail = useCallback(() => {
+    detailTarget.current = null
+    detailRequest.current = null
+    setSelectedPayoutMethod(null)
+    setSelectedWithdrawal(null)
+    setSensitiveData(null)
+    setSensitiveReason('')
+    setDetailReadError(null)
+    setDetailReadFailed(false)
+    setDetailLoading(false)
+  }, [])
 
   useEffect(() => {
     const tabAtStart = activeTab
@@ -392,39 +276,31 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
   }, [language])
 
   const openPayoutMethod = useCallback(async (method: AdminViewPayoutMethodSummary) => {
-    setDetailLoading(true)
+    detailTarget.current = { kind: 'method', id: method.id }
+    setSelectedPayoutMethod(null)
+    setSelectedWithdrawal(null)
     setError(null)
-    const result = await adminControlService.getPayoutMethod(method.id)
-    if (result.success) {
-      setMethodDecision(method.status === 'pending_verification' ? 'verify' : 'reject')
-      setMethodReason('')
-      setSensitiveReason('')
-      setSensitiveData(null)
-      setSelectedPayoutMethod(result.data)
-    } else {
-      setError(copy.actionError)
-    }
-    setDetailLoading(false)
-  }, [copy.actionError])
+    setMethodDecision(method.status === 'pending_verification' ? 'verify' : 'reject')
+    setMethodReason('')
+    setSensitiveReason('')
+    setSensitiveData(null)
+    void loadSelectedDetail()
+  }, [loadSelectedDetail])
 
   const openWithdrawal = useCallback(async (request: AdminViewWithdrawalRequestSummary) => {
-    setDetailLoading(true)
+    detailTarget.current = { kind: 'withdrawal', id: request.id }
+    setSelectedPayoutMethod(null)
+    setSelectedWithdrawal(null)
     setError(null)
-    const result = await adminControlService.getWithdrawalRequest(request.id)
-    if (result.success) {
-      setResolution('paid')
-      setResolutionReason('')
-      setTransferReference('')
-      setAssignmentReason('')
-      setConfirmingResolution(false)
-      setSensitiveReason('')
-      setSensitiveData(null)
-      setSelectedWithdrawal(result.data)
-    } else {
-      setError(copy.actionError)
-    }
-    setDetailLoading(false)
-  }, [copy.actionError])
+    setResolution('paid')
+    setResolutionReason('')
+    setTransferReference('')
+    setAssignmentReason('')
+    setConfirmingResolution(false)
+    setSensitiveReason('')
+    setSensitiveData(null)
+    void loadSelectedDetail()
+  }, [loadSelectedDetail])
 
   const submitPayoutMethodDecision = useCallback(async () => {
     const payoutMethod = selectedPayoutMethod?.payout_method
@@ -442,14 +318,14 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
       ...(methodDecision === 'reject' ? { reason: methodReason.trim() } : {}),
     })
     if (result.success) {
-      setSelectedPayoutMethod(null)
+      closeDetail()
       setNotice(copy.noticeAccount)
       await loadData()
     } else {
       setError(copy.actionError)
     }
     setActionPending(null)
-  }, [copy.actionError, copy.noticeAccount, copy.reasonRequired, loadData, methodDecision, methodReason, selectedPayoutMethod])
+  }, [closeDetail, copy.actionError, copy.noticeAccount, copy.reasonRequired, loadData, methodDecision, methodReason, selectedPayoutMethod])
 
   const claimWithdrawal = useCallback(async () => {
     const withdrawal = selectedWithdrawal?.withdrawal_request
@@ -467,14 +343,13 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
       ...(takeover ? { takeover_reason: assignmentReason.trim() } : {}),
     })
     if (result.success) {
-      const detail = await adminControlService.getWithdrawalRequest(withdrawal.id)
-      if (detail.success) setSelectedWithdrawal(detail.data)
+      await loadSelectedDetail()
       await loadData()
     } else {
       setError(copy.actionError)
     }
     setActionPending(null)
-  }, [actor?.access_level, assignmentReason, copy.actionError, copy.reasonRequired, loadData, selectedWithdrawal])
+  }, [actor?.access_level, assignmentReason, copy.actionError, copy.reasonRequired, loadData, loadSelectedDetail, selectedWithdrawal])
 
   const releaseWithdrawal = useCallback(async () => {
     const withdrawal = selectedWithdrawal?.withdrawal_request
@@ -491,14 +366,14 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
       reason: assignmentReason.trim(),
     })
     if (result.success) {
-      setSelectedWithdrawal(null)
+      closeDetail()
       setNotice(copy.noticeWithdrawal)
       await loadData()
     } else {
       setError(copy.actionError)
     }
     setActionPending(null)
-  }, [actor?.access_level, assignmentReason, copy.actionError, copy.noticeWithdrawal, copy.reasonRequired, loadData, selectedWithdrawal])
+  }, [actor?.access_level, assignmentReason, closeDetail, copy.actionError, copy.noticeWithdrawal, copy.reasonRequired, loadData, selectedWithdrawal])
 
   const resolveWithdrawal = useCallback(async () => {
     const withdrawal = selectedWithdrawal?.withdrawal_request
@@ -527,14 +402,14 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
       } : { reason: resolutionReason.trim() }),
     })
     if (result.success) {
-      setSelectedWithdrawal(null)
+      closeDetail()
       setNotice(copy.noticeWithdrawal)
       await loadData()
     } else {
       setError(copy.actionError)
     }
     setActionPending(null)
-  }, [confirmingResolution, copy.actionError, copy.noticeWithdrawal, copy.reasonRequired, copy.referenceRequired, loadData, resolution, resolutionReason, selectedWithdrawal, transferReference])
+  }, [closeDetail, confirmingResolution, copy.actionError, copy.noticeWithdrawal, copy.reasonRequired, copy.referenceRequired, loadData, resolution, resolutionReason, selectedWithdrawal, transferReference])
 
   const revealSensitiveData = useCallback(async () => {
     if (!sensitiveReason.trim()) {
@@ -572,11 +447,12 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
     confirmingResolution,
     copy,
     detailLoading,
+    detailReadError,
     error,
     formatCurrency,
     formatDate,
     language,
-    loadData,
+    closeDetail,
     loading,
     methodDecision,
     methodFilter,
@@ -591,6 +467,7 @@ function useAdminPayoutsController({ actor, initialTab = 'accounts' }: AdminPayo
     payoutMethodsHasMore,
     payoutMethodsTotalCount,
     releaseWithdrawal,
+    readError,
     resolution,
     resolutionReason,
     resolveWithdrawal,
@@ -639,15 +516,14 @@ export function AdminPayoutsPanel(props: AdminPayoutsPanelProps) {
 function PayoutPanelBody({ controller }: { controller: ReturnType<typeof useAdminPayoutsController> }) {
   const {
     activeItems, activeTab, actionPending, actor, assignmentReason, canProcess, claimWithdrawal,
-    confirmingResolution, copy, detailLoading, error, formatCurrency, formatDate, language,
-    loadData, loading, methodDecision, methodFilter, methodReason, notice, openPayoutMethod,
+    closeDetail, confirmingResolution, copy, detailLoading, detailReadError, error, formatCurrency, formatDate, language,
+    loading, methodDecision, methodFilter, methodReason, notice, openPayoutMethod, readError,
     openWithdrawal, paginationLabels, payoutCursors, payoutMethodPage, payoutMethods,
     payoutMethodsHasMore, payoutMethodsTotalCount, releaseWithdrawal, resolution, resolutionReason,
     resolveWithdrawal, revealSensitiveData, search, selectedPayoutMethod, selectedWithdrawal,
     sensitiveData, sensitiveReason, setActiveTab, setAssignmentReason, setConfirmingResolution,
-    setError, setMethodDecision, setMethodFilter, setMethodReason, setNotice, setPayoutMethodPage,
-    setResolution, setResolutionReason, setSearch, setSelectedPayoutMethod, setSelectedWithdrawal,
-    setSensitiveData, setSensitiveReason, setTransferReference, setWithdrawalAssignment,
+    setMethodDecision, setMethodFilter, setMethodReason, setNotice, setPayoutMethodPage,
+    setResolution, setResolutionReason, setSearch, setSensitiveReason, setTransferReference, setWithdrawalAssignment,
     setWithdrawalFilter, setWithdrawalPage, submitPayoutMethodDecision, transferReference,
     withdrawalAssignment, withdrawalCursors, withdrawalFilter, withdrawalPage, withdrawalRequests,
     withdrawalsHasMore, withdrawalsTotalCount,
@@ -656,21 +532,23 @@ function PayoutPanelBody({ controller }: { controller: ReturnType<typeof useAdmi
   return <View style={styles.stack} testID="admin-payout-panel">
     <AdminTabNavigation
       items={[
-        { key: 'accounts', label: copy.accounts, onPress: () => { setActiveTab('accounts'); setSelectedWithdrawal(null); setSensitiveData(null) }, selected: activeTab === 'accounts', testID: 'admin-payout-accounts-tab' },
-        { key: 'withdrawals', label: copy.withdrawals, onPress: () => { setActiveTab('withdrawals'); setSelectedPayoutMethod(null); setSensitiveData(null) }, selected: activeTab === 'withdrawals', testID: 'admin-payout-withdrawals-tab' },
+        { key: 'accounts', label: copy.accounts, onPress: () => { closeDetail(); setActiveTab('accounts') }, selected: activeTab === 'accounts', testID: 'admin-payout-accounts-tab' },
+        { key: 'withdrawals', label: copy.withdrawals, onPress: () => { closeDetail(); setActiveTab('withdrawals') }, selected: activeTab === 'withdrawals', testID: 'admin-payout-withdrawals-tab' },
       ]}
       testID="admin-payout-navigation"
     />
 
     {notice ? <View style={styles.notice}><AdminText textRole="subheadline" style={styles.noticeText}>{notice}</AdminText><Pressable accessibilityRole="button" accessibilityLabel={copy.close} onPress={() => setNotice(null)}><AdminText textRole="subheadline" style={styles.noticeClose}>×</AdminText></Pressable></View> : null}
-    {error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{error}</AdminText><Pressable accessibilityRole="button" accessibilityLabel={copy.reload} onPress={() => { setError(null); void loadData() }}><AdminText textRole="subheadline" style={styles.errorAction}>{copy.reload}</AdminText></Pressable></View> : null}
+    {error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{error}</AdminText></View> : null}
+    {readError ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{readError}</AdminText></View> : null}
+    {detailReadError ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{detailReadError}</AdminText></View> : null}
 
     {selectedPayoutMethod ? <PayoutMethodDetail
       canProcess={canProcess}
       copy={copy}
       decision={methodDecision}
       formatDate={formatDate}
-      onBack={() => { setSelectedPayoutMethod(null); setSensitiveData(null); setSensitiveReason('') }}
+      onBack={closeDetail}
       onChangeDecision={setMethodDecision}
       onChangeReason={setMethodReason}
       onChangeSensitiveReason={setSensitiveReason}
@@ -689,7 +567,7 @@ function PayoutPanelBody({ controller }: { controller: ReturnType<typeof useAdmi
       copy={copy}
       formatCurrency={formatCurrency}
       formatDate={formatDate}
-      onBack={() => { setSelectedWithdrawal(null); setSensitiveData(null); setSensitiveReason(''); setAssignmentReason(''); setConfirmingResolution(false) }}
+      onBack={closeDetail}
       onChangeAssignmentReason={setAssignmentReason}
       onChangeReason={(value) => { setResolutionReason(value); setConfirmingResolution(false) }}
       onChangeResolution={(value) => { setResolution(value); setConfirmingResolution(false) }}
@@ -727,7 +605,6 @@ function PayoutPanelBody({ controller }: { controller: ReturnType<typeof useAdmi
             <FinanceChoiceChip accessibilityLabel={language === 'vi' ? 'Tất cả' : 'All'} label={language === 'vi' ? 'Tất cả' : 'All'} onPress={() => { withdrawalCursors.current = { 1: undefined }; setWithdrawalFilter('all'); setWithdrawalPage(1) }} selected={withdrawalFilter === 'all'} />
           </>}
         </View>
-        <FinanceSecondaryButton label={copy.reload} onPress={() => { void loadData() }} size="small" style={styles.reloadButton} />
       </View>
       {activeTab === 'withdrawals' ? <View style={styles.filterRow}>
         {([
@@ -741,7 +618,7 @@ function PayoutPanelBody({ controller }: { controller: ReturnType<typeof useAdmi
           selected={withdrawalAssignment === value}
         />)}
       </View> : null}
-      {loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.loadingText}>{copy.reload}</AdminText></View> : activeItems.length === 0 ? <EmptyPayoutState body={activeTab === 'accounts' ? copy.accountsEmpty : copy.withdrawalsEmpty} /> : activeTab === 'accounts' ? <>
+      {loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.loadingText}>{copy.loading}</AdminText></View> : activeItems.length === 0 ? <EmptyPayoutState body={activeTab === 'accounts' ? copy.accountsEmpty : copy.withdrawalsEmpty} /> : activeTab === 'accounts' ? <>
       {payoutMethods.map((method) => <PayoutMethodCard
         copy={copy}
         key={method.id}

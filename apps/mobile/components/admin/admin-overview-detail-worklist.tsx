@@ -11,6 +11,7 @@ import { KaelButton } from '@/components/ui/kael-primitives'
 import { radius, spacing } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { AdminViewOverviewDetailKey, AdminViewOverviewDetailsResponse } from '@/lib/api-types/admin'
+import { useAdminSectionsAutoRefresh } from '@/lib/admin-data-sync'
 import { adminControlService } from '@/lib/services'
 
 import {
@@ -65,23 +66,33 @@ export function AdminOverviewDetailWorklist({
   const requestIdRef = useRef(0)
   const cursor = state.cursorHistory[state.cursorHistory.length - 1] ?? '0'
 
-  useEffect(() => {
-    let active = true
+  const load = useCallback(async () => {
     const requestId = requestIdRef.current + 1
     requestIdRef.current = requestId
-    void adminControlService.getOverviewDetails({ cursor, key: detailKey, limit: PAGE_SIZE }).then((result) => {
-      if (!active || requestId !== requestIdRef.current) return
+    patch({ loading: true })
+    try {
+      // The response generation is checked after I/O so stale data cannot replace the current page.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const result = await adminControlService.getOverviewDetails({ cursor, key: detailKey, limit: PAGE_SIZE })
+      if (requestId !== requestIdRef.current) return
       if (!result.success && isMissingAdminSession(result)) {
         onSessionMissing()
         return
       }
       patch(result.success ? { detail: result.data, error: false, loading: false } : { error: true, loading: false })
-    }).catch(() => {
-      if (!active || requestId !== requestIdRef.current) return
-      patch({ error: true, loading: false })
-    })
-    return () => { active = false }
+    } catch {
+      if (requestId === requestIdRef.current) patch({ error: true, loading: false })
+    }
   }, [cursor, detailKey, onSessionMissing])
+
+  // The stable ref intentionally invalidates whichever request is active when the page is left.
+  // react-doctor-disable-next-line react-doctor/exhaustive-deps
+  useEffect(() => {
+    void load()
+    return () => { requestIdRef.current += 1 }
+  }, [load])
+
+  useAdminSectionsAutoRefresh(['overview', 'finance', 'operations', 'workers'], load, state.error)
 
   const nextPage = useCallback(() => {
     const nextCursor = state.detail?.next_cursor
@@ -91,22 +102,6 @@ export function AdminOverviewDetailWorklist({
   const previousPage = useCallback(() => {
     patch({ cursorHistory: state.cursorHistory.length > 1 ? state.cursorHistory.slice(0, -1) : state.cursorHistory, error: false, loading: true })
   }, [state.cursorHistory])
-  const retry = useCallback(() => {
-    patch({ error: false, loading: true })
-    const requestId = requestIdRef.current + 1
-    requestIdRef.current = requestId
-    void adminControlService.getOverviewDetails({ cursor, key: detailKey, limit: PAGE_SIZE }).then((result) => {
-      if (requestId !== requestIdRef.current) return
-      if (!result.success && isMissingAdminSession(result)) {
-        onSessionMissing()
-        return
-      }
-      patch(result.success ? { detail: result.data, error: false, loading: false } : { error: true, loading: false })
-    }).catch(() => {
-      if (requestId === requestIdRef.current) patch({ error: true, loading: false })
-    })
-  }, [cursor, detailKey, onSessionMissing])
-
   return <View style={styles.root} testID="admin-overview-filtered-worklist">
     <View style={[styles.header, { borderBottomColor: tokens.border }]}>
       <View style={styles.headerCopy}>
@@ -123,7 +118,6 @@ export function AdminOverviewDetailWorklist({
     </View> : null}
     {state.error ? <View accessibilityRole="alert" style={[styles.feedback, { borderColor: tokens.border }]} testID="admin-overview-worklist-error">
       <AdminText textRole="subheadline" style={styles.feedbackText}>{worklistCopy.error}</AdminText>
-      <KaelButton label={copy.retry} onPress={retry} testID="admin-overview-worklist-retry" variant="secondary" />
     </View> : null}
 
     {state.detail && !state.loading && !state.error ? <>

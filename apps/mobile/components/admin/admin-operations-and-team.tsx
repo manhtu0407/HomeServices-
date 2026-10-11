@@ -48,7 +48,6 @@ type OperationsCopy = {
     workers_in_verification: string
     workers_suspended: string
   }
-  retry: string
   title: string
 }
 
@@ -129,7 +128,6 @@ const operationsCopy: Record<AppLanguage, OperationsCopy> = {
       workers_in_verification: 'Thợ đang xác minh',
       workers_suspended: 'Thợ đang tạm dừng',
     },
-    retry: 'Thử lại',
     title: 'Vận hành',
   },
   en: {
@@ -174,7 +172,6 @@ const operationsCopy: Record<AppLanguage, OperationsCopy> = {
       workers_in_verification: 'Workers in verification',
       workers_suspended: 'Suspended workers',
     },
-    retry: 'Try again',
     title: 'Operations',
   },
 }
@@ -293,14 +290,12 @@ export function AdminOperationsOverview({
   loading,
   error,
   onOpenPanel,
-  onRetry,
 }: {
   language: AppLanguage
   snapshot: AdminViewOperationsResponse | null
   loading: boolean
   error: string | null
   onOpenPanel: (panel: Exclude<OperationPanel, 'operations'>) => void
-  onRetry: () => void
 }) {
   const copy = operationsCopy[language]
   const [recoveryOpen, setRecoveryOpen] = useState(false)
@@ -313,7 +308,7 @@ export function AdminOperationsOverview({
   }
 
   if (loading) return <LoadingState label={copy.loading} />
-  if (error) return <ErrorState label={error} retryLabel={copy.retry} onRetry={onRetry} />
+  if (error) return <ErrorState label={error} />
   if (!snapshot) return <EmptyState label={copy.empty} />
 
   const attention = snapshot.attention.filter((item) => item.count > 0)
@@ -386,7 +381,6 @@ export function AdminSubAdminPanel({
   members,
   nominations,
   pendingAccounts,
-  onRetry,
   onRefresh,
   reduceMotion,
 }: {
@@ -397,7 +391,6 @@ export function AdminSubAdminPanel({
   members: AdminViewSubAdminSummary[]
   nominations: AdminViewManagerNominationSummary[]
   pendingAccounts: AdminViewOperatorProvisioningSummary[]
-  onRetry: () => void
   onRefresh: () => Promise<void>
   reduceMotion: boolean
 }) {
@@ -507,7 +500,7 @@ export function AdminSubAdminPanel({
   })), [copy.memberRole, members])
 
   if (loading) return <LoadingState label={copy.loading} />
-  if (error) return <ErrorState label={error} retryLabel={operationsCopy[language].retry} onRetry={onRetry} />
+  if (error) return <ErrorState label={error} />
 
   return (
     <View testID="admin-sub-admin-panel" style={styles.stack}>
@@ -737,8 +730,8 @@ function LoadingState({ label }: { label: string }) {
   return <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.subtle}>{label}</AdminText></View>
 }
 
-function ErrorState({ label, onRetry, retryLabel }: { label: string; onRetry: () => void; retryLabel: string }) {
-  return <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{label}</AdminText><KaelButton label={retryLabel} onPress={onRetry} variant="secondary" /></View>
+function ErrorState({ label }: { label: string }) {
+  return <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{label}</AdminText></View>
 }
 
 function EmptyState({ label }: { label: string }) {

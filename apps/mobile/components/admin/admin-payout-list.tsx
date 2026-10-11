@@ -2,7 +2,7 @@ import { Pressable, View } from 'react-native'
 
 import type { AdminViewPayoutMethodSummary, AdminViewWithdrawalRequestSummary } from '@/lib/api-types/admin'
 
-import type { PanelCopy } from './admin-payouts'
+import type { PanelCopy } from './admin-payouts-copy'
 import { adminPayoutStyles as styles } from './admin-payout-styles'
 import { AdminText } from './admin-text'
 

@@ -13,7 +13,6 @@ type FinanceControlsCopy = {
   customFrom: string
   customRange: string
   customTo: string
-  load: string
   period: string
   timeZone: string
 }
@@ -68,7 +67,7 @@ export function FinanceSecondaryButton({ style, textStyle, ...props }: FinanceSe
   />
 }
 
-export function FinanceControls({ copy, customEditorOpen, customFrom, customMode, customTo, language, onApplyCustom, onChangeCustomFrom, onChangeCustomTo, onRefresh, onSelectRange, onToggleCustom, range }: {
+export function FinanceControls({ copy, customEditorOpen, customFrom, customMode, customTo, language, onApplyCustom, onChangeCustomFrom, onChangeCustomTo, onSelectRange, onToggleCustom, range }: {
   copy: FinanceControlsCopy
   customEditorOpen: boolean
   customFrom: string
@@ -78,7 +77,6 @@ export function FinanceControls({ copy, customEditorOpen, customFrom, customMode
   onApplyCustom: () => void
   onChangeCustomFrom: (value: string) => void
   onChangeCustomTo: (value: string) => void
-  onRefresh: () => void
   onSelectRange: (range: AdminFinanceRange) => void
   onToggleCustom: () => void
   range: AdminFinanceRange
@@ -86,7 +84,6 @@ export function FinanceControls({ copy, customEditorOpen, customFrom, customMode
   return <View style={styles.controlsCard}>
       <View style={styles.toolbar}>
         <View style={styles.periodHeading}><AdminText textRole="headline" style={styles.periodTitle}>{copy.period}</AdminText><AdminText textRole="footnote" style={styles.periodMeta}>{copy.timeZone}</AdminText></View>
-        <FinanceSecondaryButton label={copy.load} onPress={onRefresh} size="small" testID="admin-finance-refresh" />
       </View>
       <View style={styles.rangeRow}>
         {RANGE_OPTIONS.map((option) => <FinanceChoiceChip accessibilityLabel={rangeLabel(option, language)} key={option} label={rangeLabel(option, language)} onPress={() => onSelectRange(option)} selected={!customMode && range === option} testID={`admin-finance-range-${option}`} />)}
