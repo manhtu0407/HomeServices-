@@ -79,7 +79,8 @@ WSL/DrvFS cannot see the same path under `/mnt/c`, do not launch Docker Desktop
 through `Start-Process`, `explorer.exe`, another CLI child, or an agent-created
 broker. The state is in a packaged-app overlay that the Docker WSL backend cannot
 use. One launch from the Windows Start menu or an unsandboxed Windows shell counts
-as the authorized `1/1` launch; after it, run only the single final doctor probe.
+as the authorized `1/1` launch. For Lane A, invoke `up` once afterward; it performs the single final doctor probe
+and starts the stack. Standalone `doctor` is only for a diagnostic-only attempt.
 Do not repair ACLs/AppData or try a second brokered launch inside `kael-docker`.
 
 ### Rules that are not optional
