@@ -10,6 +10,7 @@ import {
   normalizeServiceAreaDistrict,
   serviceTypeSchema,
 } from "../../../../_shared/domain.ts";
+import { mobileHealthObservationInputSchema } from "../../../../_shared/contracts/system-health.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
 import type { MobileApiContext, MobileApiServices } from "../contracts.ts";
@@ -22,6 +23,11 @@ export async function dispatchMiscRoute(
   services: MobileApiServices,
 ): Promise<unknown> {
   switch (route.kind) {
+    case "telemetry.mobileHealth.record": {
+      const input = mobileHealthObservationInputSchema.safeParse(await readJson(request));
+      if (!input.success) apiFailure("VALIDATION", "Dữ liệu quan sát ứng dụng không hợp lệ", 400);
+      return services.recordMobileHealthObservation(ctx, input.data);
+    }
     case "services":
       return services.listServices(ctx);
     case "services.coverage": {

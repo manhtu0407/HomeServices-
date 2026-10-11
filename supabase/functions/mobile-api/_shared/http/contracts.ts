@@ -189,6 +189,7 @@ import type {
   EdgeWorkerWithdrawalRequestListResponse,
 } from "../domains/contracts/worker-payout.ts";
 import type { AdminControlServices } from "./routes/admin-control-services-contract.ts";
+import type { MobileHealthObservationInput } from "../../../_shared/contracts/system-health.ts";
 import type { ProgramServices } from "./routes/program-services-contract.ts";
 import type {
   EdgeKaelMemoryDeleteResponse,
@@ -204,6 +205,7 @@ import type {
 export * from "./contract-reexports.ts";
 
 export type MobileApiServices = AdminControlServices & ProgramServices & LegacyConfirmationRecoveryServices & {
+  recordMobileHealthObservation(ctx: MobileApiContext, input: MobileHealthObservationInput): Promise<{ accepted: boolean; observed_at: string }>;
   getAdminActivation(ctx: MobileApiContext): Promise<AdminActivationStatusResponse>;
   activateAdminOperator(
     ctx: MobileApiContext,

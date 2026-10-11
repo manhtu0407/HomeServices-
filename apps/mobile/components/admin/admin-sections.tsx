@@ -719,6 +719,7 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
     case 'system-taxonomy':
     case 'system-learning-rules':
     case 'system-model-health':
+    case 'system-health-monitor':
       return <AdminSystemWorkspace actor={actor} capability={capability.id} key={capability.id} language={language} />
     default:
       return <AdminUnavailableCapability language={language} />

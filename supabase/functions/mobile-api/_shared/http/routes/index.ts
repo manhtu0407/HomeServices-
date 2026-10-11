@@ -15,8 +15,10 @@ import { matchMeRoute, type MeRoute } from "./me.ts";
 import {
   matchCaseResolutionRoute,
   matchCatalogRoute,
+  matchMobileHealthTelemetryRoute,
   type CaseResolutionRoute,
   type CatalogRoute,
+  type MobileHealthTelemetryRoute,
 } from "./misc.ts";
 import {
   matchNotificationReadRoute,
@@ -33,6 +35,7 @@ export type PublicRoute =
 export type Route =
   | PublicRoute
   | CatalogRoute
+  | MobileHealthTelemetryRoute
   | CaseWorkResourceRoute
   | WorkerKaelChatRoute
   | CustomerKaelConversationRoute
@@ -58,6 +61,8 @@ export function matchRoute(request: Request): Route | null {
 
   const catalogRoute = matchCatalogRoute(path, method);
   if (catalogRoute) return catalogRoute;
+  const mobileHealthRoute = matchMobileHealthTelemetryRoute(path, method);
+  if (mobileHealthRoute) return mobileHealthRoute;
   if (method === "GET" && path === "/kael/charter") {
     return { kind: "kael.charter", method: "GET", public: true };
   }

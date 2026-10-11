@@ -1,5 +1,7 @@
 import type { UserRole } from "../../../../_shared/domain.ts";
 
+export type MobileHealthTelemetryRoute = { kind: "telemetry.mobileHealth.record"; method: "POST"; roles: ["customer", "worker", "admin"] };
+
 export type CatalogRoute =
   | { kind: "services"; method: "GET"; roles?: UserRole[] }
   | { kind: "services.coverage"; method: "GET"; roles: UserRole[] }
@@ -36,6 +38,12 @@ export function matchCatalogRoute(path: string, method: string): CatalogRoute | 
     };
   }
   return null;
+}
+
+export function matchMobileHealthTelemetryRoute(path: string, method: string): MobileHealthTelemetryRoute | null {
+  return method === "POST" && path === "/telemetry/mobile-health"
+    ? { kind: "telemetry.mobileHealth.record", method: "POST", roles: ["customer", "worker", "admin"] }
+    : null;
 }
 
 export function matchCaseResolutionRoute(

@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { notifyFinanceReconciliationRequired } from "../mobile-api/_shared/domains/payment/manual-bank.ts";
 import type { DbClient } from "../mobile-api/_shared/platform/db.ts";
+import { recordSystemMonitorWorkerCompletion } from "../_shared/system-monitor/worker-heartbeat.ts";
 
 const DEFAULT_LIMIT = 100;
 
@@ -19,6 +20,8 @@ Deno.serve(async (request) => {
   const client = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   }) as unknown as DbClient;
+  const workerExecutionId = crypto.randomUUID();
+  const workerStartedAtMs = Date.now();
   try {
     const result = await client.rpc("maintain_manual_bank_payment_holds", { p_limit: DEFAULT_LIMIT });
     const row = Array.isArray(result.data) ? result.data[0] as Record<string, unknown> | undefined : undefined;
@@ -39,9 +42,26 @@ Deno.serve(async (request) => {
       direct_reconcile_count: directCount,
       reason_code: "payment_hold_and_direct_timeout_scan",
     });
+    await recordSystemMonitorWorkerCompletion({
+      client,
+      jobName: "payment-maintainer",
+      executionId: workerExecutionId,
+      startedAtMs: workerStartedAtMs,
+      completionStatus: "succeeded",
+      releaseId: Deno.env.get("NESTSCOUT_RELEASE_ID") ?? Deno.env.get("DENO_DEPLOYMENT_ID"),
+    });
     return json({ ok: true, released_count: releasedCount, direct_reconcile_count: directCount });
   } catch {
     console.error("payment maintainer failed", { reason_code: "maintainer_failed" });
+    await recordSystemMonitorWorkerCompletion({
+      client,
+      jobName: "payment-maintainer",
+      executionId: workerExecutionId,
+      startedAtMs: workerStartedAtMs,
+      completionStatus: "failed",
+      reasonCode: "MAINTAINER_FAILED",
+      releaseId: Deno.env.get("NESTSCOUT_RELEASE_ID") ?? Deno.env.get("DENO_DEPLOYMENT_ID"),
+    });
     return json({ error: "MAINTAINER_FAILED" }, 500);
   }
 });

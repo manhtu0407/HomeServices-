@@ -5,6 +5,7 @@ import {
 } from "../_shared/request-json.ts";
 import { monitorLearningRules } from "../mobile-api/_shared/kael/learning/cron/monitor-learning-rules.ts";
 import type { LearningQueueDbClient } from "../mobile-api/_shared/kael/learning/cron/process-learning-queue.ts";
+import { recordSystemMonitorWorkerCompletion } from "../_shared/system-monitor/worker-heartbeat.ts";
 
 // Scheduled entry point for the learning monitor. It exists because mobile-api
 // authenticates a user JWT and looks the caller's role up in profiles, which pg_cron
@@ -53,18 +54,37 @@ Deno.serve(async (request) => {
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const workerExecutionId = crypto.randomUUID();
+  const workerStartedAtMs = Date.now();
 
   try {
     const summary = await monitorLearningRules(
       supabase as unknown as LearningQueueDbClient,
       { limit },
     );
+    await recordSystemMonitorWorkerCompletion({
+      client: supabase,
+      jobName: "kael-learning-monitor",
+      executionId: workerExecutionId,
+      startedAtMs: workerStartedAtMs,
+      completionStatus: "succeeded",
+      releaseId: Deno.env.get("NESTSCOUT_RELEASE_ID") ?? Deno.env.get("DENO_DEPLOYMENT_ID"),
+    });
     return json({ ok: true, ...summary });
   } catch (error) {
     // Safe metadata only: the summary can name rule and candidate ids but never
     // customer data, and the error name keeps provider detail out of the response.
     console.error("kael learning monitor failed", {
       errorName: error instanceof Error ? error.name : typeof error,
+    });
+    await recordSystemMonitorWorkerCompletion({
+      client: supabase,
+      jobName: "kael-learning-monitor",
+      executionId: workerExecutionId,
+      startedAtMs: workerStartedAtMs,
+      completionStatus: "failed",
+      reasonCode: "MONITOR_FAILED",
+      releaseId: Deno.env.get("NESTSCOUT_RELEASE_ID") ?? Deno.env.get("DENO_DEPLOYMENT_ID"),
     });
     return json({ error: "MONITOR_FAILED" }, 500);
   }

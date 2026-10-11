@@ -13,6 +13,17 @@ test('completion operations and audited recovery belong to the job lifecycle', (
   }
 })
 
+test('system health monitor tables belong to the monitoring lifecycle', () => {
+  for (const name of [
+    'system_health_deliveries',
+    'system_health_incidents',
+    'system_mobile_health_observations',
+    'system_monitor_worker_heartbeats',
+  ]) {
+    assert.equal(bucketOf(name), 'monitoring', name)
+  }
+})
+
 test('type regeneration preserves neighboring files and exact schema bytes', () => {
   const source = readFileSync(resolve(root, 'scripts/split-database-types.mjs'), 'utf8')
   // Refuse to exercise a destructive generator even inside the regression fixture.

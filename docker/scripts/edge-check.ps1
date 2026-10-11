@@ -18,6 +18,7 @@ $canonicalFunctions = @(
   "kael-media-retention",
   "mobile-api",
   "payment-maintainer",
+  "system-monitor",
   "sepay-webhook"
 )
 

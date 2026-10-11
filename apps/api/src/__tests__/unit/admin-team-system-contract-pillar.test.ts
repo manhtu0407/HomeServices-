@@ -5,12 +5,14 @@ import { describe, expect, it } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes'
 import { dispatchAdminRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/dispatch/admin'
+import { isMonitorEndpoint } from '../../../../../supabase/functions/mobile-api/_shared/domains/admin/system-health'
 import {
   adminSubAdminAccessSchema,
   parseAdminSubAdminListQuery,
 } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/admin-control-contract'
 import {
   adminSystemMutationSchema,
+  parseAdminSystemIncidentListQuery,
   parseAdminSystemListQuery,
 } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/admin-system-contract'
 
@@ -23,22 +25,33 @@ export const PILLAR = {
     'governance/RULES.md #0 (workflow-sensitive access stays behind mobile-api)',
     'governance/RULES.md #8 (Production data remains honest)',
   ],
-  target: 'supabase/functions/mobile-api/_shared/domains/admin/system.ts; supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts',
+  target: 'supabase/functions/mobile-api/_shared/domains/admin/system.ts; supabase/functions/mobile-api/_shared/domains/admin/system-health.ts; supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts',
   layer: 'security-negative',
   siblings: ['P18-capability-registry-parity', 'P44-admin-production-sections'],
   mutation:
-    'restore finance.read on a System handler or remove expected-version/idempotency validation — the authorization and mutation assertions turn red',
+    'restore finance.read on a System handler, remove expected-version/idempotency validation, or send a monitor secret to another origin — the authorization and mutation assertions turn red',
 } as const satisfies PillarManifest
 
 const root = resolve(__dirname, '../../../../../')
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8').replace(/\r\n/g, '\n')
 
 describe('Admin Team and System route contract', () => {
+  it('sends refresh credentials only to the exact configured Supabase origin and route', () => {
+    const base = 'https://abcdefgh.supabase.co'
+    expect(isMonitorEndpoint(`${base}/functions/v1/system-monitor`, base)).toBe(true)
+    expect(isMonitorEndpoint('https://attacker.example/functions/v1/system-monitor', base)).toBe(false)
+    expect(isMonitorEndpoint(`${base}.attacker.example/functions/v1/system-monitor`, base)).toBe(false)
+    expect(isMonitorEndpoint(`${base}/other/functions/v1/system-monitor`, base)).toBe(false)
+    expect(isMonitorEndpoint(`${base}/functions/v1/system-monitor?redirect=1`, base)).toBe(false)
+  })
+
   it.each([
     ['/admin/system/price-baselines', 'admin.system.priceBaselines.list'],
     ['/admin/system/taxonomy', 'admin.system.taxonomy.list'],
     ['/admin/system/learning-rules', 'admin.system.learningRules.list'],
     ['/admin/system/model-health', 'admin.system.modelHealth.list'],
+    ['/admin/system/health', 'admin.system.health.get'],
+    ['/admin/system/incidents', 'admin.system.incidents.list'],
   ] as const)('allows active Admin actors to read %s', (path, kind) => {
     expect(matchRoute(new Request(`https://edge.test${path}`))).toMatchObject({
       kind,
@@ -54,6 +67,16 @@ describe('Admin Team and System route contract', () => {
     expect(matchRoute(new Request('https://edge.test/admin/system/taxonomy/electrical', { method: 'PUT' }))).toMatchObject({ kind: 'admin.system.taxonomy.update', serviceType: 'electrical' })
     expect(matchRoute(new Request('https://edge.test/admin/system/learning-rules/rule-1/rollback', { method: 'POST' }))).toMatchObject({ kind: 'admin.system.learningRules.rollback', ruleId: 'rule-1' })
     expect(matchRoute(new Request('https://edge.test/admin/system/model-health', { method: 'POST' }))).toBeNull()
+    expect(matchRoute(new Request('https://edge.test/admin/system/health/refresh', { method: 'POST' }))).toMatchObject({ kind: 'admin.system.health.refresh', roles: ['admin'] })
+    expect(matchRoute(new Request('https://edge.test/admin/system/incidents/not-an-id'))).toBeNull()
+  })
+
+  it('bounds and validates system incident filters and cursor timestamps', () => {
+    const parsed = parseAdminSystemIncidentListQuery(new URL('https://edge.test/admin/system/incidents?component=app&status=open&severity=red&limit=20&from=2026-10-01T00%3A00%3A00.000Z&to=2026-10-02T00%3A00%3A00.000Z'))
+    expect(parsed.success).toBe(true)
+    expect(parseAdminSystemIncidentListQuery(new URL('https://edge.test/admin/system/incidents?limit=51')).success).toBe(false)
+    expect(parseAdminSystemIncidentListQuery(new URL('https://edge.test/admin/system/incidents?component=app%2Cstatus.eq.open')).success).toBe(false)
+    expect(parseAdminSystemIncidentListQuery(new URL('https://edge.test/admin/system/incidents?from=2026-10-02T00%3A00%3A00.000Z&to=2026-10-01T00%3A00%3A00.000Z')).success).toBe(false)
   })
 
   it('dispatches a System route through the Admin control workspace', async () => {

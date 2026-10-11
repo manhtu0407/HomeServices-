@@ -1,5 +1,6 @@
 import type { MobileApiContext } from "../../platform/auth.ts";
 import type { AdminSystemContracts } from "../contracts/admin-system.ts";
+import { apiFailure } from "../../platform/api-failure.ts";
 import { requireAdminCapability } from "./actor.ts";
 import {
   getSystemPriceBaseline,
@@ -12,6 +13,13 @@ import {
 import { getSystemTaxonomy, listSystemTaxonomy, updateSystemTaxonomy, validateSystemTaxonomy } from "./system-taxonomy.ts";
 import { applySystemLearningAction, getSystemLearningRule, listSystemLearningRules, previewSystemLearningAction } from "./system-learning.ts";
 import { getSystemModelHealthDetail, listSystemModelHealth } from "./system-model-health.ts";
+import {
+  exportSystemIncident,
+  getSystemHealth,
+  getSystemIncident,
+  listSystemIncidents,
+  refreshSystemHealth,
+} from "./system-health.ts";
 
 export async function listAdminSystemPriceBaselines(ctx: MobileApiContext, input: AdminSystemContracts["priceListInput"]) {
   await requireAdminCapability(ctx, "system.read");
@@ -91,6 +99,34 @@ export async function listAdminSystemModelHealth(ctx: MobileApiContext, input: A
 export async function getAdminSystemModelHealthDetail(ctx: MobileApiContext, detailKey: string) {
   await requireAdminCapability(ctx, "system.read");
   return getSystemModelHealthDetail(ctx, detailKey);
+}
+
+export async function getAdminSystemHealth(ctx: MobileApiContext) {
+  await requireAdminCapability(ctx, "system.read");
+  return getSystemHealth(ctx);
+}
+
+export async function refreshAdminSystemHealth(ctx: MobileApiContext) {
+  await requireAdminCapability(ctx, "system.manage");
+  if (ctx.role !== "admin") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ Owner Admin được làm mới tình trạng hệ thống", 403);
+  }
+  return refreshSystemHealth(ctx);
+}
+
+export async function listAdminSystemIncidents(ctx: MobileApiContext, input: AdminSystemContracts["incidentListInput"]) {
+  await requireAdminCapability(ctx, "system.read");
+  return listSystemIncidents(ctx, input);
+}
+
+export async function getAdminSystemIncident(ctx: MobileApiContext, incidentId: string) {
+  await requireAdminCapability(ctx, "system.read");
+  return getSystemIncident(ctx, incidentId);
+}
+
+export async function exportAdminSystemIncident(ctx: MobileApiContext, incidentId: string) {
+  await requireAdminCapability(ctx, "system.read");
+  return exportSystemIncident(ctx, incidentId);
 }
 
 function withPermission<T extends { permission: "read" | "manage"; available_actions: string[] }>(response: T, canManage: boolean): T {
