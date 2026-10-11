@@ -258,6 +258,8 @@ export function dockerContractProblems(files) {
     [
       /15 seconds/i,
       /Next Step/i,
+      /per invocation, not as a permanent task lock/i,
+      /Do not repeat an identical stalled command without new evidence/i,
       /version update:\s*0\/1/i,
       /RAM is informational only and never blocks local runtime/i,
       /docker desktop update --quiet/i,

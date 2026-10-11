@@ -53,7 +53,8 @@ function matchingClient(
     'electrical_fault_isolation',
     'fixed_wiring_and_panel_safety',
   ],
-): DbClient {
+  activeWorkers: string[] = [],
+): DbClient & Pick<ReturnType<typeof makeSequenceClient>, 'calls'> {
   return makeSequenceClient([], {}, {
     jobs: [
       {
@@ -71,16 +72,29 @@ function matchingClient(
         },
         error: null,
       },
-      { data: [], error: null },
+      { data: activeWorkers.map((worker_id) => ({ worker_id })), error: null },
     ],
     worker_profiles: [{ data: candidates, error: null }],
     job_worker_candidates: [{ data: [], error: null }],
     worker_kael_memory: [{ data: [], error: null }],
-  }) as unknown as DbClient
+  }) as unknown as DbClient & Pick<ReturnType<typeof makeSequenceClient>, 'calls'>
 }
 
 describe('worker reachability and cohort isolation', () => {
   const now = new Date('2026-08-23T04:10:00.000Z')
+
+  it('excludes an arrived worker while selecting an otherwise eligible free worker', async () => {
+    const busy = worker('50000000-0000-4000-8000-000000000014')
+    const free = worker('50000000-0000-4000-8000-000000000015')
+    const client = matchingClient([busy, free], [], [busy.id])
+    const result = await queryEligibleWorkers(client, 'electrical', 'district_1', 5, { jobId: JOB_ID })
+    expect(result, pillarWhy(PILLAR, 'a worker with an active arrived job cannot receive a second job'))
+      .toEqual({ success: true, workers: [{ id: free.id }] })
+    const activeQuery = client.calls.find((call) => call.table === 'jobs' &&
+      call.operations.some((op) => op[0] === 'in' && op[1] === 'status'))
+    expect(activeQuery?.operations, pillarWhy(PILLAR, 'the live availability query must include arrived'))
+      .toContainEqual(['in', 'status', expect.arrayContaining(['arrived'])])
+  })
 
   it('accepts proven push or a recent foreground heartbeat', () => {
     expect(isWorkerReachable({

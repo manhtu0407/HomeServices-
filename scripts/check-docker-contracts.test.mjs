@@ -277,6 +277,8 @@ function goodFiles() {
     '.claude/skills/kael-docker/SKILL.md': [
       '15 seconds',
       'A plain “Next Step” does not reopen a closed lane.',
+      'Retry budget is per invocation, not as a permanent task lock.',
+      'Do not repeat an identical stalled command without new evidence.',
       'version update: 0/1',
       'RAM is informational only and never blocks local runtime',
       'Do not stop processes solely to satisfy a RAM number',

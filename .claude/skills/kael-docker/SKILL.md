@@ -25,8 +25,8 @@ Take the narrowest lane whose evidence answers that exact class:
 |---|---|---|
 | **D — exact prior evidence** | `behavior` or `types` already executed for the exact commit | Exact commit SHA, workflow and job URL, and the log line that answers the question |
 | **C — hosted read-only** | `structure` on one named hosted target | Read-only access and the target's project ref or environment name |
-| **B — pinned Deno toolbox** | Current-checkout Edge `types` | An open local-runtime attempt budget, Docker daemon, and registry |
-| **A — local Supabase stack** | Current-checkout database `behavior`, migrations, SQL checks, and generated types | An open local-runtime attempt budget, daemon, registry, disk, ports, and Supabase CLI; available RAM is informational |
+| **B — pinned Deno toolbox** | Current-checkout Edge `types` | Docker daemon and registry |
+| **A — local Supabase stack** | Current-checkout database `behavior`, migrations, SQL checks, and generated types | Daemon, registry, disk, ports, and Supabase CLI; available RAM is informational |
 
 Never turn source inspection, an old green run, or a different commit into runtime proof. If no lane
 answers the question, report it as unanswered.
@@ -53,7 +53,7 @@ Docker-data repair, or a prerelease channel.
 
 ## Preconditions
 
-The local-runtime precondition is **gated and bounded**. Measure it only when Lane A or B is required:
+Run the required local runtime whenever the task needs it. Measure prerequisites when Lane A or B is required:
 
 1. Complete the version policy above once for the current local attempt.
 2. For a Lane A attempt that will start Supabase, invoke `up` as the sole bounded doctor probe. The
@@ -68,11 +68,12 @@ The local-runtime precondition is **gated and bounded**. Measure it only when La
    builds and verifies a replacement, archives the prior snapshot beside it, then installs the
    replacement without deleting the old contents.
 5. If Tu explicitly asks to launch or restart Docker Desktop, do that at most once before invoking
-   `up` (or standalone `doctor` for a diagnostic-only attempt). A plain **“Next Step”** does not
-   authorize another launch, restart, or probe.
+   `up` (or standalone `doctor` for a diagnostic-only attempt). **“Next Step”** authorizes the next
+   required verification checks; it does not independently authorize host repair, a launch, or restart.
 6. The probe budget is consumed by either standalone `doctor` or `up`; never run both in one local
-   attempt. Retry only after Tu explicitly identifies a changed environment and authorizes a new
-   attempt.
+   attempt. A failed attempt does not permanently close the task's runtime lane. Diagnose the failure,
+   then retry when the cause is understood, the environment has materially changed, or a distinct
+   verification need requires it. Do not repeat an identical stalled command without new evidence.
 
 ### Windows launch-origin gate
 
@@ -106,14 +107,15 @@ Deno registry pulls: 0/1
 runtime proof: 0/1
 ```
 
-- Normal local work gets one probe. A reachable daemon does not permit repeated image pulls or stack
-  starts.
+- Counters apply per invocation, not as a permanent task lock. Required runtime work may start a new
+  invocation without another approval. Each invocation owns one bounded probe, start, or pull.
 - Explicit Docker Desktop authority permits one launch or restart and one final probe; it does not
   permit Windows, WSL, process, filesystem, or Docker-data repair.
 - RAM is informational only and never blocks local runtime. Do not stop processes solely to satisfy
   a RAM number; daemon, disk, and port checks still determine doctor readiness.
-- `up` calls `supabase start` once. `edge-check` pulls the pinned Deno image once. A failure is a
-  result and closes that route for the current attempt.
+- RAM below recommendation remains a warning; proceed with the relevant runtime and report its actual
+  result. `up` calls `supabase start` once. `edge-check` pulls the pinned Deno image once. A failure
+  is a result for that invocation; diagnose it before another attempt.
 
 ## Command forms
 
@@ -194,8 +196,9 @@ Choose proof for each requested claim; runtime is required only when that claim 
 - A source/static acceptance question may close from source inspection and its matching static check.
   That evidence answers only source or contract claims; it does not prove a database ran.
 
-When an updater failure or another precondition closes local runtime, record the local-runtime state
-as `BLOCKED`, continue independent source/static work, and use C/D only for claims those lanes answer.
+When the local-runtime gate is closed, continue independent source/static work and use Lane C or D
+only for the claims those lanes can answer. Record the local-runtime state as `BLOCKED` when a required
+runtime proof cannot execute.
 If requested acceptance still needs unavailable Lane A/B evidence and no exact Lane D evidence exists,
 report `Task status: BLOCKED` with the missing proof. If all requested acceptance is answered by a
 valid non-runtime lane or source/static evidence, the task may be `DONE` while local runtime is
