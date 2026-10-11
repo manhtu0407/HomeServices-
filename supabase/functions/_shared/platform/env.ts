@@ -52,6 +52,7 @@ export type EdgeEnv = EdgeAiSecrets & {
   // S4/F1 (§38): global hard-stop for customer-facing AI during an incident.
   // Default false. Enforced at the callAI chokepoint (kael/spend-gate.ts).
   aiKillSwitch: boolean;
+  systemHealthSessionHashSecret?: string;
 };
 
 export function readEdgeEnv(
@@ -116,7 +117,15 @@ export function readEdgeEnv(
     manualBank: readPlatformManualBankConfig(getEnv, harnessEnvironment.name),
     sepayVietQr: readSePayVietQrConfig(getEnv, harnessEnvironment.name),
     aiKillSwitch: readBooleanFlag(getEnv("KAEL_AI_KILL_SWITCH")),
+    systemHealthSessionHashSecret: readStrongSecret(getEnv("SYSTEM_HEALTH_SESSION_HASH_SECRET")),
   };
+}
+
+function readStrongSecret(value: string | undefined): string | undefined {
+  const normalized = value?.trim();
+  return normalized && normalized.length >= 32 && normalized.length <= 256 && !/\s/u.test(normalized)
+    ? normalized
+    : undefined;
 }
 
 export function assertProductionReleaseRegistered(

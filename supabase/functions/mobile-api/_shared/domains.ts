@@ -236,8 +236,11 @@ import { harnessHealthPayload } from "../../_shared/harness/release.ts";
 import type { HarnessEnvironmentDescriptor } from "../../_shared/harness/environment.ts";
 import type { HarnessRuntimeRelease } from "../../_shared/harness/release.ts";
 import { createProgramServices } from "./domains/program/services.ts";
+import { createSystemHealthAdminServices } from "./domains/system-health-services.ts";
+import { recordMobileHealthObservation } from "./domains/monitoring/mobile-health.ts";
 
 export type EdgeServiceSecrets = EdgeAiSecrets & {
+  systemHealthSessionHashSecret?: string;
   manualBank?: PlatformManualBankConfig;
   sepayVietQr?: SePayVietQrConfig;
   harnessEnvironment?: HarnessEnvironmentDescriptor;
@@ -253,6 +256,7 @@ export function createEdgeServices(secrets: EdgeServiceSecrets): MobileApiServic
     ...createWorkerWorkflowServices(secrets),
     ...createProfileServices(secrets),
     ...createAdminNotificationServices(secrets),
+    recordMobileHealthObservation: (ctx, input) => recordMobileHealthObservation(ctx, input, secrets.systemHealthSessionHashSecret),
     ...createProgramServices(),
   };
 }
@@ -631,6 +635,11 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
   | "applyAdminSystemLearningAction"
   | "listAdminSystemModelHealth"
   | "getAdminSystemModelHealthDetail"
+  | "getAdminSystemHealth"
+  | "refreshAdminSystemHealth"
+  | "listAdminSystemIncidents"
+  | "getAdminSystemIncident"
+  | "exportAdminSystemIncident"
   | "listAdminWorkerApplications"
   | "getAdminWorkerApplication"
   | "getAdminWorkerReviewDetail"
@@ -718,6 +727,7 @@ function createAdminNotificationServices(secrets: EdgeServiceSecrets): Pick<
     applyAdminSystemLearningAction,
     listAdminSystemModelHealth,
     getAdminSystemModelHealthDetail,
+    ...createSystemHealthAdminServices(),
     listAdminWorkerApplications,
     getAdminWorkerApplication,
     getAdminWorkerReviewDetail,

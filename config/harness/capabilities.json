@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
-    "fileCount": 22,
-    "sha256": "86ff46517f0efb3de15a18be5d55069a932537b2fc25fda85c96ea9fffbf857f"
+    "fileCount": 23,
+    "sha256": "292e0112f9496212ae6fa6c9687b1d4d27e0d26985c079bcde0758a82c9678b8"
   },
   "entries": [
     {
@@ -1901,6 +1901,120 @@
       "envelopeTtlMs": 30000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.system.health.get",
+      "capability": "mobile.route.admin.system.health.get",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/system-health-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.system.health.refresh",
+      "capability": "mobile.route.admin.system.health.refresh",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin"
+      ],
+      "risk": "administrative",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/system-health-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.system.incidents.detail",
+      "capability": "mobile.route.admin.system.incidents.detail",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/system-health-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.system.incidents.export",
+      "capability": "mobile.route.admin.system.incidents.export",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/system-health-routes.ts"
+      ]
+    },
+    {
+      "kind": "admin.system.incidents.list",
+      "capability": "mobile.route.admin.system.incidents.list",
+      "public": false,
+      "methods": [
+        "GET"
+      ],
+      "roles": [
+        "admin",
+        "admin_operator"
+      ],
+      "risk": "administrative",
+      "operationClass": "database_read",
+      "sideEffectClass": "read-only",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 30000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/system-health-routes.ts"
       ]
     },
     {
@@ -5017,6 +5131,30 @@
       "operationClass": "database_read",
       "sideEffectClass": "read-only",
       "privileged": false,
+      "resourceType": "system",
+      "requiresResourceCheck": false,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/misc.ts"
+      ]
+    },
+    {
+      "kind": "telemetry.mobileHealth.record",
+      "capability": "mobile.route.telemetry.mobileHealth.record",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer",
+        "worker"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
       "resourceType": "system",
       "requiresResourceCheck": false,
       "confirmationGate": "none",

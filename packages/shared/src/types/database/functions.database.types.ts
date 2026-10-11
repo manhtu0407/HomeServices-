@@ -1939,6 +1939,28 @@ export type DatabaseFunctions = {
           side_effects_state: Json
         }[]
       }
+      claim_system_health_delivery: {
+        Args: {
+          p_dedupe_key: string
+          p_delivery_kind: string
+          p_lease_seconds?: number
+          p_now: string
+        }
+        Returns: boolean
+      }
+      claim_system_health_manual_refresh: {
+        Args: { p_environment: string; p_requested_at: string }
+        Returns: boolean
+      }
+      claim_system_health_run: {
+        Args: {
+          p_environment: string
+          p_lease_seconds?: number
+          p_owner_id: string
+          p_scheduled_at: string
+        }
+        Returns: boolean
+      }
       claim_worker_kael_chat_turn_atomic: {
         Args: {
           p_claim_id: string
@@ -2117,6 +2139,16 @@ export type DatabaseFunctions = {
           proof_id: string
           review_passed: boolean
         }[]
+      }
+      complete_system_health_delivery: {
+        Args: {
+          p_dedupe_key: string
+          p_delivered: boolean
+          p_error_code: string
+          p_now: string
+          p_retry_at: string
+        }
+        Returns: boolean
       }
       complete_worker_account_deletion: {
         Args: { p_client_request_id: string; p_worker_id: string }
@@ -3033,6 +3065,15 @@ export type DatabaseFunctions = {
           valid_until: string
         }[]
       }
+      get_system_monitor_kael_evidence: {
+        Args: { p_environment: string; p_since: string }
+        Returns: Json
+      }
+      get_system_monitor_mobile_evidence: {
+        Args: { p_environment: string; p_now?: string }
+        Returns: Json
+      }
+      get_system_monitor_worker_evidence: { Args: never; Returns: Json }
       get_worker_ambassador_summary: {
         Args: { p_worker_id: string }
         Returns: Json
@@ -3776,6 +3817,57 @@ export type DatabaseFunctions = {
           p_worker_offer_visible_ms: number
         }
         Returns: string
+      }
+      record_system_health_snapshot: {
+        Args: { p_snapshot: Json }
+        Returns: boolean
+      }
+      record_system_mobile_observation: {
+        Args: {
+          p_actor_hash: string
+          p_api_status: string
+          p_build_id: string
+          p_duration_ms: number
+          p_environment: string
+          p_last_observed_at: string
+          p_platform: string
+          p_reason_code: string
+          p_release_id: string
+          p_session_hash: string
+        }
+        Returns: boolean
+      }
+      record_system_monitor_external_incident: {
+        Args: {
+          p_environment: string
+          p_external_incident_id: string
+          p_opened_at: string
+          p_reason_code: string
+          p_status: string
+        }
+        Returns: boolean
+      }
+      record_system_monitor_observer_heartbeat: {
+        Args: {
+          p_d1_status: string
+          p_dispatcher_status: string
+          p_environment: string
+          p_error_code: string
+          p_observed_at: string
+        }
+        Returns: Json
+      }
+      record_system_monitor_worker_heartbeat: {
+        Args: {
+          p_completion_status: string
+          p_execution_id: string
+          p_finished_at: string
+          p_job_name: string
+          p_reason_code: string
+          p_release_id: string
+          p_started_at: string
+        }
+        Returns: boolean
       }
       record_worker_app_active_minute: {
         Args: { p_worker_id: string }
@@ -4622,6 +4714,7 @@ export type DatabaseFunctions = {
           isSetofReturn: true
         }
       }
+      system_monitor_health_probe: { Args: never; Returns: boolean }
       transition_harness_promotion: {
         Args: {
           p_actor_id: string

@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 447,
-    "migrationDigest": "ae9b96935bd9f5e8a120b7e1f59713374c36357a1b8f14369e2e9e3137ad8b63"
+    "migrationCount": 448,
+    "migrationDigest": "cfe83e4c1d24f1241ec1957e44b2576a87728655451c48cc9973a33dd5ea8de4"
   },
   "actors": [
     "anonymous",
@@ -2876,6 +2876,198 @@
       "realtime": false
     },
     {
+      "name": "system_health_deliveries",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_health_incident_events",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_health_incidents",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_health_observer_state",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_health_refresh_limits",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_health_snapshots",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_mobile_health_actor_rate_limits",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_mobile_health_observations",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_monitor_leases",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_monitor_source_state",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_monitor_worker_config",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "system_monitor_worker_heartbeats",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
       "name": "worker_account_deletion_requests",
       "classification": "internal",
       "rlsEnabled": true,
@@ -4596,6 +4788,30 @@
       ]
     },
     {
+      "signature": "claim_system_health_delivery(text, text, timestamp with time zone, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "claim_system_health_manual_refresh(text, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "claim_system_health_run(text, timestamp with time zone, uuid, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "claim_worker_kael_chat_turn_atomic(uuid, uuid, uuid, uuid, uuid, text, text, text[], timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -4717,6 +4933,14 @@
     },
     {
       "signature": "complete_synthetic_transaction_proof(uuid, uuid, text, text, text, text, smallint, text, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "complete_system_health_delivery(text, boolean, timestamp with time zone, text, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -5181,6 +5405,30 @@
     },
     {
       "signature": "get_service_coverage_readiness(uuid, service_type, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_system_monitor_kael_evidence(text, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_system_monitor_mobile_evidence(text, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "get_system_monitor_worker_evidence()",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -5706,6 +5954,46 @@
       "executeRoles": []
     },
     {
+      "signature": "record_system_health_snapshot(jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_system_mobile_observation(text, text, text, text, text, text, timestamp with time zone, text, text, integer)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_system_monitor_external_incident(uuid, text, text, timestamp with time zone, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_system_monitor_observer_heartbeat(text, text, text, text, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_system_monitor_worker_heartbeat(text, uuid, timestamp with time zone, timestamp with time zone, text, text, text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "record_worker_app_active_minute(uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -6209,6 +6497,14 @@
     },
     {
       "signature": "submit_worker_registration_draft_atomic(uuid, uuid, uuid, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "system_monitor_health_probe()",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

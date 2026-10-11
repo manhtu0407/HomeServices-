@@ -22,6 +22,10 @@
       "reason": "Secret-authenticated scheduled maintainer for payment holds and direct-payment timeouts"
     },
     {
+      "path": "supabase/functions/system-monitor/index.ts",
+      "reason": "Secret-authenticated health collector that reads monitor evidence and writes only health snapshots"
+    },
+    {
       "path": "supabase/functions/sepay-webhook/index.ts",
       "reason": "Provider-authenticated webhook requiring atomic payment RPC access"
     }

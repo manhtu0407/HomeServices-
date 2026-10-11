@@ -32,6 +32,7 @@ const adminAuth: MobileApiAuthResult = {
 
 function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServices {
   return {
+    recordMobileHealthObservation: vi.fn(async (_ctx, input) => ({ accepted: true, observed_at: input.observed_at })),
     getKaelCharter: vi.fn(async () => ({
       charter_version: '2026-08-06.p11',
       identity_summary: 'Kael is the Home Services assistant.',
@@ -430,6 +431,11 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     applyAdminSystemLearningAction: vi.fn(),
     listAdminSystemModelHealth: vi.fn(),
     getAdminSystemModelHealthDetail: vi.fn(),
+    getAdminSystemHealth: vi.fn(),
+    refreshAdminSystemHealth: vi.fn(),
+    listAdminSystemIncidents: vi.fn(),
+    getAdminSystemIncident: vi.fn(),
+    exportAdminSystemIncident: vi.fn(),
     getWorkerAmbassadorSummary: vi.fn(),
     ensureWorkerReferralCode: vi.fn(),
     redeemAmbassadorMilestone: vi.fn(),

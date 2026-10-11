@@ -27,6 +27,7 @@
     "test:mobile": "node scripts/run.mjs run-package-script @nestscout/mobile test",
     "test:sandbox": "node scripts/run.mjs run-package-script @nestscout/sandbox test",
     "test:shared": "node scripts/run.mjs run-package-script @nestscout/shared test",
+    "test:system-monitor-worker": "vitest run --config packages/shared/system-monitor.vitest.config.mts",
     "type-check": "node scripts/run.mjs run-turbo type-check",
     "type-check:api": "node scripts/run.mjs run-package-script @nestscout/api type-check",
     "type-check:mobile": "node scripts/run.mjs run-package-script @nestscout/mobile type-check",
@@ -111,10 +112,13 @@
     "respectInlineDisables": true
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.0",
     "metro-runtime": "0.83.3",
     "react-doctor": "0.5.8",
     "turbo": "^2",
     "typescript": "5.9.3",
+    "vitest": "4.1.6",
+    "wrangler": "4.149.0",
     "zod": "^4.4.3"
   },
   "workspaces": [

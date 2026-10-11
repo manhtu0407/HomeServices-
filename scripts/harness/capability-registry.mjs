@@ -85,6 +85,7 @@ const SERVER_OWNED_USER_WRITE_ROUTE_KINDS = new Set([
   'notifications.deviceToken.unregister',
   'notifications.matchingDeliveryAck',
   'notifications.read',
+  'telemetry.mobileHealth.record',
 ])
 const repoPath = (value) => value.split(sep).join('/')
 const normalizeSource = (value) => value.replace(/\r\n/gu, '\n')

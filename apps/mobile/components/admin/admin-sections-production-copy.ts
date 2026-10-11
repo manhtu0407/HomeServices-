@@ -27,6 +27,7 @@ export type AdminProductionCapabilityId =
   | 'system-taxonomy'
   | 'system-learning-rules'
   | 'system-model-health'
+  | 'system-health-monitor'
 
 export type AdminProductionCapability = {
   id: AdminProductionCapabilityId
@@ -153,13 +154,14 @@ const viSections: readonly AdminProductionSectionPresentation[] = [
     startHere: 'Kiểm tra dữ liệu nền trước các công cụ Kael.',
     workstreams: [
       { id: 'foundations', title: 'Dữ liệu nền tảng', capabilityIds: ['system-price-baseline', 'system-taxonomy'] },
-      { id: 'kael', title: 'Kael & giám sát', capabilityIds: ['system-learning-rules', 'system-model-health'] },
+      { id: 'kael', title: 'Kael & giám sát', capabilityIds: ['system-learning-rules', 'system-model-health', 'system-health-monitor'] },
     ],
     capabilities: [
       { id: 'system-price-baseline', title: 'Dữ liệu giá tham chiếu', useWhen: 'Kiểm tra mức giá hệ thống đang dùng.', status: 'connected' },
       { id: 'system-taxonomy', title: 'Cấu trúc dịch vụ', useWhen: 'Đọc cấu trúc sáu dịch vụ và nhóm vấn đề Production.', status: 'connected' },
       { id: 'system-learning-rules', title: 'Quy tắc học của Kael', useWhen: 'Kiểm tra nguồn gốc và trạng thái quy tắc Kael.', status: 'connected' },
       { id: 'system-model-health', title: 'Tình trạng mô hình', useWhen: 'Điều tra chi phí, lỗi và dự phòng Kael đã ghi nhận.', status: 'connected' },
+      { id: 'system-health-monitor', title: 'Sức khỏe hệ thống', useWhen: 'Kiểm tra Backend, Kael, App, observer và hồ sơ sự cố.', status: 'partial' },
     ],
   },
 ]
@@ -229,13 +231,14 @@ const enSections: readonly AdminProductionSectionPresentation[] = [
     id: 'system', label: 'System and Kael', shortLabel: 'System', startHere: 'Review foundation data before Kael controls.',
     workstreams: [
       { id: 'foundations', title: 'System foundations', capabilityIds: ['system-price-baseline', 'system-taxonomy'] },
-      { id: 'kael', title: 'Kael and monitoring', capabilityIds: ['system-learning-rules', 'system-model-health'] },
+      { id: 'kael', title: 'Kael and monitoring', capabilityIds: ['system-learning-rules', 'system-model-health', 'system-health-monitor'] },
     ],
     capabilities: [
       { id: 'system-price-baseline', title: 'Price baselines', useWhen: 'Inspect the reference prices used by the system.', status: 'connected' },
       { id: 'system-taxonomy', title: 'Service taxonomy', useWhen: 'Read the six Production services and their problem groups.', status: 'connected' },
       { id: 'system-learning-rules', title: 'Kael learning rules', useWhen: 'Inspect the source and state of a Kael rule.', status: 'connected' },
       { id: 'system-model-health', title: 'Model health', useWhen: 'Investigate recorded Kael cost, failures and fallback use.', status: 'connected' },
+      { id: 'system-health-monitor', title: 'System health', useWhen: 'Review Backend, Kael, App, observer and incident evidence.', status: 'partial' },
     ],
   },
 ]

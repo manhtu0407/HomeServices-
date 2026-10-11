@@ -40,6 +40,8 @@ const TABLES_DIR = `${OUT_DIR}/tables`
 const BUCKET_RULES = [
   ['kael', (name) => name.startsWith('kael_')],
   ['harness', (name) => name.startsWith('harness_') || name.startsWith('stage1_')],
+  ['monitoring', (name) => name.startsWith('system_health_') || name.startsWith('system_mobile_health_') ||
+    name.startsWith('system_monitor_')],
   ['matching', (name) => name.startsWith('matching_') || name.startsWith('confirmation_') ||
     name.startsWith('synthetic_matching_') || name === 'workflow_outbox'],
   ['worker', (name) => name.startsWith('worker_')],

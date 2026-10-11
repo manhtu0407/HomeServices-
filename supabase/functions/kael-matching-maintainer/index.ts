@@ -11,6 +11,7 @@ import { reconcileMatchingPushReceipts } from "../mobile-api/_shared/platform/pu
 import { dispatchOfficialMatchPush } from "../mobile-api/_shared/domains/notification/official-match-push.ts";
 import { dispatchWorkerReplyNudges } from "../mobile-api/_shared/domains/notification/worker-reply-nudge.ts";
 import { dispatchProgramPushes } from "../mobile-api/_shared/domains/notification/program-push.ts";
+import { recordSystemMonitorWorkerCompletion } from "../_shared/system-monitor/worker-heartbeat.ts";
 
 const DEFAULT_LIMIT = 50;
 
@@ -43,10 +44,14 @@ Deno.serve(async (request) => {
     return json({ error: "UNAUTHORIZED" }, 401);
   }
 
+  const workerExecutionId = crypto.randomUUID();
+  const workerStartedAtMs = Date.now();
+  let workerReleaseId: string | null = null;
   try {
     const dbClient = client as unknown as DbClient;
     const maintainerId = `matching-maintainer:${Deno.env.get("DENO_DEPLOYMENT_ID") ?? crypto.randomUUID()}`;
     const release = readHarnessRuntimeRelease((name) => Deno.env.get(name));
+    workerReleaseId = release.releaseId;
     const environment = resolveHarnessEnvironment({
       url: supabaseUrl, environment: Deno.env.get("NESTSCOUT_ENVIRONMENT"),
     }).name;
@@ -115,6 +120,15 @@ Deno.serve(async (request) => {
         reply_nudges: replyNudges,
         program_pushes: programPushes,
       });
+      await recordSystemMonitorWorkerCompletion({
+        client,
+        jobName: "kael-matching-maintainer",
+        executionId: workerExecutionId,
+        startedAtMs: workerStartedAtMs,
+        completionStatus: officialMatchPushFailed ? "failed" : "succeeded",
+        reasonCode: officialMatchPushFailed ? "OFFICIAL_MATCH_PUSH_DISPATCH_FAILED" : undefined,
+        releaseId: workerReleaseId,
+      });
       return json({
         ok: !officialMatchPushFailed,
         official_match_push: officialMatchPush,
@@ -132,6 +146,15 @@ Deno.serve(async (request) => {
   } catch {
     console.error("kael matching maintainer failed", {
       reason_code: "reconcile_failed",
+    });
+    await recordSystemMonitorWorkerCompletion({
+      client,
+      jobName: "kael-matching-maintainer",
+      executionId: workerExecutionId,
+      startedAtMs: workerStartedAtMs,
+      completionStatus: "failed",
+      reasonCode: "MAINTAINER_FAILED",
+      releaseId: workerReleaseId,
     });
     return json({ error: "MAINTAINER_FAILED" }, 500);
   }
