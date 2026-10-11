@@ -59,7 +59,7 @@ gate; the other commands validate their own invocation and target.
 |---|---|
 | `pnpm docker:version:ensure` | Use Docker Desktop's stable updater once when available; otherwise prove the installed Compose supports this repo's required pull-policy flags. |
 | `pnpm db:local:doctor --profile lean` | One bounded 15-second diagnostic-only daemon probe plus informational available RAM, disk, and ports. RAM has no minimum; profile is only `lean` or `full`. |
-| `pnpm db:local:up --profile lean` | Run the one bounded `doctor` preflight, prepare the canonical migration inventory workdir, then start the lean profile. |
+| `pnpm db:local:up --profile lean` | Run the one bounded `doctor` preflight, safely refresh a stale canonical migration snapshot while preserving the prior snapshot, then start the lean profile. |
 | `pnpm db:local:down` | Stop the stack without deleting its database volume. **Always run this when finished.** |
 | `pnpm db:local:reset` | Replay the canonical migration inventory from zero with explicit `--local`, then `supabase/seed.sql`. |
 | `pnpm db:local:test` | Run the SQL verification scripts through psql in the db container. |
@@ -95,6 +95,9 @@ Do not repair ACLs/AppData or try a second brokered launch inside `kael-docker`.
   before startup. Do not run standalone `doctor` first in the same attempt; `up` would probe again.
   Standalone `doctor` is for a diagnostic-only attempt that stops after its report. Available RAM is informational for both profiles and never blocks the local-runtime lane. Daemon reachability,
   disk, and ports remain required checks; there is no RAM override or skip-doctor route.
+- **Preserve stale migration snapshots.** `up` validates the canonical workdir against the current
+  inventory; if stale, it builds and verifies a replacement, archives the old snapshot beside it,
+  and installs the replacement without deleting prior contents.
 - **Every `up` needs its `down`.** Nothing enforces this. Leaving the stack
   running overnight is a real cost.
 - **Never hand-edit `supabase/config.toml` solely to shape a profile.** Use `-x`; if a host port changes, update the runtime consumers and doctor in the same change.

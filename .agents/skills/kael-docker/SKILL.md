@@ -64,6 +64,9 @@ The local-runtime precondition is **gated and bounded**. Measure it only when La
 3. Report available RAM from the preflight for capacity context only. There is no minimum for either profile, no RAM
    override, and RAM alone must never block a local-runtime attempt.
 4. If `up` passes its daemon, disk, and port checks, continue the required runtime lane immediately.
+   `up` validates the canonical migration workdir against the current inventory. When stale, it
+   builds and verifies a replacement, archives the prior snapshot beside it, then installs the
+   replacement without deleting the old contents.
 5. If Tu explicitly asks to launch or restart Docker Desktop, do that at most once before invoking
    `up` (or standalone `doctor` for a diagnostic-only attempt). A plain **“Next Step”** does not
    authorize another launch, restart, or probe.

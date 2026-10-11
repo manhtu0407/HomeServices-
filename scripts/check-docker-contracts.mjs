@@ -197,9 +197,10 @@ export function dockerContractProblems(files) {
         /migration-inventory\.json/i,
         /local-migrations/i,
         /--reuse/i,
+        /--refresh-stale/i,
         /--workdir/i,
       ],
-      'up must prepare and start from the canonical local migration workdir',
+      'up must safely refresh a stale canonical migration workdir before starting',
     )
   }
 
