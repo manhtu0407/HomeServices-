@@ -130,7 +130,7 @@ describe('Admin Operations scope and support workspaces', () => {
       expect(selection.props.accessibilityState).toMatchObject({ selected: true })
       expect(selection).toHaveStyle({ backgroundColor: color.surface.base, borderColor: color.text.strong, borderWidth: 1.5, minHeight: 44 })
     })
-    expect(screen.getByLabelText('Tải lại')).toHaveStyle({ backgroundColor: color.surface.base, borderColor: color.surface.strokeStrong, minHeight: 44 })
+    expect(screen.queryByLabelText('Tải lại')).toBeNull()
     scope.unmount()
 
     const support = render(<AdminSupportCaseCenter actor={{ access_level: 'operator', capabilities: ['operations.read'] }} language="vi" onSessionMissing={jest.fn()} />)
@@ -143,14 +143,14 @@ describe('Admin Operations scope and support workspaces', () => {
       expect(selection.props.accessibilityState).toMatchObject({ selected: true })
       expect(selection).toHaveStyle({ backgroundColor: color.surface.base, borderColor: color.text.strong, borderWidth: 1.5, minHeight: 44 })
     })
-    expect(screen.getByLabelText('Tải lại')).toHaveStyle({ backgroundColor: color.surface.base, borderColor: color.surface.strokeStrong, minHeight: 44 })
+    expect(screen.queryByLabelText('Tải lại')).toBeNull()
     support.unmount()
   })
 
   it.each([
     ['vi', 'Tất cả', 'Tải lại'],
     ['en', 'All', 'Refresh'],
-  ] as const)('keeps every %s filter control reachable at 390 px and 200%% text scale', async (language, allLabel, refreshLabel) => {
+  ] as const)('keeps every %s filter control reachable at 390 px and 200%% text scale without manual reload', async (language, allLabel, refreshLabel) => {
     act(() => setWindowWidth(390, 844, 2))
     expect(ReactNative.Dimensions.get('window').fontScale).toBe(2)
 
@@ -158,7 +158,7 @@ describe('Admin Operations scope and support workspaces', () => {
     await waitFor(() => expect(adminControlService.listScopeChanges).toHaveBeenCalled())
     expect(screen.getAllByLabelText(allLabel)).toHaveLength(3)
     expect(screen.getAllByText(`✓ ${allLabel}`)).toHaveLength(3)
-    expect(screen.getByLabelText(refreshLabel)).toHaveStyle({ minHeight: 44 })
+    expect(screen.queryByLabelText(refreshLabel)).toBeNull()
     scope.unmount()
 
     jest.mocked(adminControlService.listSupportCases).mockClear()
@@ -166,7 +166,7 @@ describe('Admin Operations scope and support workspaces', () => {
     await waitFor(() => expect(adminControlService.listSupportCases).toHaveBeenCalled())
     expect(screen.getAllByLabelText(allLabel)).toHaveLength(6)
     expect(screen.getAllByText(`✓ ${allLabel}`)).toHaveLength(6)
-    expect(screen.getByLabelText(refreshLabel)).toHaveStyle({ minHeight: 44 })
+    expect(screen.queryByLabelText(refreshLabel)).toBeNull()
     support.unmount()
   })
 
@@ -205,6 +205,26 @@ describe('Admin Operations scope and support workspaces', () => {
     await screen.findByText('Phạm vi gốc và đề xuất')
     expect(adminControlService.getScopeChange).toHaveBeenCalledWith('scope-1')
     expect(adminControlService.updateSupportCasePreparation).not.toHaveBeenCalled()
+  })
+
+  it('automatically retries a thrown scope list read without a manual reload button', async () => {
+    jest.mocked(adminControlService.listScopeChanges).mockRejectedValueOnce(new Error('PRIVATE_TRANSPORT_FAILURE'))
+    render(<AdminScopeChangeMonitor language="vi" onSessionMissing={jest.fn()} />)
+
+    expect(await screen.findByText('Không thể tải danh sách đổi phạm vi. Hệ thống đang tự cập nhật lại.')).toBeTruthy()
+    await waitFor(() => expect(adminControlService.listScopeChanges).toHaveBeenCalledTimes(2), { timeout: 4_000 })
+    expect(await screen.findByLabelText('NS-SCOPE-1. Chờ khách quyết định')).toBeTruthy()
+    expect(screen.queryByLabelText('Tải lại')).toBeNull()
+  })
+
+  it('automatically retries a thrown support list read without a manual reload button', async () => {
+    jest.mocked(adminControlService.listSupportCases).mockRejectedValueOnce(new Error('PRIVATE_TRANSPORT_FAILURE'))
+    render(<AdminSupportCaseCenter actor={{ access_level: 'operator', capabilities: ['operations.read'] }} language="vi" onSessionMissing={jest.fn()} />)
+
+    expect(await screen.findByText('Không thể tải danh sách ca hỗ trợ. Hệ thống đang tự cập nhật lại.')).toBeTruthy()
+    await waitFor(() => expect(adminControlService.listSupportCases).toHaveBeenCalledTimes(2), { timeout: 4_000 })
+    expect(await screen.findByLabelText('Tranh chấp. NS-JOB-1. Đang mở')).toBeTruthy()
+    expect(screen.queryByLabelText('Tải lại')).toBeNull()
   })
 
   it.each([

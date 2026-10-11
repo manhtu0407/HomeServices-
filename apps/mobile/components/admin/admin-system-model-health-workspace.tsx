@@ -56,10 +56,10 @@ export function AdminSystemModelHealthWorkspace({ language }: { language: AppLan
     contentContainerStyle={adminSystemStyles.listContent}
     data={list.records}
     keyExtractor={(item) => item.detail_key}
-    ListEmptyComponent={list.loading ? <AdminSystemState label={labels.loading} loading /> : list.error ? <AdminSystemState actionLabel={labels.retry} label={list.error} onAction={list.retry} /> : <AdminSystemState compact label={view === 'costs' ? labels.noCosts : view === 'incidents' ? labels.noIncidents : labels.empty} />}
+    ListEmptyComponent={list.loading ? <AdminSystemState label={labels.loading} loading /> : list.error ? <AdminSystemState label={list.error} /> : <AdminSystemState compact label={view === 'costs' ? labels.noCosts : view === 'incidents' ? labels.noIncidents : labels.empty} />}
     ListFooterComponent={list.hasMore ? <View style={styles.loadMore}><FinanceSecondaryButton disabled={list.loadingMore} label={list.loadingMore ? labels.loadingMore : labels.loadMore} loading={list.loadingMore} onPress={list.loadMore} /></View> : null}
     ListHeaderComponent={<View style={styles.header}>
-      <AdminSystemToolbar language={language} onChangeQuery={setQuery} onRefresh={list.refresh} query={query} refreshing={list.refreshing} searchPlaceholder={labels.searchPlaceholder} />
+      <AdminSystemToolbar language={language} onChangeQuery={setQuery} query={query} searchPlaceholder={labels.searchPlaceholder} />
       <View style={adminSystemStyles.filterRow}>{(['overview', 'incidents', 'costs'] as const).map((value) => <FinanceChoiceChip key={value} label={labels.view[value]} onPress={() => { setSelectedKey(null); setView(value) }} selected={view === value} />)}</View>
       <AdminSystemSummary generatedAt={list.generatedAt} language={language} quality={list.dataQuality}>
         <AdminSystemMetric label={labels.configured} value={summary?.configured_count ?? labels.notRecorded} />
@@ -70,7 +70,7 @@ export function AdminSystemModelHealthWorkspace({ language }: { language: AppLan
       {view === 'overview' && inventory.length > 0 ? <View style={styles.inventory}><AdminText textRole="headline" style={styles.strong}>{labels.inventory}</AdminText>{inventory.map((item) => <AdminSystemField key={item.detail_key} label={`${item.provider} · ${item.model}`} value={purposeLabel(item.purpose, language)} />)}</View> : null}
       {view === 'incidents' ? <View style={styles.filterGroup}><AdminText textRole="caption1" style={styles.meta}>{labels.circuit}</AdminText><View style={adminSystemStyles.filterRow}>{(['all', 'open', 'closed'] as const).map((value) => <FinanceChoiceChip key={value} label={labels.circuitValue[value]} onPress={() => setCircuit(value)} selected={circuit === value} />)}</View></View> : null}
       {summary ? <View style={styles.inlineMeta}><AdminSystemField label={labels.openCircuits} numeric value={summary.open_circuit_count === null ? labels.notRecorded : String(summary.open_circuit_count)} /><AdminSystemField label={labels.totalCost} numeric value={summary.total_cost_usd === null ? labels.noCostRecorded : `${summary.total_cost_usd} USD`} /></View> : null}
-      {list.error && list.records.length > 0 ? <AdminSystemState actionLabel={labels.retry} compact label={list.error} onAction={list.retry} /> : null}
+      {list.error && list.records.length > 0 ? <AdminSystemState compact label={list.error} /> : null}
     </View>}
     renderItem={renderRecord}
     showsVerticalScrollIndicator={false}
@@ -89,7 +89,7 @@ function ModelHealthDetail({ detail, language, onBack }: {
   const labels = copy[language]
   const record = detail.data?.record
   if (detail.loading && !record) return <AdminSystemState label={labels.loadingDetail} loading />
-  if (detail.error && !record) return <AdminSystemState actionLabel={labels.retry} label={detail.error} onAction={detail.retry} />
+  if (detail.error && !record) return <AdminSystemState label={detail.error} />
   if (!record || !detail.data) return <AdminSystemState label={labels.chooseRecord} />
   return <AdminSystemDetailScroll>
     <AdminSystemDetailHeader language={language} onBack={onBack} subtitle={`${record.model || labels.modelNotRecorded} · ${purposeLabel(record.purpose, language)}`} title={record.provider} />
@@ -98,7 +98,7 @@ function ModelHealthDetail({ detail, language, onBack }: {
     <Section title={labels.circuitAndCost}><AdminSystemField label={labels.circuit} value={record.circuit_state === 'open' ? labels.circuitValue.open : record.circuit_state === 'closed' ? labels.circuitValue.closed : labels.notRecorded} /><AdminSystemField label={labels.totalCost} numeric value={record.total_cost_usd === null ? labels.noCostRecorded : `${record.total_cost_usd.toFixed(6)} USD`} /><AdminSystemField label={labels.failureKind} value={record.failure_kind || labels.notRecorded} /></Section>
     <Section title={labels.safeEvents}>{detail.data.history.length === 0 ? <AdminSystemState compact label={labels.noSafeEvents} /> : detail.data.history.map((entry) => <AdminSystemField key={safeEventKey(entry)} label={String(entry.code ?? entry.kind ?? labels.event)} value={adminSystemFormatDate(typeof entry.recorded_at === 'string' ? entry.recorded_at : typeof entry.updated_at === 'string' ? entry.updated_at : null, language)} />)}</Section>
     <AdminText textRole="footnote" style={styles.secondary}>{labels.readOnly}</AdminText>
-    {detail.error ? <AdminSystemState actionLabel={labels.retry} compact label={detail.error} onAction={detail.retry} /> : null}
+    {detail.error ? <AdminSystemState compact label={detail.error} /> : null}
   </AdminSystemDetailScroll>
 }
 
@@ -125,13 +125,13 @@ const copy = {
     noIncidents: 'Không ghi nhận lỗi, lần chuyển phương án dự phòng hoặc lần ngắt kết nối bảo vệ trong kỳ.',
     noSafeEvents: 'Không ghi nhận mã lỗi an toàn hoặc thay đổi trạng thái ngắt kết nối bảo vệ.',
     notRecorded: 'Chưa ghi nhận', openCircuits: 'Kết nối đang ngắt để bảo vệ', p95Latency: 'Độ trễ p95',
-    readOnly: 'Màn này chỉ đọc và không gọi thử nhà cung cấp khi tải lại.', retry: 'Thử lại',
+    readOnly: 'Màn này chỉ đọc dữ liệu đã ghi nhận, không gọi thử nhà cung cấp.',
     safeEvents: 'Sự kiện an toàn', searchPlaceholder: 'Tìm nhà cung cấp, mô hình hoặc mục đích',
     successes: 'Thành công', totalCost: 'Chi phí đã ghi nhận', usage: 'Lượt gọi',
     view: { overview: 'Tổng quan', incidents: 'Sự cố', costs: 'Chi phí' },
   },
   en: {
-    averageLatency: 'Average latency', bucket: 'Data day', calls: 'Calls', chooseRecord: 'Select a data row to inspect scrubbed metrics and incidents.', circuit: 'Circuit', circuitAndCost: 'Circuit and cost', circuitValue: { all: 'All', open: 'Open', closed: 'Closed' }, configured: 'Configured models', detailError: 'Unable to load model health details.', empty: 'No calls are recorded for this scope.', event: 'Event', failureKind: 'Failure kind', failures: 'Failures', fallbacks: 'Fallbacks', inventory: 'Configured models and providers', latency: 'Latency', loadError: 'Unable to load model health.', loading: 'Loading model health…', loadingDetail: 'Loading model details…', loadingMore: 'Loading…', loadMore: 'Load more', modelNotRecorded: 'Model not recorded', noCostRecorded: 'Cost not recorded', noCosts: 'No costs are recorded for this period.', noIncidents: 'No errors, fallbacks, or open circuits are recorded for this period.', noSafeEvents: 'No safe error codes or circuit changes are recorded.', notRecorded: 'Not recorded', openCircuits: 'Open circuits', p95Latency: 'p95 latency', readOnly: 'This workspace is read-only and does not probe providers on refresh.', retry: 'Retry', safeEvents: 'Safe events', searchPlaceholder: 'Search provider, model, or purpose', successes: 'Successes', totalCost: 'Recorded cost', usage: 'Usage', view: { overview: 'Overview', incidents: 'Incidents', costs: 'Costs' },
+    averageLatency: 'Average latency', bucket: 'Data day', calls: 'Calls', chooseRecord: 'Select a data row to inspect scrubbed metrics and incidents.', circuit: 'Circuit', circuitAndCost: 'Circuit and cost', circuitValue: { all: 'All', open: 'Open', closed: 'Closed' }, configured: 'Configured models', detailError: 'Unable to load model health details.', empty: 'No calls are recorded for this scope.', event: 'Event', failureKind: 'Failure kind', failures: 'Failures', fallbacks: 'Fallbacks', inventory: 'Configured models and providers', latency: 'Latency', loadError: 'Unable to load model health.', loading: 'Loading model health…', loadingDetail: 'Loading model details…', loadingMore: 'Loading…', loadMore: 'Load more', modelNotRecorded: 'Model not recorded', noCostRecorded: 'Cost not recorded', noCosts: 'No costs are recorded for this period.', noIncidents: 'No errors, fallbacks, or open circuits are recorded for this period.', noSafeEvents: 'No safe error codes or circuit changes are recorded.', notRecorded: 'Not recorded', openCircuits: 'Open circuits', p95Latency: 'p95 latency', readOnly: 'This workspace only reads recorded data and does not probe providers.', safeEvents: 'Safe events', searchPlaceholder: 'Search provider, model, or purpose', successes: 'Successes', totalCost: 'Recorded cost', usage: 'Usage', view: { overview: 'Overview', incidents: 'Incidents', costs: 'Costs' },
   },
 } as const
 

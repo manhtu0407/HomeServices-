@@ -108,18 +108,17 @@ const approved = { success: true as const, status: 200, data: {
   verification_status: 'approved' as const, decided_at: '2026-09-10T01:00:00Z',
 } }
 
-it('discards a detail retry that finishes after a different Worker is selected', async () => {
-  const retry = deferred<Awaited<ReturnType<typeof adminControlService.getWorkerReviewDetail>>>()
+it('discards a detail read that finishes after a different Worker is selected', async () => {
+  const pending = deferred<Awaited<ReturnType<typeof adminControlService.getWorkerReviewDetail>>>()
   jest.mocked(adminControlService.getWorkerReviewDetail)
-    .mockResolvedValueOnce({ success: false, status: 503, code: 'UNAVAILABLE', error: 'unavailable' })
-    .mockReturnValueOnce(retry.promise)
+    .mockReturnValueOnce(pending.promise)
     .mockResolvedValueOnce({ success: true, status: 200, data: nextDetail })
   const options = props()
   const view = render(<AdminWorkerReviewModal {...options} />)
-  fireEvent.press(await screen.findByText('Thử lại'))
+  await waitFor(() => expect(adminControlService.getWorkerReviewDetail).toHaveBeenCalledTimes(1))
   view.rerender(<AdminWorkerReviewModal {...options} worker={nextWorker} />)
   expect(await screen.findByText('NEXT_BANK')).toBeTruthy()
-  await act(async () => retry.resolve({ success: true, status: 200, data: { ...detail, profile: { ...detail.profile, bank_name: 'OLD_PRIVATE_BANK' } } }))
+  await act(async () => pending.resolve({ success: true, status: 200, data: { ...detail, profile: { ...detail.profile, bank_name: 'OLD_PRIVATE_BANK' } } }))
   expect(screen.queryByText('OLD_PRIVATE_BANK')).toBeNull()
   expect(screen.getByText('NEXT_BANK')).toBeTruthy()
 })
@@ -127,9 +126,10 @@ it('discards a detail retry that finishes after a different Worker is selected',
 it('rejects mismatched detail identity before rendering private fields', async () => {
   jest.mocked(adminControlService.getWorkerReviewDetail).mockResolvedValue({ success: true, status: 200, data: nextDetail })
   render(<AdminWorkerReviewModal {...props()} />)
-  expect(await screen.findByRole('button', { name: 'Thử lại' })).toBeTruthy()
+  expect(await screen.findByText('Chưa tải được đầy đủ hồ sơ thợ. Hệ thống đang tự cập nhật lại.')).toBeTruthy()
   expect(screen.queryByText('NEXT_BANK')).toBeNull()
   expect(screen.queryByText('Xác minh hồ sơ')).toBeNull()
+  expect(screen.queryByText('Tải lại')).toBeNull()
 })
 
 const finance: AdminWorkerFinanceSnapshotResponse = {
@@ -166,11 +166,11 @@ it('retains known success when refreshing the list fails and retries only the re
   jest.mocked(options.onRefresh).mockRejectedValueOnce(new Error('PRIVATE_REFRESH')).mockResolvedValueOnce(undefined)
   render(<AdminWorkerReviewModal {...options} />)
   fireEvent.press(await screen.findByText('Xác minh hồ sơ'))
-  expect(await screen.findByText('Quyết định đã được lưu, nhưng chưa tải lại được danh sách.')).toBeTruthy()
+  expect(await screen.findByText('Quyết định đã được lưu. Danh sách đang tự cập nhật lại.')).toBeTruthy()
   expect(screen.queryByText(/Chưa xác định được kết quả/)).toBeNull()
   expect(screen.queryByRole('button', { name: 'Xác minh hồ sơ' })).toBeNull()
-  fireEvent.press(screen.getByRole('button', { name: 'Tải lại danh sách' }))
-  await waitFor(() => expect(options.onClose).toHaveBeenCalledTimes(1))
+  expect(screen.queryByText('Tải lại danh sách')).toBeNull()
+  await waitFor(() => expect(options.onClose).toHaveBeenCalledTimes(1), { timeout: 4_000 })
   expect(adminControlService.decideWorkerProfile).toHaveBeenCalledTimes(1)
   expect(options.onRefresh).toHaveBeenCalledTimes(2)
 })

@@ -7,9 +7,6 @@ type WorkerReviewCopy = {
     close: string
     openDocument: string
     requestChanges: string
-    retry: string
-    reload: string
-    reloadList: string
     reconcile: string
     saving: string
   }
@@ -60,13 +57,13 @@ type WorkerReviewCopy = {
 
 export const workerReviewCopy: Record<AppLanguage, WorkerReviewCopy> = {
   vi: {
-    actions: { approveAccess: 'Duyệt vào khu vực thợ', approveProfile: 'Xác minh hồ sơ', close: 'Đóng', openDocument: 'Mở ảnh', requestChanges: 'Yêu cầu bổ sung', retry: 'Thử lại', reload: 'Tải lại hồ sơ', reloadList: 'Tải lại danh sách', reconcile: 'Đối soát quyết định', saving: 'Đang lưu...' },
-    error: 'Không thể tải đầy đủ hồ sơ thợ. Vui lòng thử lại.',
-    staleReview: 'Hồ sơ đã thay đổi hoặc thiếu phiên bản xác minh. Hãy tải lại và kiểm tra trước khi quyết định.',
+    actions: { approveAccess: 'Duyệt vào khu vực thợ', approveProfile: 'Xác minh hồ sơ', close: 'Đóng', openDocument: 'Mở ảnh', requestChanges: 'Yêu cầu bổ sung', reconcile: 'Đối soát quyết định', saving: 'Đang lưu...' },
+    error: 'Chưa tải được đầy đủ hồ sơ thợ. Hệ thống đang tự cập nhật lại.',
+    staleReview: 'Hồ sơ đã thay đổi hoặc thiếu phiên bản xác minh. Hãy kiểm tra hồ sơ hiện tại trước khi quyết định.',
     unknownOutcome: 'Chưa xác định được kết quả. Thử lại cùng quyết định để đối soát.',
-    decisionError: 'Không thể ghi nhận quyết định này. Hãy tải lại hồ sơ và kiểm tra quyền xác minh.',
-    savedRefreshError: 'Quyết định đã được lưu, nhưng chưa tải lại được danh sách.',
-    financeError: 'Chưa tải được thông tin tài chính. Vui lòng mở lại hồ sơ để thử lại.',
+    decisionError: 'Không thể ghi nhận quyết định này. Hãy kiểm tra quyền xác minh rồi thử lại.',
+    savedRefreshError: 'Quyết định đã được lưu. Danh sách đang tự cập nhật lại.',
+    financeError: 'Chưa tải được thông tin tài chính. Hệ thống đang tự cập nhật lại.',
     supportCode: 'Mã hỗ trợ',
     decision: { approve: 'Đã duyệt', request_changes: 'Yêu cầu bổ sung', reject: 'Từ chối' },
     unknownReviewer: 'Chưa ghi nhận người duyệt',
@@ -88,13 +85,13 @@ export const workerReviewCopy: Record<AppLanguage, WorkerReviewCopy> = {
     success: 'Quyết định hồ sơ đã được lưu.',
   },
   en: {
-    actions: { approveAccess: 'Grant Worker access', approveProfile: 'Verify profile', close: 'Close', openDocument: 'Open image', requestChanges: 'Request changes', retry: 'Try again', reload: 'Reload profile', reloadList: 'Reload list', reconcile: 'Reconcile decision', saving: 'Saving...' },
-    error: 'The complete worker profile could not be loaded. Please try again.',
-    staleReview: 'The profile changed or its review version is missing. Reload and inspect it before deciding.',
+    actions: { approveAccess: 'Grant Worker access', approveProfile: 'Verify profile', close: 'Close', openDocument: 'Open image', requestChanges: 'Request changes', reconcile: 'Reconcile decision', saving: 'Saving...' },
+    error: 'The complete worker profile is unavailable. The system is refreshing automatically.',
+    staleReview: 'The profile changed or its review version is missing. Inspect the current profile before deciding.',
     unknownOutcome: 'The outcome is not confirmed. Retry the same decision to reconcile.',
-    decisionError: 'This decision could not be recorded. Reload the profile and check review access.',
-    savedRefreshError: 'The decision was saved, but the list could not be refreshed.',
-    financeError: 'Finance data could not be loaded. Reopen the profile to try again.',
+    decisionError: 'This decision could not be recorded. Check review access and try again.',
+    savedRefreshError: 'The decision was saved. The list is refreshing automatically.',
+    financeError: 'Finance data is unavailable. The system is refreshing automatically.',
     supportCode: 'Support code',
     decision: { approve: 'Approved', request_changes: 'Changes requested', reject: 'Rejected' },
     unknownReviewer: 'Reviewer not recorded',

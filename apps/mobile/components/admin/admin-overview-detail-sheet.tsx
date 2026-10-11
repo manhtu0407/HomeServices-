@@ -29,7 +29,6 @@ export function AdminOverviewDetailSheet({
   language,
   loading,
   onClose,
-  onRetry,
   onViewAll,
   permissionLimited,
   reduceMotion,
@@ -42,7 +41,6 @@ export function AdminOverviewDetailSheet({
   language: AppLanguage
   loading: boolean
   onClose: () => void
-  onRetry: () => void
   onViewAll?: () => void
   permissionLimited: boolean
   reduceMotion: boolean
@@ -100,7 +98,6 @@ export function AdminOverviewDetailSheet({
           </View> : null}
           {error ? <View accessibilityRole="alert" style={styles.feedbackRow} testID="admin-overview-detail-error">
             <AdminText textRole="subheadline" style={[styles.feedbackText, { color: tokens.text }]}>{error}</AdminText>
-            <KaelButton label={copy.retry} onPress={onRetry} testID="admin-overview-detail-retry" variant="secondary" />
           </View> : null}
 
           {detail && !loading && !error ? <>

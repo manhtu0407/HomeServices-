@@ -12,6 +12,7 @@ import { color } from '@/design/theme'
 import type { ApiResult } from '@/lib/api'
 import { useAppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
+import { AdminDataSyncProvider, useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { adminControlService } from '@/lib/services'
 import type {
   AdminViewActor,
@@ -102,6 +103,16 @@ function isMissingAdminSession(result: ApiResult<unknown>) {
 }
 
 export function AdminSections() {
+  const { role, session } = useAuth()
+  const localVisualAuditSession = session?.user.app_metadata?.provider === 'local-visual-audit'
+  const ownerId = session?.user.id ?? null
+  const enabled = Boolean(ownerId && !localVisualAuditSession && (role === 'admin' || role === 'admin_operator'))
+  return <AdminDataSyncProvider enabled={enabled} key={ownerId ?? 'anonymous-admin'} ownerId={ownerId}>
+    <AdminSectionsContent />
+  </AdminDataSyncProvider>
+}
+
+function AdminSectionsContent() {
   const layoutProps = useAdminSectionsController()
   return <AdminSectionsLayout {...layoutProps} />
 }
@@ -135,14 +146,22 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
   const backgroundLoads = useMemo(() => new Set<AdminSectionTab>(), [])
   const activeSectionRef = useRef(state.activeTab)
   const actorRef = useRef(state.actor)
+  const transactionDetailRequestId = useRef(0)
   const { activeTab, actor, debouncedSearchQuery, overviewDetailKey, searchQuery, signingOut, transactionPage, workerFilter, workerPage } = state
   const patch = useCallback((next: Partial<AdminSectionsState>) => {
     dispatch({ type: 'patch', patch: next })
   }, [])
   const openSection = useCallback((section: AdminSectionTab) => {
+    transactionDetailRequestId.current += 1
     patch({
       activeTab: section,
       error: null,
+      readError: null,
+      readFailed: false,
+      detailReadError: null,
+      detailReadFailed: false,
+      selectedTransaction: null,
+      transactionDetailJobId: null,
       overviewDetailKey: null,
       selectedCapabilityId: null,
       transactionPage: section === 'operations' ? 1 : state.transactionPage,
@@ -154,6 +173,7 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
     patch({ overviewDetailKey: null, selectedCapabilityId: capability.id })
   }, [patch])
   const openOverviewTarget = useCallback((target: AdminOverviewOpenTarget) => {
+    transactionDetailRequestId.current += 1
     const targetWorkerFilter: WorkerFilter = target.detailKey === 'worker_applications'
       ? 'pending_access'
       : target.detailKey === 'workers_in_verification'
@@ -162,6 +182,12 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
     patch({
       activeTab: target.section,
       error: null,
+      readError: null,
+      readFailed: false,
+      detailReadError: null,
+      detailReadFailed: false,
+      selectedTransaction: null,
+      transactionDetailJobId: null,
       overviewDetailKey: target.detailKey,
       searchQuery: '',
       debouncedSearchQuery: '',
@@ -190,19 +216,17 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
     if (!hasAuthenticatedAdminSession) router.replace(loginRoute as never)
   }, [hasAuthenticatedAdminSession, loginRoute, router])
 
-  const loadData = useCallback(async ({ refreshActor }: { refreshActor?: boolean } = {}) => {
+  const loadData = useCallback(async ({ force = true, refreshActor }: { force?: boolean; refreshActor?: boolean } = {}) => {
     const requestedSection = activeTab
     const isInitialLoad = !actorRef.current
-    if (!isInitialLoad && backgroundLoads.has(requestedSection)) return
-    if (!isInitialLoad) backgroundLoads.add(requestedSection)
+    if (backgroundLoads.has(requestedSection) && !force) return
+    backgroundLoads.add(requestedSection)
     const requestId = (loadRequestIds[requestedSection] ?? 0) + 1
     loadRequestIds[requestedSection] = requestId
     patch({
       ...(isInitialLoad
         ? { loading: true, refreshing: false }
         : { loading: false, refreshing: true }),
-      error: null,
-      ...(requestedSection === 'team' ? { teamError: null } : {}),
     })
     try {
       let currentActor = actorRef.current
@@ -212,12 +236,12 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
         if (requestId !== loadRequestIds[requestedSection] || activeSectionRef.current !== requestedSection) return
         if (!actorResult.success && isMissingAdminSession(actorResult)) {
           actorRef.current = null
-          patch({ actor: null, operations: null, operationsError: actorResult.error })
+          patch({ actor: null, operations: null, operationsError: null, readError: null, readFailed: false })
           router.replace(loginRoute as never)
           return
         }
         if (!actorResult.success) {
-          patch({ error: actorResult.error })
+          patch({ readError: copy.errors.load, readFailed: true })
           return
         }
         currentActor = withFinanceReadBaseline(actorResult.data)
@@ -229,7 +253,7 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
         ? requestedSection
         : visibleSections[0]?.id
       if (!effectiveSection) {
-        patch({ actor: currentActor, error: copy.errors.load })
+        patch({ actor: currentActor, readError: copy.errors.load, readFailed: true })
         return
       }
       if (effectiveSection !== requestedSection) {
@@ -249,11 +273,12 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
         sectionResult = result
         if (requestId !== loadRequestIds[requestedSection] || activeSectionRef.current !== requestedSection) return
         patch(result.success ? {
-          error: null,
+          readError: null,
+          readFailed: false,
           workers: result.data.applications,
           workersHasMore: result.data.has_more,
           workersTotalCount: result.data.total_count,
-        } : { error: copy.errors.load })
+        } : { readError: copy.errors.load, readFailed: true })
       } else if (effectiveSection === 'operations') {
         const [operationsResult, result] = await Promise.all([
           adminControlService.getOperations(),
@@ -271,13 +296,14 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
         patch({
           ...(operationsResult.success
             ? { operations: operationsResult.data, operationsError: null }
-            : { operationsError: operationsResult.error }),
+            : { operationsError: isMissingAdminSession(operationsResult) ? null : operationsResult.error }),
           ...(result.success ? {
-          error: null,
+          readError: null,
+          readFailed: !operationsResult.success,
           transactions: result.data.transactions,
           transactionsHasMore: result.data.has_more,
           transactionsTotalCount: result.data.total_count,
-          } : { error: copy.errors.load }),
+          } : { readError: copy.errors.load, readFailed: true }),
         })
       } else if (effectiveSection === 'team') {
         const result = await adminControlService.listSubAdmins()
@@ -287,14 +313,24 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
           managerNominations: result.data.nominations,
           pendingAdminAccounts: result.data.pending_accounts ?? [],
           subAdmins: result.data.members,
+          readError: null,
+          readFailed: false,
           teamError: null,
-        } : { teamError: result.error })
+        } : { teamError: result.error, readFailed: true })
       }
 
       if (sectionResult && !sectionResult.success && isMissingAdminSession(sectionResult)) {
-        patch({ actor: null, operations: null, operationsError: sectionResult.error })
+        patch({ actor: null, operations: null, operationsError: null, readError: null, readFailed: false })
         router.replace(loginRoute as never)
       }
+    } catch {
+      if (requestId !== loadRequestIds[requestedSection] || activeSectionRef.current !== requestedSection) return
+      patch({
+        readError: copy.errors.load,
+        readFailed: true,
+        ...(requestedSection === 'operations' ? { operationsError: copy.errors.load } : {}),
+        ...(requestedSection === 'team' ? { teamError: copy.errors.load } : {}),
+      })
     } finally {
       if (requestId === loadRequestIds[requestedSection]) {
         backgroundLoads.delete(requestedSection)
@@ -302,6 +338,86 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
       }
     }
   }, [activeTab, backgroundLoads, copy.errors.load, debouncedSearchQuery, loadRequestIds, loginRoute, overviewDetailKey, patch, router, transactionPage, workerFilter, workerPage])
+  const openTransaction = useCallback(async (transaction: AdminViewTransactionSummary) => {
+    const requestId = transactionDetailRequestId.current + 1
+    transactionDetailRequestId.current = requestId
+    patch({
+      detailLoading: true,
+      detailReadError: null,
+      detailReadFailed: false,
+      selectedTransaction: null,
+      transactionDetailJobId: transaction.job_id,
+    })
+    try {
+      // The post-read identity guard prevents an old detail from replacing a newer selection.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const result = await adminControlService.getTransaction(transaction.job_id)
+      if (requestId !== transactionDetailRequestId.current) return
+      if (!result.success || result.data.transaction.job_id !== transaction.job_id) {
+        patch({ detailLoading: false, detailReadError: copy.errors.load, detailReadFailed: true })
+        return
+      }
+      patch({
+        detailLoading: false,
+        detailReadError: null,
+        detailReadFailed: false,
+        selectedTransaction: result.data,
+      })
+    } catch {
+      if (requestId !== transactionDetailRequestId.current) return
+      patch({ detailLoading: false, detailReadError: copy.errors.load, detailReadFailed: true })
+    }
+  }, [copy.errors.load, patch])
+
+  const refreshSelectedTransaction = useCallback(async () => {
+    const jobId = state.transactionDetailJobId
+    if (!jobId) return
+    const requestId = transactionDetailRequestId.current + 1
+    transactionDetailRequestId.current = requestId
+    try {
+      // The post-read identity guard prevents an old detail from replacing a newer selection.
+      // react-doctor-disable-next-line react-doctor/async-defer-await
+      const result = await adminControlService.getTransaction(jobId)
+      if (requestId !== transactionDetailRequestId.current) return
+      if (!result.success || result.data.transaction.job_id !== jobId) {
+        patch({ detailReadError: copy.errors.load, detailReadFailed: true })
+        return
+      }
+      patch({
+        selectedTransaction: result.data,
+        detailReadError: null,
+        detailReadFailed: false,
+      })
+    } catch {
+      if (requestId !== transactionDetailRequestId.current) return
+      patch({ detailReadError: copy.errors.load, detailReadFailed: true })
+    }
+  }, [copy.errors.load, patch, state.transactionDetailJobId])
+
+  const closeTransaction = useCallback(() => {
+    transactionDetailRequestId.current += 1
+    patch({
+      detailLoading: false,
+      detailReadError: null,
+      detailReadFailed: false,
+      selectedTransaction: null,
+      transactionDetailJobId: null,
+    })
+  }, [patch])
+
+  const refreshAdminSection = useCallback(async () => {
+    await Promise.all([
+      loadData(),
+      refreshSelectedTransaction(),
+    ])
+  }, [loadData, refreshSelectedTransaction])
+
+  useAdminSectionAutoRefresh(
+    activeTab,
+    refreshAdminSection,
+    Boolean(state.readFailed || state.operationsError || state.teamError || state.detailReadFailed),
+    refreshAdminSection,
+  )
   const startAdminDataLoad = useEffectEvent(() => {
     void loadData()
   })
@@ -350,14 +466,6 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
     }
     patch({ actionPending: null })
   }, [copy.errors.action, copy.errors.reasonRequired, copy.notices.approved, copy.notices.changesRequested, copy.notices.rejected, loadData, patch])
-
-  const openTransaction = useCallback(async (transaction: AdminViewTransactionSummary) => {
-    patch({ detailLoading: true, error: null })
-    const result = await adminControlService.getTransaction(transaction.job_id)
-    patch(result.success
-      ? { detailLoading: false, selectedTransaction: result.data }
-      : { detailLoading: false, error: copy.errors.load })
-  }, [copy.errors.load, patch])
 
   const completeSignOut = useCallback(async () => {
     if (signingOut) return
@@ -411,7 +519,7 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
   }, [copy.errors.action, language, patch])
 
   return {
-    actions: { commitDecision, commitWorkerAccess, completeSignOut, handleSessionMissing, loadData, openCapability, openOverviewTarget, openSection, openTransaction, patch },
+    actions: { closeTransaction, commitDecision, commitWorkerAccess, completeSignOut, handleSessionMissing, loadData, openCapability, openOverviewTarget, openSection, openTransaction, patch },
     copy,
     financeView,
     formatters,
@@ -425,11 +533,12 @@ function useAdminSectionsController(): AdminSectionsLayoutProps {
 
 type AdminSectionsLayoutProps = {
   actions: {
+    closeTransaction: () => void
     commitDecision: (worker: AdminViewWorkerApplicationSummary, decision: AdminViewWorkerApplicationDecisionInput['decision'], reason?: string) => Promise<void>
     commitWorkerAccess: (worker: AdminViewWorkerApplicationSummary, action: 'suspend' | 'reinstate', reason: string) => Promise<void>
     completeSignOut: () => Promise<void>
     handleSessionMissing: () => void
-    loadData: () => Promise<void>
+    loadData: (options?: { force?: boolean; refreshActor?: boolean }) => Promise<void>
     openCapability: (capability: AdminProductionCapability) => void
     openOverviewTarget: (target: AdminOverviewOpenTarget) => void
     openSection: (section: AdminSectionTab) => void
@@ -472,8 +581,10 @@ function AdminSectionsLayout({ actions, copy, financeView, formatters, language,
     workerAccessModal,
     workerAccessReason,
     refreshing,
+    readError,
+    detailReadError,
   } = state
-  const { commitDecision, commitWorkerAccess, completeSignOut, handleSessionMissing, loadData, openCapability, openOverviewTarget, openSection, patch } = actions
+  const { closeTransaction, commitDecision, commitWorkerAccess, completeSignOut, handleSessionMissing, loadData, openCapability, openOverviewTarget, openSection, patch } = actions
   const { disputeStatusLabel, formatCurrency, formatDate, jobStatusLabel, paymentProviderLabel, serviceLabel, statusLabel } = formatters
   const visibleSections = useMemo(() => visibleAdminProductionSections(actor), [actor])
   const activeTab = visibleSections.some((section) => section.id === requestedActiveTab)
@@ -514,6 +625,7 @@ function AdminSectionsLayout({ actions, copy, financeView, formatters, language,
     >
       <View style={styles.stack}>
         {!actor && loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.loadingText}>{copy.loading}</AdminText></View> : null}
+        {!actor && readError ? <AdminDataFeedback error={readError} notice={null} /> : null}
         {actor && navigation.length === 0 ? <EmptyState body={copy.errors.load} /> : null}
         {actor ? activeTab === 'overview'
           ? <AdminOverviewDashboard financeRefreshVersion={financeRefreshVersion} language={language} onOpenTarget={openOverviewTarget} onSessionMissing={handleSessionMissing} />
@@ -525,6 +637,7 @@ function AdminSectionsLayout({ actions, copy, financeView, formatters, language,
             section={sectionPresentation}
           /> : null}
         {detailLoading ? <View style={styles.detailLoading}><ActivityIndicator color={color.brand.primary} /></View> : null}
+        {detailReadError && !selectedTransaction ? <AdminDataFeedback error={detailReadError} notice={null} /> : null}
       </View>
     </AdminSectionsProductionShell>
     <AdminProductionCapabilitySheet
@@ -561,7 +674,7 @@ function AdminSectionsLayout({ actions, copy, financeView, formatters, language,
         </View>
       </View></View>
     </Modal>
-    <TransactionDetailModal copy={copy} detail={selectedTransaction} formatCurrency={formatCurrency} formatDate={formatDate} language={language} serviceLabel={serviceLabel} statusLabel={statusLabel} paymentProviderLabel={paymentProviderLabel} disputeStatusLabel={disputeStatusLabel} jobStatusLabel={jobStatusLabel} onClose={() => patch({ selectedTransaction: null })} reduceTransparency={reduceTransparency} />
+    <TransactionDetailModal copy={copy} detail={selectedTransaction} formatCurrency={formatCurrency} formatDate={formatDate} language={language} serviceLabel={serviceLabel} statusLabel={statusLabel} paymentProviderLabel={paymentProviderLabel} disputeStatusLabel={disputeStatusLabel} jobStatusLabel={jobStatusLabel} onClose={closeTransaction} readError={detailReadError} reduceTransparency={reduceTransparency} />
   </SafeAreaView>
 }
 
@@ -609,6 +722,8 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
   const {
     actionPending,
     error,
+    readError,
+    detailReadError,
     loading,
     managerNominations,
     notice,
@@ -655,7 +770,6 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
           : panel === 'transactions'
             ? patch({ selectedCapabilityId: 'operations-service-transactions' })
             : undefined}
-        onRetry={() => { void loadData() }}
         snapshot={operations}
       />
     case 'operations-service-transactions':
@@ -664,8 +778,10 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
           <AdminText textRole="subheadline">{overviewDetailTitle(overviewDetailKey, language)}</AdminText>
           <KaelButton label={language === 'vi' ? 'Bỏ bộ lọc' : 'Clear filter'} onPress={() => patch({ overviewDetailKey: null, transactionPage: 1 })} variant="secondary" />
         </View> : null}
-        <AdminDataSearchToolbar copy={copy} onChangeSearch={(searchQuery) => patch({ searchQuery })} onRefresh={() => { void loadData() }} searchQuery={searchQuery} />
-        <AdminDataFeedback copy={copy} error={error} notice={notice} onDismissError={() => patch({ error: null })} onRetry={() => { void loadData() }} />
+        <AdminDataSearchToolbar copy={copy} onChangeSearch={(searchQuery) => patch({ searchQuery })} searchQuery={searchQuery} />
+        <AdminDataFeedback error={readError} notice={notice} />
+        <AdminDataFeedback error={error} notice={null} />
+        <AdminDataFeedback error={detailReadError} notice={null} />
         {loading && transactions.length === 0 ? <AdminWorkspaceLoading copy={copy} /> : transactions.length === 0 ? <EmptyState body={copy.noData.transactions} /> : <>
           {transactions.map((transaction) => <TransactionCard key={transaction.job_id} transaction={transaction} copy={copy} serviceLabel={serviceLabel} statusLabel={statusLabel} paymentProviderLabel={paymentProviderLabel} disputeStatusLabel={disputeStatusLabel} jobStatusLabel={jobStatusLabel} formatCurrency={formatCurrency} formatDate={formatDate} onOpen={() => void openTransaction(transaction)} />)}
           <AdminPagination hasMore={transactionsHasMore} labels={copy.pagination} loading={loading || refreshing} onPageChange={(transactionPage) => patch({ transactionPage })} page={transactionPage} pageTestIDPrefix="admin-transaction-page" pageSize={TRANSACTIONS_PER_PAGE} testID="admin-transaction-pagination" totalCount={transactionsTotalCount} />
@@ -680,11 +796,12 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
     case 'workers-access':
     case 'workers-finance':
       return <>
-        <AdminDataSearchToolbar copy={copy} onChangeSearch={(searchQuery) => patch({ searchQuery })} onRefresh={() => { void loadData() }} refreshTestID="admin-worker-refresh" searchQuery={searchQuery} />
+        <AdminDataSearchToolbar copy={copy} onChangeSearch={(searchQuery) => patch({ searchQuery })} searchQuery={searchQuery} />
         <View style={styles.filterRow}>
           {(['pending_access', 'missing_profile', 'ready_verification', 'verified', 'all'] as const).map((filter) => <FinanceChoiceChip key={filter} accessibilityLabel={workerReviewCopy[language].filter[filter]} label={workerReviewCopy[language].filter[filter]} onPress={() => patch({ workerFilter: filter, workerPage: 1 })} selected={workerFilter === filter} testID={`admin-worker-filter-${filter}`} />)}
         </View>
-        <AdminDataFeedback copy={copy} error={error} notice={notice} onDismissError={() => patch({ error: null })} onRetry={() => { void loadData() }} />
+        <AdminDataFeedback error={readError} notice={notice} />
+        <AdminDataFeedback error={error} notice={null} />
         {loading && workers.length === 0 ? <AdminWorkspaceLoading copy={copy} /> : workers.length === 0 ? <EmptyState body={copy.noData.workers} /> : <>
           {workers.map((worker) => <WorkerApplicationCard key={worker.id} copy={copy} language={language} worker={worker} serviceLabel={serviceLabel} formatDate={formatDate} actionPending={actionPending} canReview={actor.capabilities.includes('workers.review')} onOpen={() => patch({ selectedWorker: worker })} onApprove={() => void commitDecision(worker, 'approve')} onRequestChanges={() => patch({ decisionModal: { decision: 'request_changes', worker }, decisionReason: '' })} onReject={() => patch({ decisionModal: { decision: 'reject', worker }, decisionReason: '' })} />)}
           <AdminPagination hasMore={workersHasMore} labels={copy.pagination} loading={loading || refreshing} onPageChange={(workerPage) => patch({ workerPage })} page={workerPage} pageTestIDPrefix="admin-worker-page" pageSize={WORKERS_PER_PAGE} testID="admin-worker-pagination" totalCount={workersTotalCount} />
@@ -713,7 +830,7 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
       return loading && subAdmins.length === 0 && !teamError
         ? <AdminWorkspaceLoading copy={copy} />
         : teamError
-          ? <AdminDataFeedback copy={copy} error={teamError} notice={null} onDismissError={() => patch({ teamError: null })} onRetry={() => { void loadData() }} />
+          ? <AdminDataFeedback error={teamError} notice={null} />
           : <AdminTeamWorkspace actor={actor} capability={capability.id} language={language} members={subAdmins} nominations={managerNominations} pendingAccounts={pendingAdminAccounts} onRefresh={loadData} />
     case 'system-price-baseline':
     case 'system-taxonomy':

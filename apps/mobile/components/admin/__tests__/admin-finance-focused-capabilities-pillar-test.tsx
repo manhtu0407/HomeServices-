@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native'
 import type { AdminFinanceOverviewResponse } from '@nestscout/shared'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -6,6 +6,16 @@ import { resolve } from 'node:path'
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { color } from '@/design/theme'
 import { adminControlService } from '@/lib/services'
+
+const mockReadAdminDataRevisions = jest.fn()
+const mockSubscribeToAdminDataRevisions = jest.fn()
+
+jest.mock('@/lib/admin-data-sync-source', () => ({
+  readAdminDataRevisions: (...args: unknown[]) => mockReadAdminDataRevisions(...args),
+}))
+jest.mock('@/lib/realtime', () => ({
+  subscribeToAdminDataRevisions: (...args: unknown[]) => mockSubscribeToAdminDataRevisions(...args),
+}))
 
 export const PILLAR = {
   id: 'P52-admin-finance-focused-capabilities',
@@ -28,20 +38,25 @@ jest.mock('@/lib/app-language', () => ({ useAppLanguage: () => 'vi' }))
 jest.mock('@/lib/services', () => ({
   adminControlService: {
     claimPaymentReconciliation: jest.fn(),
+    decidePayoutMethod: jest.fn(),
     decidePaymentReconciliation: jest.fn(),
     getFinanceOverview: jest.fn(),
+    getPayoutMethod: jest.fn(),
     getFinanceSummary: jest.fn(),
     getPaymentReconciliation: jest.fn(),
     listFinanceTaxPolicies: jest.fn(),
     listFinanceTransactions: jest.fn(),
     listPaymentReconciliations: jest.fn(),
+    listPayoutMethods: jest.fn(),
     recordFinanceBalanceSnapshot: jest.fn(),
   },
 }))
 
 import { AdminFinancePanel } from '../admin-finance'
+import { AdminPayoutsPanel } from '../admin-payouts'
 import { FinanceControls } from '../admin-finance-controls'
 import { AdminTabNavigation } from '../admin-tab-navigation'
+import { AdminDataSyncProvider } from '@/lib/admin-data-sync'
 
 const unavailableMetric = {
   change_percent: null,
@@ -119,10 +134,26 @@ const transferContentByOrder = {
   'payment-order-1': 'NSABCDEFGHIJKLMNOPQRSTUVWX',
   'payment-order-2': 'NSZYXWVUTSRQPONMLKJIHGFEDC',
 }
+const payoutMethod = {
+  id: 'payout-method-live',
+  worker_id: 'worker-live',
+  worker_name: 'Worker Live',
+  bank_key: 'VCB',
+  bank_name: 'Vietcombank',
+  bank_account_masked: '•••• 6789',
+  status: 'pending_verification' as const,
+  reviewed_at: null,
+  review_reason: null,
+  created_at: '2026-08-25T08:00:00.000+07:00',
+  updated_at: '2026-08-25T08:00:00.000+07:00',
+  version: 1,
+}
 
 describe('Admin Finance focused capability sheets', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockReadAdminDataRevisions.mockResolvedValue({ success: true, revisions: { finance: 1 } })
+    mockSubscribeToAdminDataRevisions.mockReturnValue({ unsubscribe: jest.fn(async () => 'ok') })
     jest.mocked(adminControlService.getFinanceOverview).mockResolvedValue({ data: overview, status: 200, success: true })
     jest.mocked(adminControlService.getFinanceSummary).mockResolvedValue({ code: 'UNAVAILABLE', error: 'unavailable', status: 503, success: false })
     jest.mocked(adminControlService.getPaymentReconciliation).mockResolvedValue({
@@ -142,6 +173,16 @@ describe('Admin Finance focused capability sheets', () => {
     })
     jest.mocked(adminControlService.listFinanceTransactions).mockResolvedValue({
       data: { generated_at: '2026-08-25T08:00:00.000+07:00', has_more: false, next_cursor: null, transactions: [] },
+      status: 200,
+      success: true,
+    })
+    jest.mocked(adminControlService.listPayoutMethods).mockResolvedValue({
+      data: { generated_at: '2026-08-25T08:00:00.000+07:00', has_more: false, next_cursor: null, payout_methods: [payoutMethod], total_count: 1 },
+      status: 200,
+      success: true,
+    })
+    jest.mocked(adminControlService.getPayoutMethod).mockResolvedValue({
+      data: { generated_at: '2026-08-25T08:00:00.000+07:00', payout_method: payoutMethod },
       status: 200,
       success: true,
     })
@@ -200,7 +241,7 @@ describe('Admin Finance focused capability sheets', () => {
   it('uses one neutral, accessible control grammar for periods and Admin tabs', () => {
     render(<>
       <FinanceControls
-        copy={{ customApply: 'Áp dụng', customFrom: 'Từ ngày', customRange: 'Tùy chọn', customTo: 'Đến ngày', load: 'Tải lại', period: 'Kỳ báo cáo', timeZone: 'Múi giờ Asia/Ho_Chi_Minh' }}
+        copy={{ customApply: 'Áp dụng', customFrom: 'Từ ngày', customRange: 'Tùy chọn', customTo: 'Đến ngày', period: 'Kỳ báo cáo', timeZone: 'Múi giờ Asia/Ho_Chi_Minh' }}
         customEditorOpen={false}
         customFrom="2026-08-01"
         customMode={false}
@@ -209,7 +250,6 @@ describe('Admin Finance focused capability sheets', () => {
         onApplyCustom={jest.fn()}
         onChangeCustomFrom={jest.fn()}
         onChangeCustomTo={jest.fn()}
-        onRefresh={jest.fn()}
         onSelectRange={jest.fn()}
         onToggleCustom={jest.fn()}
         range="month"
@@ -227,7 +267,7 @@ describe('Admin Finance focused capability sheets', () => {
     expect(month.props.accessibilityState).toMatchObject({ selected: true })
     expect(month).toHaveStyle({ backgroundColor: color.surface.base, borderColor: color.text.strong, minHeight: 44 })
     expect(screen.getByText('✓ Tháng')).toBeOnTheScreen()
-    expect(screen.getByTestId('admin-finance-refresh')).toHaveStyle({ backgroundColor: color.surface.base, borderColor: color.surface.strokeStrong, minHeight: 44 })
+    expect(screen.queryByTestId('admin-finance-refresh')).toBeNull()
     expect(screen.getByTestId('finance-accounts-tab-indicator')).toBeOnTheScreen()
     expect(screen.getByTestId('finance-accounts-tab')).toHaveStyle({ backgroundColor: color.surface.base, minHeight: 44 })
   })
@@ -319,7 +359,7 @@ describe('Admin Finance focused capability sheets', () => {
     expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('')
   })
 
-  it('offers a detail retry when NS content is missing, then fills it from the same order', async () => {
+  it('retries missing NS content automatically and keeps the final payment decision gated', async () => {
     jest.mocked(adminControlService.getPaymentReconciliation).mockResolvedValueOnce({
       data: {
         customer_ref: 'C-1122AABB',
@@ -353,19 +393,146 @@ describe('Admin Finance focused capability sheets', () => {
     render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="cash" reduceMotion reduceTransparency />)
 
     fireEvent.press(await screen.findByTestId('admin-finance-reconciliation-payment-order-1'))
-    fireEvent.press(await screen.findByText('Nhận xử lý'))
-    await waitFor(() => expect(adminControlService.claimPaymentReconciliation).toHaveBeenCalled())
-    expect(await screen.findByText(/Chưa có nội dung chuyển khoản NestScout/)).toBeTruthy()
-    expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe('')
-    expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('')
-    fireEvent.press(within(screen.getByTestId('admin-finance-reconciliation-detail')).getByText('Tải lại'))
-    await waitFor(() => expect(adminControlService.getPaymentReconciliation).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(adminControlService.getPaymentReconciliation).toHaveBeenCalledTimes(2), { timeout: 2_000 })
     fireEvent.press(await screen.findByText('Nhận xử lý'))
     await waitFor(() => expect(adminControlService.claimPaymentReconciliation).toHaveBeenCalled())
     await waitFor(() => expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe(transferContentByOrder['payment-order-1']))
+    expect(screen.queryByText('Tải lại')).toBeNull()
     expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.editable).toBe(false)
     expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('')
+    expect(screen.getByLabelText('Xác nhận tiền vào').props.accessibilityState?.disabled).not.toBe(true)
     expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
+  })
+
+  it('recovers a transient detail-read failure automatically without asking Admin to reload', async () => {
+    jest.mocked(adminControlService.getPaymentReconciliation)
+      .mockResolvedValueOnce({ code: 'SERVICE_UNAVAILABLE', error: 'temporarily unavailable', status: 503, success: false })
+      .mockResolvedValueOnce({
+        data: {
+          customer_ref: 'C-1122AABB',
+          expected_amount_vnd: 450_000,
+          generated_at: '2026-08-25T08:00:00.000+07:00',
+          received_amount_vnd: null,
+          reconciliation: reconciliationWithOwner,
+          service_type: 'cleaning',
+          timeline: [],
+          transfer_content: transferContentByOrder['payment-order-1'],
+          worker_ref: 'W-3344CCDD',
+        },
+        status: 200,
+        success: true,
+      })
+
+    render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="cash" reduceMotion reduceTransparency />)
+    fireEvent.press(await screen.findByTestId('admin-finance-reconciliation-payment-order-1'))
+
+    await waitFor(() => expect(adminControlService.getPaymentReconciliation).toHaveBeenCalledTimes(2), { timeout: 2_000 })
+    await waitFor(() => expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe(transferContentByOrder['payment-order-1']))
+    expect(screen.queryByText('Tải lại')).toBeNull()
+    expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
+  })
+
+  it('refreshes the real Finance surface when an authorized live revision arrives', async () => {
+    render(<AdminDataSyncProvider enabled ownerId="admin-owner">
+      <AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="overview" reduceMotion reduceTransparency />
+    </AdminDataSyncProvider>)
+    await waitFor(() => expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(1))
+
+    const onRevision = mockSubscribeToAdminDataRevisions.mock.calls[0]?.[1] as ((revision: { revision: number; section: string }) => void) | undefined
+    expect(onRevision).toBeDefined()
+    await act(async () => { onRevision?.({ revision: 2, section: 'finance' }) })
+
+    await waitFor(() => expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(2))
+    expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
+  })
+
+  it('preserves unsaved reconciliation inputs when a Finance revision refreshes an open detail', async () => {
+    const detail = {
+      customer_ref: 'C-1122AABB',
+      expected_amount_vnd: 450_000,
+      generated_at: '2026-08-25T08:00:00.000+07:00',
+      received_amount_vnd: null,
+      reconciliation: reconciliationWithOwner,
+      service_type: 'cleaning',
+      timeline: [],
+      transfer_content: transferContentByOrder['payment-order-1'],
+      worker_ref: 'W-3344CCDD',
+    }
+    jest.mocked(adminControlService.getPaymentReconciliation)
+      .mockResolvedValueOnce({ data: { ...detail, reconciliation }, status: 200, success: true })
+      .mockResolvedValueOnce({ data: detail, status: 200, success: true })
+
+    render(<AdminDataSyncProvider enabled ownerId="admin-owner">
+      <AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="cash" reduceMotion reduceTransparency />
+    </AdminDataSyncProvider>)
+
+    fireEvent.press(await screen.findByTestId('admin-finance-reconciliation-payment-order-1'))
+    fireEvent.press(await screen.findByText('Nhận xử lý'))
+    await waitFor(() => expect(adminControlService.claimPaymentReconciliation).toHaveBeenCalled())
+    fireEvent.changeText(await screen.findByLabelText('Số tiền thực nhận'), '450000')
+    fireEvent.changeText(screen.getByLabelText('Mã giao dịch ngân hàng'), 'BANK-DRAFT-731')
+
+    const onRevision = mockSubscribeToAdminDataRevisions.mock.calls[0]?.[1] as ((revision: { revision: number; section: string }) => void) | undefined
+    expect(onRevision).toBeDefined()
+    await act(async () => { onRevision?.({ revision: 2, section: 'finance' }) })
+
+    await waitFor(() => expect(adminControlService.getPaymentReconciliation).toHaveBeenCalledTimes(2))
+    expect(screen.getByLabelText('Số tiền thực nhận').props.value).toBe('450000')
+    expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('BANK-DRAFT-731')
+    expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
+  })
+
+  it('reads the revision baseline again after Realtime subscribes to close the handshake gap', async () => {
+    mockReadAdminDataRevisions
+      .mockResolvedValueOnce({ success: true, revisions: { finance: 1 } })
+      .mockResolvedValueOnce({ success: true, revisions: { finance: 2 } })
+
+    render(<AdminDataSyncProvider enabled ownerId="admin-owner">
+      <AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="overview" reduceMotion reduceTransparency />
+    </AdminDataSyncProvider>)
+    await waitFor(() => expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(1))
+
+    const onStatus = mockSubscribeToAdminDataRevisions.mock.calls[0]?.[2] as ((status: string) => void) | undefined
+    expect(onStatus).toBeDefined()
+    await act(async () => { onStatus?.('SUBSCRIBED') })
+
+    await waitFor(() => expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(2))
+    expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
+  })
+
+  it('ignores delayed Realtime status callbacks after the Admin sync provider unmounts', async () => {
+    const view = render(<AdminDataSyncProvider enabled ownerId="admin-owner">
+      <AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="overview" reduceMotion reduceTransparency />
+    </AdminDataSyncProvider>)
+    await waitFor(() => expect(mockReadAdminDataRevisions).toHaveBeenCalled())
+
+    const onStatus = mockSubscribeToAdminDataRevisions.mock.calls[0]?.[2] as ((status: string) => void) | undefined
+    const readCount = mockReadAdminDataRevisions.mock.calls.length
+    view.unmount()
+    await act(async () => { onStatus?.('CLOSED') })
+
+    expect(mockReadAdminDataRevisions).toHaveBeenCalledTimes(readCount)
+  })
+
+  it('refreshes payout lists and the open detail from Finance revisions without a manual reload control', async () => {
+    render(<AdminDataSyncProvider enabled ownerId="admin-owner">
+      <AdminPayoutsPanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'payouts.read', 'payouts.process'] }} reduceMotion reduceTransparency />
+    </AdminDataSyncProvider>)
+    expect(await screen.findByTestId('admin-payout-method-payout-method-live')).toBeTruthy()
+    expect(adminControlService.listPayoutMethods).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Tải lại')).toBeNull()
+
+    fireEvent.press(screen.getByTestId('admin-payout-method-payout-method-live'))
+    expect(await screen.findByTestId('admin-payout-method-detail')).toBeTruthy()
+    expect(adminControlService.getPayoutMethod).toHaveBeenCalledTimes(1)
+
+    const onRevision = mockSubscribeToAdminDataRevisions.mock.calls[0]?.[1] as ((revision: { revision: number; section: string }) => void) | undefined
+    expect(onRevision).toBeDefined()
+    await act(async () => { onRevision?.({ revision: 2, section: 'finance' }) })
+
+    await waitFor(() => expect(adminControlService.listPayoutMethods).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(adminControlService.getPayoutMethod).toHaveBeenCalledTimes(2))
+    expect(adminControlService.decidePayoutMethod).not.toHaveBeenCalled()
   })
 
   it('keeps payout and reporting details inline, masked and file-based', () => {

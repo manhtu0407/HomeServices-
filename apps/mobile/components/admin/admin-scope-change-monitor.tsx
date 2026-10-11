@@ -13,6 +13,7 @@ import type {
   AdminViewScopeChangeListInput,
   AdminViewScopeChangeSummary,
 } from '@/lib/api-types/admin'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { adminControlService } from '@/lib/services'
 
 import { formatAdminDateTime, formatAdminNumber, formatAdminVnd } from './admin-intl'
@@ -128,29 +129,33 @@ export function AdminScopeChangeMonitor({ language, onSessionMissing }: {
     }
     const requestId = ++listRequestId.current
     const current = stateRef.current
-    patch({ error: null, ...(current.records.length === 0 ? { listLoading: true } : { refreshing: true }) })
-    const result = await adminControlService.listScopeChanges({ ...queryInput, cursor: append ? current.nextCursor ?? undefined : undefined })
-    if (requestId === listRequestId.current) {
-      if (!result.success) {
-        if (result.status === 401 || result.status === 403) onSessionMissing()
-        patch({ error: result.error, listLoading: false, refreshing: false })
-      } else {
-        const nextRecords = append ? [...stateRef.current.records, ...result.data.records] : result.data.records
-        const snapshot = {
-          counts: result.data.counts,
-          error: null,
-          generatedAt: result.data.generated_at,
-          hasMore: result.data.has_more,
-          listLoading: false,
-          nextCursor: result.data.next_cursor,
-          records: nextRecords,
-          refreshing: false,
+    patch({ ...(current.records.length === 0 ? { listLoading: true } : { refreshing: true }) })
+    try {
+      const result = await adminControlService.listScopeChanges({ ...queryInput, cursor: append ? current.nextCursor ?? undefined : undefined })
+      if (requestId === listRequestId.current) {
+        if (!result.success) {
+          if (result.status === 401 || result.status === 403) onSessionMissing()
+          patch({ error: result.error, listLoading: false, refreshing: false })
+        } else {
+          const nextRecords = append ? [...stateRef.current.records, ...result.data.records] : result.data.records
+          const snapshot = {
+            counts: result.data.counts,
+            error: null,
+            generatedAt: result.data.generated_at,
+            hasMore: result.data.has_more,
+            listLoading: false,
+            nextCursor: result.data.next_cursor,
+            records: nextRecords,
+            refreshing: false,
+          }
+          if (!append) listCache.set(queryKey, snapshot)
+          patch(snapshot)
         }
-        if (!append) listCache.set(queryKey, snapshot)
-        patch(snapshot)
       }
+    } catch {
+      if (requestId === listRequestId.current) patch({ error: copy.loadError, listLoading: false, refreshing: false })
     }
-  }, [listCache, onSessionMissing, queryInput, queryKey])
+  }, [copy.loadError, listCache, onSessionMissing, queryInput, queryKey])
 
   const cancelListRequest = useCallback(() => {
     listRequestId.current += 1
@@ -161,26 +166,46 @@ export function AdminScopeChangeMonitor({ language, onSessionMissing }: {
     return cancelListRequest
   }, [cancelListRequest, loadList])
 
-  const selectRecord = useCallback(async (record: AdminViewScopeChangeSummary) => {
+  const loadDetail = useCallback(async (record: AdminViewScopeChangeSummary, force = false) => {
     failedEvidence.current = null
-    patch({ actionError: null, detail: null, detailError: null, detailLoading: true, selectedId: record.scope_change_id })
+    const sameSelection = stateRef.current.selectedId === record.scope_change_id
+    patch({ actionError: null, detail: sameSelection ? stateRef.current.detail : null, ...(sameSelection ? {} : { detailError: null }), detailLoading: true, selectedId: record.scope_change_id })
     const cached = detailCache.get(record.scope_change_id)
-    if (cached) {
+    if (cached && !force) {
       patch({ detail: cached, detailLoading: false })
       return
     }
     const requestId = ++detailRequestId.current
-    const result = await adminControlService.getScopeChange(record.scope_change_id)
-    if (requestId === detailRequestId.current) {
-      if (!result.success) {
-        if (result.status === 401 || result.status === 403) onSessionMissing()
-        patch({ detailError: result.error, detailLoading: false })
-      } else {
-        detailCache.set(record.scope_change_id, result.data)
-        patch({ detail: result.data, detailLoading: false })
+    try {
+      const result = await adminControlService.getScopeChange(record.scope_change_id)
+      if (requestId === detailRequestId.current) {
+        if (!result.success) {
+          if (result.status === 401 || result.status === 403) onSessionMissing()
+          patch({ detailError: result.error, detailLoading: false })
+        } else {
+          detailCache.set(record.scope_change_id, result.data)
+          patch({ detail: result.data, detailError: null, detailLoading: false })
+        }
       }
+    } catch {
+      if (requestId === detailRequestId.current) patch({ detailError: copy.detailError, detailLoading: false })
     }
-  }, [detailCache, onSessionMissing])
+  }, [copy.detailError, detailCache, onSessionMissing])
+
+  const selectRecord = useCallback((record: AdminViewScopeChangeSummary) => loadDetail(record), [loadDetail])
+
+  const refreshSection = useCallback(async () => {
+    listCache.delete(queryKey)
+    await loadList({ force: true })
+    const selectedId = stateRef.current.selectedId
+    const selectedRecord = stateRef.current.records.find((item) => item.scope_change_id === selectedId)
+    if (selectedRecord) {
+      detailCache.delete(selectedRecord.scope_change_id)
+      await loadDetail(selectedRecord, true)
+    }
+  }, [detailCache, listCache, loadDetail, loadList, queryKey])
+
+  useAdminSectionAutoRefresh('operations', refreshSection, Boolean(state.error || state.detailError), refreshSection)
 
   const openEvidence = useCallback(async (item: AdminViewEvidenceMetadata) => {
     if (!state.selectedId) return
@@ -227,7 +252,7 @@ export function AdminScopeChangeMonitor({ language, onSessionMissing }: {
         { label: copy.metrics.approved, value: state.counts.approved },
         { label: copy.metrics.closed, value: state.counts.rejected_or_cancelled },
       ]} tokens={tokens} />
-      <WorkspaceSearch label={copy.search} onChange={(query) => setFilters({ query })} onRefresh={() => { listCache.delete(queryKey); void loadList({ force: true }) }} refreshLabel={copy.refresh} refreshing={state.refreshing} tokens={tokens} value={filters.query} />
+      <WorkspaceSearch label={copy.search} onChange={(query) => setFilters({ query })} tokens={tokens} value={filters.query} />
       <WorkspaceFilterRow label={copy.filters.status} onSelect={(status) => setFilters({ status })} options={statusOptions(language)} selected={filters.status} tokens={tokens} />
       <WorkspaceFilterRow label={copy.filters.service} onSelect={(service) => setFilters({ service })} options={serviceOptions(language)} selected={filters.service} tokens={tokens} />
       <WorkspaceFilterRow label={copy.filters.timing} onSelect={(requestTiming) => setFilters({ requestTiming })} options={timingOptions(language)} selected={filters.requestTiming} tokens={tokens} />
@@ -235,7 +260,7 @@ export function AdminScopeChangeMonitor({ language, onSessionMissing }: {
         <KaelTextField accessibilityLabel={copy.filters.from} autoCapitalize="none" onChangeText={(requestedFrom) => setFilters({ requestedFrom })} placeholder={copy.filters.from} placeholderTextColor={tokens.subtleText} value={filters.requestedFrom} />
         <KaelTextField accessibilityLabel={copy.filters.to} autoCapitalize="none" onChangeText={(requestedTo) => setFilters({ requestedTo })} placeholder={copy.filters.to} placeholderTextColor={tokens.subtleText} value={filters.requestedTo} />
       </View>
-      <WorkspaceFeedback compact error={state.error} loading={state.listLoading && state.records.length === 0} loadingLabel={copy.loading} onRetry={() => { void loadList({ force: true }) }} retryLabel={copy.retry} tokens={tokens} />
+      <WorkspaceFeedback compact error={state.error} loading={state.listLoading && state.records.length === 0} loadingLabel={copy.loading} tokens={tokens} />
       {state.generatedAt ? <AdminText textRole="caption1" style={{ color: tokens.subtleText }}>{copy.generated}: {formatDate(state.generatedAt, language)}</AdminText> : null}
     </View>}
     renderItem={renderScopeItem}
@@ -253,10 +278,6 @@ export function AdminScopeChangeMonitor({ language, onSessionMissing }: {
     onBack={wide ? undefined : closeDetail}
     onOpenEvidence={openEvidence}
     onRetryAction={() => failedEvidence.current && void openEvidence(failedEvidence.current)}
-    onRetry={() => {
-      const record = state.records.find((item) => item.scope_change_id === state.selectedId)
-      if (record) { detailCache.delete(record.scope_change_id); void selectRecord(record) }
-    }}
     tokens={tokens}
   />
 
@@ -293,7 +314,7 @@ function ScopeRow({ item, language, onPress, selected, tokens }: {
   </Pressable>
 }
 
-function ScopeDetail({ actionError, detail, error, language, loading, onBack, onOpenEvidence, onRetry, onRetryAction, tokens }: {
+function ScopeDetail({ actionError, detail, error, language, loading, onBack, onOpenEvidence, onRetryAction, tokens }: {
   actionError: string | null
   detail: AdminViewScopeChangeDetailResponse | null
   error: string | null
@@ -301,15 +322,14 @@ function ScopeDetail({ actionError, detail, error, language, loading, onBack, on
   loading: boolean
   onBack?: () => void
   onOpenEvidence: (item: AdminViewEvidenceMetadata) => void
-  onRetry: () => void
   onRetryAction: () => void
   tokens: ReturnType<typeof getCustomerThemeTokens>
 }) {
   const copy = scopeCopy[language]
-  if (loading || error || !detail) return <WorkspaceFeedback error={error} loading={loading} loadingLabel={copy.detailLoading} onRetry={onRetry} retryLabel={copy.retry} tokens={tokens} />
+  if (loading || error || !detail) return <WorkspaceFeedback error={error} loading={loading} loadingLabel={copy.detailLoading} tokens={tokens} />
   return <ScrollView contentContainerStyle={styles.detailContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={styles.detailScroll}>
     <DetailHeading backLabel={copy.back} generatedAt={formatDate(detail.generated_at, language)} generatedLabel={copy.generated} onBack={onBack} title={detail.summary.display_code} tokens={tokens} />
-    <WorkspaceFeedback compact error={actionError} loading={false} loadingLabel={copy.loading} onRetry={onRetryAction} retryLabel={copy.retry} tokens={tokens} />
+    <WorkspaceFeedback actionRetryLabel={copy.retry} compact error={actionError} loading={false} loadingLabel={copy.loading} onActionRetry={onRetryAction} tokens={tokens} />
     <DetailSection title={copy.sections.status} tokens={tokens}>
       <DetailField label={copy.fields.status} tokens={tokens} value={scopeStatusLabel(detail.summary.status, language)} />
       <DetailField label={copy.fields.service} tokens={tokens} value={serviceLabel(detail.summary.service_type, language)} />
@@ -456,7 +476,7 @@ const serviceNames: Record<AppLanguage, Record<ServiceType, string>> = {
 
 const scopeCopy = {
   vi: {
-    all: 'Tất cả', back: 'Quay lại danh sách', detailLoading: 'Đang tải chi tiết đổi phạm vi…', empty: 'Không có yêu cầu đổi phạm vi phù hợp.', evidenceError: 'Không thể mở bằng chứng.', generated: 'Dữ liệu tạo lúc', loadMore: 'Tải thêm', loading: 'Đang tải đổi phạm vi…', noEvidence: 'Chưa có bằng chứng được ghi nhận.', notRecorded: 'Chưa ghi nhận', open: 'Mở', receiptAvailable: 'Đã có biên nhận xác minh giá trong hồ sơ.', refresh: 'Tải lại', retry: 'Thử lại', search: 'Tìm theo mã công việc', select: 'Chọn một yêu cầu để xem chi tiết.',
+    all: 'Tất cả', back: 'Quay lại danh sách', detailError: 'Không thể tải chi tiết đổi phạm vi. Hệ thống đang tự cập nhật lại.', detailLoading: 'Đang tải chi tiết đổi phạm vi…', empty: 'Không có yêu cầu đổi phạm vi phù hợp.', evidenceError: 'Không thể mở bằng chứng.', generated: 'Dữ liệu tạo lúc', loadError: 'Không thể tải danh sách đổi phạm vi. Hệ thống đang tự cập nhật lại.', loadMore: 'Tải thêm', loading: 'Đang tải đổi phạm vi…', noEvidence: 'Chưa có bằng chứng được ghi nhận.', notRecorded: 'Chưa ghi nhận', open: 'Mở', receiptAvailable: 'Đã có biên nhận xác minh giá trong hồ sơ.', retry: 'Thử lại', search: 'Tìm theo mã công việc', select: 'Chọn một yêu cầu để xem chi tiết.',
     filters: { from: 'Từ ngày YYYY-MM-DD', service: 'Dịch vụ', status: 'Trạng thái', timing: 'Thời điểm yêu cầu', to: 'Đến ngày YYYY-MM-DD' },
     metrics: { approved: 'Đã chấp thuận', closed: 'Từ chối / hủy', customer: 'Chờ khách', kael: 'Kael xử lý' },
     statuses: { approved_by_customer: 'Khách đã chấp thuận', cancelled: 'Đã hủy', rejected_by_customer: 'Khách đã từ chối', requested_by_worker: 'Thợ vừa yêu cầu', reviewing_by_kael: 'Kael đang rà soát', waiting_customer_decision: 'Chờ khách quyết định' },
@@ -464,7 +484,7 @@ const scopeCopy = {
     fields: { caseId: 'Mã ca', caseType: 'Loại tranh chấp', decision: 'Khách quyết định lúc', kaelPrice: 'Giá Kael tính lại', original: 'Phạm vi gốc', originalPrice: 'Giá gốc', proposed: 'Phạm vi đề xuất', reason: 'Lý do', receiptEvidence: 'Số bằng chứng được đối chiếu', receiptGenerated: 'Tạo lúc', receiptSchema: 'Phiên bản biên nhận', requested: 'Yêu cầu lúc', service: 'Dịch vụ', status: 'Trạng thái', timing: 'Thời điểm', totalPrice: 'Tổng sau thay đổi', updated: 'Cập nhật' },
   },
   en: {
-    all: 'All', back: 'Back to list', detailLoading: 'Loading scope-change detail…', empty: 'No scope change matches these filters.', evidenceError: 'Unable to open evidence.', generated: 'Generated', loadMore: 'Load more', loading: 'Loading scope changes…', noEvidence: 'No evidence is recorded.', notRecorded: 'Not recorded', open: 'Open', receiptAvailable: 'A price-verification receipt is recorded.', refresh: 'Refresh', retry: 'Retry', search: 'Search by job code', select: 'Select a request to review its details.',
+    all: 'All', back: 'Back to list', detailError: 'Unable to load scope-change detail. The system is refreshing automatically.', detailLoading: 'Loading scope-change detail…', empty: 'No scope change matches these filters.', evidenceError: 'Unable to open evidence.', generated: 'Generated', loadError: 'Unable to load scope changes. The system is refreshing automatically.', loadMore: 'Load more', loading: 'Loading scope changes…', noEvidence: 'No evidence is recorded.', notRecorded: 'Not recorded', open: 'Open', receiptAvailable: 'A price-verification receipt is recorded.', retry: 'Retry', search: 'Search by job code', select: 'Select a request to review its details.',
     filters: { from: 'From YYYY-MM-DD', service: 'Service', status: 'Status', timing: 'Request timing', to: 'To YYYY-MM-DD' },
     metrics: { approved: 'Approved', closed: 'Rejected / cancelled', customer: 'Awaiting customer', kael: 'Kael processing' },
     statuses: { approved_by_customer: 'Customer approved', cancelled: 'Cancelled', rejected_by_customer: 'Customer rejected', requested_by_worker: 'Requested by worker', reviewing_by_kael: 'Kael reviewing', waiting_customer_decision: 'Awaiting customer decision' },

@@ -12,6 +12,7 @@ import type {
   AdminViolationDecision,
 } from '@/lib/api-types/admin-program'
 import type { AppLanguage } from '@/lib/app-language'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { adminProgramService } from '@/lib/services/admin-program-service'
 
 import { consequenceLabel, violationLabel } from '../worker/discipline/violation-copy'
@@ -100,7 +101,9 @@ export function AdminDisciplineWorkspace({ language }: { language: AppLanguage }
     refreshAll()
   }, [refreshAll])
 
-  const load = () => void refresh(activeKey)
+  const retryActive = useCallback(() => refresh(activeKey), [activeKey, refresh])
+  useAdminSectionAutoRefresh('workers', refreshAll, Boolean(error), retryActive)
+
   const select = (next: () => void, key: ListKey) => {
     next()
     setSelectedId(null)
@@ -140,7 +143,7 @@ export function AdminDisciplineWorkspace({ language }: { language: AppLanguage }
       contentContainerStyle={adminSystemStyles.listContent}
       data={cases ?? []}
       keyExtractor={(item) => item.id}
-      ListEmptyComponent={cases === null && !error ? <AdminSystemState label={vi ? 'Đang tải' : 'Loading'} loading /> : error ? <AdminSystemState actionLabel={vi ? 'Thử lại' : 'Retry'} label={error} onAction={load} /> : <AdminSystemState compact label={vi ? 'Không có hồ sơ nào' : 'No cases'} />}
+      ListEmptyComponent={cases === null && !error ? <AdminSystemState label={vi ? 'Đang tải' : 'Loading'} loading /> : error ? <AdminSystemState label={error} /> : <AdminSystemState compact label={vi ? 'Không có hồ sơ nào' : 'No cases'} />}
       ListHeaderComponent={header}
       renderItem={({ item }) => <AdminSystemRow
         accessibilityLabel={`${violationLabel(item.violation_code, language)}. ${statusLabel(item, vi)}`}
@@ -160,7 +163,7 @@ export function AdminDisciplineWorkspace({ language }: { language: AppLanguage }
       contentContainerStyle={adminSystemStyles.listContent}
       data={compensation ?? []}
       keyExtractor={(item) => item.id}
-      ListEmptyComponent={compensation === null && !error ? <AdminSystemState label={vi ? 'Đang tải' : 'Loading'} loading /> : error ? <AdminSystemState actionLabel={vi ? 'Thử lại' : 'Retry'} label={error} onAction={load} /> : <AdminSystemState compact label={vi ? 'Chưa có đề nghị bồi thường nào' : 'No compensation requests'} />}
+      ListEmptyComponent={compensation === null && !error ? <AdminSystemState label={vi ? 'Đang tải' : 'Loading'} loading /> : error ? <AdminSystemState label={error} /> : <AdminSystemState compact label={vi ? 'Chưa có đề nghị bồi thường nào' : 'No compensation requests'} />}
       ListHeaderComponent={header}
       renderItem={({ item }) => <AdminSystemRow
         accessibilityLabel={`${violationLabel(item.violation_code, language)}. ${compensationStatusLabel(item, vi)}`}
@@ -179,7 +182,7 @@ export function AdminDisciplineWorkspace({ language }: { language: AppLanguage }
       contentContainerStyle={adminSystemStyles.listContent}
       data={blocks ?? []}
       keyExtractor={(item) => item.id}
-      ListEmptyComponent={blocks === null && !error ? <AdminSystemState label={vi ? 'Đang tải' : 'Loading'} loading /> : error ? <AdminSystemState actionLabel={vi ? 'Thử lại' : 'Retry'} label={error} onAction={load} /> : <AdminSystemState compact label={vi ? 'Danh sách chặn trống' : 'The blocklist is empty'} />}
+      ListEmptyComponent={blocks === null && !error ? <AdminSystemState label={vi ? 'Đang tải' : 'Loading'} loading /> : error ? <AdminSystemState label={error} /> : <AdminSystemState compact label={vi ? 'Danh sách chặn trống' : 'The blocklist is empty'} />}
       ListHeaderComponent={header}
       renderItem={({ item }) => <AdminSystemRow
         accessibilityLabel={item.kind}
@@ -217,11 +220,12 @@ function CaseDetail({ caseId, language, onBack, onChanged }: { caseId: string; l
   const [notice, setNotice] = useState<string | null>(null)
 
   const load = useCallback(async () => {
-    setError(null)
     const result = await adminProgramService.getViolationCase(caseId)
-    if (result.success && result.data.id === caseId) setDetail(result.data)
+    if (result.success && result.data.id === caseId) { setDetail(result.data); setError(null) }
     else setError((!result.success && result.error) || (vi ? 'Chưa tải được hồ sơ' : 'Could not load the case'))
   }, [caseId, vi])
+
+  useAdminSectionAutoRefresh('workers', load, Boolean(error))
 
   useEffect(() => {
     void load()
@@ -245,7 +249,7 @@ function CaseDetail({ caseId, language, onBack, onChanged }: { caseId: string; l
   }
 
   if (!detail) return error
-    ? <AdminSystemState actionLabel={vi ? 'Thử lại' : 'Retry'} label={error} onAction={load} />
+    ? <AdminSystemState label={error} />
     : <AdminSystemState label={vi ? 'Đang tải' : 'Loading'} loading />
 
   const reasonReady = reason.trim().length >= MIN_REASON

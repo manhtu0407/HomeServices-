@@ -82,10 +82,10 @@ export function AdminSystemPriceWorkspace({ actor, language }: { actor: AdminVie
     contentContainerStyle={adminSystemStyles.listContent}
     data={list.records}
     keyExtractor={(item) => item.id}
-    ListEmptyComponent={list.loading ? <AdminSystemState label={labels.loading} loading /> : list.error ? <AdminSystemState actionLabel={labels.retry} label={list.error} onAction={list.retry} /> : <AdminSystemState compact label={labels.empty} />}
+    ListEmptyComponent={list.loading ? <AdminSystemState label={labels.loading} loading /> : list.error ? <AdminSystemState label={list.error} /> : <AdminSystemState compact label={labels.empty} />}
     ListFooterComponent={list.hasMore ? <View style={styles.loadMore}><FinanceSecondaryButton disabled={list.loadingMore} label={list.loadingMore ? labels.loadingMore : labels.loadMore} loading={list.loadingMore} onPress={list.loadMore} /></View> : null}
     ListHeaderComponent={<View style={styles.header}>
-      <AdminSystemToolbar language={language} onChangeQuery={(query) => patch({ query })} onRefresh={list.refresh} query={state.query} refreshing={list.refreshing} searchPlaceholder={labels.searchPlaceholder} />
+      <AdminSystemToolbar language={language} onChangeQuery={(query) => patch({ query })} query={state.query} searchPlaceholder={labels.searchPlaceholder} />
       <AdminSystemSummary generatedAt={list.generatedAt} language={language} quality={list.dataQuality}>
         <AdminSystemMetric label={labels.activeCount} value={list.summary?.active_count ?? null} />
         <AdminSystemMetric label={labels.quorumCount} value={list.summary?.quorum_count ?? null} />
@@ -95,7 +95,7 @@ export function AdminSystemPriceWorkspace({ actor, language }: { actor: AdminVie
       <FilterGroup label={labels.service}><FinanceChoiceChip label={labels.all} onPress={() => patch({ service: 'all' })} selected={state.service === 'all'} />{SERVICE_TYPES.map((value) => <FinanceChoiceChip key={value} label={adminSystemServiceLabel(value, language)} onPress={() => patch({ service: value })} selected={state.service === value} />)}</FilterGroup>
       <FilterGroup label={labels.status}>{(['all', 'active', 'superseded', 'retired'] as const).map((value) => <FinanceChoiceChip key={value} label={labels.statusValue[value]} onPress={() => patch({ status: value })} selected={state.status === value} />)}</FilterGroup>
       <FilterGroup label={labels.complexity}>{(['all', 'small', 'medium', 'large'] as const).map((value) => <FinanceChoiceChip key={value} label={value === 'all' ? labels.all : adminSystemComplexityLabel(value, language)} onPress={() => patch({ complexity: value })} selected={state.complexity === value} />)}</FilterGroup>
-      {list.error && list.records.length > 0 ? <AdminSystemState actionLabel={labels.retry} compact label={list.error} onAction={list.retry} /> : null}
+      {list.error && list.records.length > 0 ? <AdminSystemState compact label={list.error} /> : null}
     </View>}
     renderItem={renderPrice}
     showsVerticalScrollIndicator={false}
@@ -121,7 +121,7 @@ function PriceDetail({ actor, detail, language, onBack }: {
   const record = response?.record
 
   if (detail.loading && !record) return <AdminSystemState label={labels.loadingDetail} loading />
-  if (detail.error && !record) return <AdminSystemState actionLabel={labels.retry} label={detail.error} onAction={detail.retry} />
+  if (detail.error && !record) return <AdminSystemState label={detail.error} />
   if (!record || !response) return <AdminSystemState label={labels.chooseRecord} />
 
   const reset = () => {
@@ -217,7 +217,7 @@ function PriceDetail({ actor, detail, language, onBack }: {
     </> : null}
     {editor.stage === 'receipt' && editor.receipt ? <><AdminSystemState compact label={labels.receiptRecorded} /><Section title={labels.receipt}><AdminSystemField label={labels.eventId} value={editor.receipt.event_id} /><AdminSystemField label={labels.recordedAt} value={adminSystemFormatDate(editor.receipt.recorded_at, language)} /><AdminSystemField label={labels.newVersion} numeric value={String(editor.receipt.new_version)} /></Section><FinanceSecondaryButton label={labels.done} onPress={reset} /></> : null}
     {editor.pending && editor.stage === 'view' ? <AdminSystemState compact label={labels.loadingPackages} loading /> : null}
-    {detail.error && record ? <AdminSystemState actionLabel={labels.retry} compact label={detail.error} onAction={detail.retry} /> : null}
+    {detail.error && record ? <AdminSystemState compact label={detail.error} /> : null}
   </AdminSystemDetailScroll>
 }
 

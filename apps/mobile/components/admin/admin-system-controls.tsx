@@ -9,21 +9,18 @@ import { FinanceSecondaryButton } from './admin-finance-controls'
 import { formatAdminDateTime } from './admin-intl'
 import { AdminText } from './admin-text'
 
-export function AdminSystemToolbar({ language, onChangeQuery, onRefresh, query, refreshing, searchPlaceholder }: {
+export function AdminSystemToolbar({ language, onChangeQuery, query, searchPlaceholder }: {
   language: AppLanguage
   onChangeQuery: (value: string) => void
-  onRefresh: () => void
   query: string
-  refreshing: boolean
   searchPlaceholder?: string
 }) {
   const labels = language === 'vi'
-    ? { refresh: 'Tải lại', refreshing: 'Đang cập nhật…', search: 'Tìm trong dữ liệu Production' }
-    : { refresh: 'Refresh', refreshing: 'Updating…', search: 'Search Production data' }
+    ? { search: 'Tìm trong dữ liệu Production' }
+    : { search: 'Search Production data' }
   const searchLabel = searchPlaceholder ?? labels.search
   return <View style={styles.toolbar}>
     <View style={styles.search}><KaelTextField accessibilityLabel={searchLabel} autoCapitalize="none" mode="search" onChangeText={onChangeQuery} placeholder={searchLabel} placeholderTextColor={color.text.muted} value={query} /></View>
-    <FinanceSecondaryButton disabled={refreshing} label={refreshing ? labels.refreshing : labels.refresh} loading={refreshing} onPress={onRefresh} />
   </View>
 }
 

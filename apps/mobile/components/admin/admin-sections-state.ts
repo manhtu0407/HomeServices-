@@ -48,12 +48,17 @@ export type AdminSectionsState = {
   actor: AdminViewActor | null
   selectedWorker: AdminViewWorkerApplicationSummary | null
   selectedTransaction: AdminViewTransactionDetailResponse | null
+  transactionDetailJobId: string | null
   decisionModal: DecisionModal
   decisionReason: string
   workerAccessModal: WorkerAccessModal
   workerAccessReason: string
   notice: string | null
   error: string | null
+  readError: string | null
+  readFailed: boolean
+  detailReadError: string | null
+  detailReadFailed: boolean
   operationsError: string | null
   teamError: string | null
   loading: boolean
@@ -97,12 +102,17 @@ export function initialAdminSectionsState({ capability, route }: AdminSectionsIn
     actor: null,
     selectedWorker: null,
     selectedTransaction: null,
+    transactionDetailJobId: null,
     decisionModal: null,
     decisionReason: '',
     workerAccessModal: null,
     workerAccessReason: '',
     notice: null,
     error: null,
+    readError: null,
+    readFailed: false,
+    detailReadError: null,
+    detailReadFailed: false,
     operationsError: null,
     teamError: null,
     loading: true,

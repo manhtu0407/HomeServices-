@@ -9,6 +9,7 @@ import type {
   AdminViewWorkflowRecoveryDetailResponse,
   AdminViewWorkflowRecoverySummary,
 } from '@/lib/api-types/admin'
+import { useAdminSectionAutoRefresh } from '@/lib/admin-data-sync'
 import { localizedStatusLabel, type AppLanguage } from '@/lib/app-language'
 import {
   clearStableClientRequestId,
@@ -136,6 +137,11 @@ export function AdminWorkflowRecoveryCenter({
   const [records, setRecords] = useState<AdminViewWorkflowRecoverySummary[]>([])
   const [detail, setDetail] = useState<AdminViewWorkflowRecoveryDetailResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // These flags drive the background retry hook and must trigger its lifecycle updates.
+  // react-doctor-disable-next-line react-doctor/rerender-state-only-in-handlers
+  const [listReadFailed, setListReadFailed] = useState(false)
+  // react-doctor-disable-next-line react-doctor/rerender-state-only-in-handlers
+  const [detailReadFailed, setDetailReadFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [pendingAction, setPendingAction] = useState<RecoveryAction | null>(null)
   const [reason, setReason] = useState('')
@@ -144,33 +150,44 @@ export function AdminWorkflowRecoveryCenter({
 
   const loadList = useCallback(async () => {
     setLoading(true)
-    setError(null)
     const result = await adminControlService.listWorkflowRecoveryCases({ status: 'all', limit: 50 })
     if (!result.success) {
       setError(strings.error)
+      setListReadFailed(true)
       setLoading(false)
       return
     }
     setRecords(result.data.records)
+    setListReadFailed(false)
+    setError((current) => current === strings.error ? null : current)
     setLoading(false)
   }, [strings.error])
 
   const loadDetail = useCallback(async (recoveryCaseId: string) => {
     setLoading(true)
-    setError(null)
     const result = await adminControlService.getWorkflowRecoveryCase(recoveryCaseId)
     if (!result.success) {
       setError(strings.error)
+      setDetailReadFailed(true)
       setLoading(false)
       return
     }
     setDetail(result.data)
+    setDetailReadFailed(false)
+    setError((current) => current === strings.error ? null : current)
     setLoading(false)
   }, [strings.error])
 
   useEffect(() => {
     void loadList()
   }, [loadList])
+
+  const refreshSection = useCallback(async () => {
+    if (detail) await Promise.all([loadList(), loadDetail(detail.summary.recovery_case_id)])
+    else await loadList()
+  }, [detail, loadDetail, loadList])
+
+  useAdminSectionAutoRefresh('operations', refreshSection, listReadFailed || detailReadFailed, refreshSection)
 
   const applyAction = async (action: RecoveryAction) => {
     if (!detail || pendingAction || !canTriage) return
@@ -215,7 +232,7 @@ export function AdminWorkflowRecoveryCenter({
         <KaelButton label={detail ? strings.back : strings.close} onPress={() => detail ? setDetail(null) : onClose()} variant="secondary" />
       </View>
 
-      {error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{error}</AdminText><KaelButton label={strings.retry} onPress={() => detail ? void loadDetail(detail.summary.recovery_case_id) : void loadList()} variant="secondary" /></View> : null}
+      {error ? <View accessibilityRole="alert" style={styles.error}><AdminText textRole="subheadline" style={styles.errorText}>{error}</AdminText></View> : null}
 
       {detail ? (
         <View style={styles.stack}>

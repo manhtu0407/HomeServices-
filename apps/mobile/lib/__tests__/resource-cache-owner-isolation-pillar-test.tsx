@@ -5,6 +5,7 @@ import { Text } from 'react-native'
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { resetConnectivityForTests } from '../connectivity'
 import {
+  clearResourceOwner,
   fetchResource,
   invalidateResource,
   readResource,
@@ -89,6 +90,38 @@ describe('resource cache owner isolation', () => {
     withPillarContext(PILLAR, () => {
       expect(readResource(OWNER_A, 'customer.membership')).toBeNull()
     }, 'a late response re-populated a wiped owner')
+  })
+
+  it('keeps a replacement request registered when an older cleared request settles late', async () => {
+    let resolveOld: (value: FetchOutcome<string>) => void = () => undefined
+    let resolveReplacement: (value: FetchOutcome<string>) => void = () => undefined
+    const oldRequest = fetchResource(OWNER_A, 'admin.finance:overview', () => new Promise<FetchOutcome<string>>((resolve) => { resolveOld = resolve }))
+
+    clearResourceOwner(OWNER_A)
+    const replacementRequest = fetchResource(OWNER_A, 'admin.finance:overview', () => new Promise<FetchOutcome<string>>((resolve) => { resolveReplacement = resolve }))
+    resolveOld(ok('old'))
+    await oldRequest
+
+    const duplicateFetcher = jest.fn(async () => ok('duplicate'))
+    const duplicateRequest = fetchResource(OWNER_A, 'admin.finance:overview', duplicateFetcher)
+
+    withPillarContext(PILLAR, () => {
+      expect(duplicateRequest).toBe(replacementRequest)
+      expect(duplicateFetcher).not.toHaveBeenCalled()
+    }, 'an obsolete request removed the active replacement from the in-flight map')
+
+    resolveReplacement(ok('current'))
+    await Promise.all([replacementRequest, duplicateRequest])
+    expect(readResource(OWNER_A, 'admin.finance:overview')?.data).toBe('current')
+  })
+
+  it('clears a synchronously throwing fetcher so a later read can retry', async () => {
+    const first = fetchResource(OWNER_A, 'admin.operations:overview', () => { throw new Error('sync failure') })
+    await expect(first).resolves.toEqual({ success: false, code: 'RESOURCE_FETCH_FAILED' })
+
+    const retryFetcher = jest.fn(async () => ok('recovered'))
+    await expect(fetchResource(OWNER_A, 'admin.operations:overview', retryFetcher)).resolves.toEqual(ok('recovered'))
+    expect(retryFetcher).toHaveBeenCalledTimes(1)
   })
 
   it('hides values older than maxAge and keeps invalidated values visible but stale', () => {

@@ -31,7 +31,7 @@ type ReconciliationDetailCopy = FinanceReconciliationCopy & {
   customerReference: string
   detailTimeline: string
   detailUnavailable: string
-  load: string
+  detailLoading: string
   notAssigned: string
   receiptStatus: string
   reconcile: string
@@ -44,7 +44,7 @@ type ReconciliationDetailCopy = FinanceReconciliationCopy & {
   workerNet: string
 }
 
-export function ReconciliationModal({ actualAmount, assignmentReason, bankReference, canTakeover, copy, decisionError, detail, detailError, detailLoading, formatCurrency, formatDate, onChangeActualAmount, onChangeAssignmentReason, onChangeBankReference, onChangeReason, onClaim, onClose, onRelease, onRetry, onSubmit, pending, reason, selected }: {
+export function ReconciliationModal({ actualAmount, assignmentReason, bankReference, canTakeover, copy, decisionError, detail, detailError, detailLoading, formatCurrency, formatDate, onChangeActualAmount, onChangeAssignmentReason, onChangeBankReference, onChangeReason, onClaim, onClose, onRelease, onSubmit, pending, reason, selected }: {
   actualAmount: string
   assignmentReason: string
   bankReference: string
@@ -63,7 +63,6 @@ export function ReconciliationModal({ actualAmount, assignmentReason, bankRefere
   onClaim: () => void
   onClose: () => void
   onRelease: () => void
-  onRetry: () => void
   onSubmit: (decision: AdminPaymentReconciliationDecisionInput['decision']) => void
   pending: boolean
   reason: string
@@ -90,10 +89,9 @@ export function ReconciliationModal({ actualAmount, assignmentReason, bankRefere
       <Summary label={copy.receiptStatus} value={reconciliationStatusLabel(selected.status, copy)} />
       <Summary label={copy.assignedTo} value={selected.assigned_to_name ?? copy.notAssigned} />
     </View>
-    {detailLoading ? <AdminText accessibilityLiveRegion="polite" textRole="subheadline" style={styles.hint}>{copy.load}…</AdminText> : null}
+    {detailLoading ? <AdminText accessibilityLiveRegion="polite" textRole="subheadline" style={styles.hint}>{copy.detailLoading}</AdminText> : null}
     {detailError ? <View accessibilityRole="alert" style={styles.detailError}>
       <AdminText textRole="subheadline" style={styles.hint}>{detailError}</AdminText>
-      <FinanceSecondaryButton label={copy.load} onPress={onRetry} size="small" />
     </View> : null}
     {detail ? <>
       <View style={styles.summaryRow}>
@@ -127,11 +125,10 @@ export function ReconciliationModal({ actualAmount, assignmentReason, bankRefere
         <KaelTextField accessibilityLabel={copy.transferContent} editable={false} label={copy.transferContent} onChangeText={() => undefined} value={detail.transfer_content ?? ''} />
         {detail.transfer_content ? <AdminText textRole="footnote" style={styles.hint}>{copy.transferContentHint}</AdminText> : <View accessibilityRole="alert" style={styles.detailError}>
           <AdminText textRole="subheadline" style={styles.hint}>{copy.transferContentUnavailable}</AdminText>
-          <FinanceSecondaryButton disabled={detailLoading} label={copy.load} onPress={onRetry} size="small" />
         </View>}
         <KaelTextField accessibilityLabel={copy.bankReference} autoCapitalize="characters" label={copy.bankReference} onChangeText={onChangeBankReference} value={bankReference} />
         <AdminText textRole="footnote" style={styles.hint}>{copy.bankReferenceHint}</AdminText>
-        <ActionButton decision="confirm" label={copy.confirmIncoming} onReview={setReviewDecision} pending={pending} />
+        <ActionButton decision="confirm" disabled={isManual && !detail.transfer_content} label={copy.confirmIncoming} onReview={setReviewDecision} pending={pending} />
         <KaelTextField accessibilityLabel={copy.reconcileRequired} label={copy.reconcileRequired} onChangeText={onChangeReason} value={reason} />
         <ActionButton decision="reconcile_required" label={copy.reconcileRequired} onReview={setReviewDecision} pending={pending} secondary />
       </> : canDecideCash ? <>
@@ -165,16 +162,17 @@ export function ReconciliationModal({ actualAmount, assignmentReason, bankRefere
   </View>
 }
 
-function ActionButton({ decision, label, onReview, pending, secondary = false }: {
+function ActionButton({ decision, disabled = false, label, onReview, pending, secondary = false }: {
   decision: AdminPaymentReconciliationDecisionInput['decision']
+  disabled?: boolean
   label: string
   onReview: (decision: AdminPaymentReconciliationDecisionInput['decision']) => void
   pending: boolean
   secondary?: boolean
 }) {
   return secondary
-    ? <FinanceSecondaryButton disabled={pending} label={label} onPress={() => onReview(decision)} />
-    : <KaelButton disabled={pending} label={label} onPress={() => onReview(decision)} variant="primary" />
+    ? <FinanceSecondaryButton disabled={pending || disabled} label={label} onPress={() => onReview(decision)} />
+    : <KaelButton disabled={pending || disabled} label={label} onPress={() => onReview(decision)} variant="primary" />
 }
 
 function Summary({ label, value }: { label: string; value: string }) {

@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 445,
+  "migrationCount": 446,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -83,10 +83,10 @@
       }
     ]
   },
-  "migrationsSha256": "062dc1f7989aaf441a22e2c2ed81052f5a0313ff3e1b3c66d2de941b630d4fcc",
+  "migrationsSha256": "3c47c5ad726695f228b9b458a29aacbf00fb8d902794e3072512bbbdd6610f9a",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "0a29b2facffdec715e39e2605d1e7d1904dcbb1945d62dcbfd8a02a382a828c4"
+    "sha256": "a01c32c904aa19fbb8a976a93235301b1718ffdbd3893af54e57421fc281ac13"
   },
   "entries": [
     {
@@ -3203,6 +3203,13 @@
       "file": "supabase/migrations/20261010150000_reuse_expired_candidate_on_customer_retry.sql",
       "sha256": "4e5ce61f6baa6d05921ac8ace9f8303c4cbae1cdb1138b8aac1096f3a26d89e3",
       "bytes": 6598
+    },
+    {
+      "version": "20261011100000",
+      "name": "admin_data_revision_signal",
+      "file": "supabase/migrations/20261011100000_admin_data_revision_signal.sql",
+      "sha256": "e9f3dc689cfd4a5805984a135036c8fd6d09ff77c79f574256decccc7aa9ac47",
+      "bytes": 10346
     }
   ]
 }
