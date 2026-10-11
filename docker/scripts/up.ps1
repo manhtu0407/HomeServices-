@@ -32,7 +32,7 @@ try {
   & powershell -NoProfile -ExecutionPolicy Bypass -File $nodeRunner `
     "scripts/harness/prepare-migration-workdir.mjs" `
     --empty-reset --inventory "config/harness/migration-inventory.json" `
-    --output $localWorkdir --reuse
+    --output $localWorkdir --reuse --refresh-stale
   $prepareCode = $LASTEXITCODE
   if ($prepareCode -ne 0) {
     Write-Output "canonical migration workdir preparation failed with exit code $prepareCode"

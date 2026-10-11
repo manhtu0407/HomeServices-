@@ -352,8 +352,8 @@ function goodFiles() {
       'docker compose pull --help',
       'docker compose run --help',
     ].join('\n'),
-    'docker/scripts/up.ps1': 'doctor.ps1 -Profile $Profile\nprepare-migration-workdir.mjs --empty-reset --inventory config/harness/migration-inventory.json --output .scratch/local-migrations --reuse\nscripts\\run-supabase.ps1 start --workdir .scratch/local-migrations',
-    'docker/scripts/up.sh': 'doctor.sh --profile "$profile"\nprepare-migration-workdir.mjs --empty-reset --inventory config/harness/migration-inventory.json --output .scratch/local-migrations --reuse\nscripts/run-supabase.sh start --workdir .scratch/local-migrations',
+    'docker/scripts/up.ps1': 'doctor.ps1 -Profile $Profile\nprepare-migration-workdir.mjs --empty-reset --inventory config/harness/migration-inventory.json --output .scratch/local-migrations --reuse --refresh-stale\nscripts\\run-supabase.ps1 start --workdir .scratch/local-migrations',
+    'docker/scripts/up.sh': 'doctor.sh --profile "$profile"\nprepare-migration-workdir.mjs --empty-reset --inventory config/harness/migration-inventory.json --output .scratch/local-migrations --reuse --refresh-stale\nscripts/run-supabase.sh start --workdir .scratch/local-migrations',
     'docker/scripts/down.ps1': 'scripts\\run-supabase.ps1 stop',
     'docker/scripts/down.sh': 'scripts/run-supabase.sh stop',
     'docker/scripts/edge-check.ps1': [
@@ -424,6 +424,15 @@ test('local database start and reset require the canonical migration workdir', (
   files['package.json'] = files['package.json'].replace('--workdir .scratch/local-migrations', '')
   const report = dockerContractProblems(files).join('\n')
   assert.match(report, /canonical local migration workdir/u)
+})
+
+test('both startup runners must refresh stale migration snapshots', () => {
+  for (const path of ['docker/scripts/up.ps1', 'docker/scripts/up.sh']) {
+    const files = goodFiles()
+    files[path] = files[path].replace('--refresh-stale', '')
+    const report = dockerContractProblems(files).join('\n')
+    assert.match(report, /safely refresh a stale canonical migration workdir/u)
+  }
 })
 
 test('RAM is advisory and low memory does not become a startup gate', () => {

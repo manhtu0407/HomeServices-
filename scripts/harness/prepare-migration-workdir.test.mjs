@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -162,4 +162,35 @@ test('canonical empty-reset workdir can be reused when it still matches the inve
     () => materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true }),
     /canonical migration file set/u,
   )
+})
+
+test('refreshing a stale empty-reset workdir preserves the old snapshot and installs the current inventory', () => {
+  const root = mkdtempSync(join(tmpdir(), 'nestscout-refresh-migrations-'))
+  mkdirSync(join(root, 'supabase/migrations'), { recursive: true })
+  const sql = 'select 1;\n'
+  writeFileSync(join(root, 'supabase/config.toml'), 'project_id = "fixture"\n')
+  writeFileSync(join(root, 'supabase/seed.sql'), sql)
+  writeFileSync(join(root, 'supabase/migrations/20260804000000_fixture.sql'), sql)
+  const fixtureInventory = { migrationEquivalences: { version: '1.0.0', groups: [] }, entries: [{ version: '20260804000000',
+    file: 'supabase/migrations/20260804000000_fixture.sql',
+    sha256: createHash('sha256').update(sql).digest('hex') }] }
+  const input = { root, output: '.scratch/local-migrations', inventory: fixtureInventory }
+  materializeEmptyMigrationWorkdir(input)
+  writeFileSync(join(root, '.scratch/local-migrations/preserved-marker.txt'), 'old snapshot')
+  writeFileSync(join(root, '.scratch/local-migrations/supabase/migrations/20260804000000_fixture.sql'), 'select 2;\n')
+
+  let archivedPath
+  const refreshed = materializeEmptyMigrationWorkdir({
+    ...input,
+    reuseExisting: true,
+    refreshStaleExisting: true,
+    onStaleSnapshotArchived: (path) => { archivedPath = path },
+  })
+
+  assert.deepEqual(refreshed, buildEmptyMigrationApplyPlan({ inventory: fixtureInventory }))
+  assert.equal(readFileSync(join(root, '.scratch/local-migrations/supabase/migrations/20260804000000_fixture.sql'), 'utf8'), sql)
+  assert.ok(archivedPath)
+  assert.equal(readFileSync(join(root, archivedPath, 'preserved-marker.txt'), 'utf8'), 'old snapshot')
+  assert.equal(readFileSync(join(root, archivedPath, 'supabase/migrations/20260804000000_fixture.sql'), 'utf8'), 'select 2;\n')
+  assert.equal(readdirSync(join(root, '.scratch')).some((name) => name.startsWith('local-migrations-refresh-')), false)
 })
