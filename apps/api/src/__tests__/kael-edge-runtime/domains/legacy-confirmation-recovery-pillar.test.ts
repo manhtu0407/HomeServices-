@@ -11,7 +11,7 @@ import { legacyConfirmationRecoverySchema as edgeRecoverySchema } from '../../..
 import { CAPABILITY_POLICIES } from '../../../../../../supabase/functions/mobile-api/_shared/platform/authz/capability-registry'
 
 export const PILLAR = {
-  id: 'P186-legacy-confirmation-recovery',
+  id: 'P357-legacy-confirmation-recovery',
   invariant: 'legacy recovery preserves owned job identity and requires validated original offer and current policy',
   authority: ['governance/RULES.md #7', 'governance/RULES.md #8'],
   target: 'supabase/functions/mobile-api/_shared/domains/kael-chat/legacy-confirmation-recovery.ts',

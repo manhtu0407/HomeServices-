@@ -122,6 +122,17 @@ describe('Worker Jobs ZIP Prototype', () => {
     expect(source).not.toContain('worker-stage-seven-approval-workart')
   })
 
+  it('uses the Booking Workart treatment for Stage 1 and Stage 2 opportunity cards', () => {
+    expect(source).toContain('WorkerStageTwoOfferWorkart')
+    expect(source).toContain('customerV21BookingWorkartAssets[SERVICE_WORKART_KEY[serviceType]]')
+    expect(source).toContain('contentFit="cover"')
+    expect(source).toContain("flexBasis: '40%'")
+    expect(source).toContain("width: '40%'")
+    expect(source).toContain("maxWidth: '60%'")
+    expect(source).toContain("panelColor={tokens.mode === 'dark' ? tokens.ghost : '#E8F5F1'}")
+    expect(source).toContain('surfaceColor={reduceTransparency ? tokens.base : tokens.raised}')
+  })
+
   it('places a transparent completion-record Workart in the Stage 8 hero', () => {
     expect(source).toContain('testID="worker-v5-stage-eight-workart"')
     expect(source).toContain('contentFit="contain"')
