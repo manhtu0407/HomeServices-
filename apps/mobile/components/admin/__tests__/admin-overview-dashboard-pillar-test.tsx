@@ -15,7 +15,7 @@ import { adminControlService } from '@/lib/services'
 export const PILLAR = {
   id: 'P45-admin-overview-dashboard',
   invariant:
-    'Admin Overview reads only Production finance and operations snapshots, keeps prior content during refresh, and never lets an older period response replace the selected period',
+    'Admin Overview reads only Production finance and operations snapshots, refreshes after Admin reconciliation, keeps prior content during refresh, and never lets an older period response replace the selected period',
   authority: [
     'user-approved Admin Overview dashboard plan (read-only Production data, month default, stale-safe refresh)',
     'governance/RULES.md #8 (no fake data or silent degradation)',
@@ -520,6 +520,21 @@ describe('Admin Overview dashboard', () => {
       ])
       expect(adminControlService.getOperations).toHaveBeenCalledTimes(1)
     }, 'the selected week result must remain after the older day request resolves')
+  })
+
+  it('reloads Finance and Operations snapshots when Admin reconciliation succeeds', async () => {
+    const props = { language: 'vi' as const, financeRefreshVersion: 0, onSessionMissing: jest.fn() }
+    const view = render(<AdminOverviewDashboard {...props} />)
+    expect(await screen.findByText('12.000.000 ₫')).toBeTruthy()
+
+    jest.mocked(adminControlService.getFinanceOverview).mockResolvedValueOnce(successfulFinance(financeOverview(24_000_000)))
+    view.rerender(<AdminOverviewDashboard {...props} financeRefreshVersion={1} />)
+
+    expect(await screen.findByText('24.000.000 ₫')).toBeTruthy()
+    await waitFor(() => {
+      expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(2)
+      expect(adminControlService.getOperations).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('keeps Operations visible when Finance fails and marks unavailable metrics without fake zeroes', async () => {

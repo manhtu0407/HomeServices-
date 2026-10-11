@@ -37,6 +37,8 @@ const RECONCILIATION_SELECT = [
   "updated_at",
 ].join(",");
 
+const RECONCILIATION_DETAIL_SELECT = `${RECONCILIATION_SELECT},transfer_content`;
+
 export async function getAdminWorkerFinanceSnapshot(
   ctx: MobileApiContext,
   workerId: string,
@@ -114,7 +116,7 @@ export async function getAdminPaymentReconciliation(
 ): Promise<AdminPaymentReconciliationDetailResponse> {
   await requireAdminCapability(ctx, "finance.read");
   const orderResult = await dbQuery<Row>(
-    db(ctx).from("job_payment_orders").select(RECONCILIATION_SELECT).eq("id", paymentOrderId).maybeSingle(),
+    db(ctx).from("job_payment_orders").select(RECONCILIATION_DETAIL_SELECT).eq("id", paymentOrderId).maybeSingle(),
   );
   if (orderResult.error) apiFailure("DB_ERROR", "Không thể tải chi tiết đối soát", 500);
   if (!orderResult.data) apiFailure("NOT_FOUND", "Không tìm thấy giao dịch đối soát", 404);
@@ -138,6 +140,7 @@ export async function getAdminPaymentReconciliation(
     service_type: requiredString(job.service_type),
     expected_amount_vnd: requiredNonnegativeInteger(orderResult.data.gross_amount),
     received_amount_vnd: nonnegativeInteger(orderResult.data.amount_received),
+    transfer_content: nullableString(orderResult.data.transfer_content),
     timeline: (eventResult.data ?? []).map((event) => ({
       event_id: requiredString(event.id),
       event_type: requiredString(event.event_type),

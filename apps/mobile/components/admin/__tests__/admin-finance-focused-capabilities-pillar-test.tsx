@@ -10,18 +10,18 @@ import { adminControlService } from '@/lib/services'
 export const PILLAR = {
   id: 'P52-admin-finance-focused-capabilities',
   invariant:
-    'Each Admin Finance sheet stays focused on its own capability, preserves unavailable data as not recorded, and opens reconciliation detail inline before any mutation',
+    'Admin Finance displays NestScout transfer content as a lookup aid, separately requires the real bank transaction reference, and refreshes Admin Overview only after a successful reconciliation decision',
   authority: [
     'user-approved Admin Finance Production completion plan',
     'governance/RULES.md #8 (unavailable Production data is never displayed as zero)',
     'governance/design/screen-recipes.md (one sheet, list-to-detail without nested modal)',
   ],
   target:
-    'apps/mobile/components/admin/admin-finance.tsx; apps/mobile/components/admin/admin-finance-controls.tsx; apps/mobile/components/admin/admin-finance-reconciliation-modal.tsx; apps/mobile/components/admin/admin-payouts.tsx; apps/mobile/components/admin/admin-finance-reports.tsx',
+    'apps/mobile/components/admin/admin-finance.tsx; apps/mobile/components/admin/admin-finance-state.ts; apps/mobile/components/admin/admin-finance-controls.tsx; apps/mobile/components/admin/admin-finance-reconciliation-modal.tsx; apps/mobile/components/admin/admin-sections.tsx; apps/mobile/components/admin/admin-overview-dashboard.tsx; apps/mobile/components/admin/admin-payouts.tsx; apps/mobile/components/admin/admin-finance-reports.tsx',
   layer: 'ui-visual',
   siblings: ['P45-admin-overview-dashboard', 'P51-admin-finance-operations-contract'],
   mutation:
-    'restore the four capability tabs, coalesce an unavailable metric to zero, or replace the inline reconciliation detail with Modal — one of the focused-sheet assertions turns red',
+    'prefill an unverified expected amount as received, replace the inline bank-reference error with a generic page error, invoke Admin Overview refresh before a successful Backend decision, or fail to refresh Overview snapshots afterward',
 } as const satisfies PillarManifest
 
 jest.mock('@/lib/app-language', () => ({ useAppLanguage: () => 'vi' }))
@@ -114,6 +114,12 @@ const reconciliation = {
   version: 1,
 }
 
+const reconciliationWithOwner = { ...reconciliation, assigned_to: 'owner-1', assigned_to_me: true }
+const transferContentByOrder = {
+  'payment-order-1': 'NSABCDEFGHIJKLMNOPQRSTUVWX',
+  'payment-order-2': 'NSZYXWVUTSRQPONMLKJIHGFEDC',
+}
+
 describe('Admin Finance focused capability sheets', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -128,6 +134,7 @@ describe('Admin Finance focused capability sheets', () => {
         reconciliation,
         service_type: 'cleaning',
         timeline: [],
+        transfer_content: 'NSABCDEFGHIJKLMNOPQRSTUVWX',
         worker_ref: 'W-3344CCDD',
       },
       status: 200,
@@ -236,23 +243,129 @@ describe('Admin Finance focused capability sheets', () => {
   })
 
   it('requires claim and final confirmation before recording reconciliation', async () => {
-    render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="cash" reduceMotion reduceTransparency />)
+    const onFinanceUpdated = jest.fn()
+    render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="cash" onFinanceUpdated={onFinanceUpdated} reduceMotion reduceTransparency />)
 
     fireEvent.press(await screen.findByTestId('admin-finance-reconciliation-payment-order-1'))
     await waitFor(() => expect(screen.getByText('Nhận xử lý')).toBeTruthy())
     fireEvent.press(screen.getByText('Nhận xử lý'))
     await waitFor(() => expect(adminControlService.claimPaymentReconciliation).toHaveBeenCalled())
-    fireEvent.changeText(screen.getByLabelText('Mã giao dịch ngân hàng'), 'VCB-998877')
+    fireEvent.changeText(screen.getByLabelText('Số tiền thực nhận'), '450000')
+    await waitFor(() => expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe('NSABCDEFGHIJKLMNOPQRSTUVWX'))
+    expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.editable).toBe(false)
+    expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('')
     fireEvent.press(screen.getByText('Xác nhận tiền vào'))
     withPillarContext(PILLAR, () => expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled())
     expect(screen.getByTestId('admin-finance-reconciliation-review')).toBeTruthy()
     fireEvent.press(screen.getByTestId('admin-finance-reconciliation-confirm'))
+    expect(await screen.findByText(/Chưa nhập mã giao dịch thật trên sao kê/)).toBeTruthy()
+    expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
+    fireEvent.changeText(screen.getByLabelText('Mã giao dịch ngân hàng'), 'BANK-TRX-20261011')
+    fireEvent.press(screen.getByTestId('admin-finance-reconciliation-confirm'))
     await waitFor(() => expect(adminControlService.decidePaymentReconciliation).toHaveBeenCalledWith('payment-order-1', expect.objectContaining({
-      bank_reference: 'VCB-998877',
+      bank_reference: 'BANK-TRX-20261011',
       client_request_id: expect.any(String),
       decision: 'confirm',
       expected_version: 2,
     })))
+    expect(onFinanceUpdated).toHaveBeenCalledTimes(1)
+  })
+
+  it('loads the matching NS transfer content when Admin opens a different reconciliation', async () => {
+    const secondReconciliation = {
+      ...reconciliationWithOwner,
+      display_code: 'NS-FIN-002',
+      id: 'payment-order-2',
+      job_id: 'job-2',
+    }
+    jest.mocked(adminControlService.listPaymentReconciliations).mockResolvedValue({
+      data: {
+        generated_at: '2026-08-25T08:00:00.000+07:00',
+        has_more: false,
+        next_cursor: null,
+        payment_reconciliations: [reconciliationWithOwner, secondReconciliation],
+        total_amount_vnd: 900_000,
+        total_count: 2,
+      },
+      status: 200,
+      success: true,
+    })
+    jest.mocked(adminControlService.getPaymentReconciliation).mockImplementation(async (id) => ({
+      data: {
+        customer_ref: 'C-1122AABB',
+        expected_amount_vnd: 450_000,
+        generated_at: '2026-08-25T08:00:00.000+07:00',
+        received_amount_vnd: null,
+        reconciliation: id === 'payment-order-2' ? secondReconciliation : reconciliationWithOwner,
+        service_type: 'cleaning',
+        timeline: [],
+        transfer_content: transferContentByOrder[id as keyof typeof transferContentByOrder],
+        worker_ref: 'W-3344CCDD',
+      },
+      status: 200,
+      success: true,
+    }))
+    render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="cash" reduceMotion reduceTransparency />)
+
+    fireEvent.press(await screen.findByTestId('admin-finance-reconciliation-payment-order-1'))
+    await waitFor(() => expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe(transferContentByOrder['payment-order-1']))
+    expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.editable).toBe(false)
+    expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('')
+    fireEvent.press(screen.getByText('Hủy'))
+
+    fireEvent.press(await screen.findByTestId('admin-finance-reconciliation-payment-order-2'))
+    await waitFor(() => expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe(transferContentByOrder['payment-order-2']))
+    expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.editable).toBe(false)
+    expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('')
+  })
+
+  it('offers a detail retry when NS content is missing, then fills it from the same order', async () => {
+    jest.mocked(adminControlService.getPaymentReconciliation).mockResolvedValueOnce({
+      data: {
+        customer_ref: 'C-1122AABB',
+        expected_amount_vnd: 450_000,
+        generated_at: '2026-08-25T08:00:00.000+07:00',
+        received_amount_vnd: null,
+        reconciliation,
+        service_type: 'cleaning',
+        timeline: [],
+        transfer_content: null,
+        worker_ref: 'W-3344CCDD',
+      },
+      status: 200,
+      success: true,
+    })
+    jest.mocked(adminControlService.getPaymentReconciliation).mockResolvedValueOnce({
+      data: {
+        customer_ref: 'C-1122AABB',
+        expected_amount_vnd: 450_000,
+        generated_at: '2026-08-25T08:00:00.000+07:00',
+        received_amount_vnd: null,
+        reconciliation,
+        service_type: 'cleaning',
+        timeline: [],
+        transfer_content: transferContentByOrder['payment-order-1'],
+        worker_ref: 'W-3344CCDD',
+      },
+      status: 200,
+      success: true,
+    })
+    render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="cash" reduceMotion reduceTransparency />)
+
+    fireEvent.press(await screen.findByTestId('admin-finance-reconciliation-payment-order-1'))
+    fireEvent.press(await screen.findByText('Nhận xử lý'))
+    await waitFor(() => expect(adminControlService.claimPaymentReconciliation).toHaveBeenCalled())
+    expect(await screen.findByText(/Chưa có nội dung chuyển khoản NestScout/)).toBeTruthy()
+    expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe('')
+    expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('')
+    fireEvent.press(within(screen.getByTestId('admin-finance-reconciliation-detail')).getByText('Tải lại'))
+    await waitFor(() => expect(adminControlService.getPaymentReconciliation).toHaveBeenCalledTimes(2))
+    fireEvent.press(await screen.findByText('Nhận xử lý'))
+    await waitFor(() => expect(adminControlService.claimPaymentReconciliation).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe(transferContentByOrder['payment-order-1']))
+    expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.editable).toBe(false)
+    expect(screen.getByLabelText('Mã giao dịch ngân hàng').props.value).toBe('')
+    expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
   })
 
   it('keeps payout and reporting details inline, masked and file-based', () => {

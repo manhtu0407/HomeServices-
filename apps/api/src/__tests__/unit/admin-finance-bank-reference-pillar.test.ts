@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 import {
   decideAdminPaymentReconciliation,
+  getAdminPaymentReconciliation,
   listAdminPaymentReconciliations,
 } from '../../../../../supabase/functions/mobile-api/_shared/domains/admin/finance-reconciliation'
 
@@ -222,12 +223,47 @@ describe('P34 admin finance — reconciliation read projection', () => {
       assignment: 'all',
     })).rejects.toMatchObject({ code: 'DB_ERROR', status: 500 })
   })
+
+  it('returns the NestScout transfer content from the selected payment order detail', async () => {
+    const transferContent = 'NSABCDEFGHIJKLMNOPQRSTUVWX'
+    const ctx = reconciliationContext({
+      id: 'payment-1',
+      job_id: 'job-1',
+      payment_method: 'platform_bank_manual',
+      status: 'manual_customer_claimed',
+      gross_amount: 450_000,
+      worker_id: 'worker-1',
+      platform_fee: 45_000,
+      worker_net: 405_000,
+      amount_received: null,
+      transfer_content: transferContent,
+      customer_transfer_claimed_at: '2026-09-14T10:00:00.000Z',
+      response_deadline: '2026-09-14T12:00:00.000Z',
+      assigned_to: null,
+      assigned_at: null,
+      version: 2,
+      created_at: '2026-09-14T09:00:00.000Z',
+      updated_at: '2026-09-14T10:00:00.000Z',
+    }, {
+      id: 'job-1',
+      display_code: 'NS-0001',
+      service_type: 'plumbing',
+      customer_id: 'customer-1',
+    })
+
+    await expect(getAdminPaymentReconciliation(ctx, 'payment-1')).resolves.toMatchObject({
+      reconciliation: { id: 'payment-1' },
+      transfer_content: transferContent,
+    })
+  })
 })
 
 function reconciliationContext(paymentRow: Record<string, unknown>, jobRow: Record<string, unknown>) {
   const results = new Map<string, unknown>([
     ['job_payment_orders', [paymentRow]],
     ['jobs', [jobRow]],
+    ['job_payment_reconciliation_events', []],
+    ['profiles', []],
   ])
   return {
     role: 'admin',
@@ -243,8 +279,17 @@ function reconciliationContext(paymentRow: Record<string, unknown>, jobRow: Reco
 }
 
 function reconciliationQuery(data: unknown) {
+  let selectedColumns: string[] | null = null
+  const project = (value: unknown) => {
+    if (!selectedColumns) return value
+    const projectRow = (row: unknown) => row && typeof row === 'object'
+      ? Object.fromEntries(selectedColumns!.flatMap((column) => Object.hasOwn(row, column) ? [[column, (row as Record<string, unknown>)[column]]] : []))
+      : row
+    return Array.isArray(value) ? value.map(projectRow) : projectRow(value)
+  }
   const query = {
-    select() {
+    select(columns?: string) {
+      selectedColumns = columns ? columns.split(',') : null
       return query
     },
     limit() {
@@ -259,11 +304,18 @@ function reconciliationQuery(data: unknown) {
     is() {
       return query
     },
+    order() {
+      return query
+    },
+    maybeSingle() {
+      const rows = project(data)
+      return Promise.resolve({ data: Array.isArray(rows) ? rows[0] ?? null : rows, error: null })
+    },
     then<TResult1 = unknown, TResult2 = never>(
       onfulfilled?: ((value: { data: unknown; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
     ) {
-      return Promise.resolve({ data, error: null }).then(onfulfilled, onrejected)
+      return Promise.resolve({ data: project(data), error: null }).then(onfulfilled, onrejected)
     },
   }
   return query

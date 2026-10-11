@@ -14,6 +14,10 @@ type ReconciliationDetailCopy = FinanceReconciliationCopy & {
   assignedTo: string
   assignmentReason: string
   bankReference: string
+  bankReferenceHint: string
+  transferContent: string
+  transferContentHint: string
+  transferContentUnavailable: string
   cancel: string
   cashConfirm: string
   cashConfirmationHint: string
@@ -40,12 +44,13 @@ type ReconciliationDetailCopy = FinanceReconciliationCopy & {
   workerNet: string
 }
 
-export function ReconciliationModal({ actualAmount, assignmentReason, bankReference, canTakeover, copy, detail, detailError, detailLoading, formatCurrency, formatDate, onChangeActualAmount, onChangeAssignmentReason, onChangeBankReference, onChangeReason, onClaim, onClose, onRelease, onRetry, onSubmit, pending, reason, selected }: {
+export function ReconciliationModal({ actualAmount, assignmentReason, bankReference, canTakeover, copy, decisionError, detail, detailError, detailLoading, formatCurrency, formatDate, onChangeActualAmount, onChangeAssignmentReason, onChangeBankReference, onChangeReason, onClaim, onClose, onRelease, onRetry, onSubmit, pending, reason, selected }: {
   actualAmount: string
   assignmentReason: string
   bankReference: string
   canTakeover: boolean
   copy: ReconciliationDetailCopy
+  decisionError: string | null
   detail: AdminPaymentReconciliationDetailResponse | null
   detailError: string | null
   detailLoading: boolean
@@ -119,7 +124,13 @@ export function ReconciliationModal({ actualAmount, assignmentReason, bankRefere
     </View> : <>
       {isManual ? <>
         <KaelTextField accessibilityLabel={copy.actualAmount} keyboardType="number-pad" label={copy.actualAmount} onChangeText={onChangeActualAmount} value={actualAmount} />
+        <KaelTextField accessibilityLabel={copy.transferContent} editable={false} label={copy.transferContent} onChangeText={() => undefined} value={detail.transfer_content ?? ''} />
+        {detail.transfer_content ? <AdminText textRole="footnote" style={styles.hint}>{copy.transferContentHint}</AdminText> : <View accessibilityRole="alert" style={styles.detailError}>
+          <AdminText textRole="subheadline" style={styles.hint}>{copy.transferContentUnavailable}</AdminText>
+          <FinanceSecondaryButton disabled={detailLoading} label={copy.load} onPress={onRetry} size="small" />
+        </View>}
         <KaelTextField accessibilityLabel={copy.bankReference} autoCapitalize="characters" label={copy.bankReference} onChangeText={onChangeBankReference} value={bankReference} />
+        <AdminText textRole="footnote" style={styles.hint}>{copy.bankReferenceHint}</AdminText>
         <ActionButton decision="confirm" label={copy.confirmIncoming} onReview={setReviewDecision} pending={pending} />
         <KaelTextField accessibilityLabel={copy.reconcileRequired} label={copy.reconcileRequired} onChangeText={onChangeReason} value={reason} />
         <ActionButton decision="reconcile_required" label={copy.reconcileRequired} onReview={setReviewDecision} pending={pending} secondary />
@@ -143,6 +154,9 @@ export function ReconciliationModal({ actualAmount, assignmentReason, bankRefere
     {reviewDecision ? <View accessibilityRole="summary" style={styles.review} testID="admin-finance-reconciliation-review">
       <AdminText textRole="headline" style={styles.reviewTitle}>{copy.reviewDecision}</AdminText>
       <AdminText textRole="body" style={styles.hint}>{decisionLabel(reviewDecision, copy)}</AdminText>
+      {decisionError ? <View accessibilityLiveRegion="assertive" accessibilityRole="alert" style={styles.decisionError} testID="admin-finance-decision-error">
+        <AdminText textRole="subheadline" style={styles.decisionErrorText}>{decisionError}</AdminText>
+      </View> : null}
       <View style={styles.reviewActions}>
         <KaelButton disabled={pending} label={copy.cancel} onPress={() => setReviewDecision(null)} variant="ghost" />
         <KaelButton disabled={pending} label={copy.confirmDecision} onPress={() => onSubmit(reviewDecision)} testID="admin-finance-reconciliation-confirm" variant="primary" />
@@ -180,6 +194,8 @@ const styles = StyleSheet.create({
   claimBlock: { gap: spacing.md },
   detail: { backgroundColor: color.surface.base, borderColor: color.surface.stroke, borderRadius: component.card.radius, borderWidth: 1, gap: spacing.lg, padding: spacing.lg },
   detailError: { alignItems: 'flex-start', gap: spacing.sm },
+  decisionError: { backgroundColor: component.chip.error.bg, borderColor: component.chip.error.border, borderRadius: component.card.radius, borderWidth: 1, padding: spacing.md },
+  decisionErrorText: { ...typography.footnote, color: color.text.strong, fontWeight: '600' },
   heading: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md, justifyContent: 'space-between' },
   headingCopy: { flex: 1, gap: spacing.xs },
   hint: { ...typography.footnote, color: color.text.secondary },
