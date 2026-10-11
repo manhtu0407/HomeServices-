@@ -10,9 +10,15 @@ export function validateMigrationEquivalences(equivalences, entries) {
         !/^\d{14}$/u.test(group?.canonicalVersion ?? '') ||
         !/^[0-9a-f]{64}$/u.test(group?.semanticSha256 ?? '') ||
         !Array.isArray(group?.versions) || group.versions.length < 2 ||
+        (group?.allowMultipleHostedVersions !== undefined && typeof group.allowMultipleHostedVersions !== 'boolean') ||
+        (group?.allowMultipleHostedVersions === true && group.versions.length !== 2) ||
         new Set(group.versions).size !== group.versions.length ||
         group.versions.join('\n') !== [...group.versions].sort().join('\n') ||
         !group.versions.includes(group.canonicalVersion)) {
+      if (group?.allowMultipleHostedVersions === true && group.versions?.length !== 2) {
+        problems.push(`migration equivalence group must contain exactly two versions when multiple hosted versions are allowed: ${group?.id ?? 'unknown'}`)
+        continue
+      }
       problems.push(`migration equivalence group is invalid: ${group?.id ?? 'unknown'}`)
       continue
     }
@@ -72,7 +78,7 @@ export function resolveHostedMigrationState(inventory, hostedRows) {
     const canonicalVersion = group?.canonicalVersion ?? version
     if (group) {
       const previous = appliedEquivalenceGroups.get(group.id)
-      if (previous && previous !== version) {
+      if (previous && previous !== version && group.allowMultipleHostedVersions !== true) {
         throw new Error(`hosted migration history applied multiple equivalent versions: ${group.id}`)
       }
       appliedEquivalenceGroups.set(group.id, version)
