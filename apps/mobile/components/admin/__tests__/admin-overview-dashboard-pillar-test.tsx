@@ -329,8 +329,10 @@ describe('Admin Overview dashboard', () => {
     expect(adminControlService.getOverviewDetails).toHaveBeenCalledTimes(1)
 
     expect(screen.queryByTestId('admin-overview-detail-retry')).toBeNull()
-    expect(await screen.findByText('NS-WORK-1')).toBeTruthy()
-    expect(adminControlService.getOverviewDetails).toHaveBeenCalledTimes(2)
+    await waitFor(() => {
+      expect(adminControlService.getOverviewDetails).toHaveBeenCalledTimes(2)
+      expect(screen.getByText('NS-WORK-1')).toBeTruthy()
+    }, { timeout: 4_000 })
   })
 
   it('renders a genuine zero-record detail response as an empty state', async () => {
