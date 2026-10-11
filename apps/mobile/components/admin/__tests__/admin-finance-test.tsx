@@ -113,6 +113,7 @@ describe('AdminFinancePanel', () => {
         expected_amount_vnd: 450000,
         generated_at: '2026-08-13T00:00:00.000Z',
         received_amount_vnd: null,
+        transfer_content: 'NSABCDEFGHIJKLMNOPQRSTUVWX',
         reconciliation: {
           id: 'payment-order-1',
           job_id: 'job-1',

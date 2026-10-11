@@ -455,6 +455,8 @@ type AdminSectionsLayoutProps = {
 }
 
 function AdminSectionsLayout({ actions, copy, financeView, formatters, language, payoutInitialTab, reduceMotion, reduceTransparency, state }: AdminSectionsLayoutProps) {
+  const [financeRefreshVersion, incrementFinanceRefreshVersion] = useReducer((version: number) => version + 1, 0)
+  const onFinanceUpdated = useCallback(() => incrementFinanceRefreshVersion(), [])
   const {
     activeTab: requestedActiveTab,
     actionPending,
@@ -514,7 +516,7 @@ function AdminSectionsLayout({ actions, copy, financeView, formatters, language,
         {!actor && loading ? <View style={styles.loading}><ActivityIndicator color={color.brand.primary} /><AdminText textRole="subheadline" style={styles.loadingText}>{copy.loading}</AdminText></View> : null}
         {actor && navigation.length === 0 ? <EmptyState body={copy.errors.load} /> : null}
         {actor ? activeTab === 'overview'
-          ? <AdminOverviewDashboard language={language} onOpenTarget={openOverviewTarget} onSessionMissing={handleSessionMissing} />
+          ? <AdminOverviewDashboard financeRefreshVersion={financeRefreshVersion} language={language} onOpenTarget={openOverviewTarget} onSessionMissing={handleSessionMissing} />
           : <AdminProductionSectionIndex
             actor={actor}
             language={language}
@@ -540,6 +542,7 @@ function AdminSectionsLayout({ actions, copy, financeView, formatters, language,
         formatters={formatters}
         language={language}
         payoutInitialTab={payoutInitialTab}
+        onFinanceUpdated={onFinanceUpdated}
         reduceMotion={reduceMotion}
         reduceTransparency={reduceTransparency}
         state={state}
@@ -587,7 +590,7 @@ function overviewDetailTitle(key: AdminViewOverviewDetailKey, language: 'vi' | '
   return copy[key]
 }
 
-function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeView, formatters, language, payoutInitialTab, reduceMotion, reduceTransparency, state }: {
+function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeView, formatters, language, onFinanceUpdated, payoutInitialTab, reduceMotion, reduceTransparency, state }: {
   actions: AdminSectionsLayoutProps['actions']
   actor: AdminViewActor
   capability: AdminProductionCapability
@@ -595,6 +598,7 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
   financeView: string
   formatters: AdminSectionsLayoutProps['formatters']
   language: 'vi' | 'en'
+  onFinanceUpdated: () => void
   payoutInitialTab: 'accounts' | 'withdrawals'
   reduceMotion: boolean
   reduceTransparency: boolean
@@ -698,7 +702,7 @@ function AdminCapabilityWorkspace({ actions, actor, capability, copy, financeVie
         : capability.id === 'finance-tax'
           ? 'tax'
           : financeView
-      return <AdminFinancePanel actor={actor} initialView={effectiveView} key={`${capability.id}-${effectiveView}`} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} />
+      return <AdminFinancePanel actor={actor} initialView={effectiveView} key={`${capability.id}-${effectiveView}`} onFinanceUpdated={onFinanceUpdated} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} />
     }
     case 'finance-payouts':
       return <AdminPayoutsPanel actor={actor} initialTab={payoutInitialTab} reduceMotion={reduceMotion} reduceTransparency={reduceTransparency} />

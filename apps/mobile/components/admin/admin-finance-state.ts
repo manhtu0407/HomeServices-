@@ -17,6 +17,7 @@ export type FinanceState = {
   customFrom: string
   customMode: boolean
   customTo: string
+  decisionError: string | null
   detailError: string | null
   detailLoading: boolean
   error: string | null
@@ -53,6 +54,7 @@ export const initialFinanceState: FinanceState = {
   customFrom: '',
   customMode: false,
   customTo: '',
+  decisionError: null,
   detailError: null,
   detailLoading: false,
   error: null,

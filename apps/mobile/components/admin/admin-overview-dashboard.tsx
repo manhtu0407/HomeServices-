@@ -215,7 +215,8 @@ function overviewTarget(key: AdminViewOverviewDetailKey): AdminOverviewOpenTarge
   return { capabilityId: 'operations-job-monitor', detailKey: key, section: 'operations' }
 }
 
-export function AdminOverviewDashboard({ language, onOpenTarget, onSessionMissing }: {
+export function AdminOverviewDashboard({ financeRefreshVersion = 0, language, onOpenTarget, onSessionMissing }: {
+  financeRefreshVersion?: number
   language: AppLanguage
   onOpenTarget?: (target: AdminOverviewOpenTarget) => void
   onSessionMissing: () => void
@@ -288,7 +289,7 @@ export function AdminOverviewDashboard({ language, onOpenTarget, onSessionMissin
   useEffect(() => {
     void Promise.all([loadFinance(rangeRef.current), loadOperations()])
     return invalidateRequests
-  }, [invalidateRequests, loadFinance, loadOperations])
+  }, [financeRefreshVersion, invalidateRequests, loadFinance, loadOperations])
 
   const selectRange = useCallback((range: AdminOverviewRange) => {
     if (range === rangeRef.current) return

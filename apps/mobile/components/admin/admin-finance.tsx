@@ -14,6 +14,7 @@ import { adminControlService } from '@/lib/services'
 import { FinanceControls } from './admin-finance-controls'
 import { FinanceCashView } from './admin-finance-cash-view'
 import { createFinanceFormatters } from './admin-finance-formatters'
+import { reconciliationCopyByLanguage } from './admin-finance-reconciliation-copy'
 import { adminFinancePanelStyles as styles } from './admin-finance-panel-styles'
 import {
   customFinancePeriod,
@@ -265,17 +266,19 @@ type FinanceOverviewMetric = AdminFinanceOverviewResponse['metrics'][keyof Admin
 type AdminFinancePanelProps = {
   actor: AdminViewActor | null
   initialView?: string
+  onFinanceUpdated?: () => void
   reduceMotion: boolean
   reduceTransparency: boolean
 }
 function useAdminFinanceController({
   actor,
   initialView,
+  onFinanceUpdated,
   reduceMotion,
 }: AdminFinancePanelProps) {
   const { width } = useWindowDimensions()
   const language = useAppLanguage()
-  const copy = copyByLanguage[language]
+  const copy = { ...copyByLanguage[language], ...reconciliationCopyByLanguage[language] }
   const canRead = actor?.capabilities.includes('finance.read') || actor?.capabilities.includes('finance.reconcile') || false
   const canReconcile = actor?.capabilities.includes('finance.reconcile') ?? false
   const canManageTax = actor?.capabilities.includes('finance.tax.manage') ?? false
@@ -312,6 +315,7 @@ function useAdminFinanceController({
     customFrom,
     customMode,
     customTo,
+    decisionError,
     detailError,
     detailLoading,
     error,
@@ -450,7 +454,8 @@ function useAdminFinanceController({
       if (requestId !== detailRequestIdRef.current) return
       if (result.success) {
         patch({
-          actualAmount: result.data.received_amount_vnd === null ? String(result.data.expected_amount_vnd) : String(result.data.received_amount_vnd),
+          actualAmount: result.data.received_amount_vnd === null ? '' : String(result.data.received_amount_vnd),
+          bankReference: '',
           detailLoading: false,
           selected: result.data.reconciliation,
           selectedDetail: result.data,
@@ -463,9 +468,10 @@ function useAdminFinanceController({
 
   const openReconciliation = useCallback((item: AdminPaymentReconciliationSummary) => {
     patch({
-      actualAmount: item.amount_received === null ? String(item.gross_amount) : String(item.amount_received),
+      actualAmount: item.amount_received === null ? '' : String(item.amount_received),
       assignmentReason: '',
       bankReference: '',
+      decisionError: null,
       detailError: null,
       reason: '',
       selected: item,
@@ -478,35 +484,41 @@ function useAdminFinanceController({
     if (!selected?.assigned_to_me) return
     const isManual = selected.payment_method === 'platform_bank_manual'
     const parsedAmount = Number(actualAmount.replace(/[^0-9]/g, ''))
-    if (isManual && (!Number.isSafeInteger(parsedAmount) || parsedAmount <= 0 || !bankReference.trim())) {
-      patch({ error: copy.errorAction })
+    const normalizedBankReference = bankReference.trim()
+    if (isManual && (!Number.isSafeInteger(parsedAmount) || parsedAmount <= 0)) {
+      patch({ decisionError: copy.invalidActualAmount })
+      return
+    }
+    if (isManual && !normalizedBankReference) {
+      patch({ decisionError: copy.bankReferenceRequired })
       return
     }
     if ((decision === 'reconcile_required' || decision === 'direct_release' || decision === 'cash_reject') && reason.trim().length < 3) {
-      patch({ error: copy.errorAction })
+      patch({ decisionError: copy.errorAction })
       return
     }
-    patch({ error: null, pendingAction: `${selected.id}:${decision}` })
+    patch({ decisionError: null, error: null, pendingAction: `${selected.id}:${decision}` })
     const input: AdminPaymentReconciliationDecisionInput = {
       client_request_id: generateClientRequestId(),
       decision,
       expected_version: selected.version,
       ...(isManual ? {
         amount_received: parsedAmount,
-        bank_reference: bankReference.trim(),
+        bank_reference: normalizedBankReference,
         credited_at: new Date().toISOString(),
       } : {}),
       ...((decision === 'reconcile_required' || decision === 'direct_release' || decision === 'cash_reject') ? { reason: reason.trim() } : {}),
     }
     const result = await adminControlService.decidePaymentReconciliation(selected.id, input)
     if (result.success) {
-      patch({ notice: copy.updated, selected: null })
+      patch({ decisionError: null, notice: copy.updated, selected: null })
+      onFinanceUpdated?.()
       await load()
     } else {
-      patch({ error: copy.errorAction })
+      patch({ decisionError: copy.errorAction })
     }
     patch({ pendingAction: null })
-  }, [actualAmount, bankReference, copy.errorAction, copy.updated, load, patch, reason, selected])
+  }, [actualAmount, bankReference, copy.bankReferenceRequired, copy.errorAction, copy.invalidActualAmount, copy.updated, load, onFinanceUpdated, patch, reason, selected])
 
   const claimReconciliation = useCallback(async () => {
     if (!selected || (selected.assigned_to && actor?.access_level !== 'owner')) return
@@ -588,6 +600,7 @@ function useAdminFinanceController({
     customFrom,
     customMode,
     customTo,
+    decisionError,
     detailError,
     detailLoading,
     detailRequestIdRef,
@@ -651,7 +664,7 @@ function FinancePanelBody({ controller }: { controller: ReturnType<typeof useAdm
     patchReconciliationControls, paymentBreakdown, pendingAction, period, range,
     reconciliationAssignment, reconciliationMethod, reconciliationNextCursor, reconciliationQuery,
     reconciliations, reconciliationTotal, reduceMotion, refreshTaxPolicies, releaseReconciliation,
-    reason, saveObservedBalance, selected, selectedDetail, serviceBreakdown, submitReconciliation,
+    decisionError, reason, saveObservedBalance, selected, selectedDetail, serviceBreakdown, submitReconciliation,
     summary, taxRefreshKey, trendPoints,
   } = controller
 
@@ -764,14 +777,15 @@ function FinancePanelBody({ controller }: { controller: ReturnType<typeof useAdm
       detail={selectedDetail}
       detailError={detailError}
       detailLoading={detailLoading}
+      decisionError={decisionError}
       formatCurrency={formatCurrency}
       formatDate={formatDate}
-      onChangeActualAmount={(actualAmount) => patch({ actualAmount })}
+      onChangeActualAmount={(actualAmount) => patch({ actualAmount, decisionError: null })}
       onChangeAssignmentReason={(assignmentReason) => patch({ assignmentReason })}
-      onChangeBankReference={(bankReference) => patch({ bankReference })}
-      onChangeReason={(reason) => patch({ reason })}
+      onChangeBankReference={(bankReference) => patch({ bankReference, decisionError: null })}
+      onChangeReason={(reason) => patch({ decisionError: null, reason })}
       onClaim={() => { void claimReconciliation() }}
-      onClose={() => { detailRequestIdRef.current += 1; patch({ detailError: null, detailLoading: false, selected: null, selectedDetail: null }) }}
+      onClose={() => { detailRequestIdRef.current += 1; patch({ decisionError: null, detailError: null, detailLoading: false, selected: null, selectedDetail: null }) }}
       onRetry={() => { void loadReconciliationDetail(selected) }}
       onRelease={() => { void releaseReconciliation() }}
       onSubmit={(decision) => { void submitReconciliation(decision) }}

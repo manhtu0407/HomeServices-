@@ -51,6 +51,7 @@ export type AdminPaymentReconciliationDetailResponse = {
   service_type: string
   expected_amount_vnd: number
   received_amount_vnd: number | null
+  transfer_content: string | null
   timeline: Array<{
     event_id: string
     event_type: string
