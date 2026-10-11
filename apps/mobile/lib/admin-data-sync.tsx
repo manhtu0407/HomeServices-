@@ -32,13 +32,17 @@ export function AdminDataSyncProvider({ children, enabled, ownerId }: {
   const [state, setState] = useState<SyncState>({ revisions: {}, signals: EMPTY_SIGNALS })
   const stateRef = useRef(state)
   const refresh = useCallback(async () => {
-    const result = await readAdminDataRevisions()
-    if (!result.success) return false
-    const current = stateRef.current
-    const next = mergeRevisionState(current, result.revisions)
-    stateRef.current = next
-    setState(next)
-    return true
+    try {
+      const result = await readAdminDataRevisions()
+      if (!result.success) return false
+      const current = stateRef.current
+      const next = mergeRevisionState(current, result.revisions)
+      stateRef.current = next
+      setState(next)
+      return true
+    } catch {
+      return false
+    }
   }, [])
 
   useEffect(() => {

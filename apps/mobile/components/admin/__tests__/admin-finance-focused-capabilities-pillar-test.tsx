@@ -432,6 +432,44 @@ describe('Admin Finance focused capability sheets', () => {
     expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
   })
 
+  it('retries a thrown Finance detail read instead of leaving the reconciliation loading forever', async () => {
+    jest.mocked(adminControlService.getPaymentReconciliation).mockRejectedValueOnce(new Error('temporary network failure'))
+
+    render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="cash" reduceMotion reduceTransparency />)
+    fireEvent.press(await screen.findByTestId('admin-finance-reconciliation-payment-order-1'))
+
+    await waitFor(() => expect(adminControlService.getPaymentReconciliation).toHaveBeenCalledTimes(2), { timeout: 2_000 })
+    await waitFor(() => expect(screen.queryByText('Đang đồng bộ trạng thái…')).toBeNull())
+    expect(screen.queryByText('Chưa thể tải chi tiết đối soát.')).toBeNull()
+    fireEvent.press(await screen.findByText('Nhận xử lý'))
+    await waitFor(() => expect(adminControlService.claimPaymentReconciliation).toHaveBeenCalled())
+    await waitFor(() => expect(screen.getByLabelText('Nội dung chuyển khoản NestScout').props.value).toBe(transferContentByOrder['payment-order-1']))
+    expect(adminControlService.decidePaymentReconciliation).not.toHaveBeenCalled()
+  })
+
+  it('retries a thrown Finance overview read instead of silently leaving the first load stale', async () => {
+    jest.mocked(adminControlService.getFinanceOverview).mockRejectedValueOnce(new Error('temporary network failure'))
+
+    render(<AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read'] }} initialView="overview" reduceMotion reduceTransparency />)
+
+    await waitFor(() => expect(adminControlService.getFinanceOverview).toHaveBeenCalledTimes(2), { timeout: 2_000 })
+    await screen.findByTestId('admin-finance-view-overview')
+    expect(screen.queryByText('Chưa thể đồng bộ dữ liệu tài chính. Kael sẽ tự thử lại khi có kết nối.')).toBeNull()
+  })
+
+  it('keeps the Admin revision signal usable after its first read rejects', async () => {
+    mockReadAdminDataRevisions
+      .mockRejectedValueOnce(new Error('temporary network failure'))
+      .mockResolvedValue({ success: true, revisions: { finance: 1 } })
+
+    render(<AdminDataSyncProvider enabled ownerId="admin-owner"><></></AdminDataSyncProvider>)
+    await waitFor(() => expect(mockReadAdminDataRevisions).toHaveBeenCalledTimes(1))
+    const onStatus = mockSubscribeToAdminDataRevisions.mock.calls[0]?.[2] as ((status: string) => void) | undefined
+    expect(onStatus).toBeDefined()
+    await act(async () => { onStatus?.('SUBSCRIBED') })
+    await waitFor(() => expect(mockReadAdminDataRevisions).toHaveBeenCalledTimes(2))
+  })
+
   it('refreshes the real Finance surface when an authorized live revision arrives', async () => {
     render(<AdminDataSyncProvider enabled ownerId="admin-owner">
       <AdminFinancePanel actor={{ access_level: 'owner', capabilities: ['finance.read', 'finance.reconcile'] }} initialView="overview" reduceMotion reduceTransparency />

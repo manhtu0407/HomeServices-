@@ -279,11 +279,15 @@ function waitForFinanceReadRetry(attempt: number) {
 
 async function retryFinanceRead<T extends { success: boolean }>(read: () => Promise<T>) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    // Each retry depends on the prior response and the bounded backoff keeps reads from overlapping.
-    // react-doctor-disable-next-line react-doctor/async-await-in-loop
-    const result = await read()
-    if (result.success || attempt === 2) return result
-    await waitForFinanceReadRetry(attempt)
+    try {
+      // Each retry depends on the prior response and the bounded backoff keeps reads from overlapping.
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      const result = await read()
+      if (result.success || attempt === 2) return result
+    } catch (error) {
+      if (attempt === 2) throw error
+    }
+    if (attempt < 2) await waitForFinanceReadRetry(attempt)
   }
   throw new Error('Finance read retry exhausted unexpectedly')
 }
@@ -421,6 +425,8 @@ function useAdminFinanceController({
           })
         }
       }
+    } catch {
+      if (requestId === loadRequestIdRef.current) patch({ error: copy.loadError })
     } finally {
       if (requestId === loadRequestIdRef.current) {
         hasLoadedRef.current = true
@@ -440,20 +446,27 @@ function useAdminFinanceController({
     backgroundLoadInFlightRef.current = true
     const requestId = loadRequestIdRef.current + 1
     loadRequestIdRef.current = requestId
-    const result = await adminControlService.listPaymentReconciliations({
-      status: 'pending',
-      limit: 25,
-      cursor: reconciliationNextCursor,
-      assignment: reconciliationAssignment,
-      payment_method: reconciliationMethod,
-      query: debouncedReconciliationQuery || undefined,
-    })
-    if (requestId === loadRequestIdRef.current && result.success) {
-      patch({ reconciliations: [...reconciliations, ...result.data.payment_reconciliations] })
-      patchReconciliationControls({ nextCursor: result.data.next_cursor })
+    try {
+      const result = await adminControlService.listPaymentReconciliations({
+        status: 'pending',
+        limit: 25,
+        cursor: reconciliationNextCursor,
+        assignment: reconciliationAssignment,
+        payment_method: reconciliationMethod,
+        query: debouncedReconciliationQuery || undefined,
+      })
+      if (requestId === loadRequestIdRef.current && result.success) {
+        patch({ reconciliations: [...reconciliations, ...result.data.payment_reconciliations] })
+        patchReconciliationControls({ nextCursor: result.data.next_cursor })
+      } else if (requestId === loadRequestIdRef.current) {
+        patch({ error: copy.loadError })
+      }
+    } catch {
+      if (requestId === loadRequestIdRef.current) patch({ error: copy.loadError })
+    } finally {
+      if (requestId === loadRequestIdRef.current) backgroundLoadInFlightRef.current = false
     }
-    if (requestId === loadRequestIdRef.current) backgroundLoadInFlightRef.current = false
-  }, [debouncedReconciliationQuery, patch, reconciliationAssignment, reconciliationMethod, reconciliationNextCursor, reconciliations])
+  }, [copy.loadError, debouncedReconciliationQuery, patch, reconciliationAssignment, reconciliationMethod, reconciliationNextCursor, reconciliations])
 
   const invalidatePendingLoad = useCallback(() => {
     loadRequestIdRef.current += 1
@@ -487,13 +500,17 @@ function useAdminFinanceController({
     patch({ detailLoading: true })
     let detail: AdminPaymentReconciliationDetailResponse | null = null
     for (let attempt = 0; attempt < 3; attempt += 1) {
-      // Transfer content is response-dependent, and the request guard must fence every completion.
-      // react-doctor-disable-next-line react-doctor/async-defer-await, react-doctor/async-await-in-loop
-      const result = await adminControlService.getPaymentReconciliation(item.id)
-      if (requestId !== detailRequestIdRef.current) return
-      if (result.success) {
-        detail = result.data
-        if (item.payment_method !== 'platform_bank_manual' || detail.transfer_content) break
+      try {
+        // Transfer content is response-dependent, and the request guard must fence every completion.
+        // react-doctor-disable-next-line react-doctor/async-defer-await, react-doctor/async-await-in-loop
+        const result = await adminControlService.getPaymentReconciliation(item.id)
+        if (requestId !== detailRequestIdRef.current) return
+        if (result.success) {
+          detail = result.data
+          if (item.payment_method !== 'platform_bank_manual' || detail.transfer_content) break
+        }
+      } catch {
+        if (requestId !== detailRequestIdRef.current) return
       }
       if (attempt < 2) await waitForFinanceReadRetry(attempt)
     }
