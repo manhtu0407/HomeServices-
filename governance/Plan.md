@@ -1727,3 +1727,271 @@ Pillar: P343, P344, P345, P346 (mỗi cái đỏ khi đảo mutation). P337 đ�
 |---|---|---|---|
 | 0.1 | 2026-10-08 | Claude | Phase 0–4 code + 2 migration + P343–P345; Phase 5 chẩn đoán xong, chờ Tu duyệt bảng năng lực |
 | 0.2 | 2026-10-08 | Codex | Thêm link nguồn giá đã xác minh cho RN receipt; xóa 7 job eval legacy trên Production theo xác nhận của Tu |
+
+---
+
+## 60. Kael linh hoạt — hiểu ý định từng lượt, gợi ý bước tiếp theo, không còn ngõ cụt (Chat · Work · Worker) — 2026-10-12
+
+> **Trigger.** Tu yêu cầu (phiên 2026-10-12, nhánh `claude/fresh-workspace-1012`) lên plan điều chỉnh Harness của Kael ở cả Chat và Work để Kael phản hồi linh hoạt: trả lời → gợi ý → thăm dò ý định, thay vì đứng yên khi dữ liệu không khớp công thức. Ví dụ gốc: phiên Production `22e93b50-4df2-44b6-b467-4a5f5350c758` (Sửa vặt → Khoan/lắp kệ) kẹt ở `analysis` sau 9 lượt; khách nhắn "Cứ đưa giá tham khảo để xem thử" và nhận lại đúng câu trả lời cũ. Audit chạy trong chat (đọc code + SQL read-only Production), không có file audit riêng.
+> **Freshness check.** CHƯA ĐO trong lúc viết (plan mode chỉ đọc). Phase 0 bắt buộc đo thật: `git status`, `git merge-base --is-ancestor` hai chiều với `origin/main`, baseline `pnpm test:api`, `pnpm test:mobile`, `pnpm type-check:mobile` (số pass/skip/fail + exit code) và ghi vào §60.V trước khi sửa dòng code đầu tiên.
+> **EXECUTING.** Tu duyệt plan ngày 2026-10-12; đang chạy trên `claude/kael-flexible-harness-20261012`.
+
+### Context — vì sao làm
+
+Kael hiện "cứng" vì bốn lỗi cấu trúc, đều có bằng chứng thật:
+
+1. **Work không hiểu ý định từng lượt.** Mọi tin nhắn tự do của khách đi thẳng vào pipeline ước giá: `supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts` → `advanceKaelChatEstimate` (`.../kael-chat/advance.ts`). Câu hỏi, yêu cầu giá tham khảo, "gửi thợ báo giá đi" đều bị coi là "thêm thông tin" → chạy lại DeepSeek + Perplexity → cùng kết quả.
+2. **Ngõ cụt khi thiếu giá.** Policy active của `drill_or_mount_shelf` là `kael_auto_quote` v3 (cần 2 nguồn high-trust). Research thất bại → `priceEvidenceGapReply` (`.../kael-chat/price-gap-reply.ts`) trả template, phiên vẫn `active`, thẻ app `QuoteReadinessReviewResponse` có `actionKind: 'none'`. Đường hợp lệ "thợ báo giá" (`rfq`, RULES #4) đã có (`persistUnpricedRequestReview` trong `.../kael-chat/estimate-support.ts`) nhưng RPC `confirm_kael_chat_durable_atomic` (migration `supabase/migrations/20260823110000_durable_confirmation_matching.sql`, dòng ~317) bắt `confirmation_kind` khớp `quote_mode` của policy active → không có lối thoát.
+3. **Cache "gap" không có hiệu lực.** Production: 3 lần research trong 2 phút cho cùng slug, `reuse_count = 0`. Gốc: `readPriceKnowledgeState` (`.../kael/evidence/live-price-knowledge.ts`) chỉ lấy dòng `insufficient` MỚI NHẤT rồi mới so fingerprint; `researchFingerprint` tính theo số ảnh CỦA LƯỢT (lượt chỉ có text = 0 ảnh) → hai fingerprint xen kẽ → luôn trượt.
+4. **Không có "bước tiếp theo".** Câu hỏi slot của policy đều là placeholder "Anh/chị có thể bổ sung chi tiết này không?"; serializer đã xuất `clarification.missing_slots` nhưng app không vẽ chip; Chat thường chỉ có gợi ý dạng ghost text; Kael thợ không gợi ý gì.
+
+Kết quả mong muốn: mỗi lượt Kael (Work, Chat, Worker) đều (a) trả lời đúng điều người dùng hỏi, (b) kèm 1–4 lựa chọn bước tiếp theo bấm được do server tính, (c) không bao giờ đứng yên khi thiếu giá — luôn có đường đi tiếp hợp luật (thợ báo giá từ ảnh), và (d) không bao giờ vượt cổng xác nhận của RULES #7.
+
+### 60.0 Metadata
+
+```text
+Plan ID:        plan-kael-flexible-harness-20261012
+Created:        2026-10-12
+Owner:          Manh Tu
+Branch:         claude/kael-flexible-harness-20261012 (tạo từ origin/main ở Phase 0; không nhảy nhánh)
+Status:         EXECUTING
+Mốc:            HEAD origin/main e8aae0d4 · dải đã merge #1 → #361
+Trigger:        Kael cứng nhắc, kẹt ở phase khi dữ liệu thiếu/không khớp công thức.
+Scope:          (1) Work khách: phân loại ý định mỗi lượt bằng AI + router; next actions; lối thoát rfq khi thiếu giá; khoảng giá tham khảo có nhãn; câu hỏi slot cụ thể; sửa cache gap.
+                (2) Chat thường khách: chip gợi ý bấm được + chip "Bắt đầu xử lý công việc" khi phát hiện nhu cầu dịch vụ.
+                (3) Kael thợ: next actions + chip trong chat thợ.
+Out of scope:   Đổi bất kỳ cổng xác nhận RULES #7; matching/payment/completion; sửa RULES.md/CLAUDE.md/STRUCTURES.md/critical.md (locked);
+                policy cho slug đang rfq/inspection_only; tinh chỉnh query Perplexity (§59); bảng năng lực thợ (§59 D3);
+                apps/api Next.js product code; tự deploy Edge hoặc apply migration lên Production (chỉ qua release lane do Tu chạy);
+                đổi `turn_intent: "price_question"` hiện có (giữ nguyên hành vi).
+Effort:         10 phase (0–9), chạy tuần tự.
+Authority:      RULES #0/#2/#3/#4/#5/#6/#7/#8/#9/#10 · STRUCTURES §4.5 · protocols/backend-structure.md §24-§25 · protocols/test-pillars.md · protocols/frontend-test.md · protocols/tdd.md · protocols/ai-boundary (critical.md §1)
+Skill mapping:  P0 kael-work-router, kael-docker · P1–P5 kael-ai-boundary, kael-backend-structure, kael-backend-parity, kael-supabase, supabase-postgres-best-practices, kael-tdd, kael-security-sweep ·
+                P6–P8 kael-design-preflight → kael-design-review, kael-frontend-test, kael-accessible-content, react-doctor · P9 kael-visual-qa, kael-ship, source-command-kael-mem · luôn bật: kael-core-hygiene, karpathy-guidelines
+```
+
+### 60.0.1 Pre-Plan Deep-Read (bắt buộc trước dòng code đầu)
+
+Tier 1: `governance/RULES.md`, `governance/critical.md`, `governance/protocols/code-hygiene.md`, `.claude/MEMORY.md` (đọc cuối).
+Kael Work: `supabase/functions/mobile-api/_shared/domains/kael-chat/{turn,advance,branches-pre-pipeline,branches-post-pipeline,estimate-support,price-gap-reply,serialize,guard,stream,clarification.service,session-store,emit-step}.ts`; `supabase/functions/mobile-api/_shared/kael/evidence/{live-price-knowledge,source-trust-aggregation}.ts`; `supabase/functions/mobile-api/_shared/kael/pipeline/stage-market-research.ts`; `supabase/functions/mobile-api/_shared/kael/kael-guardrails/{output-pipeline,permission-gate,spend-gate}.ts`; `supabase/functions/mobile-api/_shared/kael/kael-providers/{routing.config,routing,structured-call}.ts`; `supabase/functions/mobile-api/_shared/kael/prompts/system-prompt.ts`; `supabase/functions/mobile-api/_shared/kael/learning/trace.ts`; `supabase/functions/mobile-api/_shared/kael/tools/normal-chat-suggestions.ts` (khuôn mẫu cho classifier mới).
+Contracts: `supabase/functions/_shared/contracts/kael-chat.ts` ↔ `packages/shared/src/contracts/kael-chat.ts`; `supabase/functions/_shared/contracts/worker.ts` ↔ `packages/shared/src/contracts/worker.ts`.
+DB: `supabase/migrations/20260823110000_durable_confirmation_matching.sql` (thân `confirm_kael_chat_durable_atomic`), `supabase/migrations/20260905162000_confirmation_matching_intent.sql` (v4/v6 bọc ngoài), `supabase/migrations/20261003100000_kael_normal_chat_suggestions_routing.sql` (khuôn thêm purpose), `supabase/migrations/20261009060000_service_case_specific_worker_capabilities.sql` (khuôn ra policy version mới), `supabase/tests/ai_provider_routing_catalog_verification.sql`.
+Mobile: `apps/mobile/components/customer/kael-chat/{use-customer-kael-message-actions,use-customer-kael-decision-actions,customer-kael-presentation,quote-readiness-review-response,case-work-response,customer-kael-case-thread-node,kael-chat-transcript,customer-kael-chat-content,chat-stateful-surfaces,kael-chat-composer}.ts(x)`; `apps/mobile/lib/kael-stream-validation.ts`; `apps/mobile/lib/normal-chat-suggestions.ts`; `apps/mobile/components/worker/chat/{use-worker-kael-orb-chat,kael-body-surfaces,orb-surfaces}.ts(x)`.
+Worker: `supabase/functions/mobile-api/_shared/domains/worker/kael-chat-turn.ts`, `supabase/functions/mobile-api/_shared/kael/agents/worker-assist.ts`.
+Customer chat: `supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts`, `supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-provider-output.ts`.
+Tests: `apps/api/src/__tests__/kael-edge-runtime/harness/{scripted-provider,sequence-client,fixtures}.ts`, `apps/api/src/__tests__/kael-edge-runtime/domains/kael-price-evidence-not-ready-pillar.test.ts` (P337), `apps/api/src/__tests__/schema/contract-parity.test.ts`, `apps/api/src/__tests__/unit/kael-routing-conformance-pillar.test.ts`, `scripts/preview/cache-e2e/{mock-backend,run}.mjs`.
+
+**Bẫy ratchet (đọc trước):** `domains/kael-chat/estimate-support.ts` = 796 dòng, `domains/kael-chat/serialize.ts` = 799 dòng, trần 800 (`scripts/lint-structure.mjs`). Hai file này chỉ được sửa net-zero hoặc giảm dòng: logic mới đặt trong file mới. Cấm `lint-structure.mjs --init`.
+
+### 60.0.2 Decision Log
+
+| # | Quyết định | Ai chốt | Ngày | Lý do |
+|---|---|---|---|---|
+| D1 | Khi thiếu quorum nhưng có ≥2 nguồn THẬT cùng đơn vị (đã trích dẫn, còn mới), Kael hiện "Tham khảo thị trường, chưa đủ kiểm chứng: X–Y đ/<đơn vị>" kèm link nguồn + disclaimer RULES #4 nguyên văn + "không phải báo giá". Không xác nhận/đặt được từ con số này; không tạo estimate/receipt. <2 nguồn → không hiện số. | Tu ✔ | 2026-10-12 | Khách cần cảm giác mức giá; RULES #8 cấm bịa — chỉ dùng nguồn thật. |
+| D2 | Lối thoát khi policy `kael_auto_quote` thiếu bằng chứng giá = `rfq` (thợ phù hợp xem ảnh/mô tả rồi báo giá; khách duyệt trước khi làm, RULES #4). Chỉ áp dụng khi khách chọn (chip hoặc câu nói được phân loại `request_worker_quote`); khách vẫn bấm xác nhận `rfq_request` như hiện nay. | Tu ✔ | 2026-10-12 | Nhanh, không cần thợ đến trước; đã có code path. |
+| D3 | Mọi lượt gõ tự do trong Work đều qua AI phân loại ý định (purpose mới `case_turn_intent`, DeepSeek flash, schema-validated, spend-gated). Lượt bấm chip mang `turn_intent` tường minh nên không cần phân loại lại. Provider lỗi/timeout/confidence < 0.6 → `provide_information` (hành vi hiện tại) + `fallback_used`. | Tu ✔ (chip = Claude diễn giải) | 2026-10-12 | Tu chọn "Luôn dùng AI"; chip không phải văn bản tự do. |
+| D4 | Phạm vi: Work khách + Chat thường khách + Kael thợ. | Tu ✔ | 2026-10-12 | Trả lời câu hỏi phạm vi. |
+| D5 | Next actions do SERVER tính (deterministic theo trạng thái) và gắn vào turn metadata; LLM chỉ được đề xuất văn bản gợi ý, server lọc theo danh sách kind cho phép. App không tự suy ra action. Không kind nào vượt cổng RULES #7 (chip không bao giờ tự xác nhận/ghép thợ/thanh toán). | Claude | 2026-10-12 | RULES #7: raw LLM/client không được đổi workflow state. |
+| D6 | Quyết định fallback rfq ghi vào `kael_chat_sessions.safe_metadata.quote_mode_fallback` (`mode`, `policy_id`, `policy_version`, `gap_reason`, `gap_knowledge_id`, `source: "customer_request"`, `decided_at`); RPC confirm tự kiểm chứng lại. Không dùng `kael_autonomy_decision_audit` vì bảng này bắt `from_status/to_status` kiểu JobStatus NOT NULL (đã kiểm tra Production) mà lúc này chưa có job. | Claude | 2026-10-12 | Server-validated, audit được, không cần bảng mới. |
+| D7 | Policy cho phép fallback qua khóa `evidence_requirements.evidence_unavailable_fallback = "rfq"` trên policy version mới của mọi policy active `kael_auto_quote`. RPC chỉ nhận `rfq_request` trên policy auto-quote khi khóa này có VÀ phiên có `quote_mode_fallback` hợp lệ khớp policy active. | Claude | 2026-10-12 | Expand-only, giữ audit theo version. |
+| D8 | Diff gợi ý địa chỉ đang chưa commit trên `claude/fresh-workspace-1012` (P360/P361) được commit + mở PR riêng ở Phase 0 trước khi tạo nhánh Kael; pillar của plan này bắt đầu từ P362. | Claude (Tu duyệt plan = duyệt bước này) | 2026-10-12 | Không trộn hai việc; tránh trùng số pillar. |
+| D9 | Cách kiểm chứng: (a) test Edge HTTP-level với `scripted-provider`, (b) SQL pillar trên Postgres local (`db:local`), (c) Preview UI bằng mock backend dựng theo `scripts/preview/cache-e2e/mock-backend.mjs`, fixture được test bằng chính validator của app, (d) Production chỉ sau khi Tu chạy release lane. Không tự deploy. | Claude | 2026-10-12 | Preview hiện trỏ Edge Production; Edge local không có key AI. |
+
+Không còn dòng `OPEN`.
+
+### 60.0.3 DoD Gates
+
+| Gate | Đo bằng lệnh | Pass = |
+|---|---|---|
+| G1 | `pnpm test:api` | exit 0; gồm pillar P362–P368, P371 mới và P337 đã cập nhật |
+| G2 | `pnpm test:mobile` | exit 0; gồm P369, P370, P372 |
+| G3 | `pnpm type-check:mobile` | exit 0 |
+| G4 | `pnpm edge:check` | exit 0 (Deno pinned image); nếu Docker không chạy → ghi BLOCKED, không claim xanh |
+| G5 | `pnpm lint:structure` | exit 0, không dùng `--init` |
+| G6 | `pnpm lint:comments` | exit 0 |
+| G7 | `pnpm harness:migrations:check` + `pnpm lint:edge-db` + `node scripts/harness/assert-expand-only.mjs` (theo cách CI gọi) | cả ba exit 0 |
+| G8 | `node scripts/harness/pillar-registry.mjs` (sau `--write`) | exit 0, không trùng ID |
+| G9 | `pnpm db:local:up --profile lean` → `pnpm db:local:reset` → `pnpm db:local:test` → `pnpm db:local:down` | reset replay đủ migration; SQL suite pass gồm P366 và catalog routing đã tăng 1 purpose |
+| G10 | `node scripts/preview/kael-flex/run.mjs` (Phase 9) | exit 0; mọi kịch bản Preview A–F ghi PASS kèm screenshot trong `.scratch/kael-flex/` |
+| G11 | `pnpm ship:check` | exit 0 hoặc liệt kê đúng phần không chạy được |
+| G12 | Production (sau release do Tu chạy) — kịch bản §60.9.4 | từng kỳ vọng đối chiếu bằng SQL read-only; chưa release → NOT RUN |
+
+### 60.0.4 Execution Continuity
+
+Chạy non-stop Phase 0 → 9 trên một nhánh. Chỉ dừng khi: (1) phát hiện xung đột với RULES/critical (dừng, báo Tu); (2) cần Tu chạy release lane hoặc đăng nhập tài khoản thật (Phase 9.4); (3) một gate bị host chặn → ghi BLOCKED đúng gate rồi làm tiếp phần độc lập. Không tự deploy Edge, không apply migration lên Production, không nhập mật khẩu thật. Commit theo từng phase (Conventional Commits, kèm dòng Co-Authored-By theo system reminder).
+
+---
+
+### 60.1 Phase 0 — Chuẩn bị, baseline thật
+
+1. Trên `claude/fresh-workspace-1012`: chạy lại 3 test của diff địa chỉ (P360 vitest, P361 jest, `customer-booking-entry-surface-test.tsx`), commit (`feat(booking): faster, accurate address suggestions` + fix district), push, mở PR, ghi số PR vào §60.V. Không merge nếu Tu chưa nói.
+2. `git fetch origin main && git switch -c claude/kael-flexible-harness-20261012 origin/main`.
+3. Freshness: `git status`, `git merge-base --is-ancestor` hai chiều; baseline `pnpm test:api`, `pnpm test:mobile`, `pnpm type-check:mobile` → ghi số thật.
+4. Copy toàn văn plan này vào `governance/Plan.md` thành §60 (precedent: §57/§59 cùng sống trong Plan.md), status `EXECUTING`, branch như trên.
+5. `wc -l` các file ratchet đã nêu, ghi lại.
+
+Verify: các số baseline nằm trong §60.V; nhánh mới chỉ chứa commit docs §60.
+
+### 60.2 Phase 1 — Sửa cache "gap" (thắng nhanh, độc lập)
+
+Files:
+- `supabase/functions/mobile-api/_shared/kael/evidence/live-price-knowledge.ts`: `readPriceKnowledgeState` nhận thêm `fingerprint` và lọc dòng `insufficient` bằng `.eq("research_fingerprint", fingerprint)` (giữ `.gt("expires_at")`, `.limit(1)`).
+- `supabase/functions/mobile-api/_shared/kael/pipeline/stage-market-research.ts` (và chỗ gọi `readPriceKnowledgeState` — tìm bằng Grep): fingerprint tính từ **tổng số ảnh bằng chứng của cả phiên** (đếm `artifact.evidence` kind ảnh/ video đã xác nhận, hoặc `safe_metadata.evidence_media_refs.length`), không phải `photo_urls` của lượt. Lượt chỉ có text → fingerprint không đổi → dùng lại gap.
+
+Pillar **P362-kael-price-gap-reuse** (`apps/api/src/__tests__/kael-edge-runtime/domains/kael-price-gap-reuse-pillar.test.ts`): lượt 1 có 1 ảnh → research (scripted perplexity 1 lần) → lượt 2 chỉ text → `marketResultFromGap`, provider KHÔNG được gọi; thêm ảnh mới → research lại. Mutation: bỏ filter fingerprint → đỏ.
+
+### 60.3 Phase 2 — Hợp đồng `KaelNextAction` (twin) + mở rộng turn schema
+
+Files mới (twin, byte-tương-đương về shape):
+- `supabase/functions/_shared/contracts/kael-next-actions.ts`
+- `packages/shared/src/contracts/kael-next-actions.ts` (+ export trong `packages/shared/src/contracts/index.ts`)
+
+Shape:
+```ts
+kind: "provide_detail" | "attach_photo" | "request_worker_quote" | "request_reference_price" |
+      "ask_question" | "review_offer" | "edit_intake" | "send_suggestion" | "start_case" |
+      "open_scope_change" | "open_opportunities"
+KaelNextAction = { id: string(1..64), kind, label: string(1..60), message?: string(1..240),
+                   turn_intent?: KaelTurnIntent, slot?: string(1..80), service_type?: ServiceType }
+kaelNextActionsSchema = z.array(KaelNextAction).max(4)
+KaelTurnIntent = "provide_information" | "ask_question" | "request_reference_price" |
+                 "request_worker_quote" | "proceed_or_confirm" | "correction" |
+                 "request_human_or_complaint" | "off_topic_or_smalltalk"
+```
+Kind cho phép theo bề mặt (hằng số export): Work khách = provide_detail, attach_photo, request_worker_quote, request_reference_price, ask_question, review_offer, edit_intake · Chat khách = send_suggestion, start_case · Thợ = send_suggestion, attach_photo, open_scope_change, open_opportunities.
+
+Mở rộng `kaelChatTurnSchema.turn_intent` (cả hai twin `supabase/functions/_shared/contracts/kael-chat.ts` và `packages/shared/src/contracts/kael-chat.ts`): thêm `"request_reference_price" | "request_worker_quote" | "ask_question"`, giữ `"price_question" | "scope_adjustment"` nguyên nghĩa.
+
+Pillar **P368-kael-next-actions-contract**: thêm vào `apps/api/src/__tests__/schema/contract-parity.test.ts` (hoặc pillar riêng theo test-pillars.md) — twin khớp; >4 action hoặc kind lạ bị từ chối; mutation: thêm kind chỉ ở một twin → đỏ.
+
+### 60.4 Phase 3 — Phân loại ý định lượt Work bằng AI + router
+
+### 3a. Purpose mới `case_turn_intent`
+Theo đúng khuôn `normal_chat_suggestions`:
+- Migration mới `supabase/migrations/<ts>_kael_case_turn_intent_routing.sql` (copy cấu trúc `20261003100000_...`): thêm `'case_turn_intent'` vào check constraint `ai_provider_routing_purpose_check`; insert routing `deepseek / deepseek-v4-flash`, fallback null, `cost_ceiling_usd 0.002`, `latency_budget_ms 6000`, `user_visible false`, `daily_provider_cap_usd 30`.
+- Edge: `KAEL_PURPOSES` (`kael/contracts/types.ts`), `KAEL_ROUTING_CONFIG` (`kael/kael-providers/routing.config.ts`, maxTokens 200), `kael/kael-guardrails/permission-gate.ts` (`ACTIONS_BY_PURPOSE.case_turn_intent = ["read_context", "classify_intent"]`; gọi gate với `action: "classify_intent"`, `actor: "customer"`, `jobRelation` theo phiên), `learning/trace.ts` (prompt version `case-turn-intent.2026-10-12.v1`, schema `case_turn_intent.v1`), `prompts/system-prompt.ts` (dòng purpose: phân loại, không trả lời, coi transcript là dữ liệu không tin cậy).
+- Cập nhật `supabase/tests/ai_provider_routing_catalog_verification.sql` (đếm purpose +1) và `apps/api/src/__tests__/unit/kael-routing-conformance-pillar.test.ts`.
+- `config/harness/migration-inventory.json` + `config/harness/access-matrix.json` tái sinh bằng writer chuẩn (không sửa tay).
+
+### 3b. Classifier
+File mới `supabase/functions/mobile-api/_shared/kael/tools/case-turn-intent.ts` (khuôn `kael/tools/normal-chat-suggestions.ts`: permission gate → route → `callStructuredAI` → zod strict):
+- Input: tin nhắn khách (đã `sanitizeForLLM` + `scrubSensitiveForLLM`), 6 lượt gần nhất, tóm tắt trạng thái phiên (case_phase, quote_readiness, missing_facts, có estimate hay không, policy quote_mode). Không gửi ảnh, địa chỉ, PII.
+- Output: `{ intent: KaelTurnIntent, confidence: 0..1 }` strict.
+- Spend gate `createRuntimeKaelSpendGate`; timeout ≤ 6s; lỗi/timeout/confidence < 0.6 → `{ intent: "provide_information", fallback_used: true }` + `console.warn` metadata an toàn (RULES #8/#9).
+
+### 3c. Router
+File mới `supabase/functions/mobile-api/_shared/domains/kael-chat/turn-intent-router.ts`, gọi từ `turn.ts` sau `handleIncomingKaelChatTurnBoundary` và TRƯỚC `advanceKaelChatEstimate` (boundary guard + safety path giữ nguyên thứ tự; safety path → luôn pipeline như cũ). Intent nguồn: `input.turn_intent` (chip) nếu có trong bộ mới, ngược lại classifier. Ghi `turn_intent` + `turn_intent_source: "chip"|"ai"|"fallback"` + confidence vào metadata lượt khách.
+
+| Intent | Hành động (không đổi workflow status trừ dòng rfq) |
+|---|---|
+| provide_information, correction | pipeline như hiện nay (`advanceKaelChatEstimate`); `correction` thêm action `edit_intake` |
+| ask_question | `answerKaelCaseQuestion` (file mới `domains/kael-chat/case-question.service.ts`): gọi agent khách hàng có sẵn (`kael/agents/customer-assistant.ts` qua `answerKaelAssistant`) với context là tóm tắt artifact (scope_summary, missing_facts, lý do thiếu giá), KHÔNG chạy pricing, KHÔNG đổi status; append turn Kael `clarification`/`analysis` (đúng enum content_type hiện có) + next actions |
+| request_reference_price | Phase 4: nếu đang ở trạng thái thiếu giá → trả khoảng tham khảo (D1) hoặc giải thích không có số + action `request_worker_quote`; nếu đã có estimate → nhắc lại estimate + `review_offer`; nếu analysis chưa đủ → 1 câu hỏi slot cụ thể (Phase 5). Không gọi provider giá. |
+| request_worker_quote | Phase 4: áp fallback rfq nếu đủ điều kiện; không đủ → giải thích lý do + action phù hợp |
+| proceed_or_confirm | KHÔNG xác nhận. Có offer → nhắc bấm nút xác nhận (`review_offer`); chưa có → giải thích còn thiếu gì |
+| request_human_or_complaint | handler demanding-customer có sẵn (`maybeHandleDemandingCustomerKaelChatTurn`) |
+| off_topic_or_smalltalk | trả lời ngắn qua assistant rồi kéo về việc đang làm + next actions (boundary guard vẫn chạy trước cho nội dung cấm) |
+
+Pillar **P363-kael-turn-intent-router** (`apps/api/src/__tests__/kael-edge-runtime/domains/kael-turn-intent-router-pillar.test.ts`, dùng `scripted-provider` + `sequence-client`): mỗi intent đi đúng nhánh; chip intent không gọi classifier; DeepSeek lỗi → pipeline cũ; `ask_question` và `request_reference_price` không gọi perplexity/anthropic pricing; không nhánh nào ghi `status`/`case_phase` ngoài nhánh rfq. Mutation: bỏ router → câu hỏi lại vào pipeline → đỏ.
+
+### 60.5 Phase 4 — Không còn ngõ cụt khi thiếu giá: khoảng tham khảo + lối thoát rfq
+
+### 4a. Giữ nguồn tham khảo khi aggregation thất bại
+`supabase/functions/mobile-api/_shared/kael/evidence/source-trust-aggregation.ts`: ở nhánh `failedAggregation`, thêm `safeMetadata.source_trust_reference_sources` = các nguồn eligible (đã trích dẫn, đơn vị priceable, trong cửa sổ 12 tháng) cùng đơn vị trội, mỗi nguồn `{domain, verified_url (trustedCitationUrl), price_min, price_max, unit, date}`. Ghi thêm vào `safe_metadata.reference_sources` của dòng `kael_price_knowledge` `insufficient` (`live-price-knowledge.ts`), để lượt sau dùng lại gap vẫn có khoảng tham khảo. Chỉ URL công khai, không PII.
+
+### 4b. Trả lời thiếu giá có lựa chọn
+File mới `supabase/functions/mobile-api/_shared/domains/kael-chat/evidence-gap-response.ts`:
+- `buildReferencePriceNote(sources, language)` → null nếu <2 nguồn cùng đơn vị; ngược lại `{min, max, unit, links}` với min = min(price_min), max = max(price_max); text: "Tham khảo thị trường, chưa đủ kiểm chứng: …" + disclaimer RULES #4 nguyên văn + "Đây không phải báo giá; bạn chưa thể đặt thợ theo con số này." Định dạng VND qua formatter có sẵn trong `output-pipeline.ts`; link qua `sanitizeMarketSourceLinks`.
+- `buildEvidenceGapNextActions(...)`: `request_worker_quote` (khi policy cho fallback + Tier A đủ + không safety stop), `provide_detail` (slot cụ thể đầu tiên còn thiếu — Phase 5), `attach_photo` (khi chưa có ảnh), `ask_question` ("Vì sao chưa có giá?").
+- Ba chỗ đang emit gap reply (`branches-post-pipeline.ts` `emitPipelineNoBaseline`; `estimate-support.ts` hai nhánh `validated_price_evidence_unavailable`) gọi một hàm duy nhất từ file mới → text = gap reply + reference note (nếu có) + câu thăm dò "Bạn muốn Kael gửi thợ phù hợp báo giá từ ảnh, hay bổ sung thêm thông tin để Kael tìm lại?" ; metadata thêm `next_actions`, `reference_price` (nếu có). `estimate-support.ts` phải net-zero dòng (thay khối emit bằng một lời gọi).
+
+### 4c. Lối thoát rfq (D2, D6, D7)
+- File mới `supabase/functions/mobile-api/_shared/domains/kael-chat/evidence-gap-fallback.ts`: `applyEvidenceGapRfqFallback({client, sessionId, ...})`. Điều kiện (tất cả): lượt Kael gần nhất có `quote_readiness = validated_price_evidence_unavailable`; policy active có `evidence_requirements.evidence_unavailable_fallback === "rfq"`; Tier A đủ; không safety stop. Thực thi: tái dùng `persistUnpricedRequestReview` (đổi thành `export` trong `estimate-support.ts`, net-zero) với policy đã chuyển `quoteMode: "rfq"`; ghi `safe_metadata.quote_mode_fallback` (D6). Kết quả: `case_phase offer_review`, `status estimate_ready`, `intake_coverage.confirmation_kind = rfq_request` → app hiện nút xác nhận có sẵn (`canConfirmAgenticEstimate` đọc `quote_mode`).
+- Migration `supabase/migrations/<ts>_kael_evidence_gap_rfq_fallback.sql`:
+  1. Với mỗi policy `status='active' and quote_mode='kael_auto_quote'`: insert version+1 với `evidence_requirements || '{"evidence_unavailable_fallback":"rfq"}'`, giữ nguyên mọi cột khác, retire bản cũ — theo đúng mẫu `20261009060000_service_case_specific_worker_capabilities.sql`.
+  2. `create or replace function public.confirm_kael_chat_durable_atomic(...)`: copy NGUYÊN thân hiện tại từ `20260823110000_durable_confirmation_matching.sql` (Grep xác nhận không có bản định nghĩa lại sau đó), chỉ đổi: tính `v_effective_quote_mode` = `'rfq'` khi `v_policy.quote_mode='kael_auto_quote' and p_confirmation_kind='rfq_request' and v_policy.evidence_requirements->>'evidence_unavailable_fallback'='rfq' and v_session.safe_metadata #>> '{quote_mode_fallback,mode}'='rfq' and (v_session.safe_metadata #>> '{quote_mode_fallback,policy_id}')` khớp policy active, ngược lại = `v_policy.quote_mode`; dùng `v_effective_quote_mode` cho phép so khớp confirmation_kind và mọi chỗ ghi `quote_mode` xuống operation/job. Không đổi chữ ký, không đổi grant.
+  3. `node scripts/harness/assert-expand-only.mjs` phải pass; tái sinh inventory/access-matrix.
+- SQL pillar **P366-kael-rfq-fallback-confirm-sql** `supabase/tests/kael_evidence_gap_rfq_fallback_verification.sql`: (a) có fallback hợp lệ → `ok`, job `quote_mode='rfq'`; (b) thiếu `quote_mode_fallback` → `CONFIRMATION_KIND_MISMATCH`; (c) policy không có khóa fallback → mismatch; (d) `priced_offer` trên auto-quote vẫn chạy như cũ; (e) fallback ghi cho policy version cũ → từ chối.
+
+Pillars Edge: **P364-kael-evidence-gap-options** (gap reply có next actions; reference note chỉ khi ≥2 nguồn cùng đơn vị; có disclaimer; không có `estimate`/receipt) — cập nhật luôn P337 cho text mới; **P365-kael-rfq-fallback-edge** (đủ điều kiện → coverage rfq + `quote_mode_fallback`; từ chối khi không gap / policy không cho / thiếu Tier A / safety stop; không bao giờ tạo job).
+
+### 60.6 Phase 5 — Câu hỏi slot cụ thể (một câu, có lý do, có ví dụ)
+
+- File mới `supabase/functions/mobile-api/_shared/kael/language/intake-slot-questions.ts`: catalog VI/EN cho mọi `tier_b_slots.key` của cả 6 dịch vụ — mỗi slot: câu hỏi tập trung, 1 câu "vì sao Kael cần", 2–3 câu trả lời mẫu (dùng làm chip `provide_detail` với `message` điền sẵn). Lấy danh sách key thật bằng SQL read-only Production: `select distinct jsonb_array_elements(tier_b_slots)->>'key' from service_intake_policies where status='active'` + đối chiếu migration.
+- `localizedPolicyQuestion` (estimate-support.ts, net-zero): khi override là placeholder chung ("Anh/chị có thể bổ sung chi tiết này không?" / "Can you add this detail?") hoặc thiếu → dùng catalog.
+- `clarification.service.ts` / `emitPrePipelineClarification`: gắn `next_actions` `provide_detail` từ ví dụ của slot.
+
+Pillar **P367-kael-slot-question-catalog**: mọi slot key active có entry VI+EN; placeholder chung không bao giờ tới khách; tối đa 1 câu hỏi/lượt (giữ quy tắc "một câu hỏi tập trung mỗi lượt").
+
+### 60.7 Phase 6 — App Work: chip bước tiếp theo + khoảng tham khảo
+
+Thiết kế qua `kael-design-preflight` (token/runtime contract). Không bỏ/đổi bước flow có sẵn; chỉ thêm chip và khối ghi chú.
+- `apps/mobile/lib/kael-stream-validation.ts` + `apps/mobile/lib/api-types/*`: validate `next_actions`, `reference_price` trên turn (kind lạ → bỏ action, không crash).
+- `domains/kael-chat/serialize.ts` (net-zero, 799 dòng!): xuất `next_actions` và `reference_price` từ metadata qua helper đặt ở file mới `domains/kael-chat/serialize-next-actions.ts`.
+- Mới: `apps/mobile/components/customer/kael-chat/kael-next-action-chips.tsx` + `kael-next-actions-display-model.ts`; render dưới lượt Kael CUỐI CÙNG trong luồng case (vị trí: nơi render turn Kael trong `customer-kael-case-thread-node.tsx` / `kael-chat-transcript.tsx` — xác định bằng đọc code), ẩn khi đang gửi/streaming.
+- Tap: `provide_detail` → điền `message` vào composer + focus; `attach_photo` → mở media picker có sẵn; `request_worker_quote` / `request_reference_price` / `ask_question` → `kaelChatStreamService.sendTurn(..., { message: action.message ?? label, turn_intent })` qua đường gửi có sẵn trong `use-customer-kael-message-actions.ts` (thêm tham số `turnIntent`); `edit_intake` → luồng `editKaelIntake` có sẵn; `review_offer` → cuộn tới thẻ offer.
+- Mới: `apps/mobile/components/customer/kael-chat/reference-price-note.tsx`, hiển thị trong `QuoteReadinessReviewResponse` khi có `reference_price` (nhãn "Tham khảo thị trường, chưa đủ kiểm chứng", disclaimer, link nguồn, không có nút đặt).
+- VI/EN theo công tắc ngôn ngữ, accessibilityRole="button", label ≤ 60 ký tự.
+
+Pillar **P369-kael-work-next-action-chips** (jest): render đúng chip theo turn; tap gửi đúng `turn_intent`; chip ẩn khi busy; reference note không có nút xác nhận.
+
+### 60.8 Phase 7 — Chat thường của khách
+
+- Server: `kael/agents/customer-assistant-provider-output.ts` + schema đầu ra của `normal_chat_response`: thêm trường tùy chọn `service_intent: ServiceType | null` (prompt: chỉ đặt khi khách mô tả nhu cầu sửa chữa/dịch vụ thuộc 6 dịch vụ; RULES #6). `domains/customer/kael-conversation-turn.ts` lưu vào `p_safe_metadata` của lượt Kael: `next_actions = [start_case(service_type)]` khi có `service_intent`. Không tự tạo phiên Work.
+- App: chip "Bắt đầu xử lý: <tên dịch vụ>" dưới câu trả lời → `router.push('/(customer)/booking?service=<customer service id>')` (map qua `customerBookingServiceIdForHistory` / `bookingServiceIdFromRoute` có sẵn). Gợi ý `normal_chat_suggestions` có sẵn (`apps/mobile/lib/normal-chat-suggestions.ts`) hiển thị thêm thành chip `send_suggestion` bấm là gửi (giữ ghost text hiện có).
+- Pillar **P370-kael-chat-next-steps**: server — `service_intent` ngoài 6 dịch vụ bị bỏ; app — chip start_case điều hướng đúng service, chip gợi ý gửi đúng text.
+
+### 60.9 Phase 8 — Kael của thợ
+
+- Server `kael/agents/worker-assist.ts`: schema đầu ra thêm `follow_up_suggestions: string[] (≤3, ≤120 ký tự)`; `domains/worker/kael-chat-turn.ts` (`finalizeWorkerKaelChatTurn`) dựng `next_actions` deterministic: `open_scope_change` khi `redirect_scope_change`, `attach_photo` khi phiên theo job, `open_opportunities` khi scope `opportunity_intake`, cộng `send_suggestion` từ follow_up_suggestions đã lọc (VI không lẫn EN, không PII — dùng các guard có sẵn trong `worker-assist-guard.ts`). Lưu vào metadata lượt thợ; serializer worker xuất ra. Không action nào nhận việc/đổi giá thay thợ.
+- App thợ: chip dưới câu trả lời Kael trong `apps/mobile/components/worker/chat/` (vị trí bubble trả lời trong `kael-body-surfaces.tsx`/`orb-surfaces.tsx`); tap: gửi text / mở picker ảnh có sẵn (`kael-orb-media-picker.ts`) / mở form đề xuất thay đổi phạm vi có sẵn / mở hộp cơ hội.
+- Pillars **P371-worker-kael-next-actions** (vitest server) và **P372-worker-kael-chips** (jest app).
+
+### 60.10 Phase 9 — Kiểm chứng đầu-cuối
+
+### 9.1 Gate máy
+Chạy G1–G9, G11; ghi kết quả thật vào §60.V.
+
+### 9.2 Preview UI với mock backend (G10)
+- Mới `scripts/preview/kael-flex/{mock-backend.mjs,fixtures/*.json,run.mjs}` dựng theo `scripts/preview/cache-e2e/` (cùng cách Metro private TEMP, port app 8085, env `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_API_BASE_URL` trỏ mock localhost; tài khoản mock chỉ tồn tại trong process). Mock trả các trạng thái theo kịch bản và đổi trạng thái khi nhận `turn_intent`.
+- Fixture không được trôi khỏi hợp đồng: jest test `apps/mobile/lib/__tests__/kael-flex-fixtures-pillar-test.tsx` (gộp vào P369) đưa mọi fixture qua `kael-stream-validation.ts`.
+- Kịch bản (mỗi cái: thao tác trong Browser pane + screenshot + đọc `/__mock/log` để xác nhận request):
+  - A. Work thiếu giá có ≥2 nguồn: thấy khoảng tham khảo + disclaimer + 3 chip; không có nút đặt từ khoảng giá.
+  - B. Bấm "Gửi thợ báo giá từ ảnh" → request có `turn_intent: request_worker_quote` → màn offer rfq với nút xác nhận có sẵn ("Thông tin bắt buộc đã đủ… gửi cho thợ phù hợp báo giá").
+  - C. Gõ "Sao chưa có giá vậy?" → câu trả lời giải thích + chip; không có tiến trình "đang tìm giá".
+  - D. Câu hỏi slot cụ thể + chip ví dụ → bấm chip điền composer.
+  - E. Chat thường: hỏi "máy lạnh nhà mình chảy nước" → chip "Bắt đầu xử lý: Điều hòa" → mở booking đúng dịch vụ.
+  - F. Thợ: câu trả lời có chip; chip đề xuất thay đổi phạm vi mở đúng form.
+  - Lặp A–C ở màn hình 375px và chế độ EN.
+
+### 9.3 Stack local thật (G9)
+`pnpm db:local:up --profile lean` → reset → `db:local:test` (P366 + catalog routing) → down. Edge local không có key AI → không dùng để chứng minh pipeline; chỉ ghi điều đó, không claim.
+
+### 9.4 Production (G12 — chỉ sau khi Tu chạy release lane từ `main`)
+1. Preview 8086 bằng launcher production-safe (`scripts/run-mobile-web-preview.ps1` / `scripts/preview/production-web.mjs`); Tu tự đăng nhập.
+2. Tái hiện đúng ca ảnh gốc: Sửa vặt → Khoan/lắp kệ → "kệ gỗ 30x20, 1kg" → 1 ảnh. Kỳ vọng: lời giải thích + (khoảng tham khảo nếu ≥2 nguồn) + chip; KHÔNG kẹt.
+3. Gõ "Cứ đưa giá tham khảo để xem thử" → SQL: lượt khách có `turn_intent = request_reference_price`, `turn_intent_source = ai`; không có dòng `kael_price_knowledge` mới; `reuse_count`/`demand_count` của gap tăng.
+4. Bấm "Gửi thợ báo giá từ ảnh" → phiên `estimate_ready`, `case_phase offer_review`, `safe_metadata.quote_mode_fallback.mode = rfq`. Dừng trước nút xác nhận trừ khi Tu muốn thử tiếp (khi đó xác nhận tạo job `quote_mode = rfq`).
+5. Chat thường + Kael thợ: một lượt mỗi bên, kiểm tra chip.
+6. `harness_events` stage `kael.chat.*` không có `failed` mới; chi phí `case_turn_intent` mỗi lượt ≤ cost ceiling.
+
+### 9.5 Ghi nhớ phiên
+`/kael-mem`: entry đầy đủ `docs/memory/2026-10.md` + một dòng `.claude/MEMORY.md`; plan §60 cập nhật status (`EXECUTING` → `DONE #<PR>` khi merge, rồi archive theo luật A).
+
+### 60.V Verification
+
+(Executor dán kết quả THẬT ở đây theo từng gate; gate không chạy được ghi "KHÔNG CHẠY ĐƯỢC + lý do".)
+
+**Phase 0 (2026-10-12).**
+- Diff gợi ý địa chỉ commit `59861f2a` trên `claude/fresh-workspace-1012`, PR draft [manhtu0407/HomeServices-#362](https://github.com/manhtu0407/HomeServices-/pull/362). Trước commit chạy lại: vitest P360 7/7, jest P361 + booking entry + hydration 39/39.
+- Nhánh `claude/kael-flexible-harness-20261012` tạo từ `origin/main` `e8aae0d4`; `git merge-base --is-ancestor` exit 0 cả hai chiều; cây sạch.
+- Baseline `test:api` (qua `node scripts/run.mjs run-package-script @nestscout/api test`): exit 0 — Vitest 142 file pass / 2 skip, 1863 test pass / 2 skip; Node contract 112 test, 111 pass / 1 skip.
+- Baseline `type-check:mobile`: exit 0.
+- Baseline `test:mobile`: exit 0 — 266 suite, 2491 test pass, 0 fail (437,8 s).
+- Ratchet: `estimate-support.ts` 796, `serialize.ts` 799, `turn.ts` 327, `branches-post-pipeline.ts` 306 dòng; `use-customer-kael-message-actions.ts` 803/807 (grandfathered), `apps/mobile/lib/services.ts` trần 832.
+
+### 60.CL Change Log
+
+| Ver | Ngày | Ai | Đổi gì |
+|---|---|---|---|
+| 0.1 | 2026-10-12 | Claude | Viết lần đầu sau audit code + SQL read-only Production; D1–D4 do Tu chốt, D5–D9 do Claude đề xuất |
