@@ -129,6 +129,12 @@ export function startMockBackend({ port = 54398 } = {}) {
         entry.state = state
         return api.endsWith('/stream') ? sendStream(res, fixture(state)) : send(res, 200, fixture(state))
       }
+      // Confirmation creates a job server-side; the mock only records what the app asked for.
+      if (req.method === 'POST' && api === `${chat}/confirm`) {
+        const body = await readJson(req)
+        entry.confirmation_kind = body.confirmation_kind ?? null
+        return send(res, 501, { code: 'MOCK_CONFIRM_NOT_SERVED', error: 'The Kael flex mock records confirmations only' })
+      }
       if (api === `${chat}/progress`) return send(res, 200, { progress: null })
       if (api === '/me/admin-activation') return send(res, 200, { capability_count: 0, email_masked: null, full_name: null, required: false, status: null })
       if (api === '/me/jobs/history') return send(res, 200, { service_history: [] })
