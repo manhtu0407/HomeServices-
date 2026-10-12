@@ -20,6 +20,7 @@ import { KaelChatTranscript } from './kael-chat-transcript'
 import { ChatCanvasAura } from './chat-surfaces'
 import { customerV21ChatStyles as chatStyles } from './chat-styles'
 import { type AgenticTurnView, type ChatTurnView, useKaelChatTranscript } from './use-kael-chat-transcript'
+import type { ComposerQuickAction } from './normal-chat-quick-actions'
 
 type AnimatedViewStyle = ComponentProps<typeof Animated.View>['style']
 
@@ -43,6 +44,7 @@ type Props = {
     placeholder: string
     starterVisible: boolean
     suggestions: { id: string; text: string }[]
+    quickActions?: readonly ComposerQuickAction[]
     show: boolean
   }
   error: string | null
@@ -136,7 +138,7 @@ export function KaelChatSurfaceView({
   visibility,
   workerCandidateNode,
 }: Props) {
-  const { busy: composerBusy, sending: composerSending, canUseMedia: canUseComposerMedia, draft, hasVoiceTranscript, mediaDraftCount: composerMediaDraftCount, placeholder: composerPlaceholder, starterVisible, suggestions, show: showComposer } = composer
+  const { busy: composerBusy, sending: composerSending, canUseMedia: canUseComposerMedia, draft, hasVoiceTranscript, mediaDraftCount: composerMediaDraftCount, placeholder: composerPlaceholder, starterVisible, suggestions, quickActions, show: showComposer } = composer
   const { reduceMotion, reduceTransparency } = motion
   const {
     hydratingCase,
@@ -251,6 +253,7 @@ export function KaelChatSurfaceView({
               onStopMessage={onStopMessage}
               normalChatStarterVisible={starterVisible}
               normalChatSuggestions={suggestions}
+              quickActions={quickActions}
               rootStyles={rootStyles}
               stopAvailable={mode === 'normal'}
               textInputNoOutlineStyle={textInputNoOutlineStyle}

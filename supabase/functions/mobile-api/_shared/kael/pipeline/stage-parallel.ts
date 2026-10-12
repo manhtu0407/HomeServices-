@@ -9,6 +9,8 @@ import type { KaelKnowledgeContext } from "../tools/knowledge.ts";
 import {
   asPriceKnowledgeClient,
   readPriceKnowledgeState,
+  researchFingerprint,
+  researchPhotoCount,
 } from "../evidence/live-price-knowledge.ts";
 import { runKaelParallel } from "./orchestrator.ts";
 import { runKaelMarketResearchStage } from "./stage-market-research.ts";
@@ -223,6 +225,11 @@ async function runParallelRequests(
           asPriceKnowledgeClient(supabase),
           input.serviceType,
           input.problemSlug,
+          await researchFingerprint({
+            serviceType: input.serviceType,
+            problemSlug: input.problemSlug,
+            photoCount: researchPhotoCount(photoUrls.length, prepared.input.caseEvidencePhotoCount),
+          }),
         ),
       }),
     },

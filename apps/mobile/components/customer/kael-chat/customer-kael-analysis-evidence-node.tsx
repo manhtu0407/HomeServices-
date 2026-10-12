@@ -1,8 +1,14 @@
 import { AgenticEvidenceGateResponse } from '../kael-chat/agentic-evidence-gate-response'
-import { QuoteReadinessReviewResponse } from '../kael-chat/quote-readiness-review-response'
+import {
+  QuoteReadinessReviewResponse,
+  unpricedQuoteRequestKind,
+} from '../kael-chat/quote-readiness-review-response'
 import { ConfirmationReconciliationResponse } from '../kael-chat/intake-coverage-response'
 import { customerV21WebTextInputNoOutline } from '../ui/platform-styles'
 import type { useCustomerKaelSurfaceController } from './use-customer-kael-surface-controller'
+import { KaelNextActionChips } from './kael-next-action-chips'
+import { latestKaelNextActions, latestKaelReferencePrice } from './kael-next-actions-display-model'
+import { ReferencePriceNote } from './reference-price-note'
 
 type Controller = ReturnType<typeof useCustomerKaelSurfaceController>
 
@@ -17,10 +23,26 @@ export function CustomerKaelAnalysisEvidenceNode({
     decisionActions,
     evidenceActions,
     language,
+    mode,
+    nextActions,
     presentation,
+    processController,
     reduceMotion,
     tokens,
   } = controller
+  const workNextActions = mode === 'case' && !processController.processLines && !conversation.streamingReply
+    ? latestKaelNextActions(conversation.turns)
+    : null
+  const nextActionChips = workNextActions ? (
+    <KaelNextActionChips
+      actions={workNextActions.actions}
+      busy={conversation.loading}
+      language={language}
+      onPress={(action) => void nextActions.runNextAction(action)}
+      sendingActionId={nextActions.sendingActionId}
+      tokens={tokens}
+    />
+  ) : null
 
   if (presentation.intakeConfirmationActive) return null
   if (decisionActions.confirmationReconciling) {
@@ -64,16 +86,33 @@ export function CustomerKaelAnalysisEvidenceNode({
       />
     )
   }
-  if (!presentation.serverPriceReviewBlocked) return null
+  const unpricedRequestKind = unpricedQuoteRequestKind({
+    canConfirm: presentation.canConfirmAgenticEstimate,
+    confirmationKind: conversation.chat?.session.intake_coverage?.confirmation_kind,
+    confirmed: presentation.agenticEstimateConfirmed,
+    hasEstimate: Boolean(presentation.chatEstimate),
+    processing: Boolean(processController.processLines),
+  })
+  if (!presentation.serverPriceReviewBlocked && !unpricedRequestKind) return nextActionChips
+  const referencePrice = latestKaelReferencePrice(conversation.turns)
   return (
-    <QuoteReadinessReviewResponse
-      language={language}
-      reduceMotion={reduceMotion}
-      reason={typeof presentation.artifactNextAction?.reason === 'string'
-        ? presentation.artifactNextAction.reason
-        : undefined}
-      safetyMessages={presentation.serverSafetyMessages}
-      tokens={tokens}
-    />
+    <>
+      <QuoteReadinessReviewResponse
+        language={language}
+        reduceMotion={reduceMotion}
+        request={unpricedRequestKind ? {
+          busy: chatUi.confirmingAgenticEstimate || conversation.loading,
+          kind: unpricedRequestKind,
+          onSend: () => void decisionActions.confirmAgenticEstimate(),
+        } : undefined}
+        reason={typeof presentation.artifactNextAction?.reason === 'string'
+          ? presentation.artifactNextAction.reason
+          : undefined}
+        safetyMessages={presentation.serverSafetyMessages}
+        tokens={tokens}
+      />
+      {referencePrice ? <ReferencePriceNote language={language} reference={referencePrice} tokens={tokens} /> : null}
+      {nextActionChips}
+    </>
   )
 }

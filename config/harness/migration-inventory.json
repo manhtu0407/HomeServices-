@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 450,
+  "migrationCount": 452,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "8afbfacb01245d712ddc8026124f2ed3d31de2d73a3a7789c864e88c67fad89e",
+  "migrationsSha256": "3cd115d9f5e44a0115bafb8fe72f789de5429b5f914ba12313a3318ea4b9c001",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "3437b9bce74171997903835275454e478b4f379484f065e3b2317d1c97c94538"
@@ -3257,6 +3257,20 @@
       "file": "supabase/migrations/20261012100000_harness_events_parent_event_index.sql",
       "sha256": "a7b4887d5ae2d59db242ce5e8a221e63ac053ec83c5c1730e8cf0f79e95ed35c",
       "bytes": 395
+    },
+    {
+      "version": "20261012110000",
+      "name": "kael_case_turn_intent_routing",
+      "file": "supabase/migrations/20261012110000_kael_case_turn_intent_routing.sql",
+      "sha256": "c9c4310fc6e11b0ca1d1b5e1f9cc6180fec56d135702eb1b59bbab58f3710358",
+      "bytes": 1582
+    },
+    {
+      "version": "20261012120000",
+      "name": "kael_evidence_gap_rfq_fallback",
+      "file": "supabase/migrations/20261012120000_kael_evidence_gap_rfq_fallback.sql",
+      "sha256": "b5d33cb9887c3aacb3d9e5881e6ef738e0acab2a39513263d5e4daae2c0819e9",
+      "bytes": 13540
     }
   ]
 }

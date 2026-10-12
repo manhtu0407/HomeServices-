@@ -14,7 +14,7 @@ import { diagnosisScopeWithQuestion } from "./case-work-artifact.ts";
 import { handleKaelPipelineClarification } from "./clarification.service.ts";
 import { emitKaelChatStep } from "./emit-step.ts";
 import { finalizeKaelChatEstimate } from "./estimate-support.ts";
-import { priceEvidenceGapReply } from "./price-gap-reply.ts";
+import { emitEvidenceGapStep } from "./evidence-gap-response.ts";
 import { resolveKaelResponseSafetySignals } from "./intake-safety.ts";
 import {
   intakeObservationMetadata,
@@ -230,28 +230,15 @@ async function emitPipelineNoBaseline(
     customerDetail: input.customerAnalysisDetail,
     scopeSummary: input.customerAnalysisDetail,
   });
-  const gapReply = priceEvidenceGapReply({
+  await emitEvidenceGapStep({
+    client: input.client,
+    sessionId: input.sessionId,
+    progressTarget: input.progressTarget,
+    artifact: unavailableArtifact,
     stageLogs: pipeline.stageLogs,
     language: input.language,
-  });
-  await emitKaelChatStep(input.client, input.sessionId, input.progressTarget, {
-    artifact: unavailableArtifact,
-    turn: {
-      contentType: "analysis",
-      text: withIntakeSafetyGuidance(gapReply.text, responseSafetySignals, input.language),
-      nextStatus: "active",
-      metadata: {
-        diagnosis_scope: unavailableArtifact,
-        quote_readiness: "validated_price_evidence_unavailable",
-        ...gapReply.metadata,
-        ...intakeObservationMetadata(pipeline.intakeObservation),
-      },
-    },
-    progress: {
-      stage: "price_synthesis",
-      status: "completed",
-      progress: 1,
-    },
+    responseSafetySignals,
+    intakeObservation: pipeline.intakeObservation,
   });
 }
 

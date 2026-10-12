@@ -170,6 +170,7 @@ const ACTIONS_BY_PURPOSE: Record<KaelPurpose, readonly KaelAction[]> = {
   normal_chat_memory: ["write_memory", "read_context"],
   normal_chat_search: ["lookup_market"],
   normal_chat_suggestions: ["read_context", "generate_advisory"],
+  case_turn_intent: ["read_context", "classify_intent"],
 };
 
 export function evaluateKaelPermissionGate(
@@ -249,6 +250,13 @@ function evaluateAllowedTopic(
         && request.topic === "app_usage_help"
       ? allow(request, "ALLOW_NORMAL_CHAT_SUGGESTIONS")
       : deny(request, "DENY_NORMAL_CHAT_SUGGESTIONS_ACTION", "cannot_do_action");
+  }
+  if (request.purpose === "case_turn_intent") {
+    return request.actor === "customer"
+        && (request.jobRelation === "none" || request.jobRelation === "own_customer_job")
+        && (request.action === "read_context" || request.action === "classify_intent")
+      ? allow(request, "ALLOW_CASE_TURN_INTENT")
+      : deny(request, "DENY_CASE_TURN_INTENT_ACTION", "cannot_do_action");
   }
   if (request.actor === "system") {
     return request.purpose === "post_job_learning"

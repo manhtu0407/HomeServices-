@@ -1,3 +1,4 @@
+import { serializeKaelTurnGuidance } from "./serialize-next-actions.ts";
 import type { EdgeKaelCaseWorkPhase, KaelChatNextAction, KaelChatStatus } from "../../../../_shared/contracts.ts";
 import {
   intakeCoverageSchema,
@@ -51,9 +52,8 @@ export function serializeKaelTurn(row: Record<string, unknown>) {
     text_content: nullableString(row.text_content),
     media_refs: row.media_refs,
     estimate: serializeKaelEstimate(metadata.estimate, metadata.estimate_card_v3),
-    // Surface what Kael still needs so the mobile
-    // thread can render slot-hint chips. Drawn from the missing-info artifact proposal.
     clarification: serializeKaelClarification(contentType, metadata.artifact_proposal),
+    ...serializeKaelTurnGuidance(metadata),
     ...(isIntakeEvalObservationExposureEnabled()
       ? { intake_observation: serializeIntakeEvalObservation(metadata.intake_observation) }
       : {}),

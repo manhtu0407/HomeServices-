@@ -60,6 +60,8 @@ export type PriceKnowledgeGap = {
   checkedSourceCount: number;
   rejectionReasons: string[];
   expiresAt: string;
+  // Cited prices that missed the quorum, kept so a reused gap can still show a labelled reference.
+  referenceSources: unknown[];
 };
 
 export type PriceKnowledgeSource = {
@@ -98,10 +100,17 @@ export function asPriceKnowledgeClient(value: unknown): PriceKnowledgeClient | u
 
 // Reads never block pricing: a missing table or a transient error degrades to "no
 // knowledge", which sends the case to live research exactly as before this store existed.
+// The research fingerprint follows the evidence the whole case holds, not the current turn:
+// a text-only follow-up to a case that already sent a photo must land on that photo's gap.
+export function researchPhotoCount(turnPhotoCount: number, caseEvidencePhotoCount?: number): number {
+  return Math.max(turnPhotoCount, caseEvidencePhotoCount ?? 0);
+}
+
 export async function readPriceKnowledgeState(
   client: PriceKnowledgeClient | undefined,
   serviceType: ServiceType,
   problemSlug: string,
+  fingerprint: string | null = null,
   now = new Date(),
 ): Promise<PriceKnowledgeState> {
   const empty: PriceKnowledgeState = {
@@ -114,6 +123,15 @@ export async function readPriceKnowledgeState(
   if (!client) return empty;
   try {
     const nowIso = now.toISOString();
+    let gapQuery = client.from("kael_price_knowledge")
+      .select("id, research_fingerprint, failure_reason, demand_count, expires_at, safe_metadata")
+      .eq("service_type", serviceType)
+      .eq("problem_slug", problemSlug)
+      .eq("district_scope", DISTRICT_SCOPE)
+      .eq("status", "insufficient")
+      .gt("expires_at", nowIso);
+    // Only the gap for this exact evidence counts; the newest gap may belong to other evidence.
+    if (fingerprint) gapQuery = gapQuery.eq("research_fingerprint", fingerprint);
     const [problem, active, gap, findings] = await Promise.all([
       client.from("service_problems")
         .select("id, label_vi")
@@ -130,13 +148,7 @@ export async function readPriceKnowledgeState(
         .eq("status", "active")
         .gt("expires_at", nowIso)
         .maybeSingle() as PromiseLike<QueryResult>,
-      client.from("kael_price_knowledge")
-        .select("id, research_fingerprint, failure_reason, demand_count, expires_at, safe_metadata")
-        .eq("service_type", serviceType)
-        .eq("problem_slug", problemSlug)
-        .eq("district_scope", DISTRICT_SCOPE)
-        .eq("status", "insufficient")
-        .gt("expires_at", nowIso)
+      gapQuery
         .order("expires_at", { ascending: false })
         .limit(1)
         .maybeSingle() as PromiseLike<QueryResult>,
@@ -284,6 +296,7 @@ export function marketResultFromGap(gap: PriceKnowledgeGap): MarketLookupResult 
       kael_price_knowledge_gap_reason: gap.failureReason,
       kael_price_knowledge_checked_source_count: gap.checkedSourceCount,
       kael_price_knowledge_rejection_reasons: gap.rejectionReasons,
+      source_trust_reference_sources: gap.referenceSources,
     },
   };
 }
@@ -518,6 +531,9 @@ function gapRowFromResult(
       accepted_citations: nonNegativeInteger(metadata.accepted_citations) ?? 0,
       high_trust_source_count: nonNegativeInteger(metadata.source_trust_tier_1_2_count) ?? 0,
       rejection_reasons: rejectionReasons(metadata.source_trust_source_rejections),
+      reference_sources: Array.isArray(metadata.source_trust_reference_sources)
+        ? metadata.source_trust_reference_sources.slice(0, 8)
+        : [],
     },
   };
 }
@@ -640,6 +656,7 @@ function parseGap(value: unknown): PriceKnowledgeGap | null {
       ? metadata.rejection_reasons.filter((item): item is string => typeof item === "string")
       : [],
     expiresAt: stringOrNull(row.expires_at) ?? "",
+    referenceSources: Array.isArray(metadata.reference_sources) ? metadata.reference_sources.slice(0, 8) : [],
   };
 }
 

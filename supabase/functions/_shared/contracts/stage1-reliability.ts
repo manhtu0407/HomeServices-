@@ -120,6 +120,7 @@ export const serviceIntakePolicySchema = z.object({
     minimum_high_trust_source_count: z.number().int().nonnegative(),
     requires_active_baseline: z.boolean(),
     allow_live_market_evidence: z.boolean().optional(),
+    evidence_unavailable_fallback: z.literal("rfq").optional(),
   }).strict(),
   questions: z.array(localizedQuestionSchema).max(100),
   change_reason: z.string().trim().min(3).max(1000),

@@ -109,6 +109,7 @@ export function normalizeAssistantPayload(
     boundary: normalizeAssistantBoundary(firstString(
       ...publicRecords.map((record) => record.boundary),
     )),
+    service_intent: firstString(...publicRecords.flatMap((record) => [record.service_intent, record.serviceIntent])) ?? null,
   };
 }
 

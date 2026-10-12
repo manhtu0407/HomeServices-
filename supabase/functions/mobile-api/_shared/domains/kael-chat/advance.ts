@@ -35,6 +35,11 @@ import {
 import { finalizeUnpricedStage1Intake } from "./estimate-support.ts";
 import { resolveStage1RuntimeBehavior } from "../release/stage1-release-lane.ts";
 
+// Counts visual evidence across the whole case so price research keys on the case, not the turn.
+function casePhotoEvidenceCount(artifact: KaelDiagnosisScopeArtifact): number {
+  return artifact.evidence.filter((item) => item.kind === "photo" || item.kind === "video_frame").length;
+}
+
 export async function advanceKaelChatEstimate(
   ctx: MobileApiContext,
   sessionId: string,
@@ -147,6 +152,7 @@ export async function advanceKaelChatEstimate(
         conversationContext,
         clarificationCount: priorClarificationCount,
         priorProfileFacts: artifact.facts,
+        caseEvidencePhotoCount: casePhotoEvidenceCount(artifact),
         priorSafetySignals: earlySafetySignals,
         language,
         progressTarget,
@@ -204,6 +210,7 @@ export async function advanceKaelChatEstimate(
         conversationContext,
         clarificationCount: priorClarificationCount,
         priorProfileFacts: artifact.facts,
+        caseEvidencePhotoCount: casePhotoEvidenceCount(artifact),
         priorSafetySignals: earlySafetySignals,
         language,
         progressTarget,

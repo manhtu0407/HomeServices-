@@ -9,6 +9,7 @@ import {
   recordPriceKnowledgeOutcome,
   recordPriceKnowledgeReuse,
   researchFingerprint,
+  researchPhotoCount,
   type PriceKnowledgeState,
 } from "../evidence/live-price-knowledge.ts";
 import { KAEL_ROUTING_CONFIG } from "../kael-providers/routing.config.ts";
@@ -80,7 +81,7 @@ async function researchMarketPrice(
   const fingerprint = await researchFingerprint({
     serviceType: input.serviceType,
     problemSlug: input.problemSlug,
-    photoCount: prepared.photoUrls.length,
+    photoCount: researchPhotoCount(prepared.photoUrls.length, prepared.input.caseEvidencePhotoCount),
   });
   const { active, gap } = input.knowledgeState;
   if (active) {

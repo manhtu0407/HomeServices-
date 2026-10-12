@@ -49,6 +49,7 @@ import { createSignedVisionUrls } from "./media-vision.ts";
 import { validateAndConsumeKaelChatEvidenceMediaRefs } from "./media-upload.ts";
 import { persistReviewedVoiceTranscripts } from "./persistence.service.ts";
 import { getKaelChat } from "./read.service.ts";
+import { routeKaelChatTurnIntent } from "./turn-intent-router.ts";
 import {
   assertIntakeConfirmationCompleted,
   assertKaelSessionOwnership,
@@ -118,6 +119,27 @@ export async function sendKaelChatTurn(
     sessionId,
     session,
     persisted,
+  })) return getKaelChat(ctx, sessionId);
+  // New evidence, scope adjustments and safety turns are case information by definition; only a
+  // plain text turn is asked what the customer wants before price research runs again.
+  const routable = persisted.sanitizedEvidenceItems.length === 0 &&
+    input.turn_intent !== "scope_adjustment" &&
+    !requiresImmediateKaelSafetyPath(
+      persisted.message,
+      asServiceType(session.service_type),
+      persisted.persistedSafetySignals,
+      ctx.user.id,
+    );
+  if (routable && await routeKaelChatTurnIntent({
+    ctx,
+    client,
+    sessionId,
+    session,
+    persistedMetadata: persisted.metadata,
+    message: persisted.message,
+    language: persisted.language,
+    chipIntent: input.turn_intent,
+    secrets,
   })) return getKaelChat(ctx, sessionId);
   await advanceKaelChatEstimate(ctx, sessionId, {
     service_type: asServiceType(session.service_type),

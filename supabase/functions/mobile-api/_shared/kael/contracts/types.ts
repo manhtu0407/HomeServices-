@@ -376,6 +376,7 @@ export const KAEL_PURPOSES = [
   "normal_chat_memory",
   "normal_chat_search",
   "normal_chat_suggestions",
+  "case_turn_intent",
 ] as const;
 
 export type KaelPurpose = (typeof KAEL_PURPOSES)[number];
@@ -619,6 +620,9 @@ export type PipelineInput = {
   clarificationCount?: number;
   priorSafetySignals?: string[];
   priorProfileFacts?: Record<string, unknown>;
+  // Photos and video frames the case already holds across all turns; keys the price-research
+  // fingerprint so a text-only follow-up reuses the gap its earlier photos produced.
+  caseEvidencePhotoCount?: number;
 };
 
 export type PipelineClarification = {

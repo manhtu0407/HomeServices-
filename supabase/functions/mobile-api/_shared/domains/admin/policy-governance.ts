@@ -10,6 +10,7 @@ type EvidenceRequirements = {
   minimum_high_trust_source_count: number;
   requires_active_baseline: boolean;
   allow_live_market_evidence?: boolean;
+  evidence_unavailable_fallback?: "rfq";
 };
 
 export type IntakePolicyDraftInput = {
@@ -252,6 +253,9 @@ function validEvidenceRequirements(mode: QuoteMode, value: unknown): value is Ev
   const requiresActiveBaseline = value.requires_active_baseline;
   const allowLiveMarketEvidence = value.allow_live_market_evidence;
   if (allowLiveMarketEvidence !== undefined && typeof allowLiveMarketEvidence !== "boolean") return false;
+  // A worker-quote fallback only makes sense for a policy that would otherwise auto-quote.
+  if (value.evidence_unavailable_fallback !== undefined &&
+    (value.evidence_unavailable_fallback !== "rfq" || mode !== "kael_auto_quote")) return false;
   return Number.isSafeInteger(minimumSourceCount) && Number(minimumSourceCount) >= 0 && Number(minimumSourceCount) <= 50 &&
     Number.isSafeInteger(minimumHighTrustSourceCount) && Number(minimumHighTrustSourceCount) >= 0 &&
     Number(minimumHighTrustSourceCount) <= Number(minimumSourceCount) &&
@@ -271,6 +275,7 @@ function parseEvidenceRequirements(value: unknown): EvidenceRequirements {
     ...(value.allow_live_market_evidence === undefined
       ? {}
       : { allow_live_market_evidence: value.allow_live_market_evidence }),
+    ...(value.evidence_unavailable_fallback === "rfq" ? { evidence_unavailable_fallback: "rfq" as const } : {}),
   };
   if (typeof parsed.minimum_source_count !== "number" ||
     typeof parsed.minimum_high_trust_source_count !== "number" ||

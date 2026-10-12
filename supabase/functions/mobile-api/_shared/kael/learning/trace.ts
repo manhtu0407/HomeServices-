@@ -23,6 +23,7 @@ const KAEL_PROMPT_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
   normal_chat_memory: "normal-chat-memory.2026-10-02.v1",
   normal_chat_search: "normal-chat-search.2026-10-02.v1",
   normal_chat_suggestions: "normal-chat-suggestions.2026-10-03.v1",
+  case_turn_intent: "case-turn-intent.2026-10-12.v1",
 });
 
 const KAEL_OUTPUT_SCHEMA_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
@@ -44,6 +45,7 @@ const KAEL_OUTPUT_SCHEMA_VERSIONS: Record<KaelPurpose, string> = Object.freeze({
   normal_chat_memory: "normal_chat_memory.v1",
   normal_chat_search: "normal_chat_search_results.v1",
   normal_chat_suggestions: "normal_chat_suggestions.v1",
+  case_turn_intent: "case_turn_intent.v1",
 });
 
 const aiProviderSchema = z.enum(["anthropic", "perplexity", "deepseek"]);

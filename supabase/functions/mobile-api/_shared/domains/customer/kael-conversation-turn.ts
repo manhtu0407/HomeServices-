@@ -30,6 +30,7 @@ import {
 } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { answerKaelAssistant } from "./assistant.ts";
+import { customerConversationNextActions, startCaseNextAction } from "./kael-conversation-next-actions.ts";
 import {
   buildKaelVisionValidationEvidence,
   createKaelChatMediaPreviews,
@@ -51,7 +52,7 @@ import {
 export const CUSTOMER_CONVERSATION_SELECT =
   "id, customer_id, chat_mode, case_session_id, client_request_id, title, pinned_at, archived_at, total_turns, created_at, updated_at";
 const CUSTOMER_CONVERSATION_TURN_SELECT =
-  "id, conversation_id, customer_id, client_request_id, turn_index, role, text_content, media_refs, created_at";
+  "id, conversation_id, customer_id, client_request_id, turn_index, role, text_content, media_refs, safe_metadata, created_at";
 export const CUSTOMER_CASE_CATALOG_JOB_STATUSES: JobStatus[] = [
   "awaiting_customer_confirm",
   "broadcasting",
@@ -243,9 +244,12 @@ export async function sendCustomerKaelConversationTurn(
       p_customer_text: customerText,
       p_media_refs: mediaRefs,
       p_kael_text: kaelText,
-      p_safe_metadata: normalChatImageAnalysis
-        ? { normal_chat_image_analysis: normalChatImageAnalysis }
-        : {},
+      p_safe_metadata: {
+        ...(normalChatImageAnalysis ? { normal_chat_image_analysis: normalChatImageAnalysis } : {}),
+        ...(normalChatScope && answer.service_intent
+          ? { reply_next_actions: [startCaseNextAction(answer.service_intent, input.language)] }
+          : {}),
+      },
     }),
   );
   if (appended.error) {
@@ -324,7 +328,8 @@ async function readCustomerConversationTurns(
   if (result.error) {
     apiFailure("DB_ERROR", "Không thể tải lịch sử trò chuyện Kael", 500);
   }
-  return (result.data ?? []).map(serializeCustomerConversationTurn);
+  const rows = result.data ?? [];
+  return rows.map((row, index) => serializeCustomerConversationTurn(row, rows[index - 1]));
 }
 
 export async function readLinkedCustomerCaseSession(
@@ -476,6 +481,7 @@ export function serializeCustomerConversation(
 
 function serializeCustomerConversationTurn(
   row: Record<string, unknown>,
+  previousRow?: Record<string, unknown>,
 ): EdgeCustomerKaelConversationTurnResponse {
   const role: EdgeCustomerKaelConversationTurnResponse["role"] =
     row.role === "customer" || row.role === "system" ? row.role : "kael";
@@ -487,6 +493,7 @@ function serializeCustomerConversationTurn(
     role,
     text_content: asString(row.text_content),
     media_refs: role === "customer" ? customerConversationMediaRefs(row.media_refs) : [],
+    ...customerConversationNextActions(role, previousRow?.safe_metadata),
     created_at: asString(row.created_at),
   };
 }

@@ -1,4 +1,4 @@
-import type { BroadcastStatus, JobStatus, KaelPriceReasoningReceipt, LocalPaymentStatus, MatchingDeliveryReceipt, QuoteMode, ScopeChangeStatus, ServiceType, WorkerApplicationStatus, WorkerKaelChatMode, WorkerReadiness, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
+import type { BroadcastStatus, JobStatus, KaelNextAction, KaelPriceReasoningReceipt, LocalPaymentStatus, MatchingDeliveryReceipt, QuoteMode, ScopeChangeStatus, ServiceType, WorkerApplicationStatus, WorkerKaelChatMode, WorkerReadiness, WorkerServiceQualityStatus, WorkerVerificationStatus } from '@nestscout/shared'
 import type { KaelChatProgress } from './kael'
 import type { AddressAccessView, OriginalScopePriceQuote } from './shared'
 import type { KaelChatMediaPreview } from '@/lib/kael-chat-local-media'
@@ -333,6 +333,7 @@ export type WorkerKaelChatTurn = {
   media_refs: string[]
   media_previews?: KaelChatMediaPreview[]
   safety_notes: string[]
+  next_actions?: KaelNextAction[]
   created_at: string
 }
 

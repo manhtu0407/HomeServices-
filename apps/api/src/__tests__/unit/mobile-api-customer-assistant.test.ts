@@ -237,7 +237,7 @@ describe('mobile-api customer Kael assistant', () => {
 
     const prompt = seenRequests[0]?.messages[1]?.content ?? ''
     expect(result.fallback_used).toBe(false)
-    expect(prompt).toContain('Return JSON only with answer and public_reasoning_summary.')
+    expect(prompt).toContain('Return JSON only with public_reasoning_summary, answer and service_intent.')
     expect(prompt).toContain('Use exactly {"public_reasoning_summary":["..."],"answer":"..."}')
     expect(prompt).toContain('public_reasoning_summary')
     expect(prompt).not.toContain('safety_notes')

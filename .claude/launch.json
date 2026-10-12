@@ -86,6 +86,14 @@
         "--serve"
       ],
       "port": 8098
+    },
+    {
+      "name": "kael-flex-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/preview/kael-flex/run.mjs"
+      ],
+      "port": 8087
     }
   ]
 }

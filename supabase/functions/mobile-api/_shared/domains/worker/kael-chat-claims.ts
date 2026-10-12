@@ -6,6 +6,7 @@ import { apiFailure } from "../../platform/api-failure.ts";
 import { compactMetadata } from "../../platform/domain-utils.ts";
 import { asBoolean, nullableString } from "../../platform/coercions.ts";
 import { dbQuery, type DbClient } from "../../platform/db.ts";
+import type { EdgeKaelNextAction } from "../../../../_shared/contracts/kael-next-actions.ts";
 
 export async function claimWorkerKaelChatTurn(
   client: DbClient,
@@ -89,9 +90,11 @@ export async function completeWorkerKaelChatTurn(
     sessionId: string;
     workerId: string;
     workerTurnId: string;
+    nextActions?: readonly EdgeKaelNextAction[];
   },
 ) {
   const answerMetadata = compactMetadata({
+    ...(input.nextActions && input.nextActions.length > 0 ? { next_actions: input.nextActions } : {}),
     schema_version: input.answer.schema_version,
     safety_notes: input.answer.safety_notes,
     redirect_scope_change: input.answer.redirect_scope_change,

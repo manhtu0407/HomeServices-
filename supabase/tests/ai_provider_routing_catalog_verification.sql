@@ -33,7 +33,8 @@ begin
     ('normal_chat_response', 'deepseek', 'deepseek-v4-pro', 'deepseek', 'deepseek-v4-flash', 0.010::numeric, 12000, true, 30::numeric),
     ('normal_chat_memory', 'deepseek', 'deepseek-v4-flash', null, null, 0.005::numeric, 8000, false, 30::numeric),
     ('normal_chat_search', 'perplexity', 'pplx-fast-search', null, null, 0.001::numeric, 8000, false, 30::numeric),
-    ('normal_chat_suggestions', 'deepseek', 'deepseek-v4-flash', null, null, 0.005::numeric, 8000, false, 30::numeric)
+    ('normal_chat_suggestions', 'deepseek', 'deepseek-v4-flash', null, null, 0.005::numeric, 8000, false, 30::numeric),
+    ('case_turn_intent', 'deepseek', 'deepseek-v4-flash', null, null, 0.002::numeric, 6000, false, 30::numeric)
   )
   select count(*)::integer
     into v_mismatch_count
@@ -53,8 +54,8 @@ begin
     raise exception 'durable provider routing catalog differs from runtime config';
   end if;
 
-  if (select count(*) from public.ai_provider_routing) <> 18 then
-    raise exception 'provider routing catalog must contain exactly 18 purposes';
+  if (select count(*) from public.ai_provider_routing) <> 19 then
+    raise exception 'provider routing catalog must contain exactly 19 purposes';
   end if;
 
   begin
@@ -98,6 +99,11 @@ select jsonb_build_object(
       'normal_chat_search',
       'normal_chat_suggestions'
     )
+  ),
+  'case_turn_intent_present', (
+    select count(*) = 1
+    from public.ai_provider_routing
+    where purpose = 'case_turn_intent'
   )
 ) as verification;
 
