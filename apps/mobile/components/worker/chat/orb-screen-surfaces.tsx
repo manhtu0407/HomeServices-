@@ -528,6 +528,7 @@ export function WorkerV5KaelOrbComposer({
           normalComposer && styles.kaelOrbNormalComposerCard,
           styles.kaelOrbComposerCardMultiline,
           reduceTransparency && [styles.opaqueCard, dark ? { backgroundColor: palette.opaqueFill } : null],
+          { boxShadow: dark ? color.kaelComposer.auraDark : color.kaelComposer.auraLight },
         ]}
         testID="worker-v5-kael-orb-composer-frame"
         variant="control"
@@ -602,8 +603,9 @@ export function WorkerV5KaelOrbComposer({
             accessibilityState={{ busy }}
             mode={palette.mode}
             onPress={submitDraft}
-            radius={kaelComposerFrame.controlRadius}
-            size={kaelComposerFrame.controlSize}
+            hitSlop={kaelComposerFrame.sendInset}
+            radius={kaelComposerFrame.sendRadius}
+            size={kaelComposerFrame.sendSize}
             style={styles.kaelOrbSendButton}
             testID="worker-v5-kael-orb-send"
           >
@@ -623,6 +625,7 @@ export function WorkerV5KaelOrbComposer({
             accessibilityRole="button"
             accessibilityState={{ busy, disabled: !stopping && !canSubmit }}
             disabled={!stopping && !canSubmit}
+            hitSlop={kaelComposerFrame.sendInset}
             onPress={stopping ? onStop : submitDraft}
             style={({ pressed }) => [
               styles.kaelOrbSendButton,
@@ -631,10 +634,10 @@ export function WorkerV5KaelOrbComposer({
                   ? palette.sendIdle(sending).background
                   : stopping || canSubmit ? color.brand.primary : color.surface.soft,
                 borderColor: dark ? color.kaelComposer.borderDark : color.kaelComposer.borderLight,
-                borderRadius: kaelComposerFrame.controlRadius,
+                borderRadius: kaelComposerFrame.sendRadius,
                 borderWidth: 1,
-                height: kaelComposerFrame.controlSize,
-                width: kaelComposerFrame.controlSize,
+                height: kaelComposerFrame.sendSize,
+                width: kaelComposerFrame.sendSize,
               },
               pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
             ]}

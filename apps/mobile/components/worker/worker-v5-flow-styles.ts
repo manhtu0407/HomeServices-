@@ -2169,12 +2169,14 @@ export const styles = StyleSheet.create({
   },
   kaelOrbSendButton: {
     alignItems: 'center',
-    borderRadius: kaelComposerFrame.controlRadius,
+    borderRadius: kaelComposerFrame.sendRadius,
     flexShrink: 0,
-    height: 44,
+    height: kaelComposerFrame.sendSize,
     justifyContent: 'center',
+    marginBottom: kaelComposerFrame.sendInset,
+    marginRight: 2,
     position: 'relative',
-    width: 44,
+    width: kaelComposerFrame.sendSize,
     zIndex: 1,
   },
   kaelOrbStack: {

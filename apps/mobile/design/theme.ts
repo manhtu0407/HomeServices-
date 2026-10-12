@@ -46,9 +46,12 @@ export const color = {
     stroke: '#D8EBE8',
     strokeStrong: '#B8E7DF',
   },
+  // A hairline silver edge plus a soft silver halo: the frame reads as lit, not outlined.
   kaelComposer: {
-    borderDark: 'rgba(190,196,204,0.55)',
-    borderLight: '#AEB5BE',
+    auraDark: '0 0 0 3px rgba(190,196,204,0.10), 0 0 20px rgba(190,196,204,0.26)',
+    auraLight: '0 0 0 3px rgba(174,181,190,0.16), 0 0 20px rgba(174,181,190,0.42)',
+    borderDark: 'rgba(190,196,204,0.50)',
+    borderLight: 'rgba(174,181,190,0.78)',
   },
   kaelChatSend: {
     idleBackground: '#F2FAF9',
@@ -76,9 +79,12 @@ export const color = {
 // One rounded-rectangle frame for every Kael message box; the controls inside keep the same inset.
 export const kaelComposerFrame = {
   borderRadius: 16,
-  borderWidth: 1.5,
+  borderWidth: 1,
   controlRadius: 10,
   controlSize: 44,
+  sendInset: 5,
+  sendRadius: 9,
+  sendSize: 34,
   minHeight: 56,
   padding: 6,
 } as const

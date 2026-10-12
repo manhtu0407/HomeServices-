@@ -1617,15 +1617,15 @@ describe('active customer Kael chat surface wiring', () => {
       .map((node) => node.props.stroke)
     expect(workModeCameraStrokes).toContain(color.text.strong)
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveProp('hitSlop', 3)
-    expect(screen.getByTestId('customer-v21-kael-composer-frame')).toHaveStyle({ borderRadius: 16, borderWidth: 1.5, minHeight: 56, paddingHorizontal: 6, paddingVertical: 6 })
+    expect(screen.getByTestId('customer-v21-kael-composer-frame')).toHaveStyle({ borderRadius: 16, borderWidth: 1, minHeight: 56, paddingHorizontal: 6, paddingVertical: 6 })
     expect(screen.getByTestId('customer-v21-kael-media-picker')).toHaveStyle({ borderRadius: 10, height: 44, width: 44 })
-    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ borderRadius: 10, height: 44, width: 44 })
+    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ borderRadius: 9, height: 34, width: 34 })
     expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({
       backgroundColor: color.surface.soft,
       borderColor: color.surface.stroke,
     })
     fireEvent.changeText(screen.getByTestId('customer-v21-kael-input'), 'Mô tả nhu cầu cần gửi')
-    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ borderRadius: 10, height: 44, width: 44 })
+    expect(screen.getByTestId('customer-v21-kael-send')).toHaveStyle({ borderRadius: 9, height: 34, width: 34 })
     expect(screen.getByTestId('customer-v21-kael-send-surface')).toBeOnTheScreen()
     const sendArrowStrokes = view.UNSAFE_getByProps({ testID: 'customer-v21-kael-send-arrow' })
       .findAll((node) => typeof node.props.stroke === 'string')
