@@ -52,7 +52,6 @@ export function serializeKaelTurn(row: Record<string, unknown>) {
     text_content: nullableString(row.text_content),
     media_refs: row.media_refs,
     estimate: serializeKaelEstimate(metadata.estimate, metadata.estimate_card_v3),
-    // What Kael still needs, the next steps it offers, and any labelled market reference.
     clarification: serializeKaelClarification(contentType, metadata.artifact_proposal),
     ...serializeKaelTurnGuidance(metadata),
     ...(isIntakeEvalObservationExposureEnabled()
