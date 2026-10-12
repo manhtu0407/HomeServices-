@@ -524,7 +524,10 @@ describe('CustomerBookingEntrySurface v2.1', () => {
     fireEvent.changeText(screen.getByTestId('customer-v21-booking-address'), 'Toa A')
 
     await waitFor(() => {
-      expect(mockPlacesAutocomplete).toHaveBeenCalledWith({ input: 'Toa A' })
+      expect(mockPlacesAutocomplete).toHaveBeenCalledWith(
+        { input: 'Toa A', session_token: expect.any(String) },
+        { signal: expect.anything() },
+      )
     })
     await waitFor(() => {
       expect(screen.getByTestId('customer-v21-booking-address-suggestion-0')).toHaveTextContent(/Tòa A, Vinhomes Grand Park/)

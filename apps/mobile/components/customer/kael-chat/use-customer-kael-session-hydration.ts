@@ -52,7 +52,7 @@ function pendingDraftCreateFingerprint(input: {
 }) {
   const { draft, language, message, serviceType } = input
   return JSON.stringify({
-    address_district: draft.districtLabel ?? null,
+    address_district: draft.districtLabel || draft.addressLabel || null,
     address_label: draft.addressLabel ?? null,
     intake_description: draft.description ?? null,
     intake_source: 'booking',
@@ -231,7 +231,8 @@ export function useCustomerKaelSessionHydration({
           pendingCreate.upload = uploaded
         }
         const created = await kaelChatService.create({
-          address_district: pendingDraft.districtLabel ?? undefined,
+          // Drafts saved with an empty district label would be rejected as a missing booking field.
+          address_district: pendingDraft.districtLabel || pendingDraft.addressLabel || undefined,
           address_label: pendingDraft.addressLabel,
           client_request_id: clientRequestId,
           evidence_items: uploaded.evidenceItems,

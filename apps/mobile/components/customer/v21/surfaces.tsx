@@ -55,7 +55,7 @@ import {
 } from '../booking/booking-intake-display-model'
 import { useBookingScheduleRuntimeNow } from '../booking/use-booking-schedule-runtime-now'
 import { useBookingFormState } from '../booking/use-booking-form-state'
-import { useBookingAddressLookup, type BookingAddressSuggestion } from '../booking/use-booking-address-lookup'
+import { peekBookingAddressSuggestions, useBookingAddressLookup, type BookingAddressSuggestion } from '../booking/use-booking-address-lookup'
 import { useCustomerMessageMemoryPreference } from '../kael-chat/use-customer-message-memory-preference'
 import { useCustomerAvatarPicker } from '../profile/use-customer-avatar-picker'
 import { ProfileProgressBar } from '../profile/profile-progress-bar'
@@ -481,7 +481,7 @@ function CustomerBookingEntrySurfaceRoute() {
         draft,
         customerBookingServiceIdForHistory[draft.serviceType],
       )
-      addressDistrictLabel.current = draft.districtLabel ?? null
+      addressDistrictLabel.current = draft.districtLabel || null
     }).catch(() => undefined)
     return () => {
       cancelled = true
@@ -627,7 +627,11 @@ function CustomerBookingEntrySurfaceRoute() {
       return
     }
     const normalizedAddress = address.trim()
-    const normalizedDistrict = addressDistrictLabel.current ?? extractKnownDistrictLabel(normalizedAddress) ?? normalizedAddress
+    // A free-typed building ("S1.07 Vinhomes Grand Park") names no district; the provider's own match for it does.
+    const suggestedDistrict = [...addressLookup.suggestions, ...peekBookingAddressSuggestions(normalizedAddress)]
+      .map((suggestion) => extractKnownDistrictLabel(`${suggestion.label} ${suggestion.secondary_text ?? ''}`))
+      .find(Boolean)
+    const normalizedDistrict = addressDistrictLabel.current || extractKnownDistrictLabel(normalizedAddress) || suggestedDistrict || normalizedAddress
     if (submitDraftInFlightRef.current) return
     submitDraftInFlightRef.current = true
     const clientRequestId = generateClientRequestId()

@@ -35,43 +35,84 @@ import {
   vietmapPlacesAutocomplete,
   vietmapPlacesResolve,
 } from "./geo-providers.ts";
+import {
+  AutocompleteResultCache,
+  autocompleteCacheKey,
+  firstUsefulAutocomplete,
+  normalizeAutocompleteQuery,
+  rankSuggestionsForQuery,
+} from "./autocomplete-support.ts";
 
 export const CONFIRMED_MATCHING_GEOCODE_BUDGET_MS = 1_500;
 
 type GeocodeProvider<T> = (timeoutMs: number) => Promise<T | null>;
+
+const AUTOCOMPLETE_PERMIT_TTL_MS = 10_000;
+const AUTOCOMPLETE_HEDGE_DELAY_MS = 700;
+const autocompleteCache = new AutocompleteResultCache();
+let autocompletePermitAllowedUntil = 0;
+
+/** Drops the isolate-local suggestion cache and permit reuse; tests need a cold start per case. */
+export function resetAutocompleteStateForTests(): void {
+  autocompleteCache.clear();
+  autocompletePermitAllowedUntil = 0;
+}
+
+function delay(ms: number): Promise<null> {
+  return new Promise((resolve) => setTimeout(() => resolve(null), ms));
+}
 
 export async function placesAutocomplete(
   ctx: MobileApiContext,
   input: PlacesAutocompleteInput,
   secrets: EdgeAiSecrets,
 ): Promise<PlacesAutocompleteResponse> {
-  const control = await mapsPermit(ctx.privilegedSupabase ?? ctx.supabase, ctx.environment, ctx.releaseId, secrets);
-  if (!control.permit.allowed) return { suggestions: [], fallback_used: true };
+  const cacheKey = autocompleteCacheKey(input.input);
+  const cached = autocompleteCache.get(cacheKey);
+  if (cached) return cached;
+
+  // Typing fires a request per pause, so the breaker permit is reused for a few seconds
+  // instead of costing a database round trip (and failing closed when the database is busy).
+  let control: MapsControl | null = null;
+  if (Date.now() >= autocompletePermitAllowedUntil) {
+    control = await mapsPermit(ctx.privilegedSupabase ?? ctx.supabase, ctx.environment, ctx.releaseId, secrets);
+    if (!control.permit.allowed) return { suggestions: [], fallback_used: true };
+    if (control.permit.state === "closed") autocompletePermitAllowedUntil = Date.now() + AUTOCOMPLETE_PERMIT_TTL_MS;
+  }
+
+  const providerInput = { ...input, input: normalizeAutocompleteQuery(input.input) };
   const vietmapApiKey = readVietmapApiKey(secrets);
-  let emptyVietmapResult: PlacesAutocompleteResponse | null = null;
-  if (vietmapApiKey) {
-    const result = await vietmapPlacesAutocomplete(input, vietmapApiKey);
-    if (!result.fallback_used && result.suggestions.length > 0) {
-      await recordMapsResult(control, true);
-      return result;
-    }
-    if (!result.fallback_used) emptyVietmapResult = result;
-  }
-
   const googleApiKey = readGoogleMapsApiKey(secrets);
+  const attempts: Array<Promise<PlacesAutocompleteResponse>> = [];
+  if (vietmapApiKey) attempts.push(vietmapPlacesAutocomplete(providerInput, vietmapApiKey));
   if (googleApiKey) {
-    const result = await googlePlacesAutocomplete(input, googleApiKey);
-    await recordMapsResult(control, !result.fallback_used);
-    return result;
+    // Google starts at once when VietMap is not configured, otherwise only when VietMap is slow or empty.
+    const primary = attempts[0];
+    const startGoogle = primary
+      ? Promise.race([primary.then((result) => result.suggestions.length > 0 && !result.fallback_used), delay(AUTOCOMPLETE_HEDGE_DELAY_MS)])
+        .then((vietmapUseful) => vietmapUseful === true ? null : googlePlacesAutocomplete(providerInput, googleApiKey))
+      : googlePlacesAutocomplete(providerInput, googleApiKey);
+    attempts.push(startGoogle.then((result) => result ?? { suggestions: [], fallback_used: false }));
   }
 
-  if (emptyVietmapResult) {
-    await recordMapsResult(control, true);
-    return emptyVietmapResult;
+  const settled = await firstUsefulAutocomplete(attempts);
+  const result = settled
+    ? { ...settled, suggestions: rankSuggestionsForQuery(input.input, settled.suggestions) }
+    : { suggestions: [], fallback_used: true };
+  autocompleteCache.set(cacheKey, result);
+  if (control) {
+    // The breaker only needs the outcome eventually; the resident is not kept waiting for it.
+    void recordMapsResult(
+      control,
+      !result.fallback_used,
+      attempts.length === 0 ? "MAPS_PROVIDER_UNAVAILABLE" : null,
+    ).catch((error) => {
+      console.warn("mobile-api places autocomplete result record failed", {
+        errorName: error instanceof Error ? error.name : typeof error,
+      });
+    });
   }
-
-  await recordMapsResult(control, false, "MAPS_PROVIDER_UNAVAILABLE");
-  return { suggestions: [], fallback_used: true };
+  return result;
 }
 
 export async function placesResolve(
