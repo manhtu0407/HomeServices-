@@ -13,7 +13,7 @@ import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
 import { useKaelComposerBottomInset } from '@/components/ui/use-kael-composer-bottom-inset'
 import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix } from '@/components/ui/normal-chat-composer-model'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
-import { color, customerTheme } from '@/design/theme'
+import { color, customerTheme, kaelComposerFrame } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useNormalChatSuggestions } from '@/lib/normal-chat-suggestions'
@@ -520,7 +520,7 @@ export function WorkerV5KaelOrbComposer({
       ) : null}
       <GlassSurface
         backgroundColor={palette.composerFill}
-        borderColor={dark || normalComposer ? palette.composerBorder : color.surface.stroke}
+        borderColor={dark ? color.kaelComposer.borderDark : color.kaelComposer.borderLight}
         material="liquid"
         mode={palette.mode}
         style={[
@@ -528,6 +528,7 @@ export function WorkerV5KaelOrbComposer({
           normalComposer && styles.kaelOrbNormalComposerCard,
           styles.kaelOrbComposerCardMultiline,
           reduceTransparency && [styles.opaqueCard, dark ? { backgroundColor: palette.opaqueFill } : null],
+          reduceTransparency ? null : { boxShadow: dark ? color.kaelComposer.auraDark : color.kaelComposer.auraLight },
         ]}
         testID="worker-v5-kael-orb-composer-frame"
         variant="control"
@@ -542,9 +543,9 @@ export function WorkerV5KaelOrbComposer({
           style={({ pressed }) => [
             styles.kaelOrbComposerCameraButton,
             {
-              borderRadius: 22,
-              height: 44,
-              width: 44,
+              borderRadius: kaelComposerFrame.controlRadius,
+              height: kaelComposerFrame.controlSize,
+              width: kaelComposerFrame.controlSize,
             },
             pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
           ]}
@@ -595,6 +596,7 @@ export function WorkerV5KaelOrbComposer({
           testID="worker-v5-kael-orb-input"
           value={draft}
         />
+        <View style={styles.kaelOrbSendSlot}>
         {!stopping && canSubmit ? (
           // Ready to send: the header's liquid glass control. Empty and Stop keep their own states.
           <LiquidControlButton
@@ -602,7 +604,9 @@ export function WorkerV5KaelOrbComposer({
             accessibilityState={{ busy }}
             mode={palette.mode}
             onPress={submitDraft}
-            size={44}
+            hitSlop={kaelComposerFrame.sendInset}
+            radius={kaelComposerFrame.sendRadius}
+            size={kaelComposerFrame.sendSize}
             style={styles.kaelOrbSendButton}
             testID="worker-v5-kael-orb-send"
           >
@@ -622,6 +626,7 @@ export function WorkerV5KaelOrbComposer({
             accessibilityRole="button"
             accessibilityState={{ busy, disabled: !stopping && !canSubmit }}
             disabled={!stopping && !canSubmit}
+            hitSlop={kaelComposerFrame.sendInset}
             onPress={stopping ? onStop : submitDraft}
             style={({ pressed }) => [
               styles.kaelOrbSendButton,
@@ -629,11 +634,11 @@ export function WorkerV5KaelOrbComposer({
                 backgroundColor: normalComposer || dark
                   ? palette.sendIdle(sending).background
                   : stopping || canSubmit ? color.brand.primary : color.surface.soft,
-                borderColor: dark ? palette.composerBorder : color.surface.stroke,
-                borderRadius: 22,
+                borderColor: dark ? color.kaelComposer.borderDark : color.kaelComposer.borderLight,
+                borderRadius: kaelComposerFrame.sendRadius,
                 borderWidth: 1,
-                height: 44,
-                width: 44,
+                height: kaelComposerFrame.sendSize,
+                width: kaelComposerFrame.sendSize,
               },
               pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
             ]}
@@ -650,6 +655,7 @@ export function WorkerV5KaelOrbComposer({
             />
           </Pressable>
         )}
+        </View>
       </GlassSurface>
       <Text style={[styles.kaelOrbComposerDisclaimer, dark ? { color: palette.muted } : null]} testID="worker-v5-kael-orb-disclaimer">
         {textByLanguage(language, 'Kael có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng.', 'Kael can make mistakes. Check important information.')}

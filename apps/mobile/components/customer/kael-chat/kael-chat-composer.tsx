@@ -19,7 +19,7 @@ import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overla
 import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
 import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix, getNormalChatSendPalette } from '@/components/ui/normal-chat-composer-model'
-import { color } from '@/design/theme'
+import { color, kaelComposerFrame } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 
@@ -40,6 +40,7 @@ export type RootChatStyles = {
   errorText: StyleProp<TextStyle>
   flex: StyleProp<ViewStyle>
   sendButton: StyleProp<ViewStyle>
+  sendSlot: StyleProp<ViewStyle>
 }
 
 export function KaelChatComposer({
@@ -94,7 +95,7 @@ export function KaelChatComposer({
   textInputNoOutlineStyle: StyleProp<TextStyle>
   tokens: CustomerThemeTokens
 }) {
-  const { reduceMotion } = useGlassAccessibility()
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const inputRef = useRef<TextInput>(null)
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null)
   const [isComposing, setIsComposing] = useState(false)
@@ -168,13 +169,14 @@ export function KaelChatComposer({
       ) : null}
       <GlassSurface
         backgroundColor={tokens.glass}
-        borderColor={tokens.glassBorder}
+        borderColor={tokens.mode === 'dark' ? color.kaelComposer.borderDark : color.kaelComposer.borderLight}
         material="liquid"
         mode={tokens.mode}
         style={[
           rootStyles.composer,
           chatStyles.chatComposer,
           visibleMediaDrafts.length > 0 ? chatStyles.chatComposerWithImages : null,
+          reduceTransparency ? null : { boxShadow: tokens.mode === 'dark' ? color.kaelComposer.auraDark : color.kaelComposer.auraLight },
         ]}
         testID="customer-v21-kael-composer-frame"
         variant="control"
@@ -208,9 +210,9 @@ export function KaelChatComposer({
           style={({ pressed }) => [
             chatStyles.chatMediaButton,
             {
-              borderRadius: 22,
-              height: 44,
-              width: 44,
+              borderRadius: kaelComposerFrame.controlRadius,
+              height: kaelComposerFrame.controlSize,
+              width: kaelComposerFrame.controlSize,
             },
             pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
           ]}
@@ -264,6 +266,7 @@ export function KaelChatComposer({
           testID="customer-v21-kael-input"
           value={draft}
         />
+        <View style={rootStyles.sendSlot}>
         {!composerBusy && canSubmit ? (
           // Ready to send: the header's liquid glass control, so the active button reads as the same
           // material as the back button. Empty and Stop keep their own clearer states.
@@ -272,7 +275,9 @@ export function KaelChatComposer({
             accessibilityState={{ busy: false }}
             mode={tokens.mode}
             onPress={onSendMessage}
-            size={44}
+            hitSlop={kaelComposerFrame.sendInset}
+            radius={kaelComposerFrame.sendRadius}
+            size={kaelComposerFrame.sendSize}
             style={rootStyles.sendButton}
             testID="customer-v21-kael-send"
           >
@@ -294,6 +299,7 @@ export function KaelChatComposer({
             accessibilityRole="button"
             accessibilityState={{ busy: composerBusy, disabled: composerBusy ? !stopAvailable : !canSubmit }}
             disabled={composerBusy ? !stopAvailable : !canSubmit}
+            hitSlop={kaelComposerFrame.sendInset}
             onPress={composerBusy ? onStopMessage : onSendMessage}
             style={({ pressed }) => [
               rootStyles.sendButton,
@@ -303,11 +309,11 @@ export function KaelChatComposer({
                   ? normalSendPalette.background
                   : composerBusy || canSubmit ? activeSendBackground : idleSendBackground,
                 borderColor: composerBusy || canSubmit ? activeSendBorder : idleSendBorder,
-                borderRadius: 22,
+                borderRadius: kaelComposerFrame.sendRadius,
                 borderWidth: 1,
-                height: 44,
+                height: kaelComposerFrame.sendSize,
                 justifyContent: 'center',
-                width: 44,
+                width: kaelComposerFrame.sendSize,
               },
               pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
             ]}
@@ -324,6 +330,7 @@ export function KaelChatComposer({
             />
           </Pressable>
         )}
+        </View>
         </View>
       </GlassSurface>
       <Text

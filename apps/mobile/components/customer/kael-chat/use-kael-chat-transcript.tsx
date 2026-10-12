@@ -16,6 +16,7 @@ import { KaelResponseSurface } from './kael-response-surface'
 import { CaseWorkResponse } from './case-work-response'
 import { buildCaseWorkResponseModel } from './case-work-response-model'
 import { ChatBubble } from './chat-surfaces'
+import { useKaelFreshRows } from './kael-fresh-row'
 import type { ChatTranscriptRow } from './kael-chat-transcript'
 import { InactiveAgenticGate } from '../ui/shared-surfaces'
 import type { CustomerKaelMode } from '../ui/types'
@@ -269,6 +270,6 @@ export function useKaelChatTranscript({
 
   return {
     responseInFlight: Boolean(normalPendingReasoningNode || processLinesNode || streamingReplyNode),
-    transcriptRows,
+    transcriptRows: useKaelFreshRows(transcriptRows, reduceMotion),
   }
 }
