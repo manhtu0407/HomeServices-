@@ -1,5 +1,5 @@
 import type { ImagePickerAsset } from 'expo-image-picker'
-import type { LocalDeal, WorkerKaelChatMode } from '@nestscout/shared'
+import type { KaelNextAction, LocalDeal, WorkerKaelChatMode } from '@nestscout/shared'
 
 import type { AppLanguage } from '@/lib/app-language'
 import { kaelChatTurnImages, localKaelChatMediaUri, type KaelChatTurnImage } from '@/lib/kael-chat-local-media'
@@ -11,6 +11,7 @@ export type WorkerV5KaelOrbLocalTurn = {
   images?: KaelChatTurnImage[]
   role: 'kael' | 'worker'
   text: string
+  nextActions?: KaelNextAction[]
 }
 
 export type WorkerV5KaelOrbMediaPreview = {
@@ -143,7 +144,10 @@ export function workerV5KaelOrbTurnsFromResponse(
       if (turn.role !== 'worker' && turn.role !== 'kael') return []
       const images = turn.role === 'worker' ? workerTurnImages(turn) : []
       if (!turn.text_content && images.length === 0) return []
-      return [{ id: turn.id, images, role: turn.role, text: turn.text_content ?? '' }]
+      return [{
+        id: turn.id, images, role: turn.role, text: turn.text_content ?? '',
+        ...(turn.role === 'kael' && turn.next_actions?.length ? { nextActions: turn.next_actions } : {}),
+      }]
     })
 }
 

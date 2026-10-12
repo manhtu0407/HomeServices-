@@ -22,6 +22,7 @@ type WorkerV5PrivateKaelLocalTurn = {
   id: string
   role: 'kael' | 'worker'
   text: string
+  nextActions?: WorkerKaelChatTurn['next_actions']
 }
 
 export type WorkerV5PrivateKaelMediaPreview = {
@@ -115,6 +116,7 @@ function workerV5PrivateKaelTurnsFromResponse(
         id: turn.id,
         role: turn.role,
         text: turn.text_content,
+        ...(turn.role === 'kael' && turn.next_actions?.length ? { nextActions: turn.next_actions } : {}),
       })
     }
   }

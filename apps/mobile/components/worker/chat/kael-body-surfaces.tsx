@@ -19,6 +19,7 @@ import { useWorkerKaelOrbPalette } from './orb-palette'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { workerKaelNextActionHandler } from './kael-orb-next-actions'
 
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
@@ -194,6 +195,7 @@ function WorkerV5PrivateKaelOrbBody({
       liveTurns={orbChat.liveTurns}
       mode={mode}
       onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
+      onNextAction={workerKaelNextActionHandler({ send: orbChat.send, pickMedia: orbChat.pickMedia, navigateToScreen })}
       onStreamingReplySettled={orbChat.settleStreamingReply}
       onToggleReasoningReceipt={orbChat.toggleReasoningReceipt}
       reduceMotion={reduceMotion}

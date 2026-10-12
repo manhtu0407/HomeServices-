@@ -57,6 +57,7 @@ import type { WorkerKaelChatCreateInput, WorkerKaelChatTurnInput } from "../../.
 import { readWorkerOpportunityAssistContext } from "./broadcasts.ts";
 import { deriveWorkerKaelConversationScope } from "./kael-chat-scope.ts";
 import { projectWorkerJobBrief } from "./job-brief.ts";
+import { buildWorkerKaelNextActions, workerKaelTurnNextActions } from "./kael-chat-next-actions.ts";
 
 export const WORKER_KAEL_SESSION_SELECT =
   "id, job_id, chat_mode, worker_id, status, title, pinned_at, started_at, closed_at, archived_at, total_turns, total_cost_usd, kael_progress, safe_metadata, created_at, updated_at";
@@ -502,6 +503,10 @@ async function finalizeWorkerKaelChatTurn(input: {
       answer: input.answer, claimId: input.claimId, jobId: input.sessionJobId,
       requestId: asString(input.claim.request_id), sessionId: input.sessionId,
       workerId: input.ctx.user.id, workerTurnId: asString(input.claim.worker_turn_id),
+      nextActions: buildWorkerKaelNextActions({
+        answer: input.answer, jobId: input.sessionJobId,
+        normalChatSession: input.normalChatSession === true, language: input.input.language,
+      }),
     });
   } catch (error) {
     await releaseWorkerKaelTurnClaim(input.client, {
@@ -705,6 +710,7 @@ function serializeWorkerKaelTurn(row: Record<string, unknown>) {
     text_content: nullableString(row.text_content),
     media_refs: asStringArray(row.media_refs),
     safety_notes: workerKaelSafetyNotes(row[WORKER_KAEL_PRIVATE_METADATA_KEY]),
+    ...workerKaelTurnNextActions(row[WORKER_KAEL_PRIVATE_METADATA_KEY]),
     created_at: asString(row.created_at),
   };
 }

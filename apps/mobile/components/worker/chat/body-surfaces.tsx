@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ScrollView,
+  StyleSheet,
   Text,
   View,
   type ImageSourcePropType,
@@ -8,10 +9,11 @@ import {
   type NativeSyntheticEvent,
 } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
-import type { LocalDeal, ServiceType } from '@nestscout/shared'
+import type { KaelNextAction, LocalDeal, ServiceType } from '@nestscout/shared'
 
 import { KaelReasoningReceipt } from '@/components/ui/kael-reasoning-receipt'
 import { KaelChatTurnImages } from '@/components/ui/kael-chat-turn-images'
+import { KaelChip } from '@/components/ui/kael-primitives'
 import { LiquidPillButton } from '@/components/ui/liquid-pill-button'
 import { motionTokens } from '@/components/ui/motion-tokens'
 import { useKaelResponseStreamPresentation } from '@/components/ui/use-kael-respond-stream-presentation'
@@ -38,6 +40,7 @@ type WorkerV5KaelOrbLiveTurn = {
   images?: KaelChatTurnImage[]
   role: 'kael' | 'worker'
   text: string
+  nextActions?: KaelNextAction[]
 }
 
 const EMPTY_WORKER_V5_KAEL_ORB_LIVE_TURNS: WorkerV5KaelOrbLiveTurn[] = []
@@ -109,6 +112,7 @@ export function WorkerV5KaelOrbBody({
   mode,
   modeMenuOpen = false,
   onOpenOpportunity,
+  onNextAction,
   onStreamingReplySettled,
   onToggleReasoningReceipt,
   reduceMotion = false,
@@ -130,6 +134,7 @@ export function WorkerV5KaelOrbBody({
   mode: 'intake' | 'normal'
   modeMenuOpen?: boolean
   onOpenOpportunity: () => void
+  onNextAction?: (action: KaelNextAction) => void
   onStreamingReplySettled?: (responseId: string) => void
   onToggleReasoningReceipt?: () => void
   reduceMotion?: boolean
@@ -312,6 +317,20 @@ export function WorkerV5KaelOrbBody({
               </Fragment>
             ))}
             {!receiptBeforeFinalKaelTurn ? reasoningReceiptNode : null}
+            {onNextAction && !hasStreamingReply && !liveStatus && latestVisibleTurn?.role === 'kael' && latestVisibleTurn.nextActions?.length ? (
+              <View style={nextActionStyles.row} testID="worker-v5-kael-next-actions">
+                {latestVisibleTurn.nextActions.map((action) => (
+                  <KaelChip
+                    key={action.id}
+                    label={action.label}
+                    onPress={() => onNextAction(action)}
+                    style={nextActionStyles.chip}
+                    testID={`worker-v5-kael-next-action-${action.id}`}
+                    variant={action.kind === 'open_scope_change' ? 'selected' : 'unselected'}
+                  />
+                ))}
+              </View>
+            ) : null}
             {streamingReplyText ? (
               <Animated.View
                 key={streamingReply?.responseId ?? 'worker-kael-streaming-reply'}
@@ -442,3 +461,7 @@ function WorkerV5KaelOrbIntakeThread({
     </View>
   )
 }
+const nextActionStyles = StyleSheet.create({
+  chip: { minHeight: 40 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 4 },
+})

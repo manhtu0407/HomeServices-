@@ -42,6 +42,7 @@ import { localizedServiceLabel } from '@/lib/app-language'
 import { workerV5Icons, workerV5OpportunityServiceIcons } from '../ui/screen-icons'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { workerKaelNextActionHandler } from './kael-orb-next-actions'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
 
@@ -324,6 +325,7 @@ export function WorkerV5KaelOrbScreenSurface({
             mode={mode}
             modeMenuOpen={modeMenuOpen || sessionMenuOpen}
             onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
+            onNextAction={workerKaelNextActionHandler({ send: orbChat.send, pickMedia: orbChat.pickMedia, navigateToScreen })}
             onStreamingReplySettled={orbChat.settleStreamingReply}
             onToggleReasoningReceipt={orbChat.toggleReasoningReceipt}
             reduceMotion={reduceMotion}

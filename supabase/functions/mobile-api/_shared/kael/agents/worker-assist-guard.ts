@@ -214,6 +214,12 @@ export function normalizeWorkerAssistPayload(value: unknown, maxTextLength = MAX
     safety_notes: safetyNotes,
     redirect_scope_change: redirectScopeChange,
     ...(sessionTitle ? { session_title: sessionTitle } : {}),
+    follow_up_suggestions: uniqueWorkerAssistStrings(
+      publicRecords.flatMap((record) => Array.isArray(record.follow_up_suggestions)
+        ? record.follow_up_suggestions.filter((item): item is string => typeof item === "string")
+        : []),
+      3,
+    ),
   };
 }
 
