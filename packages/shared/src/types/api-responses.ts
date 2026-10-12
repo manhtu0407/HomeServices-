@@ -9,6 +9,7 @@ import type {
 import type { LocalPaymentStatus } from '../mobile-workflow'
 import type { ApartmentAccessProfileInput, KaelChatProgress } from '../validation'
 import type { ConfirmationOperationReceipt, IntakeCoverage, QuoteMode } from '../contracts/stage1-reliability'
+import type { KaelNextAction } from '../contracts/kael-next-actions'
 export type { MatchingPushDeliveryAckResponse } from './matching-delivery-responses'
 import type { WorkflowResponses } from './workflow-responses'
 import type {
@@ -238,7 +239,19 @@ export type KaelChatTurn = {
   estimate: KaelEstimate | null
   // Smart clarification: present on content_type='clarification' turns (optional; canonical superset).
   clarification?: { question: string | null; missing_slots: string[] } | null
+  // Server-chosen next steps; the app renders them and sends a chosen one back, never invents one.
+  next_actions?: KaelNextAction[]
+  // A labelled market reference from real cited prices; never an estimate and never bookable.
+  reference_price?: KaelReferencePrice
   created_at: string
+}
+
+export type KaelReferencePrice = {
+  price_min: number
+  price_max: number
+  unit: 'per_visit' | 'per_repair_point' | 'per_item'
+  source_count: number
+  sources: Array<{ domain: string; url: string }>
 }
 
 export type KaelChatSession = {

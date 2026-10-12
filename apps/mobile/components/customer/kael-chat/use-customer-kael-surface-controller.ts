@@ -35,6 +35,7 @@ import { useCustomerKaelChatUiState } from './use-customer-kael-chat-ui-state'
 import { useCustomerKaelConversationState } from './use-customer-kael-conversation-state'
 import { useCustomerKaelConversations } from './use-customer-kael-conversations'
 import { useCustomerKaelDecisionActions } from './use-customer-kael-decision-actions'
+import { useCustomerKaelNextActions } from './use-customer-kael-next-actions'
 import { useCustomerKaelEvidenceActions } from './use-customer-kael-evidence-actions'
 import { useCustomerKaelMessageActions } from './use-customer-kael-message-actions'
 import { useCustomerKaelModeMenu } from './use-customer-kael-mode-menu'
@@ -315,6 +316,13 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     sessionAccessToken,
     workflow,
   })
+  const nextActions = useCustomerKaelNextActions({
+    chatUi,
+    conversation,
+    evidenceActions,
+    kaelRequestGuard,
+    language,
+  })
   const modeMenu = useCustomerKaelModeMenu({
     caseWorkRoute,
     chatUi,
@@ -342,6 +350,7 @@ export function useCustomerKaelSurfaceController(stateScopeKey: string) {
     messageActions,
     mode,
     modeMenu,
+    nextActions,
     pendingDraftOwnerId,
     presentation,
     processController,
