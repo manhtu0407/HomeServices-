@@ -133,6 +133,7 @@ export async function answerKaelAssistant(
     safety_notes: answer.safety_notes,
     citations: answer.citations,
     suggested_actions: answer.suggested_actions,
+    service_intent: answer.service_intent ?? null,
     boundary: answer.boundary,
     fallback_used: answer.fallback_used,
     public_reasoning_summary: answer.public_reasoning_summary,

@@ -134,6 +134,7 @@ export type CustomerAssistantAnswer = {
   readonly safety_notes: readonly string[];
   readonly citations: readonly string[];
   readonly suggested_actions: readonly CustomerAssistantSuggestedAction[];
+  readonly service_intent?: "electrical" | "plumbing" | "cleaning" | "hvac" | "upholstery" | "handyman" | null;
   readonly boundary: CustomerAssistantBoundary;
   readonly fallback_used: boolean;
   readonly public_reasoning_summary?: readonly string[];
@@ -156,6 +157,7 @@ function customerAssistantResponseSchema(maxAnswerLength: number) {
     "contact_support",
     "request_scope_change",
   ])).max(3).default([]),
+  service_intent: z.enum(["electrical", "plumbing", "cleaning", "hvac", "upholstery", "handyman"]).nullable().catch(null).default(null),
   boundary: z.enum([
     "answered",
     "educational_only",
@@ -660,6 +662,7 @@ function buildSuccessfulCustomerAssistantAnswer(input: {
     safety_notes: deterministicSafetyNotes(input.language, input.topic),
     citations: customerAssistantCitations(input.knowledge, input.data.citations),
     suggested_actions: normalizeActions(input.data.suggested_actions, input.surface, input.topic),
+    service_intent: input.surface === "customer_normal" ? input.data.service_intent : null,
     boundary: input.data.boundary,
     fallback_used: false,
     public_reasoning_summary: publicReasoningSummary,

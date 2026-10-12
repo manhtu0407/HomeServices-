@@ -5,6 +5,7 @@ import type {
   CustomerKaelConversationPinInput,
   CustomerKaelConversationRenameInput,
   CustomerKaelConversationTurnInput,
+  KaelNextAction,
   KaelPerformanceMode,
   ServiceType,
 } from '@nestscout/shared'
@@ -43,6 +44,7 @@ export type CustomerKaelConversationTurn = {
   text_content: string
   media_refs?: string[]
   media_previews?: KaelChatMediaPreview[]
+  next_actions?: KaelNextAction[]
   created_at: string
 }
 

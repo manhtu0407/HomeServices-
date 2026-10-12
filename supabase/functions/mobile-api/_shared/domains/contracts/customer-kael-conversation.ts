@@ -1,3 +1,4 @@
+import type { EdgeKaelNextAction } from "../../../../_shared/contracts/kael-next-actions.ts";
 import type {
   EdgeCustomerKaelConversationMode,
   JobStatus,
@@ -37,6 +38,7 @@ export type EdgeCustomerKaelConversationTurnResponse = {
   text_content: string;
   media_refs?: string[];
   media_previews?: { ref: string; status: "available" | "expired" | "unavailable"; url: string | null }[];
+  next_actions?: EdgeKaelNextAction[];
   created_at: string;
 };
 

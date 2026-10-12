@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import {
   Pressable,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -13,7 +14,7 @@ import { GlassSurface } from '@/components/ui/glass-surface'
 import { KaelSendStopGlyph } from '@/components/ui/kael-send-stop-glyph'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useKaelComposerInputSizing } from '@/components/ui/kael-composer-input-height'
-import { KaelTextField } from '@/components/ui/kael-primitives'
+import { KaelChip, KaelTextField } from '@/components/ui/kael-primitives'
 import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overlay'
 import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
@@ -28,6 +29,7 @@ import { MediaDraftPreviewTray } from './media-draft-preview-tray'
 import { customerV21ChatStyles as chatStyles } from './chat-styles'
 import { canSubmitCustomerKaelComposer } from './customer-kael-composer-state'
 import { CUSTOMER_KAEL_MESSAGE_MAX_LENGTH } from './customer-kael-message-limits'
+import type { ComposerQuickAction } from './normal-chat-quick-actions'
 
 export type RootChatStyles = {
   bodyText: StyleProp<TextStyle>
@@ -60,6 +62,7 @@ export function KaelChatComposer({
   onStopMessage,
   normalChatStarterVisible = false,
   normalChatSuggestions = EMPTY_NORMAL_CHAT_SUGGESTIONS,
+  quickActions = EMPTY_QUICK_ACTIONS,
   rootStyles,
   stopAvailable = true,
   textInputNoOutlineStyle,
@@ -84,6 +87,7 @@ export function KaelChatComposer({
   onStopMessage: () => void
   normalChatStarterVisible?: boolean
   normalChatSuggestions?: { id: string; text: string }[]
+  quickActions?: readonly ComposerQuickAction[]
   rootStyles: RootChatStyles
   /** False while the busy request has no cancellation path; Stop must not claim to cancel it. */
   stopAvailable?: boolean
@@ -129,6 +133,20 @@ export function KaelChatComposer({
   const inputTextStyle = [rootStyles.composerInput, inputSizing.inputStyle, textInputNoOutlineStyle, { color: tokens.text }]
   return (
     <>
+      {quickActions.length > 0 && !composerBusy ? (
+        <View style={quickActionStyles.row} testID="customer-v21-kael-quick-actions">
+          {quickActions.map((action) => (
+            <KaelChip
+              key={action.id}
+              label={action.label}
+              onPress={action.onPress}
+              style={quickActionStyles.chip}
+              testID={`customer-v21-kael-quick-action-${action.id}`}
+              variant={action.primary ? 'selected' : 'unselected'}
+            />
+          ))}
+        </View>
+      ) : null}
       {normalChatStarterVisible && !allowVideoSelection ? (
         <NormalChatStarterRail
           actorRole="customer"
@@ -319,3 +337,8 @@ export function KaelChatComposer({
     </>
   )
 }
+const EMPTY_QUICK_ACTIONS: readonly ComposerQuickAction[] = []
+const quickActionStyles = StyleSheet.create({
+  chip: { maxWidth: '100%', minHeight: 40 },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 8, paddingHorizontal: 4 },
+})
