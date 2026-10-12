@@ -505,8 +505,10 @@ export const kaelMemoryService = {
 }
 
 export const placesService = {
-  autocomplete(input: PlacesAutocompleteInput) {
-    return api.post<PlacesAutocompleteResponse>('/places/autocomplete', input)
+  autocomplete(input: PlacesAutocompleteInput, options?: { signal?: AbortSignal }) {
+    return options?.signal
+      ? api.post<PlacesAutocompleteResponse>('/places/autocomplete', input, { signal: options.signal })
+      : api.post<PlacesAutocompleteResponse>('/places/autocomplete', input)
   },
 
   resolve(input: { label?: string; place_id: string }) {

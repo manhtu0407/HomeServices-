@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { type MobileApiContext } from '../../../../../../supabase/functions/mobile-api/_shared/http'
 import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
+import { resetAutocompleteStateForTests } from '../../../../../../supabase/functions/mobile-api/_shared/domains/places/geo-public'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 
 describe('places', () => {
   installEdgeRuntimeTestHooks()
+  beforeEach(() => resetAutocompleteStateForTests())
 
   it('returns a safe Places autocomplete fallback when no Maps provider key is configured', async () => {
     const ctx: MobileApiContext = {
