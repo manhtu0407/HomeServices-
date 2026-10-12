@@ -110,7 +110,7 @@ export const kaelChatEvidenceSchema = z.object({
 
 export const kaelChatTurnSchema = z.object({
   message: z.string().trim().min(1).max(5000),
-  turn_intent: z.enum(["price_question", "scope_adjustment"]).optional(),
+  turn_intent: z.enum(["price_question", "scope_adjustment", "request_reference_price", "request_worker_quote", "ask_question"]).optional(),
   problem_chips: z.array(z.string().trim().min(1).max(100)).max(10).optional(),
   photo_urls: z.array(z.string().url()).max(5).default([]),
   evidence_items: kaelChatEvidenceItemsSchema,

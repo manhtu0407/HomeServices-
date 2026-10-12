@@ -18,6 +18,8 @@ export type ActiveIntakePolicy = {
     minimumHighTrustSourceCount: number;
     requiresActiveBaseline: boolean;
     allowLiveMarketEvidence: boolean;
+    // When auto-quote research finds no validated price, the customer may ask a worker to quote.
+    unavailableFallback: "rfq" | null;
   };
   missingTierA: string[];
 };
@@ -134,6 +136,7 @@ function parseEvidenceRequirements(
   const minimumHighTrustSourceCount = requirements.minimum_high_trust_source_count;
   const requiresActiveBaseline = requirements.requires_active_baseline;
   const allowLiveMarketEvidence = requirements.allow_live_market_evidence ?? false;
+  const unavailableFallback = requirements.evidence_unavailable_fallback ?? null;
   // Auto-quote needs either a governed baseline (1+ high-trust source behind it) or live
   // research that met a stricter quorum of 2+ high-trust sources on its own.
   const valid = Number.isSafeInteger(minimumSourceCount) && Number(minimumSourceCount) >= 0 &&
@@ -142,6 +145,7 @@ function parseEvidenceRequirements(
     Number(minimumHighTrustSourceCount) <= Number(minimumSourceCount) &&
     typeof requiresActiveBaseline === "boolean" &&
     typeof allowLiveMarketEvidence === "boolean" &&
+    (unavailableFallback === null || (unavailableFallback === "rfq" && quoteMode === "kael_auto_quote")) &&
     (quoteMode !== "kael_auto_quote" || (requiresActiveBaseline &&
       Number(minimumSourceCount) >= 2 && Number(minimumHighTrustSourceCount) >= 1) ||
       (allowLiveMarketEvidence &&
@@ -160,6 +164,7 @@ function parseEvidenceRequirements(
     minimumHighTrustSourceCount: Number(minimumHighTrustSourceCount),
     requiresActiveBaseline: Boolean(requiresActiveBaseline),
     allowLiveMarketEvidence,
+    unavailableFallback: unavailableFallback === "rfq" ? "rfq" : null,
   };
 }
 

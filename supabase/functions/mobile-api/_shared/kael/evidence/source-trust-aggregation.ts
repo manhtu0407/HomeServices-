@@ -124,7 +124,7 @@ export function aggregateTrustedMarketSources(input: {
   const survivingTier1Tier2 = nonOutliers.filter((item) => item.citation.autoTier <= 2);
   const market = weightedMarketResult(nonOutliers);
   if (!market || survivingTier1Tier2.length === 0) {
-    return failedAggregation("insufficient_tier_1_2_quorum", 2, survivingTier1Tier2.length, rejected);
+    return failedAggregation("insufficient_tier_1_2_quorum", 2, survivingTier1Tier2.length, rejected, sameUnit);
   }
 
   const requiredQuorum = sourceTrustQuorumForMarketAmount(
@@ -325,6 +325,7 @@ function failedAggregation(
   requiredQuorum: number | null,
   tier1Tier2Count: number,
   rejected: RejectedSource[],
+  referenceSources: readonly EligibleSource[] = [],
 ): TrustedMarketAggregationResult {
   return {
     success: false,
@@ -337,6 +338,16 @@ function failedAggregation(
       source_trust_tier_1_2_count: tier1Tier2Count,
       source_trust_required_quorum: requiredQuorum,
       source_trust_rejected_source_count: rejected.length,
+      // Real cited prices that missed the quorum. They may be shown only as a labelled,
+      // non-bookable market reference, never as a Kael estimate.
+      source_trust_reference_sources: referenceSources.map((item) => ({
+        domain: item.domain,
+        verified_url: trustedCitationUrl(item.citation.url, item.citation.domain),
+        price_min: item.source.price_min,
+        price_max: item.source.price_max,
+        unit: item.source.unit,
+        date: item.source.date,
+      })),
     },
   };
 }

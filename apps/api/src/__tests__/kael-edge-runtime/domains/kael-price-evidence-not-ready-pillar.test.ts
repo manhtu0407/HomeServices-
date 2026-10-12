@@ -100,12 +100,20 @@ describe(`${PILLAR.id}: honest unavailable-price response`, () => {
       priceFailureBlock(source, source.indexOf('async function finalizePreviousReleaseEstimate(')),
     ]
 
+    // Both estimate paths hand the no-price decision to the one shared gap step.
     for (const branch of branches) {
-      expect(branch, pillarWhy(PILLAR, 'each estimate path must make the same honest no-price response')).toContain('contentType: "analysis"')
-      expect(branch, pillarWhy(PILLAR, 'the no-price decision completed without producing an estimate')).toContain('status: "completed"')
-      expect(branch, pillarWhy(PILLAR, 'the blocker remains explicit in metadata')).toContain('validated_price_evidence_unavailable')
+      expect(branch, pillarWhy(PILLAR, 'each estimate path must make the same honest no-price response')).toContain('await emitEvidenceGapStep({')
       expect(branch, pillarWhy(PILLAR, 'missing price evidence is not shown as a system error')).not.toContain('contentType: "error"')
     }
+    const gapStep = readFileSync(
+      resolve(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains/kael-chat/evidence-gap-response.ts'),
+      'utf8',
+    )
+    const emitter = gapStep.slice(gapStep.indexOf('export async function emitEvidenceGapStep('))
+    expect(emitter, pillarWhy(PILLAR, 'the shared gap step answers as analysis')).toContain('contentType: "analysis"')
+    expect(emitter, pillarWhy(PILLAR, 'the no-price decision completed without producing an estimate')).toContain('status: "completed"')
+    expect(emitter, pillarWhy(PILLAR, 'the blocker remains explicit in metadata')).toContain('validated_price_evidence_unavailable')
+    expect(emitter, pillarWhy(PILLAR, 'missing price evidence is not shown as a system error')).not.toContain('contentType: "error"')
   })
 })
 

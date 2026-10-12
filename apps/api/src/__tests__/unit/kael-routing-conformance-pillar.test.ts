@@ -59,6 +59,7 @@ const PURPOSE_IS_USER_VISIBLE = {
   normal_chat_memory: false,
   normal_chat_search: false,
   normal_chat_suggestions: false,
+  case_turn_intent: false,
 } as const satisfies Record<KaelPurpose, boolean>
 
 // The ladder's entire vocabulary. A model id outside this set has never been priced, and
