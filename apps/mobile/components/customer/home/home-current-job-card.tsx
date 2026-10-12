@@ -17,6 +17,7 @@ const DESIGN_HEIGHT = 132
 const LINE_WIDTH: Record<number, number> = { 1: 0, 2: 82, 3: 164, 4: 218 }
 const WORKART_PANEL_WIDTH = 128
 const COPY_LEFT = 146
+const COPY_TOP = 14
 
 type HomeCurrentJobCardProps = {
   caseCode: string
@@ -87,7 +88,7 @@ export function HomeCurrentJobCard({ caseCode, deal, language, onOpen, problemLa
         />
       </View>
 
-      <View style={[styles.copy, { left: q(COPY_LEFT), top: q(24), width: q(181) }]} testID="customer-v21-active-case-copy">
+      <View style={[styles.copy, { left: q(COPY_LEFT), top: q(COPY_TOP), width: q(181) }]} testID="customer-v21-active-case-copy">
         <Text adjustsFontSizeToFit minimumFontScale={0.72} numberOfLines={2} style={[styles.service, scaledTypography('title2', scale), { color: tokens.text }]}>{serviceLabel}</Text>
         <Text numberOfLines={1} style={[styles.caseCode, scaledTypography('footnote', scale), { color: tokens.muted, marginTop: q(3) }]}>{caseCode}</Text>
       </View>
@@ -111,7 +112,9 @@ export function HomeCurrentJobCard({ caseCode, deal, language, onOpen, problemLa
 
       <View style={[styles.meta, { backgroundColor: tokens.ghost, borderColor: tokens.border, borderRadius: q(17), bottom: q(11), height: q(34), left: q(132), paddingHorizontal: q(18), right: q(30) }]} testID="customer-v21-active-case-meta">
         <View style={[styles.metaItem, styles.metaDate, { gap: q(10), height: q(18) }]} testID="customer-v21-active-case-meta-date">
-          <HomeIcon color={tokens.muted} name="calendar" size={q(17)} />
+          <View style={[styles.metaIcon, { height: q(18), width: q(17) }]}>
+            <HomeIcon color={tokens.muted} name="calendar" size={q(17)} />
+          </View>
           <Text ellipsizeMode="tail" numberOfLines={1} style={[styles.metaText, scaledTypography('footnote', scale), { color: tokens.muted, lineHeight: q(18) }]}>{scheduleLabel}</Text>
         </View>
         <View style={[styles.metaDivider, { backgroundColor: tokens.border, height: q(18), marginLeft: q(12) }]} />
@@ -178,6 +181,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'absolute',
   },
+  metaIcon: {
+    alignItems: 'center',
+    flexShrink: 0,
+    justifyContent: 'center',
+  },
   metaDivider: {
     width: 1,
   },
@@ -238,5 +246,8 @@ const styles = StyleSheet.create({
   },
   statusText: {
     ...typography.headline,
+    includeFontPadding: false,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
 })
