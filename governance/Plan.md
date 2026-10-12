@@ -1796,6 +1796,7 @@ Tests: `apps/api/src/__tests__/kael-edge-runtime/harness/{scripted-provider,sequ
 | D7 | Policy cho phép fallback qua khóa `evidence_requirements.evidence_unavailable_fallback = "rfq"` trên policy version mới của mọi policy active `kael_auto_quote`. RPC chỉ nhận `rfq_request` trên policy auto-quote khi khóa này có VÀ phiên có `quote_mode_fallback` hợp lệ khớp policy active. | Claude | 2026-10-12 | Expand-only, giữ audit theo version. |
 | D8 | Diff gợi ý địa chỉ đang chưa commit trên `claude/fresh-workspace-1012` (P360/P361) được commit + mở PR riêng ở Phase 0 trước khi tạo nhánh Kael; pillar của plan này bắt đầu từ P362. | Claude (Tu duyệt plan = duyệt bước này) | 2026-10-12 | Không trộn hai việc; tránh trùng số pillar. |
 | D9 | Cách kiểm chứng: (a) test Edge HTTP-level với `scripted-provider`, (b) SQL pillar trên Postgres local (`db:local`), (c) Preview UI bằng mock backend dựng theo `scripts/preview/cache-e2e/mock-backend.mjs`, fixture được test bằng chính validator của app, (d) Production chỉ sau khi Tu chạy release lane. Không tự deploy. | Claude | 2026-10-12 | Preview hiện trỏ Edge Production; Edge local không có key AI. |
+| D10 | Yêu cầu rfq/khảo sát không có giá được gửi bằng một nút trong thẻ "Báo giá cần rà soát" đang có ("Gửi yêu cầu báo giá cho thợ" / "Gửi yêu cầu khảo sát"), kèm câu "Chưa có giá ở bước này". Không khôi phục thẻ RFQ đã xóa ở #339, không thêm bước mới. | Tu ✔ | 2026-10-12 | Preview cho thấy sau lối thoát rfq app không có nút xác nhận; 40/48 slug Production dùng rfq cũng kẹt ở đây. |
 
 Không còn dòng `OPEN`.
 
@@ -1990,8 +1991,28 @@ Chạy G1–G9, G11; ghi kết quả thật vào §60.V.
 - Baseline `test:mobile`: exit 0 — 266 suite, 2491 test pass, 0 fail (437,8 s).
 - Ratchet: `estimate-support.ts` 796, `serialize.ts` 799, `turn.ts` 327, `branches-post-pipeline.ts` 306 dòng; `use-customer-kael-message-actions.ts` 803/807 (grandfathered), `apps/mobile/lib/services.ts` trần 832.
 
+**Phase 1–9 (2026-10-12), kết quả gate thật.**
+- G1 `test:api` (vitest qua node): exit 0, 151 file pass / 2 skip, 1902 test pass / 2 skip; đã chạy P362–P365, P367, P368, P371, P373, P374 và P337 cập nhật.
+- G2 `test:mobile` (jest đầy đủ): exit 0, 270 suite, 2506 test pass; gồm P369, P370, P372, P375.
+- G3 `type-check:mobile`: exit 0.
+- G4 `edge:check`: 7/7 pass trước hai commit cuối (hai commit này không đụng `supabase/functions`). Lúc chạy lại cuối phiên Docker daemon đã tắt → lần cuối KHÔNG CHẠY ĐƯỢC.
+- G5 `lint:structure`: ok (1414 file). G6 `lint:comments`: sạch. G8 pillar registry: exit 0.
+- G7 `harness:migrations:check`: ok, 452 migration. `lint:edge-db` không có `--functions` nên không so với DB nào (CI so). `assert-expand-only.mjs` cần inventory Production đang chạy → chỉ release lane chạy được, KHÔNG CHẠY ở đây.
+- G9 Postgres local (Supabase CLI, replay đủ migration): SQL suite 135/135 pass, gồm P366 và catalog routing 19 purpose. Stack local đã dừng (Docker tắt).
+- G11 `ship:check`: ready, 10 gate pass, worktree sạch. Lần chạy đầu bắt được `case-turn-intent.ts` chưa khai báo trong `config/harness/manifest.json`; đã khai báo (commit riêng). Một lần đỏ do fixture fake-docker `EPERM rm` trên Windows (flake đã biết), lần chạy lại xanh.
+- G10 Preview (`node scripts/preview/kael-flex/run.mjs`, launch config `kael-flex-mock`, mock phát lại payload thật do P374 sinh):
+  - A PASS: thiếu giá → thẻ "Báo giá cần rà soát", ghi chú "Tham khảo thị trường · chưa đủ kiểm chứng 100.000–350.000 đ/món" kèm 2 link nguồn, không có nút đặt; 4 chip.
+  - C PASS: chip "Vì sao chưa có giá?" gửi `turn_intent: ask_question`; gõ "Sao chưa có giá vậy?" gửi qua `/stream` không kèm intent (server tự phân loại); câu trả lời hiện kèm chip mới.
+  - D PASS: chip "Kích thước & nặng" điền "Kệ gỗ 30x20cm, nặng khoảng 1kg." vào ô nhập, không gửi.
+  - B: chip "Gửi thợ báo giá từ ảnh" gửi `turn_intent: request_worker_quote`, phiên chuyển `estimate_ready`/rfq. **Phát hiện:** app không có nút xác nhận cho yêu cầu không giá (thẻ RFQ đã bị xóa ở #339, thẻ giá cũ cần `estimate`). Tu chốt "Thêm nút vào thẻ cũ": thẻ "Báo giá cần rà soát" mang nút "Gửi yêu cầu báo giá cho thợ" (P375). Bấm nút → app gửi `POST /confirm` với `confirmation_kind: rfq_request` (mock trả 501 nên `api.ts` thử lại cùng Idempotency-Key, rồi app hiện "Đang đối soát xác nhận").
+  - 375px PASS: không tràn ngang, chip nằm trong 20–330px.
+  - E (Chat thường), F (Kael thợ) và chế độ EN: KHÔNG kiểm trên Preview (mock chỉ phục vụ Work; fixture EN chưa sinh). Chỉ có jest P370/P372 và vitest P371/P373.
+- Native iOS/Android: chưa kiểm.
+- G12 Production: KHÔNG CHẠY — chờ Tu chạy release lane (2 migration `20261012110000`, `20261012120000` + Edge).
+
 ### 60.CL Change Log
 
 | Ver | Ngày | Ai | Đổi gì |
 |---|---|---|---|
 | 0.1 | 2026-10-12 | Claude | Viết lần đầu sau audit code + SQL read-only Production; D1–D4 do Tu chốt, D5–D9 do Claude đề xuất |
+| 0.2 | 2026-10-12 | Claude | Thực thi Phase 0–9. Lệch khỏi plan: (1) `turn_intent` ghi ở lượt Kael trả lời và `last_turn_intent` của phiên, không ở lượt khách; (2) chip Chat thường lưu `reply_next_actions` ở lượt khách vì RPC exchange chỉ nhận metadata lượt khách; (3) thêm pillar P373, P374, P375; (4) gợi ý tiếp theo của thợ chỉ có ở prompt job/intake; (5) D10 (Tu chốt khi Preview lộ ngõ cụt): nút gửi yêu cầu rfq/khảo sát nằm trong thẻ "Báo giá cần rà soát" có sẵn, không khôi phục thẻ RFQ đã xóa |
