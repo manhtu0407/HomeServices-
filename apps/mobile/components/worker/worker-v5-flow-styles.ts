@@ -1727,7 +1727,6 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerCard: {
     alignItems: 'center',
-    borderColor: color.kaelComposer.borderLight,
     borderRadius: kaelComposerFrame.borderRadius,
     borderWidth: kaelComposerFrame.borderWidth,
     flexDirection: 'row',
@@ -2167,14 +2166,18 @@ export const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  kaelOrbSendSlot: {
+    alignItems: 'center',
+    height: kaelComposerFrame.sendSlot,
+    justifyContent: 'center',
+    width: kaelComposerFrame.sendSlot,
+  },
   kaelOrbSendButton: {
     alignItems: 'center',
     borderRadius: kaelComposerFrame.sendRadius,
     flexShrink: 0,
     height: kaelComposerFrame.sendSize,
     justifyContent: 'center',
-    marginBottom: kaelComposerFrame.sendInset,
-    marginRight: 2,
     position: 'relative',
     width: kaelComposerFrame.sendSize,
     zIndex: 1,

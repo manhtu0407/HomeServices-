@@ -40,6 +40,7 @@ export type RootChatStyles = {
   errorText: StyleProp<TextStyle>
   flex: StyleProp<ViewStyle>
   sendButton: StyleProp<ViewStyle>
+  sendSlot: StyleProp<ViewStyle>
 }
 
 export function KaelChatComposer({
@@ -94,7 +95,7 @@ export function KaelChatComposer({
   textInputNoOutlineStyle: StyleProp<TextStyle>
   tokens: CustomerThemeTokens
 }) {
-  const { reduceMotion } = useGlassAccessibility()
+  const { reduceMotion, reduceTransparency } = useGlassAccessibility()
   const inputRef = useRef<TextInput>(null)
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null)
   const [isComposing, setIsComposing] = useState(false)
@@ -175,7 +176,7 @@ export function KaelChatComposer({
           rootStyles.composer,
           chatStyles.chatComposer,
           visibleMediaDrafts.length > 0 ? chatStyles.chatComposerWithImages : null,
-          { boxShadow: tokens.mode === 'dark' ? color.kaelComposer.auraDark : color.kaelComposer.auraLight },
+          reduceTransparency ? null : { boxShadow: tokens.mode === 'dark' ? color.kaelComposer.auraDark : color.kaelComposer.auraLight },
         ]}
         testID="customer-v21-kael-composer-frame"
         variant="control"
@@ -265,6 +266,7 @@ export function KaelChatComposer({
           testID="customer-v21-kael-input"
           value={draft}
         />
+        <View style={rootStyles.sendSlot}>
         {!composerBusy && canSubmit ? (
           // Ready to send: the header's liquid glass control, so the active button reads as the same
           // material as the back button. Empty and Stop keep their own clearer states.
@@ -328,6 +330,7 @@ export function KaelChatComposer({
             />
           </Pressable>
         )}
+        </View>
         </View>
       </GlassSurface>
       <Text

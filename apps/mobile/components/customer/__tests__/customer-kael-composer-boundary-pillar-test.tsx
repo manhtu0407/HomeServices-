@@ -37,6 +37,7 @@ const rootStyles: RootChatStyles = {
   errorText: {},
   flex: {},
   sendButton: {},
+  sendSlot: {},
 }
 
 // Web inputs do not grow on their own, so the measured-height path is web-only.

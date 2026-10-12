@@ -83,6 +83,7 @@ export const kaelComposerFrame = {
   controlRadius: 10,
   controlSize: 44,
   sendInset: 5,
+  sendSlot: 44,
   sendRadius: 9,
   sendSize: 34,
   minHeight: 56,

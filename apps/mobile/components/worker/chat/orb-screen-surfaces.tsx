@@ -528,7 +528,7 @@ export function WorkerV5KaelOrbComposer({
           normalComposer && styles.kaelOrbNormalComposerCard,
           styles.kaelOrbComposerCardMultiline,
           reduceTransparency && [styles.opaqueCard, dark ? { backgroundColor: palette.opaqueFill } : null],
-          { boxShadow: dark ? color.kaelComposer.auraDark : color.kaelComposer.auraLight },
+          reduceTransparency ? null : { boxShadow: dark ? color.kaelComposer.auraDark : color.kaelComposer.auraLight },
         ]}
         testID="worker-v5-kael-orb-composer-frame"
         variant="control"
@@ -596,6 +596,7 @@ export function WorkerV5KaelOrbComposer({
           testID="worker-v5-kael-orb-input"
           value={draft}
         />
+        <View style={styles.kaelOrbSendSlot}>
         {!stopping && canSubmit ? (
           // Ready to send: the header's liquid glass control. Empty and Stop keep their own states.
           <LiquidControlButton
@@ -654,6 +655,7 @@ export function WorkerV5KaelOrbComposer({
             />
           </Pressable>
         )}
+        </View>
       </GlassSurface>
       <Text style={[styles.kaelOrbComposerDisclaimer, dark ? { color: palette.muted } : null]} testID="worker-v5-kael-orb-disclaimer">
         {textByLanguage(language, 'Kael có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng.', 'Kael can make mistakes. Check important information.')}
