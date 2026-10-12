@@ -48,7 +48,7 @@ export const color = {
   },
   kaelComposer: {
     borderDark: 'rgba(190,196,204,0.55)',
-    borderLight: '#C3C9D0',
+    borderLight: '#AEB5BE',
   },
   kaelChatSend: {
     idleBackground: '#F2FAF9',
