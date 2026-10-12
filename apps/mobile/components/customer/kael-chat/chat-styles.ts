@@ -1,7 +1,7 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native'
 
 import { withoutInputLineHeight } from '@/components/ui/input-text-style'
-import { spacing, typography } from '@/design/theme'
+import { kaelComposerFrame, spacing, typography } from '@/design/theme'
 
 const customerV21WebFocusRing = Platform.OS === 'web'
   ? ({ outlineColor: 'rgba(13,167,151,0.62)' } as unknown as ViewStyle)
@@ -83,7 +83,7 @@ export const customerV21ChatStyles = StyleSheet.create({
     zIndex: 0,
   },
   chatComposer: {
-    minHeight: 56,
+    minHeight: kaelComposerFrame.minHeight,
     overflow: 'hidden',
     position: 'relative',
     shadowColor: '#059B8A',
@@ -322,12 +322,12 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     // lines, and the media/send buttons should stay pinned to the bottom edge
     // instead of drifting toward the middle of the taller row.
     alignItems: 'flex-end',
-    borderRadius: 26,
-    borderWidth: 1,
+    borderRadius: kaelComposerFrame.borderRadius,
+    borderWidth: kaelComposerFrame.borderWidth,
     flexDirection: 'row',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: kaelComposerFrame.padding,
+    paddingVertical: kaelComposerFrame.padding,
   },
   composerInput: {
     flex: 1,
@@ -386,7 +386,7 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
   },
   sendButton: {
     alignItems: 'center',
-    borderRadius: 22,
+    borderRadius: kaelComposerFrame.controlRadius,
     height: 44,
     justifyContent: 'center',
     minWidth: 44,

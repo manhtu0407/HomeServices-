@@ -1,7 +1,7 @@
 import { StyleSheet, type TextStyle } from 'react-native'
 
 import { withoutInputLineHeight } from '@/components/ui/input-text-style'
-import { color, customerTheme, glass, radius, shadow, signature, spacing, typography } from '@/design/theme'
+import { color, customerTheme, glass, kaelComposerFrame, radius, shadow, signature, spacing, typography } from '@/design/theme'
 
 export const workerV5KaelComposerWebTextInputNoOutline = {
   WebkitBoxShadow: 'none',
@@ -1727,13 +1727,14 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerCard: {
     alignItems: 'center',
-    borderRadius: 26,
-    borderWidth: 1,
+    borderColor: color.kaelComposer.borderLight,
+    borderRadius: kaelComposerFrame.borderRadius,
+    borderWidth: kaelComposerFrame.borderWidth,
     flexDirection: 'row',
     gap: 10,
-    minHeight: 56,
+    minHeight: kaelComposerFrame.minHeight,
     overflow: 'hidden',
-    padding: 8,
+    padding: kaelComposerFrame.padding,
     position: 'relative',
   },
   kaelOrbNormalComposerCard: {
@@ -2168,7 +2169,7 @@ export const styles = StyleSheet.create({
   },
   kaelOrbSendButton: {
     alignItems: 'center',
-    borderRadius: 22,
+    borderRadius: kaelComposerFrame.controlRadius,
     flexShrink: 0,
     height: 44,
     justifyContent: 'center',

@@ -19,7 +19,7 @@ import { NormalChatGhostOverlay } from '@/components/ui/normal-chat-ghost-overla
 import { LiquidControlButton } from '@/components/ui/liquid-back-button'
 import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
 import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix, getNormalChatSendPalette } from '@/components/ui/normal-chat-composer-model'
-import { color } from '@/design/theme'
+import { color, kaelComposerFrame } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { LocalMediaUploadDraft } from '@/lib/media-upload'
 
@@ -168,7 +168,7 @@ export function KaelChatComposer({
       ) : null}
       <GlassSurface
         backgroundColor={tokens.glass}
-        borderColor={tokens.glassBorder}
+        borderColor={tokens.mode === 'dark' ? color.kaelComposer.borderDark : color.kaelComposer.borderLight}
         material="liquid"
         mode={tokens.mode}
         style={[
@@ -208,9 +208,9 @@ export function KaelChatComposer({
           style={({ pressed }) => [
             chatStyles.chatMediaButton,
             {
-              borderRadius: 22,
-              height: 44,
-              width: 44,
+              borderRadius: kaelComposerFrame.controlRadius,
+              height: kaelComposerFrame.controlSize,
+              width: kaelComposerFrame.controlSize,
             },
             pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
           ]}
@@ -272,7 +272,8 @@ export function KaelChatComposer({
             accessibilityState={{ busy: false }}
             mode={tokens.mode}
             onPress={onSendMessage}
-            size={44}
+            radius={kaelComposerFrame.controlRadius}
+            size={kaelComposerFrame.controlSize}
             style={rootStyles.sendButton}
             testID="customer-v21-kael-send"
           >
@@ -303,11 +304,11 @@ export function KaelChatComposer({
                   ? normalSendPalette.background
                   : composerBusy || canSubmit ? activeSendBackground : idleSendBackground,
                 borderColor: composerBusy || canSubmit ? activeSendBorder : idleSendBorder,
-                borderRadius: 22,
+                borderRadius: kaelComposerFrame.controlRadius,
                 borderWidth: 1,
-                height: 44,
+                height: kaelComposerFrame.controlSize,
                 justifyContent: 'center',
-                width: 44,
+                width: kaelComposerFrame.controlSize,
               },
               pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
             ]}

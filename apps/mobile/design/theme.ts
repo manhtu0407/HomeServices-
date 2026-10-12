@@ -46,6 +46,10 @@ export const color = {
     stroke: '#D8EBE8',
     strokeStrong: '#B8E7DF',
   },
+  kaelComposer: {
+    borderDark: 'rgba(190,196,204,0.55)',
+    borderLight: '#C3C9D0',
+  },
   kaelChatSend: {
     idleBackground: '#F2FAF9',
     idleForeground: '#071A24',
@@ -67,6 +71,16 @@ export const color = {
   primaryDark: '#087D72',
   background: '#FFFFFF',
   textPrimary: '#071A24',
+} as const
+
+// One rounded-rectangle frame for every Kael message box; the controls inside keep the same inset.
+export const kaelComposerFrame = {
+  borderRadius: 16,
+  borderWidth: 1.5,
+  controlRadius: 10,
+  controlSize: 44,
+  minHeight: 56,
+  padding: 6,
 } as const
 
 export const signature = {

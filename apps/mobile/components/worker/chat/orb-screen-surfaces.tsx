@@ -13,7 +13,7 @@ import { NormalChatStarterRail } from '@/components/ui/normal-chat-starter-rail'
 import { useKaelComposerBottomInset } from '@/components/ui/use-kael-composer-bottom-inset'
 import { EMPTY_NORMAL_CHAT_SUGGESTIONS, getNormalChatGhostSuffix } from '@/components/ui/normal-chat-composer-model'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
-import { color, customerTheme } from '@/design/theme'
+import { color, customerTheme, kaelComposerFrame } from '@/design/theme'
 import { type AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useNormalChatSuggestions } from '@/lib/normal-chat-suggestions'
@@ -520,7 +520,7 @@ export function WorkerV5KaelOrbComposer({
       ) : null}
       <GlassSurface
         backgroundColor={palette.composerFill}
-        borderColor={dark || normalComposer ? palette.composerBorder : color.surface.stroke}
+        borderColor={dark ? color.kaelComposer.borderDark : color.kaelComposer.borderLight}
         material="liquid"
         mode={palette.mode}
         style={[
@@ -542,9 +542,9 @@ export function WorkerV5KaelOrbComposer({
           style={({ pressed }) => [
             styles.kaelOrbComposerCameraButton,
             {
-              borderRadius: 22,
-              height: 44,
-              width: 44,
+              borderRadius: kaelComposerFrame.controlRadius,
+              height: kaelComposerFrame.controlSize,
+              width: kaelComposerFrame.controlSize,
             },
             pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
           ]}
@@ -602,7 +602,8 @@ export function WorkerV5KaelOrbComposer({
             accessibilityState={{ busy }}
             mode={palette.mode}
             onPress={submitDraft}
-            size={44}
+            radius={kaelComposerFrame.controlRadius}
+            size={kaelComposerFrame.controlSize}
             style={styles.kaelOrbSendButton}
             testID="worker-v5-kael-orb-send"
           >
@@ -629,11 +630,11 @@ export function WorkerV5KaelOrbComposer({
                 backgroundColor: normalComposer || dark
                   ? palette.sendIdle(sending).background
                   : stopping || canSubmit ? color.brand.primary : color.surface.soft,
-                borderColor: dark ? palette.composerBorder : color.surface.stroke,
-                borderRadius: 22,
+                borderColor: dark ? color.kaelComposer.borderDark : color.kaelComposer.borderLight,
+                borderRadius: kaelComposerFrame.controlRadius,
                 borderWidth: 1,
-                height: 44,
-                width: 44,
+                height: kaelComposerFrame.controlSize,
+                width: kaelComposerFrame.controlSize,
               },
               pressed && !reduceMotion ? { transform: [{ scale: 0.96 }] } : null,
             ]}
