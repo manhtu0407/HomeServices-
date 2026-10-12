@@ -16,7 +16,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/_shared/contracts/kael-next-actions.ts',
   layer: 'static-type',
-  siblings: ['P364-kael-evidence-gap-options', 'P369-kael-work-next-action-chips'],
+  siblings: ['P364-kael-evidence-gap-options'],
   mutation:
     'add a kind to only one twin — the list case turns red; relax label max to 80 in one twin — the probe case turns red',
 } as const satisfies PillarManifest

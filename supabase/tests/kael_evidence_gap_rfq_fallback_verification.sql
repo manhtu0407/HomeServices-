@@ -1,3 +1,10 @@
+-- @pillar id: P366-kael-rfq-fallback-confirm-sql
+-- @pillar invariant: An auto-quote case is confirmed as rfq_request only when the active policy names rfq as its evidence_unavailable_fallback and the session records that fallback for exactly the active policy id and version; the job then takes the rfq quote mode. Every other combination returns CONFIRMATION_KIND_MISMATCH.
+-- @pillar authority: governance/RULES.md #4 (worker quote path) | governance/RULES.md #7 (customer confirmation gate, server-validated decisions)
+-- @pillar target: supabase/migrations/20261012120000_kael_evidence_gap_rfq_fallback.sql
+-- @pillar layer: sql
+-- @pillar siblings: P365-kael-rfq-fallback-edge
+-- @pillar mutation: Run against the previous confirm_kael_chat_durable_atomic body; the valid-fallback case raises "a valid worker-quote fallback was refused: CONFIRMATION_KIND_MISMATCH".
 -- P366: rollback-only proof that an auto-quote case without a validated price may be confirmed as a
 -- worker-quote request only when the active policy allows it and the Edge recorded the fallback for
 -- exactly that policy id and version. Every other combination keeps CONFIRMATION_KIND_MISMATCH.
