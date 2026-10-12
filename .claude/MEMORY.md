@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-12** Production DB stall (Free plan) — cron 13/24/25 to */30, Realtime publication cut to 4 tables, harness_events parent index + 8,657-run prune, trace.ts console echo trimmed (P359, migration 20261012100000, UNCOMMITTED); out-of-band drift from repo; Free-plan compute still the limit.
 - **2026-10-11** System Health heartbeat fix — optional `abortSignal` preserves 5 s bound when supported and fails closed otherwise; P353 regression; shared 177 tests, Edge 7/7, local RPC parity 261/261; structure/workplan gates still red; no commit/deploy.
 - **2026-10-08** Kael Work price dead end — root cause = lane falls to pre-policy path without client epoch; Tu: keep old quote design + old process exactly, never add/remove flow steps unasked; routing + RFQ reference range reverted, RFQ card deleted; dead end still open;
 - **2026-10-08** Kael Work verification — mobile 2,411 tests and API 1,771 Vitest + 111 Node pass; removed unselected-session prefetch, added stored-reply streaming, and corrected no-price state; Edge/native/React Doctor/hosted parity/deploy remain unverified or blocked; uncommitted.
