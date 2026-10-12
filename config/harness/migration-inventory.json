@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 449,
+  "migrationCount": 450,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "59337cc1884709278f8c9749cb252248b08b0e64e4079f6769ae3276ff68254b",
+  "migrationsSha256": "8afbfacb01245d712ddc8026124f2ed3d31de2d73a3a7789c864e88c67fad89e",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "3437b9bce74171997903835275454e478b4f379484f065e3b2317d1c97c94538"
@@ -3250,6 +3250,13 @@
       "file": "supabase/migrations/20261011110000_admin_data_revision_signal.sql",
       "sha256": "e9f3dc689cfd4a5805984a135036c8fd6d09ff77c79f574256decccc7aa9ac47",
       "bytes": 10346
+    },
+    {
+      "version": "20261012100000",
+      "name": "harness_events_parent_event_index",
+      "file": "supabase/migrations/20261012100000_harness_events_parent_event_index.sql",
+      "sha256": "a7b4887d5ae2d59db242ce5e8a221e63ac053ec83c5c1730e8cf0f79e95ed35c",
+      "bytes": 395
     }
   ]
 }

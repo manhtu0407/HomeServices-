@@ -180,12 +180,22 @@ export async function recordHarnessEvent(
     p_error_code: input.errorCode ? boundedText(input.errorCode, 120) : null,
     p_safe_metadata: sanitizeHarnessMetadata(input.safeMetadata ?? {}),
   };
-  console.info("harness_event", payload);
-  if (!trace.client?.rpc) return eventId;
+  // Healthy events are already durable in harness_events; echoing each one to the console only
+  // inflates log ingestion. Failures and events that could not be persisted stay in the logs.
+  const alwaysLogged = payload.p_status === "failed" ||
+    payload.p_status === "blocked" || payload.p_status === "cancelled" ||
+    payload.p_error_code !== null;
+  if (!trace.client?.rpc) {
+    console.info("harness_event", payload);
+    return eventId;
+  }
+  if (alwaysLogged) console.info("harness_event", payload);
   try {
     const { error } = await trace.client.rpc("append_harness_event", payload);
+    if (error && !alwaysLogged) console.info("harness_event", payload);
     return error ? null : eventId;
   } catch {
+    if (!alwaysLogged) console.info("harness_event", payload);
     return null;
   }
 }
