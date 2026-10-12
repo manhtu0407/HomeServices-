@@ -6,6 +6,7 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { normalizeKaelResponseBrand } from "../../kael/language/user-facing-copy.ts";
 import { kaelIntakeConfirmationSchema } from "../../kael/pipeline/intake-confirmation.ts";
 import { publishKaelChatReply } from "./reply-channel.ts";
+import { clarificationNextActions } from "./clarification-next-actions.ts";
 
 type ExistingKaelSessionByClientRequest =
   | { kind: "ready"; sessionId: string }
@@ -128,6 +129,12 @@ export async function appendKaelSystemTurn(
   }
   const nextIndex = asNumber(sessionResult.data.total_turns) + 1;
   const textContent = normalizeKaelResponseBrand(input.text);
+  const turnMetadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+  if (input.contentType === "clarification" && turnMetadata.next_actions === undefined) {
+    const language = asRecord(sessionResult.data.safe_metadata).language === "en" ? "en" : "vi";
+    const actions = clarificationNextActions(turnMetadata, language);
+    if (actions.length > 0) turnMetadata.next_actions = actions;
+  }
   const inserted = await insertKaelTurn(client, {
     session_id: sessionId,
     turn_index: nextIndex,
@@ -135,7 +142,7 @@ export async function appendKaelSystemTurn(
     content_type: input.contentType,
     text_content: textContent,
     media_refs: [],
-    safe_metadata: input.metadata ?? {},
+    safe_metadata: turnMetadata,
     cost_usd: input.costUsd ?? null,
   });
   // An estimate renders as its own card, not as streamed text.

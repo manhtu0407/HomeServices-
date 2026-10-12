@@ -6,20 +6,39 @@ import { dbQuery, type DbClient } from "../../platform/db.ts";
 
 export const EVIDENCE_GAP_QUOTE_READINESS = "validated_price_evidence_unavailable";
 
-export async function evidenceGapRfqFallbackAvailable(
+export type EvidenceGapPolicyState = {
+  readonly rfqAvailable: boolean;
+  readonly enrichmentSlots: readonly string[];
+};
+
+export async function evidenceGapPolicyState(
   client: DbClient,
   serviceProblemId: string,
-): Promise<boolean> {
+): Promise<EvidenceGapPolicyState> {
   const policy = await dbQuery<Record<string, unknown>>(
     client.from("service_intake_policies")
-      .select("quote_mode, evidence_requirements")
+      .select("quote_mode, evidence_requirements, tier_b_slots")
       .eq("service_problem_id", serviceProblemId)
       .eq("status", "active")
       .maybeSingle(),
   );
-  if (policy.error || !policy.data) return false;
-  return policy.data.quote_mode === "kael_auto_quote" &&
-    asRecord(policy.data.evidence_requirements).evidence_unavailable_fallback === "rfq";
+  if (policy.error || !policy.data) return { rfqAvailable: false, enrichmentSlots: [] };
+  const slots = Array.isArray(policy.data.tier_b_slots) ? policy.data.tier_b_slots : [];
+  return {
+    rfqAvailable: policy.data.quote_mode === "kael_auto_quote" &&
+      asRecord(policy.data.evidence_requirements).evidence_unavailable_fallback === "rfq",
+    enrichmentSlots: slots.flatMap((slot) => {
+      const row = asRecord(slot);
+      return row.enabled === true && typeof row.key === "string" ? [row.key] : [];
+    }),
+  };
+}
+
+export async function evidenceGapRfqFallbackAvailable(
+  client: DbClient,
+  serviceProblemId: string,
+): Promise<boolean> {
+  return (await evidenceGapPolicyState(client, serviceProblemId)).rfqAvailable;
 }
 
 // The newest Kael turn that reported quote readiness decides whether the case is in a price gap;

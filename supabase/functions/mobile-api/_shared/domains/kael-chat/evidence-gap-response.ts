@@ -9,7 +9,8 @@ import { sanitizeMarketSourceLinks } from "../../kael/kael-guardrails/output-pip
 import { asRecord, nullableString } from "../../platform/coercions.ts";
 import type { DbClient } from "../../platform/db.ts";
 import { emitKaelChatStep } from "./emit-step.ts";
-import { evidenceGapRfqFallbackAvailable } from "./evidence-gap-policy.ts";
+import { evidenceGapPolicyState } from "./evidence-gap-policy.ts";
+import { intakeSlotQuestion } from "../../kael/language/intake-slot-questions.ts";
 import { intakeObservationMetadata, withIntakeSafetyGuidance } from "./intake-safety.ts";
 import { priceEvidenceGapReply } from "./price-gap-reply.ts";
 
@@ -109,6 +110,7 @@ export function buildEvidenceGapNextActions(input: {
   language: "vi" | "en";
   rfqAvailable: boolean;
   hasPhoto: boolean;
+  missingSlot?: string | null;
 }): EdgeKaelNextAction[] {
   const vi = input.language === "vi";
   const actions: EdgeKaelNextAction[] = [];
@@ -126,11 +128,10 @@ export function buildEvidenceGapNextActions(input: {
   if (!input.hasPhoto) {
     actions.push({ id: "attach_photo", kind: "attach_photo", label: vi ? "Gửi thêm ảnh" : "Add a photo" });
   }
-  actions.push({
-    id: "provide_detail",
-    kind: "provide_detail",
-    label: vi ? "Bổ sung thông tin" : "Add details",
-  });
+  const slotQuestion = input.missingSlot ? intakeSlotQuestion(input.missingSlot, input.language) : null;
+  actions.push(slotQuestion && input.missingSlot
+    ? { id: `provide_${input.missingSlot}`.slice(0, 64), kind: "provide_detail", label: slotQuestion.label, message: slotQuestion.example, slot: input.missingSlot }
+    : { id: "provide_detail", kind: "provide_detail", label: vi ? "Bổ sung thông tin" : "Add details" });
   actions.push({
     id: "ask_why_no_price",
     kind: "ask_question",
@@ -139,6 +140,11 @@ export function buildEvidenceGapNextActions(input: {
     turn_intent: "ask_question",
   });
   return actions.slice(0, 4);
+}
+
+// The first enabled enrichment slot the case has not answered yet, if Kael knows how to ask for it.
+export function firstMissingSlot(slots: readonly string[], facts: Record<string, unknown>): string | null {
+  return slots.find((slot) => !facts[slot] && intakeSlotQuestion(slot, "vi") !== null) ?? null;
 }
 
 export function evidenceGapProbe(language: "vi" | "en"): string {
@@ -152,6 +158,7 @@ export function evidenceGapTurnContent(input: {
   language: "vi" | "en";
   rfqAvailable: boolean;
   hasPhoto: boolean;
+  missingSlot?: string | null;
 }) {
   const gapReply = priceEvidenceGapReply({ stageLogs: input.stageLogs, language: input.language });
   const reference = referencePriceFromStageLogs(input.stageLogs);
@@ -187,13 +194,15 @@ export async function emitEvidenceGapStep(input: {
   intakeObservation?: Parameters<typeof intakeObservationMetadata>[0];
   extraMetadata?: Record<string, unknown>;
 }) {
+  const policyState = input.serviceProblemId
+    ? await evidenceGapPolicyState(input.client, input.serviceProblemId)
+    : { rfqAvailable: false, enrichmentSlots: [] };
   const content = evidenceGapTurnContent({
     stageLogs: input.stageLogs,
     language: input.language,
-    rfqAvailable: input.serviceProblemId
-      ? await evidenceGapRfqFallbackAvailable(input.client, input.serviceProblemId)
-      : false,
+    rfqAvailable: policyState.rfqAvailable,
     hasPhoto: input.artifact.evidence.some((item) => item.kind === "photo" || item.kind === "video_frame"),
+    missingSlot: firstMissingSlot(policyState.enrichmentSlots, input.artifact.facts),
   });
   await emitKaelChatStep(input.client, input.sessionId, input.progressTarget, {
     artifact: input.artifact,

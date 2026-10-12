@@ -8,10 +8,10 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { asKaelChatStatus, asNumber, asRecord, nullableString } from "../../platform/coercions.ts";
 import { dbQuery, type DbClient } from "../../platform/db.ts";
 import { answerKaelAssistant } from "../customer/assistant.ts";
-import { buildEvidenceGapNextActions } from "./evidence-gap-response.ts";
+import { buildEvidenceGapNextActions, firstMissingSlot } from "./evidence-gap-response.ts";
 import {
   EVIDENCE_GAP_QUOTE_READINESS,
-  evidenceGapRfqFallbackAvailable,
+  evidenceGapPolicyState,
   latestQuoteReadinessTurn,
 } from "./evidence-gap-policy.ts";
 import { appendKaelSystemTurn } from "./session-store.ts";
@@ -57,13 +57,15 @@ export async function caseStateNextActions(input: {
   if (input.quoteTurn?.quote_readiness === EVIDENCE_GAP_QUOTE_READINESS) {
     const serviceProblemId = nullableString(input.quoteTurn.service_problem_id);
     const artifact = kaelDiagnosisScopeArtifactSchema.safeParse(input.session.diagnosis_scope);
+    const policyState = serviceProblemId
+      ? await evidenceGapPolicyState(input.client, serviceProblemId)
+      : { rfqAvailable: false, enrichmentSlots: [] };
     actions = buildEvidenceGapNextActions({
       language: input.language,
-      rfqAvailable: serviceProblemId
-        ? await evidenceGapRfqFallbackAvailable(input.client, serviceProblemId)
-        : false,
+      rfqAvailable: policyState.rfqAvailable,
       hasPhoto: artifact.success &&
         artifact.data.evidence.some((item) => item.kind === "photo" || item.kind === "video_frame"),
+      missingSlot: artifact.success ? firstMissingSlot(policyState.enrichmentSlots, artifact.data.facts) : null,
     });
   } else if (asKaelChatStatus(input.session.status) === "estimate_ready") {
     actions = [{ id: "review_offer", kind: "review_offer", label: vi ? "Xem lại đề xuất" : "Review the offer" }];

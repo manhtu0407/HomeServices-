@@ -8,6 +8,7 @@ import {
 } from "../../kael/index.ts";
 import type { DbClient } from "../../platform/db.ts";
 import { asRecord, nullableString } from "../../platform/coercions.ts";
+import { intakeSlotQuestion, isPlaceholderQuestion } from "../../kael/language/intake-slot-questions.ts";
 import { appendKaelSystemTurn, updateKaelSession } from "./session-store.ts";
 import { buildConfirmedWorkerScopeSummary } from "./estimate-evidence.ts";
 import {
@@ -131,8 +132,9 @@ export function localizedPolicyQuestion(
   field: string,
   language: "vi" | "en",
 ) {
-  const override = asRecord(policy.questionOverrides[field]);
-  return nullableString(override[language]) ?? (language === "en"
-    ? `Please add the required ${field.replaceAll("_", " ")}.`
-    : `Bạn vui lòng bổ sung ${field.replaceAll("_", " ")} bắt buộc.`);
+  const override = nullableString(asRecord(policy.questionOverrides[field])[language]);
+  if (override && !isPlaceholderQuestion(override)) return override;
+  return intakeSlotQuestion(field, language)?.question ?? (language === "en"
+    ? "Please add the remaining required detail so Kael can continue."
+    : "Bạn bổ sung thêm thông tin còn thiếu để Kael tiếp tục nhé.");
 }
