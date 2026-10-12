@@ -51,6 +51,21 @@
       "port": 8085
     },
     {
+      "name": "mobile-web-production-8086",
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "scripts/run-mobile-web-production-preview.ps1",
+        "-Port",
+        "8086"
+      ],
+      "port": 8086
+    },
+    {
       "name": "api-nextjs",
       "runtimeExecutable": "powershell.exe",
       "runtimeArgs": [
