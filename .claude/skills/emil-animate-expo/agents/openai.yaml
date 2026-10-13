@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Animate Expo"
+  short_description: "Choose and implement motion, gestures, sheets, haptics, and…"
+  default_prompt: "Use $emil-animate-expo when an Expo or React Native task adds or reviews motion, gestures, sheets, or haptics."

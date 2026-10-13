@@ -1,0 +1,7 @@
+interface:
+  display_name: "Emil Prototype"
+  short_description: "Build UI alternatives behind a temporary picker in an…"
+  default_prompt: "Use $emil-prototype only when the user explicitly invokes this skill to create a prototype picker."
+
+policy:
+  allow_implicit_invocation: false

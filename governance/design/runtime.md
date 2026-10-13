@@ -10,11 +10,14 @@ Every UI, frontend, visual, motion, layout, token, component, prototype, or desi
 kael-design-preflight
   -> kael-design-direction (Taste-derived context and anti-slop)
   -> kael-design-intelligence (pinned UI UX Pro Max search, when needed)
+  -> pinned Emil skills by explicit runtime and task intent (when relevant)
+  -> kael-dynamic-notifications for in-app Dynamic Island-style notification work
   -> this Design Wheel class and existing spoke skills
   -> kael-design-review / kael-frontend-test
 ```
 
 The adapters are inputs to the wheel, not a second wheel. Their results are non-normative and cannot override `critical.md`, `RULES.md`, `STRUCTURES.md`, `AGENTS.md`, platform contracts, or the existing canonical design references. The machine-readable and human-readable preflight contract lives in `design/preflight.md`.
+The 15 Emil skills and complete pinned source corpus are indexed in `design-research/corpus/upstream/INDEX.md`; task-to-skill routing is implemented in `scripts/design/upstream-routing.mjs`. The two explicit-only skills are never auto-selected.
 
 ## 1. Classify the design task
 
@@ -66,7 +69,7 @@ The adapter output must name the existing wheel class and handoff skills. It mus
 
 Every design task ends through `kael-frontend-test` before "done" (the frontend-testing wrapper; canonical `protocols/frontend-test.md`). Screen / component construction also uses the `kael-ui-rn-execution` **protocol** (`protocols/ui.md` §16) — a protocol, not a skill.
 
-Before editing, run `kael-design-preflight` and record its Design Read, source mode, existing wheel class, handoff skills, and acceptance gate. It is the activation layer for this router; it does not replace any existing spoke.
+Before editing, run `kael-design-preflight` and record its Design Read, source mode, existing wheel class, handoff skills, selected upstream skills, and acceptance gate. It is the activation layer for this router; it does not replace any existing spoke.
 
 ## 3. Preflight + hard gates
 

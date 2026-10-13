@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { asList, parseArgs } from './csv.mjs'
 import { inferDesignDirection } from './kael-design-direction.mjs'
 import { searchDesignIntelligence } from './kael-design-intelligence.mjs'
+import { routeUpstreamDesignSkills } from './upstream-routing.mjs'
 
 const domainsByClass = Object.freeze({
   accessibility: ['react-native', 'ux'],
@@ -69,6 +70,7 @@ export function buildDesignPreflight({
   const tokenDecision = /token|theme|color|typography|design system/i.test(`${task} ${surface}`)
     ? 'Use kael-design-tokens and apps/mobile/design/theme.ts; upstream palette or type suggestions are candidates only.'
     : 'Reuse existing semantic tokens; do not add raw values in the surface.'
+  const upstreamRouting = routeUpstreamDesignSkills({ task, surface, workflow, stack, designClass: direction.kind })
 
   return {
     designTask: task,
@@ -83,6 +85,9 @@ export function buildDesignPreflight({
     designWheelClass: direction.wheelHandoff.class,
     wheelSkills: direction.wheelHandoff.skills,
     wheelProtocols: direction.wheelHandoff.protocols,
+    upstreamSkills: upstreamRouting.selected,
+    explicitOnlySkills: upstreamRouting.explicitOnly,
+    upstreamRuntime: upstreamRouting.runtime,
     materialMotionTokenDecision: {
       material: materialDecision,
       motion: motionDecision,
@@ -140,6 +145,8 @@ export function formatPreflightMarkdown(preflight) {
     '',
     `Design Wheel class: ${preflight.designWheelClass}`,
     `Wheel skills and protocols: ${preflight.wheelSkills.join(' + ')}${preflight.wheelProtocols.length ? `; ${preflight.wheelProtocols.join(' + ')}` : ''}`,
+    `Upstream skills: ${preflight.upstreamSkills.length ? preflight.upstreamSkills.join(' + ') : 'none'}`,
+    `Explicit-only skills (not auto-selected): ${preflight.explicitOnlySkills.join(' + ')}`,
     '',
     'Material / motion / token decision:',
     `- Material: ${preflight.materialMotionTokenDecision.material}`,

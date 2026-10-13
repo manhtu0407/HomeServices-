@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Find Animation Opportunities"
+  short_description: "Find purposeful motion opportunities and candidates that…"
+  default_prompt: "Use $emil-find-animation-opportunities when the user asks where motion could improve feedback or responsiveness."

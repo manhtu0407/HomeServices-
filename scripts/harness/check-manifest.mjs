@@ -306,9 +306,8 @@ function parseArgs(values) {
 }
 
 // Editing a SKILL.md changes its blob hash, so the recorded checksum goes stale and the gate
-// goes red on a change that was entirely intended. Hand-editing 40 hex characters inside a
-// one-line-per-entry JSON file is the kind of chore that gets done wrong or skipped, so the
-// bump gets a command.
+// goes red on a change that was entirely intended. Keep this update scoped to named entries,
+// including when the manifest has been compacted onto one physical line.
 //
 // `--write` is deliberately narrow: it rewrites checksum fields and nothing else, and it
 // REFUSES to write while any other problem is outstanding. A flag that could silence the rest
@@ -316,14 +315,48 @@ function parseArgs(values) {
 const CHECKSUM_DRIFT = /^checksum drift for (\S+): expected \S+, actual (git-blob-sha1:[0-9a-f]{40})/
 
 export function recordChecksums(text, drifts) {
-  const lines = text.split(/\r?\n/)
   const eol = text.includes('\r\n') ? '\r\n' : '\n'
+  const hasOnePhysicalLine = !/\r?\n/.test(text.trim())
+  let manifest
+  try { manifest = JSON.parse(text) } catch { manifest = null }
+  if (Array.isArray(manifest?.entries)) {
+    const applied = []
+    for (const { id, actual } of drifts) {
+      const entry = manifest.entries.find((item) => item.id === id)
+      if (!entry) throw new Error(`cannot record ${id}: no manifest entry declares that id`)
+      if (!/^git-blob-sha1:[0-9a-f]{40}$/.test(entry.checksum ?? '')) throw new Error(`cannot record ${id}: its manifest entry carries no git-blob-sha1 checksum`)
+      const current = entry.checksum
+      entry.checksum = actual
+      applied.push(`${id}: ${current} -> ${actual}`)
+    }
+    const isHarnessManifest = Boolean(manifest.$schema && manifest.manifestVersion && manifest.checksumAlgorithm && manifest.inventory && manifest.routers)
+    const indentation = hasOnePhysicalLine ? undefined : /^[ \t]+(?=\S)/m.exec(text)?.[0] ?? '  '
+    const serialized = isHarnessManifest
+      ? [
+        '{',
+        `  "$schema": ${JSON.stringify(manifest.$schema)},`,
+        `  "manifestVersion": ${JSON.stringify(manifest.manifestVersion)},`,
+        `  "checksumAlgorithm": ${JSON.stringify(manifest.checksumAlgorithm)},`,
+        `  "inventory": ${JSON.stringify(manifest.inventory)},`,
+        `  "routers": ${JSON.stringify(manifest.routers)},`,
+        '  "entries": [',
+        ...manifest.entries.map((entry, index) => `    ${JSON.stringify(entry)}${index < manifest.entries.length - 1 ? ',' : ''}`),
+        '  ]',
+        '}',
+      ].join(eol)
+      : JSON.stringify(manifest, null, indentation).replace(/\n/g, eol)
+    return { text: `${serialized}${text.endsWith('\n') ? eol : ''}`, applied }
+  }
+
+  const lines = text.split(/\r?\n/)
   const applied = []
   for (const { id, actual } of drifts) {
-    const index = lines.findIndex((line) => line.includes(`"id":"${id}"`))
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const idPattern = new RegExp(`"id"\\s*:\\s*"${escapedId}"`)
+    const index = lines.findIndex((line) => idPattern.test(line))
     if (index === -1) throw new Error(`cannot record ${id}: no manifest line declares that id`)
     const current = /git-blob-sha1:[0-9a-f]{40}/.exec(lines[index])
-    if (!current) throw new Error(`cannot record ${id}: its manifest line carries no git-blob-sha1 checksum`)
+    if (!current || !/^git-blob-sha1:[0-9a-f]{40}$/.test(current[0])) throw new Error(`cannot record ${id}: its manifest line carries no git-blob-sha1 checksum`)
     lines[index] = lines[index].replace(current[0], actual)
     applied.push(`${id}: ${current[0]} -> ${actual}`)
   }

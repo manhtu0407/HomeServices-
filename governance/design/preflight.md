@@ -41,6 +41,8 @@ NestScout adaptation:
 Ignored rules:
 Design Wheel class:
 Wheel skills and protocols:
+Upstream skills:
+Explicit-only skills (not auto-selected):
 Material / motion / token decision:
 States and verification gates:
 Acceptance gate:
@@ -64,3 +66,9 @@ The machine-readable equivalent is emitted by `scripts/design/kael-design-prefli
 | research | `kael-research` + `kael-design-evidence` |
 
 `kael-design-preflight` does not replace any row. It makes the handoff explicit and inspectable.
+
+## Pinned upstream skill routing
+
+The preflight adds the smallest relevant Emil skill set after classifying the assigned runtime. Expo / React Native motion selects `emil-animate-expo` alongside `kael-motion`; web-only animation and Sonner guidance require an explicitly assigned web stack; Swift writing requires an explicitly assigned Swift stack. Review, improvement, opportunity-finding, vocabulary, Apple-interaction, and stress-test skills are added only when their task intent matches. Dynamic Island-style in-app notifications select `kael-dynamic-notifications`.
+
+`emil-pick-ui-library` and `emil-prototype` remain explicit-only and are never auto-selected. A skill's presence in the corpus does not grant dependency installation, production integration, or scope expansion. Upstream guidance stays below NestScout governance and platform contracts.

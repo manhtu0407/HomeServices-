@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Apple Design"
+  short_description: "Apply Apple interaction principles to an assigned platform."
+  default_prompt: "Use $emil-apple-design when an assigned task needs Apple interaction, gesture, or material principles."

@@ -4,3 +4,5 @@ docs/design-research/corpus/** text eol=lf
 *.mjs text eol=lf
 *.cjs text eol=lf
 *.js text eol=lf
+docs/design-research/corpus/upstream/** -text
+docs/design-research/corpus/upstream/** whitespace=-blank-at-eof

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Improve Animations"
+  short_description: "Audit animation quality and produce prioritized…"
+  default_prompt: "Use $emil-improve-animations when the user asks to audit or improve motion across an assigned surface or codebase."
