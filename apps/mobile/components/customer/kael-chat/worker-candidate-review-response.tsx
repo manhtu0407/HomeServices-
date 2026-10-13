@@ -1,7 +1,6 @@
 import { typography } from '@/design/theme'
 import { useState } from 'react'
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
-import { Image } from 'expo-image'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
@@ -12,7 +11,7 @@ import { buildCaseWorkResponseModel } from './case-work-response-model'
 import type { SavedWorkerSummary, SavedWorkersStatus } from './customer-saved-workers'
 import { SavedWorkerConfirmationList } from './saved-worker-confirmation-list'
 import { CandidatePriceReceipt } from './worker-candidate-review-price-receipt'
-import { stableImageSource } from '@/lib/stable-image-source'
+import { WorkerIdentitySummary } from './worker-identity-summary'
 
 const VND_FORMATTER = new Intl.NumberFormat('vi-VN')
 
@@ -66,8 +65,6 @@ function WorkerCandidateReviewContent({
     priceQuote?.worker_confirmed_at || workerProposal?.status === 'proposed',
   )
   const confirmationCopy = candidateConfirmationCopy(displayName, priceQuote, workerProposal, language)
-  const facts = candidate ? candidateFacts(candidate, language) : []
-  const personalFacts = candidate ? candidatePersonalFacts(candidate, language) : []
   const model = buildCaseWorkResponseModel({
     language,
     phase: 'worker_candidate_review',
@@ -124,16 +121,7 @@ function WorkerCandidateReviewContent({
           </View>
         </View>
       ) : candidate?.status === 'proposed' ? (
-        <View style={styles.actions}>
-          <KaelButton
-            disabled={busy}
-            label={language === 'vi' ? 'Tìm thợ khác' : 'Find another worker'}
-            onPress={onReject}
-            size="small"
-            style={styles.action}
-            testID="customer-v21-worker-candidate-reject"
-            variant="secondary"
-          />
+        <View style={styles.actionStack}>
           <KaelButton
             accessibilityState={{ busy, disabled: busy || !confirmationReady }}
             disabled={busy || !confirmationReady}
@@ -143,10 +131,34 @@ function WorkerCandidateReviewContent({
             onPress={() => {
               if (confirmationReady) setFinalReviewOpen(true)
             }}
-            size="small"
-            style={styles.action}
+            style={styles.primaryAction}
             testID="customer-v21-worker-candidate-confirm"
           />
+          <View style={styles.secondaryActions}>
+            <KaelButton
+              disabled={busy}
+              label={language === 'vi' ? 'Tìm thợ khác' : 'Find another worker'}
+              onPress={onReject}
+              size="small"
+              style={styles.secondaryAction}
+              textStyle={styles.secondaryActionLabel}
+              testID="customer-v21-worker-candidate-reject"
+              variant="secondary"
+            />
+            <KaelButton
+              accessibilityState={{ disabled: busy, selected: candidate.is_favorite }}
+              disabled={busy}
+              label={candidate.is_favorite
+                ? (language === 'vi' ? 'Bỏ lưu thợ này' : 'Remove saved worker')
+                : (language === 'vi' ? 'Lưu thợ yêu thích' : 'Save favorite worker')}
+              onPress={() => onToggleFavorite(!candidate.is_favorite)}
+              size="small"
+              style={styles.secondaryAction}
+              textStyle={styles.secondaryActionLabel}
+              testID="customer-v21-worker-candidate-favorite-toggle"
+              variant="secondary"
+            />
+          </View>
         </View>
       ) : !candidate && !busy ? (
         <KaelButton
@@ -169,60 +181,34 @@ function WorkerCandidateReviewContent({
           ) : null}
           {candidate ? (
             <>
-              <View style={styles.identity} testID="customer-v21-worker-candidate-identity">
-                <View style={[styles.avatarFrame, { backgroundColor: tokens.raised, borderColor: tokens.borderStrong }]}>
-                  {candidate.avatar_url ? (
-                    <Image
-                      accessibilityIgnoresInvertColors
-                      accessibilityLabel={language === 'vi' ? `Ảnh đại diện của ${displayName}` : `${displayName}'s profile photo`}
-                      contentFit="cover"
-                      source={stableImageSource(candidate.avatar_url)}
-                      style={styles.avatar}
-                      testID="customer-v21-worker-candidate-avatar"
-                    />
-                  ) : (
-                    <Text
-                      accessibilityLabel={language === 'vi' ? `Chưa có ảnh đại diện của ${displayName}` : `${displayName} has no profile photo`}
-                      style={[styles.avatarFallback, { color: tokens.primary }]}
-                      testID="customer-v21-worker-candidate-avatar-fallback"
-                    >
-                      {initialsForCandidate(displayName)}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.identityCopy}>
-                  <Text style={[styles.name, { color: tokens.text }]}>{displayName}</Text>
-                  {personalFacts.length > 0 ? (
-                    <Text style={[styles.personalFacts, { color: tokens.muted }]} testID="customer-v21-worker-candidate-personal-facts">
-                      {personalFacts.join(' · ')}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-              {candidate.is_favorite ? (
-                <Text style={[styles.meta, { color: tokens.primary }]} testID="customer-v21-worker-candidate-favorite">
-                  {language === 'vi' ? 'Đã lưu trong danh sách yêu thích' : 'Saved as a favorite worker'}
-                </Text>
-              ) : null}
-              {candidate.verification_status === 'approved' ? (
-                <Text style={[styles.meta, { color: tokens.primary }]}>
-                  {language === 'vi' ? 'Hồ sơ đã xác minh' : 'Profile verified'}
-                </Text>
-              ) : null}
-              {facts.length > 0 ? (
-                <Text accessibilityLabel={facts.join(', ')} style={[styles.facts, { color: tokens.text }]} testID="customer-v21-worker-candidate-facts">
-                  {facts.join(' · ')}
-                </Text>
-              ) : (
-                <Text style={[styles.body, { color: tokens.muted }]}>
-                  {language === 'vi' ? 'Chưa có lịch sử công việc đủ để hiển thị thêm.' : 'There is not enough completed-job history to show more yet.'}
-                </Text>
-              )}
-              <Text style={[styles.body, { color: tokens.muted }]} testID="customer-v21-worker-candidate-address-lock">
-                {language === 'vi'
-                  ? 'Địa chỉ chi tiết vẫn được khóa cho tới khi bạn chọn thợ này.'
-                  : 'Your detailed address stays locked until you choose this worker.'}
-              </Text>
+              <WorkerIdentitySummary
+                identity={{
+                  avatarUrl: candidate.avatar_url,
+                  birthYear: candidate.birth_year,
+                  displayName,
+                  gender: candidate.gender,
+                  rating: candidate.rating,
+                  totalJobs: candidate.total_jobs,
+                  yearsExperience: candidate.years_experience,
+                }}
+                language={language}
+                meta={(
+                  <>
+                    {candidate.is_favorite ? (
+                      <Text style={[styles.meta, { color: tokens.primary }]} testID="customer-v21-worker-candidate-favorite">
+                        {language === 'vi' ? 'Đã lưu trong danh sách yêu thích' : 'Saved as a favorite worker'}
+                      </Text>
+                    ) : null}
+                    {candidate.verification_status === 'approved' ? (
+                      <Text style={[styles.meta, { color: tokens.primary }]}>
+                        {language === 'vi' ? 'Hồ sơ đã xác minh' : 'Profile verified'}
+                      </Text>
+                    ) : null}
+                  </>
+                )}
+                testIDPrefix="customer-v21-worker-candidate"
+                tokens={tokens}
+              />
               <CandidatePriceReceipt
                 formatCurrency={formatVnd}
                 language={language}
@@ -230,19 +216,11 @@ function WorkerCandidateReviewContent({
                 quote={priceQuote}
                 tokens={tokens}
               />
-              {!finalReviewOpen ? (
-                <KaelButton
-                  accessibilityState={{ disabled: busy, selected: candidate.is_favorite }}
-                  disabled={busy}
-                  label={candidate.is_favorite
-                    ? (language === 'vi' ? 'Bỏ lưu thợ này' : 'Remove saved worker')
-                    : (language === 'vi' ? 'Lưu thợ yêu thích' : 'Save favorite worker')}
-                  onPress={() => onToggleFavorite(!candidate.is_favorite)}
-                  size="small"
-                  testID="customer-v21-worker-candidate-favorite-toggle"
-                  variant="secondary"
-                />
-              ) : null}
+              <Text style={[styles.notice, { color: tokens.muted }]} testID="customer-v21-worker-candidate-address-lock">
+                {language === 'vi'
+                  ? 'Địa chỉ chi tiết vẫn được khóa cho tới khi bạn chọn thợ này.'
+                  : 'Your detailed address stays locked until you choose this worker.'}
+              </Text>
             </>
           ) : null}
           {error ? (
@@ -327,63 +305,25 @@ function candidateConfirmationCopy(
       }
 }
 
-function candidateFacts(candidate: WorkerCandidateView, language: AppLanguage) {
-  const facts: string[] = []
-  if (candidate.rating !== null && candidate.total_jobs > 0) facts.push(`${candidate.rating.toFixed(1)} ★`)
-  if (candidate.total_jobs > 0) facts.push(language === 'vi' ? `${candidate.total_jobs} việc đã hoàn tất` : `${candidate.total_jobs} completed jobs`)
-  if (candidate.years_experience > 0) facts.push(language === 'vi' ? `${candidate.years_experience} năm kinh nghiệm` : `${candidate.years_experience} years experience`)
-  return facts
-}
-
-function candidatePersonalFacts(candidate: WorkerCandidateView, language: AppLanguage) {
-  const facts: string[] = []
-  if (typeof candidate.birth_year === 'number' && Number.isSafeInteger(candidate.birth_year)) {
-    facts.push(language === 'vi' ? `Sinh năm ${candidate.birth_year}` : `Born ${candidate.birth_year}`)
-  }
-  if (candidate.gender) {
-    const labels = language === 'vi'
-      ? { female: 'Nữ', male: 'Nam', other: 'Khác' }
-      : { female: 'Female', male: 'Male', other: 'Other' }
-    facts.push(labels[candidate.gender])
-  }
-  return facts
-}
-
-function initialsForCandidate(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  return parts.slice(-2).map((part) => part[0]?.toLocaleUpperCase() ?? '').join('') || 'K'
-}
-
 function formatVnd(value: number) {
   return `${VND_FORMATTER.format(value)}đ`
 }
 
 const styles = StyleSheet.create({
   action: { flex: 1 },
+  actionStack: { gap: 12 },
   actions: { flexDirection: 'row', gap: 10 },
-  avatar: { height: '100%', width: '100%' },
-  avatarFallback: { ...typography.headline },
-  avatarFrame: {
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 64,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 64,
-  },
-  body: { ...typography.footnote },
-  details: { gap: 9 },
-  error: { ...typography.caption1 },
-  facts: { ...typography.footnote, fontWeight: '600' },
+  body: { ...typography.subheadline },
+  details: { gap: 14 },
+  error: { ...typography.footnote },
   finalReview: { gap: 12 },
-  identity: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 5 },
-  identityCopy: { flex: 1, gap: 3 },
   loading: { alignItems: 'center', flexDirection: 'row', gap: 9 },
-  meta: { ...typography.caption1, fontWeight: '600' },
-  name: { ...typography.headline },
-  notice: { ...typography.caption1 },
-  personalFacts: { ...typography.caption1 },
+  meta: { ...typography.footnote, fontWeight: '600' },
+  notice: { ...typography.footnote },
+  primaryAction: { alignSelf: 'stretch' },
+  secondaryAction: { flexBasis: '48%', flexGrow: 0, flexShrink: 0, minHeight: 44, paddingHorizontal: 12 },
+  secondaryActionLabel: { ...typography.footnote, fontWeight: '600' },
+  secondaryActions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
   savedHeader: { gap: 3 },
   savedTitle: { ...typography.subheadline, fontWeight: '600' },
 })

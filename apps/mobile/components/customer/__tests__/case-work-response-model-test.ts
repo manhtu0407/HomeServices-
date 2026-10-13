@@ -26,12 +26,18 @@ describe('case-work response model', () => {
       noteTitle: 'Kael đã đối chiếu thông tin',
       phase: 'intake_started',
       status: 'Chờ bạn xác nhận',
-      title: 'Xác nhận thông tin công việc',
+      title: 'Xác nhận thông tin',
     })
     expect(buildIntakeConfirmationResponseModel('en')).toMatchObject({
       status: 'Awaiting confirmation',
-      title: 'Confirm work details',
+      title: 'Confirm details',
     })
+  })
+
+  it.each(WORKFLOW_PHASES)('keeps the %s header title short enough for one line on a phone', (phase) => {
+    for (const language of ['vi', 'en'] as const) {
+      expect(buildCaseWorkResponseModel({ language, phase }).title.length).toBeLessThanOrEqual(28)
+    }
   })
 
   it.each(WORKFLOW_PHASES)('provides production copy for %s in both languages', (phase) => {
@@ -49,6 +55,31 @@ describe('case-work response model', () => {
       expect(`${model.title} ${model.status} ${model.noteTitle} ${model.noteCopy}`)
         .not.toMatch(/phòng thử nghiệm|mô phỏng|simulated|test payment/i)
     }
+  })
+
+  it('names a confirmed worker by one word so the header stays on one line', () => {
+    const matched = (language: 'en' | 'vi') => buildCaseWorkResponseModel({
+      deal: dealFixture('worker_matched', {
+        workerProfile: { avatarUrl: null, fullName: 'Trần Văn Hùng', id: 'worker-1', rating: 4.8, totalJobs: 12 },
+      }),
+      language,
+      phase: 'worker_matched',
+    })
+
+    expect(matched('vi').title).toBe('Thợ Hùng đã được xác nhận')
+    expect(matched('en').title).toBe('Hùng has been confirmed')
+  })
+
+  it('keeps a long service name out of the header title while workers are searched', () => {
+    const matching = (serviceType: 'handyman' | 'plumbing', language: 'en' | 'vi') => buildCaseWorkResponseModel({
+      deal: dealFixture('broadcasting', { draft: { ...dealFixture('broadcasting').draft, serviceType } }),
+      language,
+      phase: 'matching',
+    })
+
+    expect(matching('plumbing', 'vi').title).toBe('Đang tìm thợ sửa nước')
+    expect(matching('handyman', 'vi').title).toBe('Đang tìm thợ phù hợp')
+    expect(matching('handyman', 'en').title).toBe('Finding a suitable worker')
   })
 
   it('uses only real worker, scope, evidence, and payment data when available', () => {
@@ -129,7 +160,7 @@ describe('case-work response model', () => {
     expect(model).toMatchObject({
       actionKind: 'none',
       status: 'Đang chuẩn bị đề xuất',
-      title: 'Kael đang kiểm tra thay đổi phạm vi',
+      title: 'Đang kiểm tra phát sinh',
     })
     expect(model.noteCopy).toContain('phạm vi cũ')
     expect(model.noteCopy).toContain('chưa được phép thực hiện')
@@ -197,7 +228,7 @@ describe('case-work response model', () => {
 
     expect(`${model.title} ${model.status} ${model.noteTitle} ${model.noteCopy}`)
       .not.toMatch(/\bStaging\b|mô phỏng|simulation|simulated/i)
-    expect(model.title).toBe('Thanh toán đang được xác minh')
+    expect(model.title).toBe('Đang xác minh thanh toán')
     expect(model.actionKind).toBe('none')
   })
 
@@ -253,7 +284,7 @@ describe('case-work response model', () => {
       phase: 'payment_pending',
     })
 
-    expect(model.title).toBe('Thanh toán cần được kiểm tra')
+    expect(model.title).toBe('Thanh toán cần kiểm tra')
     expect(model.status).toBe('Cần đối chiếu')
     expect(model.noteCopy).toContain('Không chuyển thêm tiền')
   })

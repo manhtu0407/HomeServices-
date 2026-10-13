@@ -1,0 +1,7 @@
+interface:
+  display_name: "Emil Pick Ui Library"
+  short_description: "Compare candidate libraries for an assigned frontend runtime."
+  default_prompt: "Use $emil-pick-ui-library only when the user explicitly invokes this skill to select a library."
+
+policy:
+  allow_implicit_invocation: false

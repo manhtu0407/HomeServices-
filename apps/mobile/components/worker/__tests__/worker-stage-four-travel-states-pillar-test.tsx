@@ -90,6 +90,7 @@ const emptyRoute: WorkerV5RoutePreviewState = {
   mapUri: null,
   origin: null,
   route: null,
+  tripShared: null,
 }
 
 const liveRoute: WorkerV5RoutePreviewState = {
@@ -104,6 +105,7 @@ const liveRoute: WorkerV5RoutePreviewState = {
     fetchedAt: '2026-09-14T08:00:00.000Z',
     geometry: null,
   },
+  tripShared: true,
 }
 
 function renderStageFour({

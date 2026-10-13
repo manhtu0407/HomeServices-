@@ -25,6 +25,7 @@ export type AccountDeletionResponse = {
 export type AddressAccessView = {
   authorization_context?: ApartmentAccessAuthorizationInput | null
   authorization_receipt?: ApartmentAccessAuthorizationReceipt | null
+  check_in_photo_refs?: string[]
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
   worker_checked_in: boolean

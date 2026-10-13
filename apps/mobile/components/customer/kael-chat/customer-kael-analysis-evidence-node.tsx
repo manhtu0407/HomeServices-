@@ -111,7 +111,7 @@ export function CustomerKaelAnalysisEvidenceNode({
         safetyMessages={presentation.serverSafetyMessages}
         tokens={tokens}
       />
-      {referencePrice ? <ReferencePriceNote language={language} reference={referencePrice} tokens={tokens} /> : null}
+      {referencePrice && !unpricedRequestKind ? <ReferencePriceNote language={language} reference={referencePrice} tokens={tokens} /> : null}
       {nextActionChips}
     </>
   )

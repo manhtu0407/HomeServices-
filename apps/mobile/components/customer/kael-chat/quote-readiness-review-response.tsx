@@ -3,6 +3,7 @@ import { KaelButton } from '@/components/ui/kael-primitives'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWorkResponse } from './case-work-response'
+import { KaelActionDock, kaelActionPrimaryStyle } from './kael-next-action-chips'
 import type { CaseWorkResponseModel } from './case-work-response-model'
 import { localizedQuoteReviewReason } from './case-work-localization'
 
@@ -42,6 +43,7 @@ const REQUEST_COPY = {
     },
     status: 'Ready to send',
     title: 'Next step',
+    heading: { inspection_request: 'Inspection request ready', rfq_request: 'Quote request ready' },
   },
   vi: {
     inspection_request: {
@@ -54,6 +56,7 @@ const REQUEST_COPY = {
     },
     status: 'Sẵn sàng gửi',
     title: 'Bước tiếp theo',
+    heading: { inspection_request: 'Yêu cầu khảo sát sẵn sàng', rfq_request: 'Yêu cầu báo giá sẵn sàng' },
   },
 } as const
 
@@ -94,26 +97,32 @@ export function QuoteReadinessReviewResponse({
         : (language === 'vi' ? 'Đang rà soát' : 'Under review'),
     title: safetyBlocked
       ? (language === 'vi' ? 'Cần xử lý an toàn trước' : 'Safety review required')
-      : (language === 'vi' ? 'Báo giá cần rà soát' : 'Quote requires review'),
+      : requestCopy && request
+        ? requestCopy.heading[request.kind]
+        : (language === 'vi' ? 'Báo giá cần rà soát' : 'Quote requires review'),
   }
 
   return (
-    <CaseWorkResponse
-      controls={requestCopy && request ? (
-        <KaelButton
-          accessibilityState={{ busy: request.busy, disabled: request.busy }}
-          disabled={request.busy}
-          label={requestCopy[request.kind].action}
-          loading={request.busy}
-          onPress={request.onSend}
-          size="small"
-          testID="customer-v21-quote-review-send-request"
-        />
-      ) : undefined}
-      model={model}
-      reduceMotion={reduceMotion}
-      testID="customer-v21-quote-readiness-review"
-      tokens={tokens}
-    />
+    <>
+      <CaseWorkResponse
+        model={model}
+        reduceMotion={reduceMotion}
+        testID="customer-v21-quote-readiness-review"
+        tokens={tokens}
+      />
+      {requestCopy && request ? (
+        <KaelActionDock>
+          <KaelButton
+            accessibilityState={{ busy: request.busy, disabled: request.busy }}
+            disabled={request.busy}
+            label={requestCopy[request.kind].action}
+            loading={request.busy}
+            onPress={request.onSend}
+            style={kaelActionPrimaryStyle}
+            testID="customer-v21-quote-review-send-request"
+          />
+        </KaelActionDock>
+      ) : null}
+    </>
   )
 }

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Mobile Native"
+  short_description: "Fix phone and touch behavior in a web app or PWA."
+  default_prompt: "Use $emil-mobile-native when an explicitly assigned web app has mobile-browser behavior to fix."

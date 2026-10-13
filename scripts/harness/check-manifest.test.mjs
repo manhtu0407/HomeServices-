@@ -201,6 +201,40 @@ test('recordChecksums rewrites only the checksum on the named entry line', () =>
   assert.ok(text.includes('\r\n'))
 })
 
+test('recordChecksums updates named entries independently in compact manifest JSON', () => {
+  const before = JSON.stringify({
+    entries: [
+      { id: 'alpha', checksum: 'git-blob-sha1:1111111111111111111111111111111111111111' },
+      { id: 'beta', checksum: 'git-blob-sha1:2222222222222222222222222222222222222222' },
+    ],
+  })
+  const { text } = recordChecksums(before, [
+    { id: 'alpha', actual: 'git-blob-sha1:3333333333333333333333333333333333333333' },
+    { id: 'beta', actual: 'git-blob-sha1:4444444444444444444444444444444444444444' },
+  ])
+  const updated = JSON.parse(text)
+  assert.equal(updated.entries[0].checksum, 'git-blob-sha1:3333333333333333333333333333333333333333')
+  assert.equal(updated.entries[1].checksum, 'git-blob-sha1:4444444444444444444444444444444444444444')
+})
+
+test('recordChecksums preserves pretty JSON layout while updating named entries', () => {
+  const before = `${JSON.stringify({
+    entries: [
+      { id: 'alpha', checksum: 'git-blob-sha1:1111111111111111111111111111111111111111' },
+      { id: 'beta', checksum: 'git-blob-sha1:2222222222222222222222222222222222222222' },
+    ],
+  }, null, 2)}\n`
+  const { text } = recordChecksums(before, [
+    { id: 'alpha', actual: 'git-blob-sha1:3333333333333333333333333333333333333333' },
+  ])
+  assert.equal(text, `${JSON.stringify({
+    entries: [
+      { id: 'alpha', checksum: 'git-blob-sha1:3333333333333333333333333333333333333333' },
+      { id: 'beta', checksum: 'git-blob-sha1:2222222222222222222222222222222222222222' },
+    ],
+  }, null, 2)}\n`)
+})
+
 test('recordChecksums refuses an id the manifest does not declare', () => {
   assert.throws(
     () => recordChecksums('{"id":"alpha","checksum":"git-blob-sha1:1111111111111111111111111111111111111111"}', [

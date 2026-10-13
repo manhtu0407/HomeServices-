@@ -50,6 +50,7 @@ const liveMap: WorkerV5RoutePreviewState = {
   locationStatus: 'ready',
   mapUri: 'https://example.invalid/map',
   origin,
+  tripShared: null,
   route: {
     destination,
     distanceMeters: 4200,
@@ -114,7 +115,7 @@ describe('Stage 4 map actions', () => {
   })
 
   it('keeps directions and sharing off until a route and a position exist', () => {
-    renderStageFour({ hasRouteDestination: true, locationStatus: 'loading', mapUri: null, origin: null, route: null })
+    renderStageFour({ hasRouteDestination: true, locationStatus: 'loading', mapUri: null, origin: null, route: null, tripShared: null })
 
     fireEvent.press(screen.getByTestId('stage4-directions'))
     fireEvent.press(screen.getByTestId('stage4-share'))

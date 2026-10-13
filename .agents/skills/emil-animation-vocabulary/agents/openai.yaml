@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Animation Vocabulary"
+  short_description: "Name a described motion pattern."
+  default_prompt: "Use $emil-animation-vocabulary when the user asks what to call a described animation."

@@ -36,6 +36,7 @@ export class StageFiveWork extends React.PureComponent<SurfaceProps<WorkModel>,{
  </View>
  </View>
  </Box>
+ {m.customerNudge?<Box tint s={s} style={{marginTop:10*s,padding:13*s}}><View testID="stage5-customer-nudge" style={{gap:3*s}}><Copy role="subheadline" weight="600" color="#00574D" windowWidth={windowWidth}>{m.customerNudge.title}</Copy><Copy role="caption1" windowWidth={windowWidth}>{m.customerNudge.detail}</Copy></View></Box>:null}
  <Box s={s} height={90} style={{marginTop:10*s,paddingHorizontal:16*s,paddingVertical:13*s}}>
  <View style={{flexDirection:'row',gap:12*s,alignItems:'center'}}>
  <IconSlot name="clock" s={s} size={40}/>

@@ -80,6 +80,7 @@ export type JobResourceRoute =
     successStatus: 201;
   }
   | { kind: "jobs.confirmCompletion"; method: "POST"; jobId: string; roles: UserRole[] }
+  | { kind: "jobs.nudgeCompletion"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.paymentOrder"; method: "POST"; jobId: string; roles: UserRole[] }
   | { kind: "jobs.paymentOrderClaim"; method: "POST"; jobId: string; roles: UserRole[] }
   | {
@@ -296,6 +297,14 @@ function matchJobPaymentAction(
   if (action === "confirm-completion" && method === "POST") {
     return {
       kind: "jobs.confirmCompletion",
+      method: "POST",
+      jobId,
+      roles: ["customer"],
+    };
+  }
+  if (action === "nudge-completion" && method === "POST") {
+    return {
+      kind: "jobs.nudgeCompletion",
       method: "POST",
       jobId,
       roles: ["customer"],

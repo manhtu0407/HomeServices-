@@ -37,32 +37,20 @@ import {
 import { listWorkerJobs } from "./domains/worker/jobs.ts";
 import { submitWorkerRegistrationCommand, getWorkerRegistrationCommand } from "./domains/worker/registration-command.ts";
 import { getWorkerRouteMap, getWorkerRoutePreview } from "./domains/worker/route.ts";
+import { reportWorkerTravelPosition } from "./domains/worker/travel-position.ts";
 import { projectAddressAccess, authorizeApartmentAccess } from "./domains/worker/apartment-access.ts";
 
-import {
-  openDispute,
-  submitDisputeCounterStatement,
-  decideDispute,
-} from "./domains/dispute/dispute.ts";
+import { openDispute, submitDisputeCounterStatement, decideDispute } from "./domains/dispute/dispute.ts";
 
 import { decideScopeChange, requestScopeChange } from "./domains/job/scope-change/request.ts";
 import { getJobIncident, openJobIncident, previewScopeChangeFromJobIncident, proposeScopeChangeFromJobIncident } from "./domains/job/incident.ts";
 import { submitReview } from "./domains/payment/completion-review.ts";
-import {
-  claimManualBankPayment,
-  confirmCompletionAndCreateManualBankOrder,
-  createManualBankPaymentOrder,
-} from "./domains/payment/manual-bank.ts";
+import { claimManualBankPayment, confirmCompletionAndCreateManualBankOrder, createManualBankPaymentOrder } from "./domains/payment/manual-bank.ts";
 import { listJobMessages, listMyThreads, sendJobMessage } from "./domains/job/chat.ts";
+import { nudgeWorkerCompletion } from "./domains/job/completion-nudge.ts";
 import { createKaelChat } from "./domains/kael-chat/create.ts";
-import {
-  createKaelChatMediaUpload,
-  revokeKaelChatMedia,
-} from "./domains/kael-chat/media-upload.ts";
-import {
-  getKaelChat,
-  getKaelChatProgress,
-} from "./domains/kael-chat/read.service.ts";
+import { createKaelChatMediaUpload, revokeKaelChatMedia } from "./domains/kael-chat/media-upload.ts";
+import { getKaelChat, getKaelChatProgress } from "./domains/kael-chat/read.service.ts";
 import { sendKaelChatTurn } from "./domains/kael-chat/turn.ts";
 import { submitKaelChatEvidence } from "./domains/kael-chat/evidence.ts";
 import { decideKaelIntakeConfirmation } from "./domains/kael-chat/intake-confirmation.service.ts";
@@ -444,6 +432,7 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
   | "sendJobMessage"
   | "decideScopeChange"
   | "confirmCompletion"
+  | "nudgeWorkerCompletion"
   | "createManualBankPaymentOrder"
   | "claimManualBankPayment"
   | "submitReview"
@@ -479,6 +468,7 @@ function createWorkerWorkflowServices(secrets: EdgeServiceSecrets): Pick<
     decideScopeChange,
     confirmCompletion: (ctx, jobId) =>
       confirmCompletionAndCreateManualBankOrder(ctx, jobId, secrets.manualBank),
+    nudgeWorkerCompletion,
     createManualBankPaymentOrder: (ctx, jobId) =>
       createManualBankPaymentOrder(ctx, jobId, secrets.manualBank),
     claimManualBankPayment,
@@ -534,6 +524,7 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
   | "submitWorkerMatchingProposal"
   | "listWorkerJobs"
   | "getWorkerRoutePreview"
+  | "reportWorkerTravelPosition"
   | "getWorkerRouteMap"
   | "getWorkerEarnings"
   | "getWorkerPayoutMethod"
@@ -585,6 +576,8 @@ function createProfileServices(secrets: EdgeServiceSecrets): Pick<
     createWorkerWithdrawalRequest,
     getWorkerRoutePreview: (ctx, jobId, origin) =>
       getWorkerRoutePreview(ctx, jobId, origin, secrets),
+    reportWorkerTravelPosition: (ctx, jobId, origin) =>
+      reportWorkerTravelPosition(ctx, jobId, origin, secrets),
     getWorkerRouteMap: (ctx, jobId, origin) =>
       getWorkerRouteMap(ctx, jobId, origin, secrets),
     getWorkerEarnings,

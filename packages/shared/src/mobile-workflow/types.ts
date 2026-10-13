@@ -13,6 +13,7 @@ export type LocalCustomerSearchState = 'idle' | 'searching' | 'no_worker' | 'can
 export type LocalAddressAccess = {
   authorization_context?: ApartmentAccessAuthorizationInput | null
   authorization_receipt?: ApartmentAccessAuthorizationReceipt | null
+  check_in_photo_refs?: string[]
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
   worker_checked_in?: boolean
@@ -108,6 +109,30 @@ export type LocalWorkerProfileSummary = {
   rating: number
   reviewCount?: number | null
   totalJobs: number
+  birthYear?: number | null
+  gender?: 'male' | 'female' | 'other' | null
+  yearsExperience?: number | null
+}
+
+// Whether the customer may remind the worker to report the job done, as the server last answered.
+export type LocalCompletionNudge = {
+  canNudge: boolean
+  reason: 'COOLDOWN' | 'INVALID_STATUS' | 'JOB_NOT_FOUND' | 'LIMIT_REACHED' | 'TOO_EARLY' | 'WORK_PAUSED' | null
+  used: number
+  maxAllowed: number
+  lastNudgedAt: string | null
+  nextAvailableAt: string | null
+}
+
+// Where the worker is on the way to the building: the route as [latitude, longitude] pairs, the
+// worker's latest position on it, and what is left of the trip when that position was reported.
+export type LocalWorkerTravel = {
+  updatedAt: string
+  route: [number, number][]
+  position: [number, number]
+  totalMeters: number
+  remainingMeters: number
+  remainingSeconds: number
 }
 
 export const LOCAL_PAYMENT_STATUSES = [
@@ -179,7 +204,10 @@ export type LocalDeal = {
   fieldEvidencePhotoUrls?: string[]
   completionPhotoUrls?: string[]
   completionNotes?: string | null
+  kaelProblem?: string | null
   workerProfile?: LocalWorkerProfileSummary | null
+  workerTravel?: LocalWorkerTravel | null
+  completionNudge?: LocalCompletionNudge | null
   scheduledAt?: string | null
   createdAt?: string | null
   matchedAt?: string | null
@@ -262,7 +290,10 @@ export type LocalRemoteJobSnapshot = {
   fieldEvidencePhotoUrls?: string[]
   completionPhotoUrls?: string[]
   completionNotes?: string | null
+  kaelProblem?: string | null
   workerProfile?: LocalWorkerProfileSummary | null
+  workerTravel?: LocalWorkerTravel | null
+  completionNudge?: LocalCompletionNudge | null
   scheduledAt?: string | null
   createdAt?: string | null
   matchedAt?: string | null

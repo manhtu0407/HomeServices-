@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 454,
+  "migrationCount": 456,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,10 +102,10 @@
       }
     ]
   },
-  "migrationsSha256": "103e08ca013d66f26079997e84e386da0e7bdb0fdfac25247dc9bd3a363691a2",
+  "migrationsSha256": "777b77c08785d7af6f038f0668a5b85113fcc62512eee71267ee4225f5544f5a",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "3437b9bce74171997903835275454e478b4f379484f065e3b2317d1c97c94538"
+    "sha256": "2f433dde1bf358ad1ceada0916087f881cb28a3aa641c1c957d977fd6f4ad929"
   },
   "entries": [
     {
@@ -3285,6 +3285,20 @@
       "file": "supabase/migrations/20261013091000_ambassador_program_draft_commission_12000.sql",
       "sha256": "1173ec8e853b6f40ec0cab90936bd3477d7ffd9fcada868e474258cd8063d681",
       "bytes": 2479
+    },
+    {
+      "version": "20261013100000",
+      "name": "customer_completion_nudge",
+      "file": "supabase/migrations/20261013100000_customer_completion_nudge.sql",
+      "sha256": "553cc9c701d64a8d0fe12ef8fe228664b8623ae3d29eb7e0a5abd147ea880ed1",
+      "bytes": 5842
+    },
+    {
+      "version": "20261013110000",
+      "name": "worker_travel_position",
+      "file": "supabase/migrations/20261013110000_worker_travel_position.sql",
+      "sha256": "be9c668b600fdc7785ca66f77dcdd6dd7c7cb898a5e27173bba1edccb4452748",
+      "bytes": 6639
     }
   ]
 }

@@ -1,17 +1,19 @@
 import { typography } from '@/design/theme'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Image } from 'expo-image'
-import { StyleSheet, Text, View } from 'react-native'
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native'
+import Svg, { Circle, Path, Rect } from 'react-native-svg'
 
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
-import { FormulaMintCardAura } from '@/components/ui/formula-mint-card'
 import { KaelButton } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
 import { toWorkflowPhase, type LocalDeal } from '@nestscout/shared'
 
 import type { CustomerThemeTokens } from '../customer-theme'
+import { CASE_WORK_CONTENT_INSET, CASE_WORK_RAIL_PADDING, CASE_WORK_ROW_STYLE, caseWorkAccentLine } from './case-work-response'
 import { formatVnd, isDealPaymentProtected } from './case-work-money-display-model'
 import type { PaymentRailProvider } from './case-work-response-model'
+import { paymentBankFullName } from '../profile/payment-bank-display-model'
 import { customerRefundDisplayModel } from './customer-refund-display-model'
 
 const QR_BOX_SIZE = 256
@@ -70,7 +72,7 @@ export function CustomerPaymentRailSurface({
   if (phase === 'paid') {
     if (!isDealPaymentProtected(deal)) {
       return (
-        <PaymentSurface status={copy(language).reconcileStatus} testID="customer-v21-case-payment-receipt-unverified" title={copy(language).reconcileTitle} tokens={tokens}>
+        <PaymentSurface status={copy(language).reconcileStatus} glyph="alert" testID="customer-v21-case-payment-receipt-unverified" title={copy(language).reconcileTitle} tokens={tokens}>
           <Text style={[styles.body, { color: tokens.muted }]}>{copy(language).unverifiedReceiptBody}</Text>
           <RefreshButton language={language} onRefresh={onRefreshPayment} refreshResult={paymentRefreshResult} refreshing={refreshingPayment} />
         </PaymentSurface>
@@ -84,13 +86,13 @@ export function CustomerPaymentRailSurface({
       return (
         <PaymentSurface
           status={language === 'vi' ? 'Đang tạo lệnh riêng cho công việc' : 'Creating this work’s transfer order'}
-          testID="customer-v21-case-manual-payment-start"
+          glyph="waiting" testID="customer-v21-case-manual-payment-start"
           title={language === 'vi' ? 'Thanh toán qua tài khoản nền tảng' : 'Pay through the platform account'}
           tokens={tokens}
         >
           <Text style={[styles.body, { color: tokens.muted }]}>
             {language === 'vi'
-              ? 'Hệ thống tạo QR, số tiền và nội dung chuyển khoản riêng cho công việc này. Chỉ báo đã chuyển sau khi hoàn tất tại ngân hàng.'
+              ? 'QR, số tiền và nội dung chuyển khoản được tạo riêng cho công việc này. Chỉ báo đã chuyển sau khi hoàn tất tại ngân hàng.'
               : 'The system creates a QR, amount, and transfer content unique to this work. Claim it only after completing the bank transfer.'}
           </Text>
           <KaelButton
@@ -181,7 +183,7 @@ function ManualBankPayment({
   }
   if (payment.status === 'manual_reconcile_required' || payment.status === 'manual_verified') {
     return (
-      <PaymentSurface status={copy(language).reconcileStatus} testID="customer-v21-case-manual-payment-reconcile" title={copy(language).reconcileTitle} tokens={tokens}>
+      <PaymentSurface status={copy(language).reconcileStatus} glyph="alert" testID="customer-v21-case-manual-payment-reconcile" title={copy(language).reconcileTitle} tokens={tokens}>
         <Text style={[styles.body, { color: tokens.muted }]}>{payment.status === 'manual_verified' ? copy(language).verifiedReceiptPendingBody : copy(language).reconcileBody}</Text>
         <PaymentAmount amount={safeAmount(payment.grossAmount)} label={copy(language).orderAmountLabel} language={language} tokens={tokens} />
         <RefreshButton language={language} onRefresh={onRefresh} refreshResult={refreshResult} refreshing={refreshing} />
@@ -191,7 +193,7 @@ function ManualBankPayment({
   if (!paymentRailAvailable) {
     const text = copy(language)
     return (
-      <PaymentSurface status={text.unavailableStatus} testID="customer-v21-case-manual-payment-paused" title={text.pausedTitle} tokens={tokens}>
+      <PaymentSurface status={text.unavailableStatus} glyph="alert" testID="customer-v21-case-manual-payment-paused" title={text.pausedTitle} tokens={tokens}>
         <Text style={[styles.body, { color: tokens.muted }]}>{text.pausedBody}</Text>
         <PaymentAmount amount={safeAmount(payment.grossAmount)} label={text.orderAmountLabel} language={language} tokens={tokens} />
         <RefreshButton language={language} onRefresh={onRefresh} refreshResult={refreshResult} refreshing={refreshing} />
@@ -200,7 +202,7 @@ function ManualBankPayment({
   }
   if (payment.status !== 'manual_qr_ready' || !payment.qrImageUrl || !payment.transferContent) {
     return (
-      <PaymentSurface status={copy(language).preparingStatus} testID="customer-v21-case-manual-payment-preparing" title={copy(language).preparingTitle} tokens={tokens}>
+      <PaymentSurface status={copy(language).preparingStatus} glyph="waiting" testID="customer-v21-case-manual-payment-preparing" title={copy(language).preparingTitle} tokens={tokens}>
         <Text style={[styles.body, { color: tokens.muted }]}>{copy(language).preparingBody}</Text>
         <RefreshButton language={language} onRefresh={onRefresh} refreshing={refreshing} />
       </PaymentSurface>
@@ -209,7 +211,7 @@ function ManualBankPayment({
 
   const text = copy(language)
   return (
-    <PaymentSurface status={text.readyStatus} testID="customer-v21-case-manual-payment-ready" title={text.readyTitle} tokens={tokens}>
+    <PaymentSurface status={text.readyStatus} glyph="qr" testID="customer-v21-case-manual-payment-ready" title={text.readyTitle} tokens={tokens}>
       <View style={styles.qrFrame} testID="customer-v21-case-manual-qr-frame">
         <Image
           accessibilityLabel={text.qrLabel}
@@ -225,9 +227,9 @@ function ManualBankPayment({
         <Text selectable style={[styles.transferContent, { color: tokens.primary }]} testID="customer-v21-case-manual-transfer-content">{payment.transferContent}</Text>
       </View>
       <View style={styles.accountRows}>
-        <PaymentDetail label={text.bankLabel} value={payment.bankCode ?? text.accountPending} tokens={tokens} />
-        <PaymentDetail label={text.accountHolderLabel} value={payment.accountHolder ?? text.accountPending} tokens={tokens} />
-        <PaymentDetail label={text.accountLabel} value={payment.accountMasked ?? text.accountPending} tokens={tokens} />
+        <PaymentLine detail={paymentBankFullName(payment.bankCode)} label={text.bankLabel} value={payment.bankCode ?? text.accountPending} tokens={tokens} />
+        <PaymentLine label={text.accountHolderLabel} value={payment.accountHolder ?? text.accountPending} tokens={tokens} />
+        <PaymentLine label={text.accountLabel} value={payment.accountMasked ?? text.accountPending} tokens={tokens} />
       </View>
       <View style={[styles.instructions, { borderTopColor: tokens.border }]}>
         <Text style={[styles.instruction, { color: tokens.muted }]}>{text.stepOne}</Text>
@@ -270,7 +272,7 @@ function DirectWorkerPayment({
   return (
     <PaymentSurface
       status={isReconcile ? text.reconcileStatus : isAdminPending ? text.directAdminStatus : text.directStatus}
-      testID="customer-v21-case-direct-payment"
+      glyph="alert" testID="customer-v21-case-direct-payment"
       title={isReconcile ? text.reconcileTitle : isAdminPending ? text.directAdminPendingTitle : text.directPendingTitle}
       tokens={tokens}
     >
@@ -302,7 +304,7 @@ function ConfirmedPaymentReceipt({ deal, language, reviewControls, tokens }: {
   const text = copy(language)
   const direct = payment?.provider === 'direct_worker'
   return (
-    <PaymentSurface status={text.confirmedStatus} testID="customer-v21-case-payment-confirmed" title={direct ? text.directConfirmedTitle : text.confirmedTitle} tokens={tokens}>
+    <PaymentSurface status={text.confirmedStatus} glyph="check" testID="customer-v21-case-payment-confirmed" title={direct ? text.directConfirmedTitle : text.confirmedTitle} tokens={tokens}>
       <Text style={[styles.body, { color: tokens.muted }]}>{direct ? text.directConfirmedBody : text.confirmedBody}</Text>
       <PaymentAmount amount={safeAmount(payment?.amountReceived) ?? safeAmount(payment?.grossAmount)} label={text.confirmedAmountLabel} language={language} tokens={tokens} />
       <View style={[styles.reviewSection, { borderTopColor: tokens.border }]}>
@@ -326,7 +328,7 @@ function LegacyVietQrPayment({ deal, language, onRefresh, refreshing, tokens }: 
   const text = copy(language)
   const received = payment.status === 'received'
   return (
-    <PaymentSurface status={text.reconcileStatus} testID="customer-v21-case-sepay-payment-pending" title={text.legacyTransferTitle} tokens={tokens}>
+    <PaymentSurface status={text.reconcileStatus} glyph="alert" testID="customer-v21-case-sepay-payment-pending" title={text.legacyTransferTitle} tokens={tokens}>
       <Text style={[styles.body, { color: tokens.muted }]}>{received ? text.legacyTransferReceivedBody : text.legacyTransferBody}</Text>
       <PaymentAmount amount={safeAmount(payment.grossAmount)} label={text.recordedAmountLabel} language={language} tokens={tokens} />
       <PaymentAmount amount={safeAmount(payment.amountReceived)} label={text.receivedAmountLabel} language={language} tokens={tokens} />
@@ -343,36 +345,102 @@ function PaymentUnavailable({ language, onRefresh, refreshing, tokens }: {
 }) {
   const text = copy(language)
   return (
-    <PaymentSurface status={text.unavailableStatus} testID="customer-v21-case-payment-unavailable" title={text.unavailableTitle} tokens={tokens}>
+    <PaymentSurface status={text.unavailableStatus} glyph="alert" testID="customer-v21-case-payment-unavailable" title={text.unavailableTitle} tokens={tokens}>
       <Text style={[styles.body, { color: tokens.muted }]}>{text.unavailableBody}</Text>
       {onRefresh ? <RefreshButton language={language} onRefresh={onRefresh} refreshing={refreshing === true} /> : null}
     </PaymentSurface>
   )
 }
 
-function PaymentSurface({ children, status, testID, title, tokens }: {
+type PaymentGlyphName = 'alert' | 'check' | 'qr' | 'waiting'
+
+const GLYPH_SIZE = 32
+
+// The one accent on a payment step: a bare mark that says where the payment stands.
+function PaymentGlyph({ glyph, tokens }: { glyph: PaymentGlyphName; tokens: CustomerThemeTokens }) {
+  if (glyph === 'waiting') return <WaitingClock color={tokens.primary} />
+  const stroke = { fill: 'none', stroke: tokens.primary, strokeLinecap: 'round', strokeLinejoin: 'round', strokeWidth: 2 } as const
+  return (
+    <View style={styles.glyph}>
+      <Svg height={GLYPH_SIZE} viewBox="0 0 24 24" width={GLYPH_SIZE}>
+        {glyph === 'check' ? <Path d="M4 12.5l5 5L20 6.5" {...stroke} /> : null}
+        {glyph === 'alert' ? <Path d="M12 7v6M12 17h.01M10.3 3.9L2.5 17.5A2 2 0 0 0 4.2 20.5h15.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" {...stroke} /> : null}
+        {glyph === 'qr' ? (
+          <>
+            <Rect height={5} rx={1} width={5} x={3} y={3} {...stroke} />
+            <Rect height={5} rx={1} width={5} x={16} y={3} {...stroke} />
+            <Rect height={5} rx={1} width={5} x={3} y={16} {...stroke} />
+            <Path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1" {...stroke} />
+          </>
+        ) : null}
+      </Svg>
+    </View>
+  )
+}
+
+const HOUR_MS = 3_600_000
+const CLOCK_HOURS = 12
+
+// A clock that keeps real time: it starts at the current hour and minute, the minute hand takes an
+// hour per turn and the hour hand twelve, so the waiting person sees time actually passing. One
+// linear animation drives both hands, because Animated.loop does not restart on web; twelve hours
+// outlasts any wait. With reduced motion the hands stand at the time it opened.
+function WaitingClock({ color }: { color: string }) {
+  const { reduceMotion } = useGlassAccessibility()
+  const clock = useRef(new Animated.Value(0)).current
+  const [start] = useState(() => {
+    const now = new Date()
+    const minutes = now.getMinutes() + now.getSeconds() / 60
+    return { hour: ((now.getHours() % 12) + minutes / 60) * 30, minute: minutes * 6 }
+  })
+  useEffect(() => {
+    if (reduceMotion) return
+    clock.setValue(0)
+    const run = Animated.timing(clock, { duration: CLOCK_HOURS * HOUR_MS, easing: Easing.linear, toValue: 1, useNativeDriver: true })
+    run.start()
+    return () => run.stop()
+  }, [clock, reduceMotion])
+  const hand = (from: number, degrees: number) => ({
+    transform: [{
+      rotate: reduceMotion
+        ? `${from}deg`
+        : clock.interpolate({ inputRange: [0, 1], outputRange: [`${from}deg`, `${from + degrees}deg`] }),
+    }],
+  })
+  const stroke = { fill: 'none', stroke: color, strokeLinecap: 'round', strokeWidth: 2 } as const
+  return (
+    <View style={styles.glyph}>
+      <Svg height={GLYPH_SIZE} viewBox="0 0 24 24" width={GLYPH_SIZE}>
+        <Circle cx={12} cy={12} r={10} {...stroke} />
+        <Circle cx={12} cy={12} fill={color} r={1.2} />
+      </Svg>
+      <Animated.View pointerEvents="none" style={[styles.glyphHand, hand(start.hour, 360)]}>
+        <Svg height={GLYPH_SIZE} viewBox="0 0 24 24" width={GLYPH_SIZE}><Path d="M12 12V7.6" {...stroke} /></Svg>
+      </Animated.View>
+      <Animated.View pointerEvents="none" style={[styles.glyphHand, hand(start.minute, 360 * CLOCK_HOURS)]}>
+        <Svg height={GLYPH_SIZE} viewBox="0 0 24 24" width={GLYPH_SIZE}><Path d="M12 12V4.8" {...stroke} /></Svg>
+      </Animated.View>
+    </View>
+  )
+}
+
+function PaymentSurface({ children, glyph = 'waiting', status, testID, title, tokens }: {
   children: ReactNode
+  glyph?: PaymentGlyphName
   status: string
   testID: string
   title: string
   tokens: CustomerThemeTokens
 }) {
-  const { reduceTransparency } = useGlassAccessibility()
-  const showFormulaMintAura = tokens.mode === 'light'
-
   return (
-    <View accessibilityLabel={`${title}. ${status}`} style={[styles.surface, { backgroundColor: tokens.raised, borderColor: tokens.border }]} testID={testID}>
-      {showFormulaMintAura ? (
-        <FormulaMintCardAura
-          reduceTransparency={reduceTransparency}
-          scope={testID}
-          testID={`${testID}-formula-mint-aura`}
-        />
-      ) : null}
-      <View style={styles.surfaceContent}>
+    <View accessibilityLabel={`${title}. ${status}`} style={styles.row} testID={testID}>
+      <View style={[styles.surface, { borderLeftColor: caseWorkAccentLine(tokens) }]}>
         <View style={styles.header}>
-          <Text accessibilityRole="header" style={[styles.heading, { color: tokens.text }]}>{title}</Text>
-          <Text accessibilityLiveRegion="polite" style={[styles.status, { color: tokens.primary }]}>{status}</Text>
+          <PaymentGlyph glyph={glyph} tokens={tokens} />
+          <View style={styles.headerCopy}>
+            <Text accessibilityRole="header" style={[styles.heading, { color: tokens.text }]}>{title}</Text>
+            <Text accessibilityLiveRegion="polite" style={[styles.status, { color: tokens.primary }]}>{status}</Text>
+          </View>
         </View>
         {children}
       </View>
@@ -388,6 +456,19 @@ function PaymentAmount({ amount, label, language, tokens }: {
 }) {
   if (amount === null) return null
   return <PaymentDetail label={label} value={formatVnd(amount, language)} emphasis tokens={tokens} />
+}
+
+// A short account fact reads as one receipt line, label left and value right.
+function PaymentLine({ detail, label, tokens, value }: { detail?: string | null; label: string; tokens: CustomerThemeTokens; value: string }) {
+  return (
+    <View style={styles.lineGroup}>
+      <View style={styles.line}>
+        <Text style={[styles.lineLabel, { color: tokens.muted }]}>{label}</Text>
+        <Text selectable style={[styles.lineValue, { color: tokens.text }]}>{value}</Text>
+      </View>
+      {detail ? <Text numberOfLines={1} style={[styles.lineDetail, { color: tokens.muted }]}>{detail}</Text> : null}
+    </View>
+  )
 }
 
 function PaymentDetail({ label, value, selectable = false, emphasis = false, tokens }: {
@@ -490,7 +571,7 @@ function copy(language: AppLanguage) {
         orderAmountLabel: 'Số tiền trên lệnh thanh toán',
         pausedBody: 'Phương thức chuyển khoản hiện đang tạm dừng. Lệnh đã lưu vẫn được giữ để đối soát. Không chuyển tiền theo mã QR hoặc hướng dẫn cũ.',
         pausedTitle: 'Thanh toán đang tạm dừng',
-        preparingBody: 'Kael đang đọc lại lệnh thanh toán từ máy chủ. Không chuyển tiền cho đến khi QR và nội dung chuyển khoản xuất hiện.',
+        preparingBody: 'Chưa chuyển tiền. QR và nội dung chuyển khoản sẽ hiện khi sẵn sàng.',
         preparingStatus: 'Đang chuẩn bị',
         preparingTitle: 'Đang chuẩn bị thanh toán',
         qrLabel: 'Mã QR thanh toán cho công việc này',
@@ -506,12 +587,12 @@ function copy(language: AppLanguage) {
         refreshUnchanged: 'Đã kiểm tra lại. Chưa có xác nhận mới từ bộ phận vận hành.',
         refreshingLabel: 'Đang cập nhật',
         responseDeadlineLabel: 'Thời gian phản hồi còn lại',
-        reviewBody: 'Đánh giá của bạn sẽ được lưu vào công việc này.',
+        reviewBody: 'Chạm vào số sao để chấm điểm. Đánh giá được lưu vào công việc này.',
         reviewTitle: 'Đánh giá công việc',
         savingLabel: 'Đang lưu xác nhận',
-        stepOne: '1. Mở ứng dụng ngân hàng và quét mã QR.',
-        stepTwo: '2. Kiểm tra số tiền và nội dung chuyển khoản trước khi xác nhận ở ngân hàng.',
-        stepThree: '3. Quay lại đây và bấm “Tôi đã chuyển khoản” để bộ phận vận hành biết cần đối soát.',
+        stepOne: '1. Quét mã QR bằng ứng dụng ngân hàng.',
+        stepTwo: '2. Kiểm tra số tiền và nội dung trước khi chuyển.',
+        stepThree: '3. Quay lại bấm “Tôi đã chuyển khoản”.',
         transferLabel: 'Nội dung chuyển khoản',
         unavailableBody: 'Hệ thống chưa có phương thức thanh toán đã cấu hình cho công việc này. Kael không tự xác nhận giao dịch từ lời nói hoặc ảnh chụp.',
         unavailableStatus: 'Chưa khả dụng',
@@ -550,7 +631,7 @@ function copy(language: AppLanguage) {
         orderAmountLabel: 'Payment order amount',
         pausedBody: 'Bank transfer is currently paused. The existing order is retained for reconciliation. Do not pay using an old QR code or instructions.',
         pausedTitle: 'Payment is paused',
-        preparingBody: 'Kael is reading the payment order from the server again. Do not transfer until the QR and transfer content appear.',
+        preparingBody: 'Do not transfer yet. The QR and transfer details appear when ready.',
         preparingStatus: 'Preparing',
         preparingTitle: 'Preparing payment',
         qrLabel: 'Payment QR for this work',
@@ -566,12 +647,12 @@ function copy(language: AppLanguage) {
         refreshUnchanged: 'Checked again. There is no new confirmation from Admin yet.',
         refreshingLabel: 'Refreshing',
         responseDeadlineLabel: 'Response time remaining',
-        reviewBody: 'Your review will be saved to this work.',
+        reviewBody: 'Tap a star to rate. Your review is saved to this work.',
         reviewTitle: 'Review the work',
         savingLabel: 'Saving confirmation',
-        stepOne: '1. Open your banking app and scan the QR code.',
-        stepTwo: '2. Check the amount and transfer content before confirming in your bank.',
-        stepThree: '3. Return here and claim the transfer so an admin can reconcile it.',
+        stepOne: '1. Scan the QR code in your banking app.',
+        stepTwo: '2. Check the amount and content before sending.',
+        stepThree: '3. Come back and tap “I made the transfer”.',
         transferLabel: 'Transfer content',
         unavailableBody: 'No configured payment method is available for this work. Kael never confirms a transaction from a statement or screenshot.',
         unavailableStatus: 'Unavailable',
@@ -582,29 +663,37 @@ function copy(language: AppLanguage) {
 }
 
 const styles = StyleSheet.create({
-  accountRows: { gap: 12 },
+  accountRows: { gap: 10 },
   actionStack: { gap: 10 },
   amount: { ...typography.title2, fontWeight: '600', fontVariant: ['tabular-nums'] },
-  body: { ...typography.subheadline },
+  body: { ...typography.body },
   detailGroup: { gap: 4 },
   detailValue: { ...typography.callout, fontWeight: '600', fontVariant: ['tabular-nums'] },
   directCopy: { gap: 4 },
   directWarning: { borderRadius: 18, borderWidth: StyleSheet.hairlineWidth, gap: 12, paddingHorizontal: 16, paddingVertical: 16 },
-  header: { gap: 4 },
-  heading: { ...typography.title3, fontWeight: '600' },
+  glyph: { height: GLYPH_SIZE, width: GLYPH_SIZE },
+  glyphHand: { height: GLYPH_SIZE, left: 0, position: 'absolute', top: 0, width: GLYPH_SIZE },
+  header: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  headerCopy: { flex: 1, gap: 2 },
+  heading: { ...typography.headline, fontWeight: '600' },
   instruction: { ...typography.subheadline },
   instructions: { borderTopWidth: StyleSheet.hairlineWidth, gap: 7, paddingTop: 16 },
   label: { ...typography.footnote, fontWeight: '600' },
+  line: { alignItems: 'baseline', columnGap: 12, flexDirection: 'row', justifyContent: 'space-between' },
+  lineDetail: { ...typography.footnote, textAlign: 'right' },
+  lineGroup: { gap: 2 },
+  lineLabel: { ...typography.footnote, flexShrink: 0 },
+  lineValue: { ...typography.subheadline, flexShrink: 1, fontVariant: ['tabular-nums'], fontWeight: '600', textAlign: 'right' },
   messageTitle: { ...typography.callout, fontWeight: '600' },
   note: { ...typography.subheadline },
   qr: { height: '100%', width: '100%' },
-  qrFrame: { alignSelf: 'center', alignItems: 'center', aspectRatio: 1, backgroundColor: '#ffffff', borderColor: '#d8ece8', borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center', maxWidth: QR_BOX_SIZE, padding: 10, width: '100%' },
-  refreshFeedback: { color: '#4f6f70', fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  qrFrame: { alignSelf: 'flex-start', alignItems: 'center', aspectRatio: 1, backgroundColor: '#ffffff', borderColor: '#d8ece8', borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, justifyContent: 'center', maxWidth: QR_BOX_SIZE, padding: 10, width: '100%' },
+  refreshFeedback: { ...typography.footnote, color: '#4f6f70', textAlign: 'center' },
   refreshGroup: { gap: 8 },
-  reviewHeading: { ...typography.title3, fontWeight: '600' },
+  reviewHeading: { ...typography.headline, fontWeight: '600' },
   reviewSection: { borderTopWidth: StyleSheet.hairlineWidth, gap: 12, paddingTop: 18 },
   status: { ...typography.subheadline, fontWeight: '600' },
-  surface: { alignSelf: 'center', borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, maxWidth: 608, overflow: 'hidden', width: '100%' },
-  surfaceContent: { gap: 18, padding: 20, zIndex: 1 },
+  row: { ...CASE_WORK_ROW_STYLE },
+  surface: { borderLeftWidth: 2, gap: 18, marginLeft: CASE_WORK_CONTENT_INSET, maxWidth: 608, paddingLeft: CASE_WORK_RAIL_PADDING },
   transferContent: { ...typography.callout, fontWeight: '600', fontVariant: ['tabular-nums'] },
 })

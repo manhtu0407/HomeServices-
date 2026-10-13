@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Ask Sonner"
+  short_description: "Guide use of the Sonner React toast library."
+  default_prompt: "Use $emil-ask-sonner when an explicitly web-targeted task uses or debugs Sonner."

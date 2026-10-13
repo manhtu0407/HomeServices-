@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Animate"
+  short_description: "Create web motion for purposeful interactions."
+  default_prompt: "Use $emil-animate when an explicitly assigned web surface needs a purposeful animation or transition."

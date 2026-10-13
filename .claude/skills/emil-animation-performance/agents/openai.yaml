@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Animation Performance"
+  short_description: "Diagnose web animation frame-budget problems."
+  default_prompt: "Use $emil-animation-performance when an explicitly web-targeted animation is janky or needs performance review."

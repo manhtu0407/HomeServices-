@@ -166,7 +166,10 @@ export function jobDetailToSnapshot(data: JobDetailResponse, includeWorkerBrief 
     fieldEvidencePhotoUrls,
     completionPhotoUrls,
     completionNotes: job.completion_notes,
+    kaelProblem: job.kael_problem_identified,
     workerProfile: workerProfileSummaryFromApi(data.worker),
+    workerTravel: workerTravelFromJobDetail(data),
+    completionNudge: completionNudgeFromJobDetail(data),
     scheduledAt: job.scheduled_at,
     createdAt: job.created_at,
     matchedAt: job.matched_at,
@@ -401,6 +404,8 @@ export function dealToSnapshot(deal: NonNullable<LocalWorkflowState['deal']>): L
     completionPhotoUrls: deal.completionPhotoUrls ?? [],
     completionNotes: deal.completionNotes ?? null,
     workerProfile: deal.workerProfile ?? null,
+    workerTravel: deal.workerTravel ?? null,
+    completionNudge: deal.completionNudge ?? null,
     scheduledAt: deal.scheduledAt ?? null,
     createdAt: deal.createdAt ?? null,
     matchedAt: deal.matchedAt ?? null,
@@ -435,6 +440,32 @@ function scopeReviewFromJobDetail(data: JobDetailResponse): LocalRemoteJobSnapsh
   }
 }
 
+function completionNudgeFromJobDetail(data: JobDetailResponse): LocalRemoteJobSnapshot['completionNudge'] {
+  const nudge = data.completion_nudge
+  if (!nudge) return null
+  return {
+    canNudge: nudge.can_nudge,
+    reason: nudge.reason,
+    used: nudge.used,
+    maxAllowed: nudge.max_allowed,
+    lastNudgedAt: nudge.last_nudged_at,
+    nextAvailableAt: nudge.next_available_at,
+  }
+}
+
+function workerTravelFromJobDetail(data: JobDetailResponse): LocalRemoteJobSnapshot['workerTravel'] {
+  const travel = data.worker_travel
+  if (!travel) return null
+  return {
+    updatedAt: travel.updated_at,
+    route: travel.route,
+    position: travel.position,
+    totalMeters: travel.total_meters,
+    remainingMeters: travel.remaining_meters,
+    remainingSeconds: travel.remaining_seconds,
+  }
+}
+
 function workerProfileSummaryFromApi(
   worker: ConfirmSearchResponse['worker'] | JobDetailResponse['worker'] | null | undefined,
 ): LocalRemoteJobSnapshot['workerProfile'] {
@@ -447,6 +478,9 @@ function workerProfileSummaryFromApi(
     rating: worker.rating,
     reviewCount: worker.review_count ?? null,
     totalJobs: worker.total_jobs,
+    birthYear: 'birth_year' in worker ? worker.birth_year ?? null : null,
+    gender: 'gender' in worker ? worker.gender ?? null : null,
+    yearsExperience: 'years_experience' in worker ? worker.years_experience ?? null : null,
   }
 }
 

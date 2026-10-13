@@ -1,6 +1,7 @@
 import type React from 'react'
 import type { ImageSourcePropType } from 'react-native'
 import type { StageFiveLanguage } from './stage-five-copy'
+import type { CustomerNudgeNotice } from './customer-nudge-notice'
 
 export type StageFiveJobStatus = 'worker_candidate_pending' | 'worker_matched' | 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'scope_change_pending' | 'completed_by_worker' | 'completed' | 'closed' | 'cancelled'
 export type TaskPhase = 'prepare' | 'working' | 'inspect' | 'finish' | 'handover'
@@ -57,6 +58,8 @@ export interface WorkModel {
   /** The host's current workflow step; null keeps the completion copy. */
   primaryLabel: string | null
   primaryEnabled: boolean
+  /** Set only when the customer really asked Kael to remind the worker to report the job done. */
+  customerNudge?: CustomerNudgeNotice | null
   /** Host-owned failure from the last primary step, shown in the error slot. */
   notice?: string | null
   demo?: boolean

@@ -32,6 +32,7 @@ import { buildWorkerV5WorkBoardItems } from './work-board'
 import { type PendingClientRequestRef } from '@/lib/client-request-id'
 import type { useFrontendWorkflow } from '@/lib/frontend-workflow-provider'
 import { WorkerV5RouteMapStage } from './route-map-surfaces'
+import { customerNudgeNotice } from './stage-five/travel-work/customer-nudge-notice'
 import { StageFiveWork } from './stage-five/travel-work/stage-five-work'
 import type { Actions as StageFiveActions, StageFiveJobStatus, WorkModel as StageFiveWorkModel } from './stage-five/travel-work/stage-five.types'
 import { workerV5ArrivalDestinationLabel } from '../ui/route'
@@ -589,6 +590,7 @@ export function WorkerV5InProgressBody({
       evidenceCount,
       primaryLabel: stageFivePrimary?.label ?? null,
       primaryEnabled: Boolean(stageFivePrimary?.enabled),
+      customerNudge: customerNudgeNotice(deal?.completionNudge, stageFiveStatus, formatStageFiveTime(deal?.completionNudge?.lastNudgedAt), language),
       // Once checked in, the notice is the success receipt and the waiting label already says it.
       notice: (phaseAction?.testID === 'worker-v5-arrival-check-in-action' ? visiblePhaseActionNotice : null) ?? fieldEvidenceState.confirmation,
     }

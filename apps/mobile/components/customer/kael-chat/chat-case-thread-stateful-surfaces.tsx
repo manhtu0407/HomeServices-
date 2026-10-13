@@ -1,6 +1,6 @@
 import { typography } from '@/design/theme'
 import { useState, type ReactNode } from 'react'
-import { StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native'
 
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import type { AppLanguage } from '@/lib/app-language'
@@ -15,7 +15,13 @@ import {
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import { canCustomerDecideScopeChange, scopeChangeApproveLabel } from './case-work-display-model'
-import { CaseWorkResponse } from './case-work-response'
+import {
+  CASE_WORK_CONTENT_INSET,
+  CASE_WORK_RAIL_PADDING,
+  CASE_WORK_ROW_STYLE,
+  CaseWorkResponse,
+  caseWorkAccentLine,
+} from './case-work-response'
 import {
   buildCaseWorkResponseModel,
   buildCompletedCaseWorkResponseModels,
@@ -23,9 +29,15 @@ import {
 } from './case-work-response-model'
 import { CustomerPaymentRailSurface } from './customer-payment-rail-surface'
 import { FindingWorkersReceipt } from './finding-workers-receipt'
+import { kaelActionPrimaryStyle } from './kael-next-action-chips'
+import { MatchedJobSummary } from './matched-job-summary'
+import { CompletionNudgeControls } from './completion-nudge-controls'
+import { CustomerWorkerTravelMap } from './customer-worker-travel-map'
+import { WorkProgressDetails } from './work-progress-details'
+import { WorkerIdentitySummary } from './worker-identity-summary'
 import { ScopeChangeReviewingDetails } from './scope-change-reviewing-details'
 import { ScopeChangeProposalDetails } from './scope-change-proposal-details'
-import { ApartmentAccessControls } from './apartment-access-controls'
+import { ApartmentAccessControls, ApartmentAccessDetails } from './apartment-access-controls'
 import { isWorkerAtWorkStatus, WorkerReportButton } from '../report/worker-report-entry'
 
 type PaymentBusyAction =
@@ -52,6 +64,7 @@ export function AgenticCaseThreadPanel({
   onClaimManualBankPayment,
   onChooseMatchingPreference,
   onLoadSavedWorkers,
+  onNudgeCompletion,
   onRefreshPayment,
   onApproveScopeChange,
   onApproveQuote,
@@ -88,6 +101,7 @@ export function AgenticCaseThreadPanel({
   onClaimManualBankPayment: () => Promise<boolean>
   onChooseMatchingPreference: (input: Omit<JobMatchingPreferenceInput, 'client_request_id'>) => Promise<boolean>
   onLoadSavedWorkers: () => Promise<FavoriteWorkerForMatching[] | null>
+  onNudgeCompletion: () => Promise<boolean>
   onRefreshPayment: () => Promise<boolean>
   onApproveScopeChange: (id: string) => void
   onApproveQuote: () => void
@@ -170,6 +184,49 @@ export function AgenticCaseThreadPanel({
       tokens={tokens}
     />
   ) : null
+  const workerProfile = deal.workerProfile
+  const matchedWorkerDetails = phase === 'worker_matched' && workerProfile ? (
+    <>
+    <WorkerIdentitySummary
+      identity={{
+        avatarUrl: workerProfile.avatarUrl,
+        birthYear: workerProfile.birthYear,
+        displayName: workerProfile.fullName,
+        gender: workerProfile.gender,
+        rating: workerProfile.rating,
+        totalJobs: workerProfile.totalJobs,
+        yearsExperience: workerProfile.yearsExperience,
+      }}
+      language={language}
+      testIDPrefix="customer-v21-worker-matched"
+      tokens={tokens}
+    />
+    <MatchedJobSummary deal={deal} language={language} tokens={tokens} />
+    </>
+  ) : null
+  const workerTravelMap = phase === 'worker_on_way' && deal.workerTravel ? (
+    <CustomerWorkerTravelMap
+      destinationLabel={language === 'vi' ? 'Nhà bạn' : 'Your place'}
+      language={language}
+      reduceMotion={reduceMotion}
+      tokens={tokens}
+      travel={deal.workerTravel}
+      workerName={workerProfile?.fullName ?? null}
+    />
+  ) : null
+  const workProgressDetails = phase === 'inspecting' || phase === 'repairing' ? (
+    <WorkProgressDetails deal={deal} language={language} phase={phase} tokens={tokens} />
+  ) : null
+  const completionNudgeControls = phase === 'repairing' && deal.completionNudge ? (
+    <CompletionNudgeControls
+      jobId={deal.id}
+      language={language}
+      nudge={deal.completionNudge}
+      onNudge={onNudgeCompletion}
+      secondaryActionStyle={styles.secondaryAction}
+      tokens={tokens}
+    />
+  ) : null
   const retrySearchActive = phase === 'matching' && !matchingReceipt && deal.broadcast?.status === 'expired'
   const scopeReviewingDetails = phase === 'scope_change_reviewing' ? (
     <ScopeChangeReviewingDetails deal={deal} language={language} tokens={tokens} />
@@ -178,10 +235,20 @@ export function AgenticCaseThreadPanel({
     <ScopeChangeProposalDetails deal={deal} language={language} tokens={tokens} />
   ) : null
   const apartmentAccessReady = model.actionKind === 'apartment_access'
+  const apartmentAccessDetails = apartmentAccessReady && workerProfile ? (
+    <ApartmentAccessDetails
+      checkedInAt={deal.broadcast?.addressAccess?.authorization_context?.expected_check_in_at ?? null}
+      language={language}
+      photoRefs={deal.broadcast?.addressAccess?.check_in_photo_refs ?? []}
+      tokens={tokens}
+      worker={workerProfile}
+    />
+  ) : null
   const activityActionLabel = phase === 'done' || phase === 'cancelled' ? activityLabel : null
   // While a worker is on the job the customer can always reach the report, next to whatever
-  // decision the current step asks for.
-  const withWorkerReport = (controls: ReactNode) => isWorkerAtWorkStatus(deal.status)
+  // decision the current step asks for. Once payment is the only thing left the thread drops it;
+  // the active-work card in history still carries it.
+  const withWorkerReport = (controls: ReactNode) => isWorkerAtWorkStatus(deal.status) && deal.status !== 'payment_pending'
     ? (
       <View style={styles.reportStack}>
         {controls}
@@ -194,25 +261,34 @@ export function AgenticCaseThreadPanel({
     <View style={styles.phaseStack} testID="customer-v21-case-work-thread">
       {phaseHistory}
       <CaseWorkResponse
-        controls={withWorkerReport(pendingScopeChange ? (
-          <View style={styles.actions}>
-            <KaelButton
-              label={language === 'vi' ? 'Từ chối' : 'Decline'}
-              onPress={() => onRejectScopeChange(pendingScopeChange.id)}
-              size="small"
-              style={styles.action}
-              testID="customer-v21-case-work-scope-reject"
-              variant="secondary"
-            />
+        controls={pendingScopeChange ? (
+          // The approve label carries the new total, so it takes the full row; the two secondary
+          // actions share the next one, the same layout as the Kael next-step chips.
+          <View style={styles.actionStack}>
             <KaelButton
               label={scopeChangeApproveLabel(pendingScopeChange, language)}
               onPress={() => onApproveScopeChange(pendingScopeChange.id)}
-              size="small"
-              style={styles.action}
+              style={kaelActionPrimaryStyle}
               testID="customer-v21-case-work-scope-approve"
             />
+            <View style={styles.secondaryRow}>
+              <KaelButton
+                label={language === 'vi' ? 'Từ chối' : 'Decline'}
+                onPress={() => onRejectScopeChange(pendingScopeChange.id)}
+                size="small"
+                style={styles.secondaryAction}
+                testID="customer-v21-case-work-scope-reject"
+                variant="secondary"
+              />
+              <WorkerReportButton
+                jobId={deal.id}
+                language={language}
+                style={styles.secondaryAction}
+                testID="customer-v21-case-work-report-worker"
+              />
+            </View>
           </View>
-        ) : quoteReviewActive ? (
+        ) : completionNudgeControls ?? withWorkerReport(quoteReviewActive ? (
           <QuoteReviewControls
             acknowledged={caseOptionsAcknowledged}
             confirming={confirmingCaseQuote}
@@ -257,8 +333,8 @@ export function AgenticCaseThreadPanel({
             variant="secondary"
           />
         ) : undefined)}
-        details={scopeReviewingDetails ?? scopeProposalDetails ?? matchingReceipt}
-        hideNoteSummary={Boolean(matchingReceipt)}
+        details={scopeReviewingDetails ?? scopeProposalDetails ?? matchingReceipt ?? matchedWorkerDetails ?? workerTravelMap ?? apartmentAccessDetails ?? workProgressDetails}
+        hideNoteSummary={Boolean(matchingReceipt ?? workerTravelMap)}
         model={model}
         reduceMotion={reduceMotion}
         tokens={tokens}
@@ -313,30 +389,34 @@ function CaseWorkPhaseHistory({
   if (models.length === 0) return null
 
   return (
-    <View
-      style={[styles.phaseHistory, { borderLeftColor: tokens.primary }]}
-      testID="customer-v21-case-work-phase-history"
-    >
-      <Text accessibilityRole="header" style={[styles.phaseHistoryHeading, { color: tokens.text }]}>
-        {language === 'vi' ? 'Các bước đã hoàn tất' : 'Completed steps'}
-      </Text>
-      <View style={styles.phaseHistoryEntries}>
-        {models.map((model) => (
-          <View
-            accessible
-            accessibilityLabel={`${model.title}. ${model.status}`}
-            key={model.phase}
-            style={styles.phaseHistoryEntry}
-            testID={`customer-v21-case-work-history-${model.phase}`}
-          >
-            <Text style={[styles.phaseHistoryEntryTitle, { color: tokens.text }]}>{model.title}</Text>
-            <Text style={[styles.phaseHistoryEntryStatus, { color: tokens.muted }]}>{model.status}</Text>
-          </View>
-        ))}
+    <View style={styles.phaseHistoryRow} testID="customer-v21-case-work-phase-history">
+      <View style={[styles.phaseHistory, { borderLeftColor: caseWorkAccentLine(tokens) }]}>
+        <Text accessibilityRole="header" style={[styles.phaseHistoryHeading, { color: tokens.primary }]}>
+          {language === 'vi' ? 'Các bước đã hoàn tất' : 'Completed steps'}
+        </Text>
+        <View style={styles.phaseHistoryEntries}>
+          {models.map((model) => (
+            <View
+              accessible
+              accessibilityLabel={`${model.title}. ${model.status}`}
+              key={model.phase}
+              style={styles.phaseHistoryEntry}
+              testID={`customer-v21-case-work-history-${model.phase}`}
+            >
+              <Text style={[styles.phaseHistoryEntryTitle, { color: tokens.text }]}>{model.title}</Text>
+              <Text style={[styles.phaseHistoryEntryStatus, { color: tokens.muted }]}>{model.status}</Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   )
 }
+
+const REVIEW_LABELS = {
+  vi: ['Chưa hài lòng 😞', 'Tạm được 🙁', 'Ổn 🙂', 'Tốt 😊', 'Rất tốt 🤩'],
+  en: ['Not satisfied 😞', 'Fair 🙁', 'Okay 🙂', 'Good 😊', 'Excellent 🤩'],
+} as const
 
 function CustomerReviewControls({
   language,
@@ -354,24 +434,29 @@ function CustomerReviewControls({
   const [submitting, setSubmitting] = useState(false)
   return (
     <View style={styles.review} testID="customer-v21-case-review-controls">
-      <View style={styles.ratingActions}>
+      <View accessibilityRole="radiogroup" style={styles.ratingActions}>
         {[1, 2, 3, 4, 5].map((value) => (
-          <KaelButton
+          <Pressable
+            accessibilityLabel={language === 'vi' ? `${value} sao` : `${value} ${value === 1 ? 'star' : 'stars'}`}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: rating === value }}
             key={value}
-            label={`${value} ★`}
             onPress={() => setRating(value)}
-            size="small"
             style={styles.ratingAction}
             testID={`customer-v21-case-review-rating-${value}`}
-            variant={rating === value ? 'primary' : 'secondary'}
-          />
+          >
+            <Text style={[styles.ratingStar, { color: value <= rating ? tokens.primary : tokens.subtleText }]}>★</Text>
+          </Pressable>
         ))}
       </View>
+      <Text accessibilityLiveRegion="polite" style={[styles.ratingLabel, { color: rating ? tokens.text : tokens.muted }]}>
+        {rating ? REVIEW_LABELS[language][rating - 1] : (language === 'vi' ? 'Chưa chọn số sao' : 'No rating yet')}
+      </Text>
       <KaelTextField
         onChangeText={setComment}
         placeholder={language === 'vi' ? 'Chia sẻ ngắn về chất lượng công việc' : 'Share a short note about the work'}
         placeholderTextColor={tokens.subtleText}
-        style={[textInputStyle, { color: tokens.text }]}
+        style={[textInputStyle, styles.fieldInput, { color: tokens.text }]}
         testID="customer-v21-case-review-comment"
         value={comment}
       />
@@ -388,7 +473,7 @@ function CustomerReviewControls({
           void onSubmit({ rating, tags: [], ...(trimmed ? { comment: trimmed } : {}) })
             .finally(() => setSubmitting(false))
         }}
-        size="small"
+        style={kaelActionPrimaryStyle}
         testID="customer-v21-case-review-submit"
       />
     </View>
@@ -444,7 +529,7 @@ function QuoteReviewControls({
             onChangeText={onReasonChange}
             placeholder={language === 'vi' ? 'Điều bạn muốn Kael điều chỉnh' : 'What should Kael adjust?'}
             placeholderTextColor={tokens.subtleText}
-            style={[textInputStyle, { color: tokens.text }]}
+            style={[textInputStyle, styles.fieldInput, { color: tokens.text }]}
             testID="customer-v21-case-quote-reject-input"
             value={rejectReason}
           />
@@ -493,18 +578,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
+  actionStack: {
+    alignSelf: 'stretch',
+    gap: 12,
+  },
+  secondaryAction: {
+    flexBasis: '48%',
+    flexGrow: 0,
+    flexShrink: 0,
+    minHeight: 44,
+    paddingHorizontal: 12,
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 10,
+  },
   reportStack: {
     alignItems: 'flex-start',
     gap: 10,
   },
   phaseHistory: {
-    alignSelf: 'center',
     borderLeftWidth: 2,
     gap: 10,
+    marginLeft: CASE_WORK_CONTENT_INSET,
     maxWidth: 608,
-    paddingLeft: 18,
-    width: '100%',
+    paddingLeft: CASE_WORK_RAIL_PADDING,
   },
+  phaseHistoryRow: { ...CASE_WORK_ROW_STYLE },
   phaseHistoryEntries: {
     gap: 10,
   },
@@ -519,20 +621,37 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   phaseHistoryHeading: {
-    ...typography.callout,
+    ...typography.subheadline,
     fontWeight: '600',
   },
   phaseStack: {
     gap: 18,
     width: '100%',
   },
+  // The composer's input style top-aligns text and pads it 13pt to sit beside icons; inside a bordered
+  // single-line field that same padding pushes the placeholder off center, so the field re-centers it.
+  fieldInput: {
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+  },
   ratingAction: {
+    alignItems: 'center',
     flex: 1,
-    minWidth: 44,
+    justifyContent: 'center',
+    minHeight: 48,
   },
   ratingActions: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 4,
+  },
+  ratingLabel: {
+    ...typography.subheadline,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  ratingStar: {
+    fontSize: 36,
+    lineHeight: 44,
   },
   reason: {
     gap: 10,

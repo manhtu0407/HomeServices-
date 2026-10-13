@@ -23,6 +23,7 @@ const mockWorkerKaelChatService = {
 const mockWorkerRouteService = {
   getMapImage: jest.fn(),
   getPreview: jest.fn(),
+  reportTravelPosition: jest.fn(),
 }
 const mockGetMobileApiAuthHeaders = jest.fn()
 
@@ -100,6 +101,7 @@ jest.mock('@/lib/services', () => ({
   workerRouteService: {
     getMapImage: (...args: unknown[]) => mockWorkerRouteService.getMapImage(...args),
     getPreview: (...args: unknown[]) => mockWorkerRouteService.getPreview(...args),
+    reportTravelPosition: (...args: unknown[]) => mockWorkerRouteService.reportTravelPosition(...args),
   },
   workerKaelChatService: {
     create: (...args: unknown[]) => mockWorkerKaelChatService.create(...args),
@@ -334,6 +336,10 @@ describe('Worker V5 arrival check-in', () => {
       data: { distance_meters: 3200, duration_seconds: 720 },
       success: true,
     })
+    mockWorkerRouteService.reportTravelPosition.mockResolvedValue({
+      data: { distance_meters: 3200, duration_seconds: 720 },
+      success: true,
+    })
     mockGetMobileApiAuthHeaders.mockReset()
     mockGetMobileApiAuthHeaders.mockResolvedValue({ Authorization: 'Bearer test', 'Content-Type': 'application/json' })
     buildWorkflow(buildOnWayDeal())
@@ -382,11 +388,12 @@ describe('Worker V5 arrival check-in', () => {
     render(<WorkerJobsSurface />)
 
     await waitFor(() => {
-      expect(mockWorkerRouteService.getPreview).toHaveBeenCalledWith('job_test_1', {
+      expect(mockWorkerRouteService.reportTravelPosition).toHaveBeenCalledWith('job_test_1', {
         latitude: 10.7692,
         longitude: 106.6819,
       })
     }, { timeout: 5_000 })
+    expect(mockWorkerRouteService.getPreview).not.toHaveBeenCalled()
 
     await waitFor(() => {
       expect(screen.getByTestId('worker-v5-route-map-live-image')).toBeOnTheScreen()

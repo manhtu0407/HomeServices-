@@ -58,7 +58,7 @@ Each hub routes onward to its own spokes on demand. If two docs conflict, stop a
 
 ### Tier 3 - skills
 
-Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 35 total. Choose a skill only after Tier 2 has told you the task class.
+Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 51 total. Choose a skill only after Tier 2 has told you the task class.
 
 **Everyday (24).** Two always-on classes, then the rest.
 
@@ -75,19 +75,24 @@ kael-docker  source-command-kael-mem  kael-work-router
 kael-backend-structure  kael-backend-parity  kael-ship
 ```
 
-**Design (11).** One entry point: `kael-design-preflight` loads `governance/design/runtime.md` and binds the token/runtime contract. Never open a design skill without it.
+**Design (27).** One entry point: `kael-design-preflight` loads `governance/design/runtime.md` and binds the token/runtime contract. Never open a design skill without it.
 
 ```text
 kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-design-evidence
    kael-design-review  kael-design-tokens  kael-material-direction  kael-motion
    kael-adaptive-layout  kael-accessible-content  kael-visual-qa
+   emil-animate emil-animate-expo emil-review-animations emil-improve-animations
+   emil-find-animation-opportunities emil-animation-performance emil-animation-vocabulary
+   emil-apple-design emil-write-swift emil-pick-ui-library emil-prototype
+   emil-mobile-native emil-break-ui emil-ask-sonner emil-design-eng
+   kael-dynamic-notifications
 ```
 
 **Readiness.** Every skill declares in `config/harness/manifest.json` what it needs, and `pnpm skills:contracts` fails when the skill body disagrees with that declaration. Readiness selects which **lane** a skill runs in — it is not an on/off switch, and no skill answers a matching task with nothing.
 
 | Class | Count | What it means for you |
 |---|---|---|
-| `autonomous` | 32 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `autonomous` | 48 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
 | `gated` | 3 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
 
 A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).

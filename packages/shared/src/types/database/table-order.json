@@ -67,6 +67,7 @@
   "job_refund_obligations",
   "job_rfq_price_proposals",
   "job_worker_candidates",
+  "job_worker_positions",
   "jobs",
   "kael_ab_experiments",
   "kael_ab_price_synthesis_cases",

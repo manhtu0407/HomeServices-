@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Design Eng"
+  short_description: "Apply Emil Kowalski design-engineering principles to scoped…"
+  default_prompt: "Use $emil-design-eng when a scoped design review or polish pass needs Emil's design-engineering principles."

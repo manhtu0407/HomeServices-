@@ -25,6 +25,7 @@ export type {
   KaelPriceReasoningReceipt,
 } from './price-evidence-responses'
 export type AddressAccessView = {
+  check_in_photo_refs?: string[]
   release_stage: 'area_only' | 'building_released' | 'unit_released'
   exact_unit_released: boolean
   worker_checked_in: boolean
@@ -370,6 +371,8 @@ export type JobDetailResponse = {
     paid_at: string | null
     reviewed_at: string | null
   }
+  completion_nudge?: CompletionNudgeState | null
+  worker_travel?: JobWorkerTravel | null
   worker: {
     avatar_url: string | null
     display_code?: string | null
@@ -378,6 +381,9 @@ export type JobDetailResponse = {
     rating: number
     review_count?: number | null
     total_jobs: number
+    birth_year?: number | null
+    gender?: 'male' | 'female' | 'other' | null
+    years_experience?: number | null
   } | null
   broadcast_state: {
     active_count: number
@@ -432,6 +438,29 @@ export type JobMessageListResponse = {
 
 export type JobMessageSendResponse = {
   message: JobMessageResponse
+}
+
+export type CompletionNudgeState = {
+  can_nudge: boolean
+  reason: 'COOLDOWN' | 'INVALID_STATUS' | 'JOB_NOT_FOUND' | 'LIMIT_REACHED' | 'TOO_EARLY' | 'WORK_PAUSED' | null
+  used: number
+  max_allowed: number
+  last_nudged_at: string | null
+  next_available_at: string | null
+}
+
+export type JobWorkerTravel = {
+  updated_at: string
+  route: [number, number][]
+  position: [number, number]
+  total_meters: number
+  remaining_meters: number
+  remaining_seconds: number
+}
+
+export type CompletionNudgeResponse = CompletionNudgeState & {
+  job_id: string
+  nudged: true
 }
 
 export type ConfirmCompletionResponse = WorkflowResponses['confirmCompletion']

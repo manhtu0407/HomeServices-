@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Review Animations"
+  short_description: "Review motion craft for the target runtime."
+  default_prompt: "Use $emil-review-animations when an assigned motion implementation needs a focused critique."

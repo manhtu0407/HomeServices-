@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-13** Design agent assets — pinned Emil skills + Expo Dynamic Notifications snapshots, 15 Emil skills and one Kael adapter, routing and sandbox gates pass; native and fresh-session smoke checks UNVERIFIED.
 - **2026-10-12** Kael flexible harness §60 — intent router + next-step chips (Work/Chat/Worker) + rfq exit from price gap, P362–P375; Preview mock `kael-flex-mock` found the missing rfq confirm button (D10: button in existing review card); NOT deployed.
 - **2026-10-12** Booking address autocomplete speed + empty-district 400 — `??` vs `""` from extractKnownDistrictLabel sent address_district "" (Edge VALIDATION); Edge autocomplete now cache/hedge/permit-reuse/normalize/rank (P360), app hook cache/abort/session token/carry-over (P361); UNCOMMITTED, Edge NOT deployed.
 - **2026-10-12** Production DB stall (Free plan) — cron 13/24/25 to */30, Realtime publication cut to 4 tables, harness_events parent index + 8,657-run prune, trace.ts console echo trimmed (P359, migration 20261012100000, UNCOMMITTED); out-of-band drift from repo; Free-plan compute still the limit.

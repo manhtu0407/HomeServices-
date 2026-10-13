@@ -48,7 +48,7 @@ describe(`${PILLAR.id}`, () => {
         tokens={getCustomerThemeTokens('light')}
       />,
     )
-    expect(screen.getByText('Báo giá cần rà soát')).toBeOnTheScreen()
+    expect(screen.getByText('Yêu cầu báo giá sẵn sàng')).toBeOnTheScreen()
     expect(screen.getByText(/Chưa có giá ở bước này/)).toBeOnTheScreen()
     fireEvent.press(screen.getByTestId('customer-v21-quote-review-send-request'))
     expect(onSend).toHaveBeenCalledTimes(1)

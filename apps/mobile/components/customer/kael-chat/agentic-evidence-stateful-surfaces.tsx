@@ -86,8 +86,8 @@ export function AgenticEvidenceGateView({
       ? (language === 'vi' ? 'Có thể bổ sung' : 'Optional evidence')
       : (language === 'vi' ? 'Cần bổ sung' : 'Evidence required'),
     title: allowSkip
-      ? (language === 'vi' ? 'Bổ sung hiện trạng nếu thuận tiện' : 'Add current evidence if convenient')
-      : (language === 'vi' ? 'Kael cần hiện trạng trước' : 'Kael needs current evidence first'),
+      ? (language === 'vi' ? 'Thêm hiện trạng nếu có' : 'Add evidence if you can')
+      : (language === 'vi' ? 'Kael cần hiện trạng trước' : 'Kael needs evidence first'),
   }
 
   return (
@@ -164,9 +164,11 @@ export function AgenticEvidenceGateView({
                 {language === 'vi' ? 'Thêm ảnh hoặc video' : 'Add media'}
               </Text>
             </Pressable>
-            <Text style={[styles.fileCount, { color: tokens.muted }]} testID="customer-v21-agentic-evidence-file-count">
-              {fileValue}
-            </Text>
+            <View style={styles.fileCountCell}>
+              <Text style={[styles.fileCount, { color: tokens.text }]} testID="customer-v21-agentic-evidence-file-count">
+                {fileValue}
+              </Text>
+            </View>
           </View>
           {voiceTranscriptNode}
           {voiceError ? <Text style={[styles.error, { color: tokens.primary }]}>{voiceError}</Text> : null}
@@ -206,9 +208,10 @@ const styles = StyleSheet.create({
   disclosureLabel: { ...typography.caption1, fontWeight: '600', minWidth: 68 },
   error: { ...typography.caption1 },
   fileCount: { ...typography.footnote, fontWeight: '600' },
+  fileCountCell: { alignItems: 'center', justifyContent: 'center', minWidth: 32 },
   reason: { gap: 10 },
   reasonInput: { flex: 1, ...typography.subheadline, minHeight: 44 },
-  toolButton: { alignItems: 'center', borderBottomWidth: 1, flexDirection: 'row', gap: 9, minHeight: 42 },
+  toolButton: { alignItems: 'center', borderBottomWidth: 1, flex: 1, flexDirection: 'row', gap: 9, minHeight: 42 },
   toolRow: { alignItems: 'center', flexDirection: 'row', gap: 16 },
   toolText: { flex: 1, ...typography.subheadline, fontWeight: '600' },
 })

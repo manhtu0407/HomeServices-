@@ -129,6 +129,7 @@ type FrontendWorkflowActions = {
   workerSaveRegistrationDraft: (input: WorkerRegistrationDraftInput) => Promise<boolean>
   decideScopeChange: (scopeChangeId: string, input: CustomerScopeDecisionInput) => Promise<boolean>
   customerConfirmCompletion: () => Promise<boolean>
+  customerNudgeCompletion: () => Promise<boolean>
   createManualBankPaymentOrder: () => Promise<boolean>
   claimManualBankPayment: (sendingBank?: string) => Promise<boolean>
   authorizeApartmentAccess: () => Promise<boolean>
@@ -385,6 +386,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     claimManualBankPayment,
     createManualBankPaymentOrder,
     customerConfirmCompletion,
+    customerNudgeCompletion,
     submitReview,
   } = useCompletionPaymentActions({
     dispatch,
@@ -419,6 +421,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
       workerReconcileRegistration,
     decideScopeChange,
     customerConfirmCompletion,
+    customerNudgeCompletion,
     createManualBankPaymentOrder,
     claimManualBankPayment,
     authorizeApartmentAccess,
@@ -447,6 +450,7 @@ function useFrontendWorkflowValue(): FrontendWorkflowContextValue {
     createRemoteJobFromDraft,
     listFavoriteWorkersForMatching,
     customerConfirmCompletion,
+    customerNudgeCompletion,
     createManualBankPaymentOrder,
     claimManualBankPayment,
     decideScopeChange,

@@ -31,6 +31,11 @@ const EYELID_TOP_REFERENCE_SIZE = 27
 const EYELID_WIDTH_REFERENCE_SIZE = 14
 const EYELID_HEIGHT_REFERENCE_SIZE = 8
 
+const clampArtworkSize = (size: number) => Math.max(18, Math.min(220, size))
+
+// The box the mascot occupies in layout, which is larger than its artwork `size`.
+export const mascotStageSize = (size: number) => clampArtworkSize(size) * (STAGE_REFERENCE_SIZE / ARTWORK_REFERENCE_SIZE)
+
 export function KaelChatMascot({
   accessibilityLabel,
   motion = 'live',
@@ -42,8 +47,8 @@ export function KaelChatMascot({
   const blinkProgress = useSharedValue(0)
   const bowProgress = useSharedValue(0)
   const live = motion === 'live' && !reduceMotion && appActive
-  const artworkSize = Math.max(18, Math.min(220, size))
-  const stageSize = artworkSize * (STAGE_REFERENCE_SIZE / ARTWORK_REFERENCE_SIZE)
+  const artworkSize = clampArtworkSize(size)
+  const stageSize = mascotStageSize(artworkSize)
   const neckCut = artworkSize * (HEAD_CUT_REFERENCE_SIZE / ARTWORK_REFERENCE_SIZE)
   const headLayerSize = artworkSize * (HEAD_LAYER_REFERENCE_SIZE / ARTWORK_REFERENCE_SIZE)
   const motionScale = Math.max(0.72, Math.min(1.2, artworkSize / 116))

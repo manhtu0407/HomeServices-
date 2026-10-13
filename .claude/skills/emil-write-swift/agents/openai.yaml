@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Write Swift"
+  short_description: "Write or review Swift for explicitly assigned Apple-platform…"
+  default_prompt: "Use $emil-write-swift only when the user explicitly assigns Swift or SwiftUI work."
