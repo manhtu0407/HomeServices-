@@ -26,6 +26,7 @@ let mockAppLanguage = 'vi'
 let mockFocusCallback: (() => void | (() => void)) | null
 const mockWorkerKaelChatModes = new Map<string, 'normal' | 'intake'>()
 const mockReplace = jest.fn()
+const mockSetParams = jest.fn()
 const mockUseJobChatThread = jest.fn()
 const mockPlacesAutocomplete = jest.fn()
 const mockGetMyWorkerMemory = jest.fn()
@@ -87,7 +88,7 @@ jest.mock('expo-router', () => ({
   },
   useLocalSearchParams: () => mockRouteParams,
   usePathname: () => mockPathname,
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, setParams: mockSetParams }),
 }))
 
 jest.mock('react-native-safe-area-context', () => {
@@ -651,6 +652,7 @@ beforeEach(async () => {
   mockUpdatePassword.mockReset()
   mockUpdatePassword.mockResolvedValue({ success: true })
   mockReplace.mockClear()
+  mockSetParams.mockClear()
   mockUseJobChatThread.mockClear()
   mockUseJobChatThread.mockReturnValue({
     error: null,
@@ -1887,11 +1889,12 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-kael-mode-menu-intake'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake')
+      expect(mockSetParams).toHaveBeenCalledWith({ ns_worker_screen: '3.2-kael-job-intake' })
     })
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('keeps the Worker visual-audit role while switching Kael modes in Preview', async () => {
+  it('switches Kael modes in place so the Worker visual-audit role and other route params stay untouched', async () => {
     buildWorkflow()
     mockRouteParams = {
       ns_audit_role: 'worker',
@@ -1903,10 +1906,9 @@ describe('Worker runtime surface wiring', () => {
     fireEvent.press(screen.getByTestId('worker-v5-kael-mode-menu-intake'))
 
     await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith(
-        '/(worker)/chat?ns_worker_screen=3.2-kael-job-intake&ns_audit_role=worker',
-      )
+      expect(mockSetParams).toHaveBeenCalledWith({ ns_worker_screen: '3.2-kael-job-intake' })
     })
+    expect(mockReplace).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -3379,7 +3381,7 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-earnings-utility-account')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-earnings-utility-commission')).toBeOnTheScreen()
     expect(screen.getByTestId('worker-v5-income-dashboard-card')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-income-dashboard-background')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-income-dashboard-background')).toBeNull()
     expect(screen.getByTestId('worker-v5-income-dashboard-orb')).toBeOnTheScreen()
     expect(screen.queryByTestId('worker-v5-income-dashboard-notifications')).toBeNull()
     expect(screen.getByTestId('worker-v5-earnings-metric-available-value')).toHaveTextContent('1.200.000đ')
@@ -4204,15 +4206,19 @@ describe('Worker runtime surface wiring', () => {
     expect(screen.getByTestId('worker-v5-skills-hero-detail')).toBeOnTheScreen()
     for (const iconFrameID of [
       'worker-v5-service-form-intro-icon-frame',
-      'worker-v5-quick-action-0-icon-frame',
-      'worker-v5-quick-action-1-icon-frame',
-      'worker-v5-quick-action-2-icon-frame',
       'worker-v5-service-area-summary-icon',
     ]) {
       const iconFrameStyle = StyleSheet.flatten(screen.getByTestId(iconFrameID).props.style)
       expect(iconFrameStyle).toMatchObject({ height: 24, width: 24 })
       expect(iconFrameStyle.backgroundColor).toBeUndefined()
       expect(iconFrameStyle.borderWidth).toBeUndefined()
+    }
+    for (const index of [0, 1, 2]) {
+      const frameStyle = StyleSheet.flatten(screen.getByTestId(`worker-v5-quick-action-${index}-icon-frame`).props.style)
+      expect(frameStyle).toMatchObject({ height: 44, width: 44 })
+      expect(frameStyle.backgroundColor).toBeUndefined()
+      expect(frameStyle.borderWidth).toBeUndefined()
+      expect(StyleSheet.flatten(screen.getByTestId(`worker-v5-quick-action-${index}-icon`).props.style)).toMatchObject({ height: 44, width: 44 })
     }
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-service-card-detail-0').props.style)).toMatchObject({
       alignItems: 'flex-start',

@@ -29,7 +29,7 @@ import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 type WorkerV5ReviewsInsights = WorkerPerformanceInsightsResponse | null | undefined
 type WorkerV5Profile = WorkerProfileResponse | null | undefined
-type WorkerProfileSectionIconName = 'badge' | 'calendar' | 'chat' | 'check' | 'document' | 'medal' | 'shield' | 'tools' | 'worker'
+type WorkerProfileSectionIconName = 'badge' | 'calendar' | 'chat' | 'check' | 'document' | 'shield' | 'tools' | 'trophy' | 'worker'
 type WorkerReliabilityIconName = 'cadence' | 'proof' | 'quality' | 'stability'
 export type WorkerReviewsIconName = 'feedback' | 'pulse'
 
@@ -62,8 +62,8 @@ function SectionGlyph({ name, testID }: { name: WorkerProfileSectionIconName; te
     case 'badge':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...glyphCommon} cx={10} cy={7.8} r={4.2} />
-          <Path {...glyphCommon} d="m7.8 11.2-1 5 3.2-1.8 3.2 1.8-1-5M8.6 8.1l1 .9 1.8-1.8" />
+          <Path {...glyphCommon} d="M10.00 2.90A2.3 2.3 0 0 1 13.32 4.28A2.3 2.3 0 0 1 14.70 7.60A2.3 2.3 0 0 1 13.32 10.92A2.3 2.3 0 0 1 10.00 12.30A2.3 2.3 0 0 1 6.68 10.92A2.3 2.3 0 0 1 5.30 7.60A2.3 2.3 0 0 1 6.68 4.28A2.3 2.3 0 0 1 10.00 2.90Z" />
+          <Path {...glyphCommon} d="M7.9 7.8l1.5 1.5 2.8-3M7.9 12.6l-.9 4.8 3-1.7 3 1.7-.9-4.8" />
         </Svg>
       )
     case 'calendar':
@@ -73,11 +73,11 @@ function SectionGlyph({ name, testID }: { name: WorkerProfileSectionIconName; te
           <Path {...glyphCommon} d="M6.5 2.8v3M13.5 2.8v3M3 8h14" />
         </Svg>
       )
-    case 'medal':
+    case 'trophy':
       return (
         <Svg height={22} testID={testID} viewBox="0 0 20 20" width={22}>
-          <Circle {...glyphCommon} cx={10} cy={7.7} r={4.1} />
-          <Path {...glyphCommon} d="m7.5 11.1-.8 5.1 3.3-1.9 3.3 1.9-.8-5.1M8.5 7.8 10 9l1.5-1.2" />
+          <Path {...glyphCommon} d="M6 3.6h8v3.4a4 4 0 0 1-8 0V3.6ZM6 5H4.3a.8.8 0 0 0-.8.8v.5A2.7 2.7 0 0 0 6.2 9M14 5h1.7a.8.8 0 0 1 .8.8v.5A2.7 2.7 0 0 1 13.8 9M10 11v3.1M7.2 16.4h5.6M8 14.1h4v2.3H8z" />
+          <Path {...glyphCommon} d="M10 5L10.47 6.25L11.81 6.31L10.76 7.15L11.12 8.44L10 7.7L8.88 8.44L9.24 7.15L8.19 6.31L9.53 6.25Z" fill={glyphCommon.stroke} strokeWidth={0.8} />
         </Svg>
       )
     case 'chat':
@@ -283,7 +283,7 @@ export function WorkerV5RankingSection({
     <View style={styles.sectionStack} testID="worker-v5-ranking-sections">
       <View style={styles.summaryCard} testID="worker-v5-ranking-hero">
         <View style={styles.summaryRow}>
-          <SummaryIconFrame icon="medal" testID="worker-v5-ranking-score-orb" />
+          <SummaryIconFrame icon="trophy" testID="worker-v5-ranking-score-orb" />
           <View style={styles.summaryCopy}>
             <RNText style={styles.summaryEyebrow}>{textByLanguage(language, 'Xếp hạng thợ', 'Worker ranking')}</RNText>
             <RNText style={styles.summaryTitle} numberOfLines={2} testID="worker-v5-ranking-title">
