@@ -1,7 +1,7 @@
 import { StyleSheet, type TextStyle } from 'react-native'
 
 import { withoutInputLineHeight } from '@/components/ui/input-text-style'
-import { color, customerTheme, glass, radius, shadow, signature, spacing, typography } from '@/design/theme'
+import { color, customerTheme, glass, kaelComposerFrame, radius, shadow, signature, spacing, typography } from '@/design/theme'
 
 export const workerV5KaelComposerWebTextInputNoOutline = {
   WebkitBoxShadow: 'none',
@@ -904,13 +904,6 @@ export const styles = StyleSheet.create({
   opportunityList: {
     gap: 8,
   },
-  opportunityInboxPageZipAura: {
-    height: 340,
-    opacity: 0.24,
-    right: -92,
-    top: 118,
-    width: 390,
-  },
   offerDetailPageZipAura: {
     height: 340,
     opacity: 0.24,
@@ -1727,13 +1720,13 @@ export const styles = StyleSheet.create({
   },
   kaelOrbComposerCard: {
     alignItems: 'center',
-    borderRadius: 26,
-    borderWidth: 1,
+    borderRadius: kaelComposerFrame.borderRadius,
+    borderWidth: kaelComposerFrame.borderWidth,
     flexDirection: 'row',
     gap: 10,
-    minHeight: 56,
+    minHeight: kaelComposerFrame.minHeight,
     overflow: 'hidden',
-    padding: 8,
+    padding: kaelComposerFrame.padding,
     position: 'relative',
   },
   kaelOrbNormalComposerCard: {
@@ -1817,6 +1810,10 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerChatFrameIntake: {
     gap: 9,
+  },
+  kaelOrbModeBodyFade: {
+    flex: 1,
+    minHeight: 0,
   },
   kaelOrbCustomerModeMenu: {
     alignSelf: 'flex-end',
@@ -2166,14 +2163,20 @@ export const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
+  kaelOrbSendSlot: {
+    alignItems: 'center',
+    height: kaelComposerFrame.sendSlot,
+    justifyContent: 'center',
+    width: kaelComposerFrame.sendSlot,
+  },
   kaelOrbSendButton: {
     alignItems: 'center',
-    borderRadius: 22,
+    borderRadius: kaelComposerFrame.sendRadius,
     flexShrink: 0,
-    height: 44,
+    height: kaelComposerFrame.sendSize,
     justifyContent: 'center',
     position: 'relative',
-    width: 44,
+    width: kaelComposerFrame.sendSize,
     zIndex: 1,
   },
   kaelOrbStack: {

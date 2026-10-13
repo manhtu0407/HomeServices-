@@ -1,7 +1,7 @@
 import { Platform, StyleSheet, type ViewStyle } from 'react-native'
 
 import { withoutInputLineHeight } from '@/components/ui/input-text-style'
-import { spacing, typography } from '@/design/theme'
+import { kaelComposerFrame, spacing, typography } from '@/design/theme'
 
 const customerV21WebFocusRing = Platform.OS === 'web'
   ? ({ outlineColor: 'rgba(13,167,151,0.62)' } as unknown as ViewStyle)
@@ -83,13 +83,9 @@ export const customerV21ChatStyles = StyleSheet.create({
     zIndex: 0,
   },
   chatComposer: {
-    minHeight: 56,
+    minHeight: kaelComposerFrame.minHeight,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: '#059B8A',
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.10,
-    shadowRadius: 24,
   },
   chatComposerWithImages: {
     alignItems: 'stretch',
@@ -322,12 +318,12 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     // lines, and the media/send buttons should stay pinned to the bottom edge
     // instead of drifting toward the middle of the taller row.
     alignItems: 'flex-end',
-    borderRadius: 26,
-    borderWidth: 1,
+    borderRadius: kaelComposerFrame.borderRadius,
+    borderWidth: kaelComposerFrame.borderWidth,
     flexDirection: 'row',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: kaelComposerFrame.padding,
+    paddingVertical: kaelComposerFrame.padding,
   },
   composerInput: {
     flex: 1,
@@ -384,14 +380,20 @@ export const customerV21KaelChatRootStyles = StyleSheet.create({
     gap: 6,
     padding: 5,
   },
+  sendSlot: {
+    alignItems: 'center',
+    height: kaelComposerFrame.sendSlot,
+    justifyContent: 'center',
+    width: kaelComposerFrame.sendSlot,
+  },
   sendButton: {
     alignItems: 'center',
-    borderRadius: 22,
-    height: 44,
+    borderRadius: kaelComposerFrame.sendRadius,
+    height: kaelComposerFrame.sendSize,
     justifyContent: 'center',
-    minWidth: 44,
+    minWidth: kaelComposerFrame.sendSize,
     position: 'relative',
-    width: 44,
+    width: kaelComposerFrame.sendSize,
     zIndex: 1,
   },
 })

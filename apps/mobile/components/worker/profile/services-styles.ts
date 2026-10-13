@@ -160,11 +160,17 @@ export const styles = StyleSheet.create({
   },
   serviceIcon: {
     alignItems: 'center',
-    borderRadius: 12,
     flexShrink: 0,
-    height: 24,
+    height: 44,
     justifyContent: 'center',
-    width: 24,
+    width: 44,
+  },
+  serviceIconImage: {
+    height: 44,
+    width: 44,
+  },
+  serviceIconImageLocked: {
+    opacity: 0.5,
   },
   serviceCopy: {
     flex: 1,

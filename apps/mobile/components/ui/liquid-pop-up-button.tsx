@@ -32,6 +32,7 @@ export function LiquidPopUpButton<Value extends string>({
   options,
   testID,
   tokens,
+  triggerLabel,
   value,
 }: {
   accessibilityHint: string
@@ -41,6 +42,7 @@ export function LiquidPopUpButton<Value extends string>({
   options: readonly LiquidPopUpOption<Value>[]
   testID: string
   tokens: CustomerThemeTokens
+  triggerLabel?: string
   value: Value
 }) {
   const { reduceMotion, reduceTransparency } = useGlassAccessibility()
@@ -136,7 +138,7 @@ export function LiquidPopUpButton<Value extends string>({
             style={styles.trigger}
             variant="control"
           >
-            <Text numberOfLines={1} style={[styles.triggerLabel, { color: tokens.text }]}>{current}</Text>
+            <Text numberOfLines={1} style={[styles.triggerLabel, { color: tokens.text }]}>{triggerLabel ?? current}</Text>
           </GlassSurface>
         </Pressable>
       </Animated.View>

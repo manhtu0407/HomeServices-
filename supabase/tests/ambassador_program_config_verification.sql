@@ -1,7 +1,7 @@
 -- @pillar id: P261-milestone-cap-sql
--- @pillar invariant: No ambassador program version can be approved if any milestone, at the highest multiplier, pays back more than 60% of the commission its points stand for, or if milestones do not grow in both points and reward; the editor cannot approve their own draft, an approved version cannot be edited, a new save supersedes the open draft rather than deleting it, and only one version is approved at a time
+-- @pillar invariant: No ambassador program version can be approved if any milestone, at the highest multiplier, pays back more than 60% of the commission its points stand for, or if milestones do not grow in both points and reward; the editor cannot approve their own draft, an approved version cannot be edited, a new save supersedes the open draft rather than deleting it, and only one version is approved at a time; the 12,000 VND-per-point change arrives as an unapproved draft that copies the approved milestones and multipliers
 -- @pillar authority: governance/RULES.md #7 | Tu 2026-09-25: NestScout keeps at least 40% of referred commission
--- @pillar target: supabase/migrations/20260928110000_ambassador_program_config.sql
+-- @pillar target: supabase/migrations/20260928110000_ambassador_program_config.sql, supabase/migrations/20261013091000_ambassador_program_draft_commission_12000.sql
 -- @pillar layer: sql
 -- @pillar siblings: P260-ambassador-accrual-sql
 -- @pillar mutation: Change the 6000 in private.ambassador_program_violations to 7000; the 60.0001% draft reports no violation and P261 raises P261_VIOLATION_NOT_REPORTED (observed)
@@ -32,6 +32,34 @@ create or replace function pg_temp.program(p_top_reward integer) returns jsonb l
     )
   )
 $$;
+
+do $v2draft$
+declare
+  v_draft public.ambassador_program_versions%rowtype;
+  v_approved public.ambassador_program_versions%rowtype;
+begin
+  select * into v_approved from public.ambassador_program_versions where status = 'approved';
+  select * into v_draft from public.ambassador_program_versions where status = 'draft';
+  if not found then
+    raise exception 'P261_V2_DRAFT_MISSING';
+  end if;
+  if v_draft.commission_vnd_per_point <> 12000 or v_draft.created_by is not null or v_draft.approved_at is not null then
+    raise exception 'P261_V2_DRAFT_WRONG: %', to_jsonb(v_draft);
+  end if;
+  if v_approved.commission_vnd_per_point <> 10000 then
+    raise exception 'P261_V2_PUT_LIVE_BY_MIGRATION: %', v_approved.commission_vnd_per_point;
+  end if;
+  if (select count(*) from public.ambassador_milestones where version_id = v_draft.id)
+       <> (select count(*) from public.ambassador_milestones where version_id = v_approved.id)
+     or (select count(*) from public.ambassador_multiplier_tiers where version_id = v_draft.id)
+       <> (select count(*) from public.ambassador_multiplier_tiers where version_id = v_approved.id) then
+    raise exception 'P261_V2_DRAFT_NOT_COPIED';
+  end if;
+  if pg_catalog.cardinality(private.ambassador_program_violations(v_draft.id)) <> 0 then
+    raise exception 'P261_V2_DRAFT_VIOLATES: %', private.ambassador_program_violations(v_draft.id);
+  end if;
+end;
+$v2draft$;
 
 do $cap$
 declare

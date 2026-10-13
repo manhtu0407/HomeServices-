@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Text as RNText, View, type TextProps } from 'react-native'
 import { type LocalDeal } from '@nestscout/shared'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
+import { color } from '@/design/theme'
 import { KaelTextField, MintAura } from '@/components/ui/kael-primitives'
 import { LiquidControlButton, LiquidSendArrowIcon } from '@/components/ui/liquid-back-button'
 import { type AppLanguage } from '@/lib/app-language'
@@ -101,7 +102,7 @@ function WorkerV5SharedJobIncidentChat({
         ))}
         {error ? <WorkerV5ChatBubble body={error} label={textByLanguage(language, 'Kael · trạng thái', 'Kael · status')} /> : null}
       </View>
-      <View style={[styles.kaelOrbComposerCard, dark ? { backgroundColor: palette.composerFill, borderColor: palette.composerBorder } : null]}>
+      <View style={[styles.kaelOrbComposerCard, { borderColor: dark ? color.kaelComposer.borderDark : color.kaelComposer.borderLight }, dark ? { backgroundColor: palette.composerFill } : null]}>
         <KaelTextField
           accessibilityLabel={textByLanguage(language, 'Nhắn trong Kael Công việc', 'Message in Kael Work')}
           inputShellStyle={styles.kaelOrbComposerInputShell}

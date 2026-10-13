@@ -515,7 +515,6 @@ function WorkerV5ScreenAuras({ state }: { state: WorkerV5ScreenAuraState }) {
 
   return <>
     {showPageAura ? <WorkerV5CustomerFulfillmentCanvasAura reduceTransparency={reduceTransparency} scope={formulaPageAuraTarget.scope} testID={formulaPageAuraTarget.testID} /> : null}
-    {usesOpportunityInboxHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="OpportunityInboxPageFine" style={styles.opportunityInboxPageZipAura} testID="worker-v5-opportunity-page-customer-zip-mint-aura" /> : null}
     {usesOfferDetailHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="OfferDetailPageFine" style={styles.offerDetailPageZipAura} testID="worker-v5-offer-page-customer-zip-mint-aura" /> : null}
     {usesRouteEtaHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="RouteEtaPageFine" style={styles.routeEtaPageZipAura} testID="worker-v5-route-page-customer-zip-mint-aura" /> : null}
     {usesCaseExecutionHandoff && !usesInProgressHandoff && shouldShowWorkerAura ? <WorkerV5CustomerZipMintAura scope="WorkerCaseExecutionPageFine" style={styles.arrivalCheckinPageZipAura} testID="worker-v5-case-flow-page-customer-zip-mint-aura" /> : null}

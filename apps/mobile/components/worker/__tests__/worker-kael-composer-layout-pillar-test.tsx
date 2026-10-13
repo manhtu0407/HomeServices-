@@ -76,7 +76,7 @@ describe('Worker Kael composer layout', () => {
         )
 
         const composerFrame = screen.getByTestId('worker-v5-kael-orb-composer-frame')
-        expect(composerFrame).toHaveStyle({ borderColor: customerTheme.lightLayer.glassBorder, gap: 4 })
+        expect(composerFrame).toHaveStyle({ borderColor: color.kaelComposer.borderLight, borderRadius: 16, borderWidth: 1, gap: 4 })
         const sendArrowStrokes = () => screen.getByTestId('worker-v5-kael-orb-send-arrow')
           .findAll((node) => typeof node.props.stroke === 'string')
           .map((node) => node.props.stroke)
@@ -132,7 +132,8 @@ describe('Worker Kael composer layout', () => {
       )
 
       expect(screen.getByTestId('worker-v5-kael-orb-composer-frame')).toHaveStyle({
-        borderColor: color.surface.stroke,
+        borderColor: color.kaelComposer.borderLight,
+        borderRadius: 16,
         gap: 10,
       })
       expect(screen.getByTestId('worker-v5-kael-orb-input')).toHaveStyle({ paddingHorizontal: 10 })

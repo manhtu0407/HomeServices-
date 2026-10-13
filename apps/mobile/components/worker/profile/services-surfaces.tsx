@@ -1,3 +1,4 @@
+import { Image } from 'expo-image'
 import { useReducer, type ComponentType } from 'react'
 import {
   Pressable,
@@ -6,7 +7,7 @@ import {
   type ImageSourcePropType,
   type TextProps,
 } from 'react-native'
-import Svg, { Circle, Path, Rect } from 'react-native-svg'
+import Svg, { Path, Rect } from 'react-native-svg'
 import {
   SERVICE_TYPES,
   type ServiceType,
@@ -23,6 +24,7 @@ import type {
 
 import { textByLanguage } from '../ui/format'
 import { WorkerV5IntegratedIcon } from '../ui/integrated-icon-surfaces'
+import { workerV5ProfileServiceIconAssets } from '../ui/worker-v5-icon-assets'
 import { WorkerV5DetailRail } from '../ui/worker-v5-detail-rail'
 import { styles } from './services-styles'
 import { WorkerCapabilitySelector } from './worker-capability-selector'
@@ -363,7 +365,13 @@ export function WorkerV5ServiceCardGrid({
                   testID={`worker-v5-quick-action-${index}`}
                 >
                   <View style={styles.serviceIcon} testID={`worker-v5-quick-action-${index}-icon-frame`}>
-                    <ServiceGlyph color={isQualityLocked ? tokens.muted : tokens.primary} service={service} />
+                    <Image
+                      accessibilityIgnoresInvertColors
+                      contentFit="contain"
+                      source={workerV5ProfileServiceIconAssets[service]}
+                      style={[styles.serviceIconImage, isQualityLocked ? styles.serviceIconImageLocked : null]}
+                      testID={`worker-v5-quick-action-${index}-icon`}
+                    />
                   </View>
                   <View style={styles.serviceCopy}>
                     <Text numberOfLines={1} style={[styles.serviceTitle, { color: tokens.text }]} testID={`worker-v5-quick-action-title-${index}`}>
@@ -477,14 +485,4 @@ function SelectionMark({ borderColor, checked, color }: { borderColor: string; c
       {checked ? <Svg height={13} viewBox="0 0 16 16" width={13}><Path d="m3 8.2 3 3 7-7" fill="none" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} /></Svg> : null}
     </View>
   )
-}
-
-function ServiceGlyph({ color, service }: { color: string; service: ServiceType }) {
-  const common = { fill: 'none' as const, stroke: color, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 1.45 }
-  if (service === 'electrical') return <Svg height={22} viewBox="0 0 22 22" width={22}><Path {...common} d="m12.3 2.8-6 8h4.4l-1 8.4 6-8.3h-4.3l.9-8.1Z" /></Svg>
-  if (service === 'plumbing') return <Svg height={22} viewBox="0 0 22 22" width={22}><Path {...common} d="M4 5.5h7v3H9.2v2.1a3.1 3.1 0 0 0 6.2 0V9.1M11 5.5V3.7M8.5 5.5V3.7M15.4 14.6v3.1M13.8 17.7h3.2" /></Svg>
-  if (service === 'cleaning') return <Svg height={22} viewBox="0 0 22 22" width={22}><Path {...common} d="M7.2 5.2h6.4l-1.1 3.2H8.3L7.2 5.2ZM8.3 8.4h5.4v6.5a2 2 0 0 1-2 2h-1.4a2 2 0 0 1-2-2V8.4ZM14.3 5.2h2.1M16.4 5.2l1.4-1.4M17.9 3.8l1.1 1.1" /></Svg>
-  if (service === 'hvac') return <Svg height={22} viewBox="0 0 22 22" width={22}><Path {...common} d="M11 3v16M4.1 7l13.8 8M4.1 15 17.9 7M11 3l1.7 2.2M11 3 9.3 5.2M11 19l1.7-2.2M11 19 9.3 16.8M4.1 7l2.8.2M4.1 7l1 2.6M17.9 15l-2.8-.2M17.9 15l-1-2.6M4.1 15l1-2.6M4.1 15l2.8-.2M17.9 7l-1 2.6M17.9 7l-2.8.2" /></Svg>
-  if (service === 'upholstery') return <Svg height={22} viewBox="0 0 22 22" width={22}><Path {...common} d="M5 10.2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4.8H5v-4.8ZM5 12h12M7.2 15v2M14.8 15v2M7 8.2V6.8h8v1.4" /></Svg>
-  return <Svg height={22} viewBox="0 0 22 22" width={22}><Path {...common} d="m4 16.4 5-5 2.2 2.2 5.2-5.2M14.2 8.4h3.2v3.2M5 18.2h12" /><Circle {...common} cx={4} cy={16.4} r={1.1} /></Svg>
 }

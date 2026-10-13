@@ -37,6 +37,7 @@ const rootStyles: RootChatStyles = {
   errorText: {},
   flex: {},
   sendButton: {},
+  sendSlot: {},
 }
 
 // Web inputs do not grow on their own, so the measured-height path is web-only.
@@ -112,8 +113,8 @@ describe('Kael composer and failure boundary', () => {
       expect(onStopMessage).toHaveBeenCalledTimes(1)
       expect(screen.getByTestId('customer-v21-kael-stop-square')).toHaveStyle({
         backgroundColor: color.text.strong,
-        height: 12,
-        width: 12,
+        height: 10,
+        width: 10,
       })
     })
   })
