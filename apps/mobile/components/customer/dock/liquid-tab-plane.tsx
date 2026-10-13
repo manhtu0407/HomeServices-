@@ -4,7 +4,7 @@ import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withSequen
 
 import { GlassSurface } from '@/components/ui/glass-surface'
 import { motionDuration, motionTokens } from '@/components/ui/motion-tokens'
-import { color as designColor, liquidTabLensTheme } from '@/design/theme'
+import { liquidTabLensTheme } from '@/design/theme'
 
 import type { CustomerThemeTokens } from '../customer-theme'
 import {
@@ -306,7 +306,7 @@ function LiquidTabButton({
     >
       <Animated.View style={iconStyle}>
         <LiquidNavFilledIcon
-          color={tinted ? tokens.primary : designColor.text.muted}
+          color={tinted ? tokens.primary : tokens.subtleText}
           name={icon}
           style={[styles.dockIcon, tinted ? styles.dockIconActive : null]}
           testID={`${testID}-icon`}
