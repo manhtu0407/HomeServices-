@@ -7,13 +7,15 @@ import { StyleSheet } from 'react-native'
 import { type PillarManifest, withPillarContext } from '@/__tests__/pillar-manifest'
 import type { AdminViewSubAdminSummary } from '@/lib/api-types/admin'
 import { adminControlService } from '@/lib/services'
+import type { SystemHealthCheck, SystemHealthSnapshot } from '@nestscout/shared'
 
 export const PILLAR = {
   id: 'P54-admin-team-system-workspaces',
   invariant:
-    'Team and five dedicated System capabilities render focused workspaces with semantic controls, honest data quality and capability-gated mutations',
+    'Team and five dedicated System capabilities render focused workspaces with honest data quality, capability-gated mutations and automatic Owner health checks',
   authority: [
     'user-approved Team and System implementation plan',
+    'Tu request: remove manual refresh controls and automatically start health checks on screen open',
     'governance/design/screen-recipes.md (list to detail in one sheet)',
     'governance/design/accessible-content.md (large text reflows without clipping)',
   ],
@@ -21,11 +23,68 @@ export const PILLAR = {
   layer: 'ui-visual',
   siblings: ['P44-admin-production-sections', 'P50-admin-operations-support-workspaces', 'P52-admin-finance-focused-capabilities'],
   mutation:
-    'restore the generic System workspace, a nested Modal, or an ungated mutation — the source and interaction assertions turn red',
+    'remove the automatic Owner health check or restore the retry/manual refresh controls — the health workspace interaction assertions turn red',
 } as const satisfies PillarManifest
 
 const root = resolve(__dirname, '../../../')
 const read = (path: string) => readFileSync(resolve(root, path), 'utf8').replace(/\r\n/g, '\n')
+
+function cloudflareProfileSnapshot({
+  checks,
+  completedAt,
+  expiresAt,
+  overallStatus,
+  requiredCheckIds = checks.map((check) => check.check_id),
+  scheduledAt = completedAt,
+}: {
+  checks: SystemHealthCheck[]
+  completedAt: number
+  expiresAt: number
+  overallStatus: 'green' | 'yellow' | 'red' | 'gray'
+  requiredCheckIds?: string[]
+  scheduledAt?: number
+}): Extract<SystemHealthSnapshot, { schema_version: 2 }> {
+  return {
+    schema_version: 2,
+    profile_id: 'cloudflare-admin-v1',
+    required_check_ids: requiredCheckIds,
+    coverage_gaps: ['app-crash', 'push-notifications'],
+    environment: 'production',
+    project_ref: 'abcdefgh1234',
+    release_id: 'release-qa',
+    scheduled_at: new Date(scheduledAt).toISOString(),
+    completed_at: new Date(completedAt).toISOString(),
+    expires_at: new Date(expiresAt).toISOString(),
+    overall_status: overallStatus,
+    checks,
+  }
+}
+
+function healthCheck({
+  checkId = 'backend-core',
+  observedAt,
+  reasonCode = 'CORE_HEALTHY',
+  status = 'green',
+  incidentId = null,
+}: {
+  checkId?: string
+  observedAt: number | null
+  reasonCode?: string
+  status?: 'green' | 'yellow' | 'red' | 'gray'
+  incidentId?: string | null
+}): SystemHealthCheck {
+  return {
+    check_id: checkId,
+    component: checkId.startsWith('app-') ? 'app' : 'backend',
+    status,
+    reason_code: reasonCode,
+    observed_at: observedAt === null ? null : new Date(observedAt).toISOString(),
+    evidence_window: null,
+    sample_count: 1,
+    metrics: {},
+    incident_id: incidentId,
+  }
+}
 
 function setWindowWidth(width: number, height: number, fontScale = 1) {
   ReactNative.Dimensions.set({
@@ -263,16 +322,12 @@ describe('Admin Team and System focused workspaces', () => {
     }
   })
 
-  it('shows expired evidence as unverified and lets only the Owner request a refresh', async () => {
+  it('automatically checks health when the Owner opens it and keeps Operators read-only', async () => {
     const now = Date.now()
     jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
       generated_at: new Date(now).toISOString(),
       observer: { observer_heartbeat_at: null, dispatcher_status: 'gray', d1_status: 'gray', last_snapshot_at: null, last_error_code: null },
-      snapshot: {
-        schema_version: 1, environment: 'production', project_ref: 'abcdefgh1234', release_id: 'release-qa',
-        scheduled_at: new Date(now - 240_000).toISOString(), completed_at: new Date(now - 240_000).toISOString(), expires_at: new Date(now - 60_000).toISOString(), overall_status: 'green',
-        checks: [{ check_id: 'backend-core', component: 'backend', status: 'green', reason_code: 'CORE_HEALTHY', observed_at: new Date(now - 240_000).toISOString(), evidence_window: null, sample_count: 1, metrics: {}, incident_id: null }],
-      },
+      snapshot: cloudflareProfileSnapshot({ completedAt: now - 240_000, scheduledAt: now - 240_000, expiresAt: now - 60_000, overallStatus: 'green', checks: [healthCheck({ observedAt: now - 240_000 })] }),
     } })
     jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
     jest.mocked(adminControlService.refreshSystemHealth).mockResolvedValue({ success: true, status: 202, data: { accepted: true, scheduled_at: new Date(now).toISOString() } })
@@ -281,33 +336,145 @@ describe('Admin Team and System focused workspaces', () => {
     await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
     expect(await screen.findByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
     expect(screen.getByText(/Bằng chứng đã cũ/u)).toBeTruthy()
-    fireEvent.press(screen.getByText('Chạy kiểm tra ngay'))
     await waitFor(() => expect(adminControlService.refreshSystemHealth).toHaveBeenCalledTimes(1))
+    expect(screen.queryByText('Sức khỏe hệ thống')).toBeNull()
+    expect(screen.queryByText(/Bằng chứng tự cập nhật mỗi phút/u)).toBeNull()
+    expect(screen.queryByText('Tải lại')).toBeNull()
+    expect(screen.queryByText('Chạy kiểm tra ngay')).toBeNull()
+    expect(screen.queryByText('Thử lại')).toBeNull()
+    fireEvent.press(screen.getByText('Ứng dụng'))
+    await waitFor(() => expect(adminControlService.listSystemIncidents).toHaveBeenLastCalledWith(expect.objectContaining({ component: 'app' })))
+    expect(adminControlService.refreshSystemHealth).toHaveBeenCalledTimes(1)
 
     view.unmount()
     render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
     await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
+    expect(adminControlService.refreshSystemHealth).toHaveBeenCalledTimes(1)
+    expect(screen.queryByText('Tải lại')).toBeNull()
     expect(screen.queryByText('Chạy kiểm tra ngay')).toBeNull()
   })
 
-  it('passes component filters to the incident API and keeps missing sources gray', async () => {
+  it('keeps unavailable evidence unverified without rendering the retry alert', async () => {
+    jest.mocked(adminControlService.getSystemHealth).mockRejectedValue(new Error('SYSTEM_HEALTH_UNAVAILABLE'))
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date().toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+
+    expect(await screen.findByText('Không thể tải bằng chứng hệ thống.')).toBeTruthy()
+    expect(screen.getByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
+    expect(screen.getByText('Không có sự cố phù hợp với bộ lọc.')).toBeTruthy()
+    expect(screen.queryByText('Thử lại')).toBeNull()
+  })
+
+  it('passes component filters and shows native connectivity separately from deferred crash coverage', async () => {
     const now = Date.now()
     jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
       generated_at: new Date(now).toISOString(), observer: null,
-      snapshot: {
-        schema_version: 1, environment: 'production', project_ref: 'abcdefgh1234', release_id: null,
-        scheduled_at: new Date(now).toISOString(), completed_at: new Date(now).toISOString(), expires_at: new Date(now + 180_000).toISOString(), overall_status: 'gray',
-        checks: [{ check_id: 'app-native-sentry', component: 'app', status: 'gray', reason_code: 'SENTRY_NOT_CONFIGURED', observed_at: null, evidence_window: null, sample_count: null, metrics: {}, incident_id: null }],
-      },
+      snapshot: cloudflareProfileSnapshot({ completedAt: now, expiresAt: now + 180_000, overallStatus: 'gray', checks: [healthCheck({ checkId: 'app-native-connectivity', observedAt: null, reasonCode: 'NATIVE_SESSION_EVIDENCE_MISSING', status: 'gray' })] }),
     } })
     jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
     render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
     await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
 
-    expect(await screen.findByLabelText(/Sentry chưa được cấu hình/u)).toBeTruthy()
+    expect(await screen.findByLabelText(/Chưa bật theo dõi crash/u)).toBeTruthy()
     fireEvent.press(screen.getByText('Ứng dụng'))
     await waitFor(() => expect(adminControlService.listSystemIncidents).toHaveBeenLastCalledWith(expect.objectContaining({ component: 'app' })))
-    expect(screen.getByTestId('admin-system-health-check-app-native-sentry').props.accessibilityLabel).toContain('Chưa xác minh')
+    expect(screen.getByTestId('admin-system-health-check-app-native-connectivity').props.accessibilityLabel).toContain('Chưa xác minh')
+  })
+
+  it('keeps a snapshot gray when a required check is missing even if its claimed status is green', async () => {
+    const now = Date.now()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: new Date(now).toISOString(), observer: null,
+      snapshot: cloudflareProfileSnapshot({
+        completedAt: now,
+        expiresAt: now + 180_000,
+        overallStatus: 'green',
+        requiredCheckIds: ['backend-core'],
+        checks: [healthCheck({ checkId: 'backend-database-availability', observedAt: now })],
+      }),
+    } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+
+    expect(await screen.findByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
+  })
+
+  it('labels incidents closed because crash coverage was deferred without implying recovery', async () => {
+    const now = new Date().toISOString()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: { generated_at: now, observer: null, snapshot: null } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: now, data_quality: 'available', has_more: false, next_cursor: null,
+      records: [{
+        schema_version: 1, incident_id: 'incident-closed-by-profile', fingerprint: 'production:app:app-native-sentry', component: 'app', detector: 'app-native-sentry',
+        severity: 'yellow', status: 'resolved', opened_at: now, updated_at: now, resolved_at: now, release_id: null, build_id: null,
+        platform: null, route_kind: null, stage: null, trace_id: null, run_id: null, request_id: null, support_code: null,
+        reason_code: 'SOURCE_DEFERRED_BY_PROFILE', timeline: [], observations: [], owner_area: 'mobile', suggested_checks: [], root_cause_status: 'not_established',
+        evidence_limit: 'Allowlisted operational aggregates only.',
+      }],
+    } })
+
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+
+    expect(await screen.findByLabelText(/Kết thúc theo cấu hình/u)).toBeTruthy()
+    expect(screen.queryByLabelText(/Đã phục hồi/u)).toBeNull()
+  })
+
+  it('expires snapshot and check evidence on time when the next health poll has not completed', async () => {
+    jest.useFakeTimers()
+    jest.setSystemTime(new Date('2026-10-12T00:00:00.000Z'))
+    const startedAt = Date.now()
+    const scheduledFreshnessTimers: Array<{ delay: number; callback: () => void }> = []
+    const scheduleTimeout = global.setTimeout
+    const timeoutSpy = jest.spyOn(global, 'setTimeout').mockImplementation((callback, delay, ...args) => {
+      if (typeof callback === 'function' && (delay === 1_001 || delay === 3_999)) {
+        scheduledFreshnessTimers.push({ delay, callback: () => callback(...args) })
+        return scheduleTimeout(() => undefined, 60 * 60_000)
+      }
+      return scheduleTimeout(callback, delay, ...args)
+    })
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: new Date(startedAt).toISOString(), observer: null,
+      snapshot: cloudflareProfileSnapshot({ completedAt: startedAt, expiresAt: startedAt + 5_000, overallStatus: 'green', checks: [healthCheck({ observedAt: startedAt - 179_000 })] }),
+    } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(startedAt).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+
+    const view = render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+    try {
+      await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
+      expect(screen.getByLabelText('Tổng thể: Xanh')).toBeTruthy()
+      expect(screen.getByTestId('admin-system-health-check-backend-core').props.accessibilityLabel).toContain('Xanh')
+
+      const checkExpiry = scheduledFreshnessTimers.shift()
+      expect(checkExpiry?.delay).toBe(1_001)
+      jest.setSystemTime(startedAt + 1_001)
+      await act(() => { checkExpiry?.callback() })
+      expect(screen.getByTestId('admin-system-health-check-backend-core').props.accessibilityLabel).toContain('Chưa xác minh')
+      expect(screen.getByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
+
+      const snapshotExpiry = scheduledFreshnessTimers.shift()
+      expect(snapshotExpiry?.delay).toBe(3_999)
+      jest.setSystemTime(startedAt + 5_000)
+      await act(() => { snapshotExpiry?.callback() })
+      expect(screen.getByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
+    } finally {
+      view.unmount()
+      timeoutSpy.mockRestore()
+      jest.useRealTimers()
+    }
+  })
+
+  it('shows gray when a red snapshot has expired because the evidence is no longer current', async () => {
+    const now = Date.now()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: new Date(now).toISOString(), observer: null,
+      snapshot: cloudflareProfileSnapshot({ completedAt: now - 240_000, scheduledAt: now - 240_000, expiresAt: now - 60_000, overallStatus: 'red', checks: [healthCheck({ observedAt: now - 240_000, reasonCode: 'EDGE_UNAVAILABLE', status: 'red', incidentId: 'incident-1' })] }),
+    } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+    expect(await screen.findByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
   })
 
   it.each([
@@ -317,11 +484,7 @@ describe('Admin Team and System focused workspaces', () => {
     const now = Date.now()
     jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
       generated_at: new Date(now).toISOString(), observer: null,
-      snapshot: {
-        schema_version: 1, environment: 'production', project_ref: 'abcdefgh1234', release_id: 'release-qa',
-        scheduled_at: new Date(now).toISOString(), completed_at: new Date(now).toISOString(), expires_at: new Date(now + 180_000).toISOString(), overall_status: 'green',
-        checks: [{ check_id: 'backend-core', component: 'backend', status: 'green', reason_code: 'CORE_HEALTHY', observed_at: new Date(now).toISOString(), evidence_window: null, sample_count: 1, metrics: {}, incident_id: null }],
-      },
+      snapshot: cloudflareProfileSnapshot({ completedAt: now, expiresAt: now + 180_000, overallStatus: 'green', checks: [healthCheck({ observedAt: now })] }),
     } })
     jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
 

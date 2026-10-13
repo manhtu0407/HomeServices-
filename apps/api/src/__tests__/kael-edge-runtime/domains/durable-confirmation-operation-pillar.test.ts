@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { installEdgeRuntimeTestHooks } from '../harness'
+import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import {
   buildConfirmationIdempotencyKey,
@@ -15,6 +15,7 @@ import {
   type MobileApiContext,
   type MobileApiServices,
 } from '../../../../../../supabase/functions/mobile-api/_shared/http'
+import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
 
 export const PILLAR = {
   id: 'P48-durable-confirmation-operation',
@@ -35,6 +36,44 @@ installEdgeRuntimeTestHooks()
 
 const SESSION_ID = '10000000-0000-4000-8000-000000000048'
 const CUSTOMER_ID = '20000000-0000-4000-8000-000000000048'
+const JOB_ID = '50000000-0000-4000-8000-000000000048'
+
+function operationReadSetup(state: string, role: 'customer' | 'worker' = 'customer', error: { code: string; message: string } | null = null) {
+  const operation = {
+    operation_id: '30000000-0000-4000-8000-000000000048',
+    idempotency_key: buildConfirmationIdempotencyKey(SESSION_ID, CUSTOMER_ID),
+    session_id: SESSION_ID,
+    job_id: state === 'confirmation_pending' ? null : JOB_ID,
+    quote_mode: 'rfq',
+    operation_state: state,
+    terminal: false,
+    accepted_at: '2026-08-23T04:00:00.000Z',
+    updated_at: '2026-08-23T04:00:01.000Z',
+    retry_after_ms: null,
+    support_code: 'P48READ1',
+  }
+  const client = makeSequenceClient([], {
+    get_kael_confirmation_operation: [{ data: error ? null : [operation], error }],
+  })
+  const handler = createMobileApiHandler({
+    authenticate: async () => ({
+      success: true,
+      user: { id: CUSTOMER_ID },
+      role,
+      accountState: 'active',
+      environment: 'staging',
+      releaseId: 'release-p48-test',
+      supabase: client,
+      privilegedSupabase: client,
+      userSupabase: client,
+    }),
+    services: createEdgeServices({}),
+  })
+  return {
+    client,
+    read: () => handler(new Request(`https://api.example.test/kael/chat/${SESSION_ID}/operation`)),
+  }
+}
 
 describe('durable Kael confirmation', () => {
   it('keeps the existing confirm path but reports asynchronous acceptance', () => {
@@ -85,6 +124,64 @@ describe('durable Kael confirmation', () => {
       privileged: true,
       resource: { type: 'session', id: SESSION_ID },
     })
+  })
+
+  it('reads a confirmation-pending receipt without inventing a job id over the public HTTP route', async () => {
+    const { client, read } = operationReadSetup('confirmation_pending')
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({
+      operation: { session_id: SESSION_ID, job_id: null, state: 'confirmation_pending', terminal: false },
+    })
+    expect(client.calls.find((call) => call.table === 'rpc:get_kael_confirmation_operation')?.operations)
+      .toContainEqual(['rpc', 'get_kael_confirmation_operation', { p_session_id: SESSION_ID, p_customer_id: CUSTOMER_ID }])
+  })
+
+  it('reads a job-created receipt through the authenticated public operation route', async () => {
+    const { read } = operationReadSetup('job_created')
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({ operation: { job_id: JOB_ID, state: 'job_created' } })
+  })
+
+  it('reads a matching-queued receipt through the authenticated public operation route', async () => {
+    const { read } = operationReadSetup('matching_queued')
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({ operation: { job_id: JOB_ID, state: 'matching_queued' } })
+  })
+
+  it('reads a broadcasting receipt through the authenticated public operation route', async () => {
+    const { read } = operationReadSetup('broadcasting')
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({ operation: { job_id: JOB_ID, state: 'broadcasting' } })
+  })
+
+  it('reads a recovery-required receipt without replaying confirmation over the public HTTP route', async () => {
+    const { client, read } = operationReadSetup('recovery_required')
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({ operation: { job_id: JOB_ID, state: 'recovery_required', terminal: false } })
+    expect(client.calls.filter((call) => call.table === 'rpc:get_kael_confirmation_operation')).toHaveLength(1)
+    expect(client.calls.some((call) => /confirm_kael_chat|activate_job_broadcast_batch/.test(call.table))).toBe(false)
+  })
+
+  it('refuses a Worker before reading the Customer confirmation operation', async () => {
+    const { client, read } = operationReadSetup('matching_queued', 'worker')
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(403)
+    expect(client.calls).toEqual([])
+  })
+
+  it('fails closed and redacts confirmation-operation database errors', async () => {
+    const sentinel = 'PRIVATE CONFIRMATION DATABASE DETAIL'
+    const { read } = operationReadSetup('matching_queued', 'customer', { code: '08006', message: sentinel })
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(500)
+    const body = await response.json()
+    expect(body).toMatchObject({ code: 'DB_ERROR' })
+    expect(JSON.stringify(body)).not.toContain(sentinel)
   })
 
   it('uses the domain receipt and batched audit instead of generic request idempotency', async () => {

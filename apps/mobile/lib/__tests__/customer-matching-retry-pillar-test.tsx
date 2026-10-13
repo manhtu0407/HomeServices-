@@ -336,6 +336,8 @@ describe('Customer durable matching retry mobile boundary', () => {
     const first = setup()
     mockConfirmSearch.mockResolvedValue({ success: false, status: 0, code: 'NETWORK_ERROR', error: '' })
     await act(async () => { await first.result.current.confirmRemoteSearch(JOB) })
+    expect(first.setRemoteError).toHaveBeenLastCalledWith(expect.objectContaining({ code: 'MATCHING_RETRY_OUTCOME_UNKNOWN' }))
+    expect(first.result.current.customerMatchingRetryFeedback?.message).toBeTruthy()
     const input = mockConfirmSearch.mock.calls[0][1]
     first.unmount()
     mockConfirmSearch.mockImplementation(async (_job, replay) => ({ success: true, status: 202, data: { operation: receipt(replay) } }))

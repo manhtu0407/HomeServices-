@@ -11,21 +11,21 @@ export function transactionBehaviorFixture(status) {
   const value = clone(manifest)
   const entry = value.entries.find((item) => item.id === 'worker.fulfillment.advance')
   const coverage = value.behavioral_contract.bindings[entry.id]
-  const binding = coverage.cases[0]
+  const bindings = coverage.cases
   value.entries = [entry]
-  entry.from = [...binding.from]
-  entry.to = [...binding.to]
+  entry.from = [...new Set(bindings.flatMap((binding) => binding.from))]
+  entry.to = [...new Set(bindings.flatMap((binding) => binding.to))]
   coverage.status = status
   coverage.gaps = status === 'PARTIAL' ? ['Hosted transaction proof remains open.'] : []
   value.behavioral_contract.bindings = { [entry.id]: coverage }
   const report = {
     success: true,
-    testResults: [{
+    testResults: bindings.map((binding) => ({
       name: `/ci/workspace/${binding.file}`,
       status: 'passed',
       assertionResults: [...binding.success_tests, ...binding.denial_tests, ...(binding.recovery_tests ?? [])]
         .map((fullName) => ({ fullName, status: 'passed' })),
-    }],
+    })),
   }
   return { value, report }
 }

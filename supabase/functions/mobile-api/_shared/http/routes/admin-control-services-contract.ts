@@ -163,7 +163,7 @@ export type AdminControlServices = {
   applyAdminSystemLearningAction(ctx: MobileApiContext, ruleId: string, action: "rollback" | "revoke", input: AdminSystemContracts["learningActionInput"]): Promise<AdminSystemContracts["receipt"]>;
   listAdminSystemModelHealth(ctx: MobileApiContext, input: AdminSystemContracts["modelHealthInput"]): Promise<AdminSystemContracts["modelHealthResponse"]>;
   getAdminSystemModelHealthDetail(ctx: MobileApiContext, detailKey: string): Promise<AdminSystemContracts["modelHealthDetailResponse"]>;
-  getAdminSystemHealth(ctx: MobileApiContext): Promise<AdminSystemContracts["healthResponse"]>;
+  getAdminSystemHealth(ctx: MobileApiContext, schemaVersion: 1 | 2): Promise<AdminSystemContracts["healthResponse"]>;
   refreshAdminSystemHealth(ctx: MobileApiContext): Promise<AdminSystemContracts["refreshResponse"]>;
   listAdminSystemIncidents(ctx: MobileApiContext, input: AdminSystemContracts["incidentListInput"]): Promise<AdminSystemContracts["incidentListResponse"]>;
   getAdminSystemIncident(ctx: MobileApiContext, incidentId: string): Promise<AdminSystemContracts["incidentDetailResponse"]>;

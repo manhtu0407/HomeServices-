@@ -114,6 +114,15 @@ describe('RFQ exact price public contract', () => {
     expect(body).toMatchObject({ code: 'RFQ_PRICE_OUTCOME_UNKNOWN', reconcile_required: true })
     expect(JSON.stringify(body)).not.toContain('SECRET_DB_DETAILS')
   })
+  it('keeps an unknown Customer price decision reconcilable and excludes database details', async () => {
+    const { run } = setup('customer', null, { code: 'DB_TIMEOUT', message: 'SECRET_DB_DETAILS' })
+    const response = await run('/decide', { proposal_id: PROPOSAL, approve: true })
+
+    expect(response.status).toBe(503)
+    const body = await response.json()
+    expect(body).toMatchObject({ code: 'RFQ_PRICE_OUTCOME_UNKNOWN', reconcile_required: true })
+    expect(JSON.stringify(body)).not.toContain('SECRET_DB_DETAILS')
+  })
   it.each([['P0002', 'RFQ_PRICE_NOT_FOUND', 404], ['55000', 'RFQ_PRICE_STATE_CHANGED', 409],
     ['22023', 'RFQ_PRICE_DECISION_CONFLICT', 409]] as const)('maps known rejected commands safely (%s)', async (code, message, status) => {
       const { run } = setup('worker', null, { code, message })
@@ -128,6 +137,21 @@ describe('RFQ exact price public contract', () => {
     expect(await response.json()).toEqual({ job_id: JOB, quote_mode: 'rfq', proposal: approved })
     expect(client.calls.some(call => call.table === 'rpc:propose_rfq_price_atomic' || call.table === 'rpc:decide_rfq_price_atomic')).toBe(false)
   })
+  it('refuses an Admin before loading a participant-bound proposal', async () => {
+    const { run, client } = setup('admin', approved)
+    const response = await run('', undefined, 'GET')
+
+    expect(response.status).toBe(403)
+    expect(client.calls.some(call => call.table === 'jobs' || call.table === 'job_rfq_price_proposals')).toBe(false)
+  })
+  it('reconciles a mismatched Customer proposal receipt without claiming success', async () => {
+    const { run } = setup('customer', { ...approved, worker_id: CUSTOMER })
+    const response = await run('', undefined, 'GET')
+
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ code: 'RFQ_PRICE_OUTCOME_UNKNOWN', reconcile_required: true })
+    expect(response.headers.get('x-support-code')).toBeTruthy()
+  })
   it('rehydrates the current Worker participant-bound proposal without any mutation', async () => {
     const { run, client } = setup('worker', approved)
     const response = await run('', undefined, 'GET')
@@ -135,7 +159,7 @@ describe('RFQ exact price public contract', () => {
     expect(await response.json()).toEqual({ job_id: JOB, quote_mode: 'rfq', proposal: approved })
     expect(client.calls.some(call => call.table === 'rpc:propose_rfq_price_atomic' || call.table === 'rpc:decide_rfq_price_atomic')).toBe(false)
   })
-  it('denies an unbound Worker RFQ proposal without mutation', async () => {
+  it('reconciles an unbound Worker RFQ proposal without mutation', async () => {
     const { run, client } = setup('worker', { ...approved, worker_id: CUSTOMER })
     const response = await run('', undefined, 'GET')
     expect(response.status).toBe(503)

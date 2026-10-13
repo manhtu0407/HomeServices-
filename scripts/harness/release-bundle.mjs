@@ -156,6 +156,7 @@ export function buildHarnessRelease(options = {}) {
   const reliabilityPolicyBytes = readFileSync(resolve(root, 'config/harness/reliability.json'))
   const promotionPolicyBytes = readFileSync(resolve(root, 'config/harness/promotion.json'))
   const edge = edgeFunctionBundles(root, RELEASE_EDGE_FUNCTIONS)
+  const systemHealthObserver = environment === 'production' ? systemHealthObserverReleaseIdentity(root) : null
   const environmentBinding = environmentBindingFor(environment)
   const releaseSourcePaths = releaseSourceFilePaths(root)
   const productionUiAudit = auditProductionUiCopy(root)
@@ -167,7 +168,7 @@ export function buildHarnessRelease(options = {}) {
     ? 'main-branch-merge'
     : 'explicit-human-approval'
   const release = {
-    schemaVersion: '1.0.0',
+    schemaVersion: '1.1.0',
     releaseId: '',
     environment,
     ...(lane === undefined ? {} : { releaseLane: lane }),
@@ -235,6 +236,7 @@ export function buildHarnessRelease(options = {}) {
       runtimeConfigurations: edge.runtimeConfigurations,
     })),
     edgeFunctionInputs: edge.inputs,
+    ...(systemHealthObserver ? { systemHealthObserver } : {}),
     verificationRequirements: lane === undefined
       ? [...STANDARD_VERIFICATION_REQUIREMENTS, releaseAuthorityRequirement]
       : verificationRequirementsForLane(lane, releaseAuthorityRequirement),
@@ -300,7 +302,19 @@ export function checkHarnessRelease(release, options = {}) {
     'edgeBundleSha256',
     'bundleSha256',
   ]
-  if (release.schemaVersion !== '1.0.0') problems.push('release schema version is invalid')
+  if (!['1.0.0', '1.1.0'].includes(release.schemaVersion)) problems.push('release schema version is invalid')
+  if (release.schemaVersion === '1.1.0' && release.environment === 'production') {
+    try {
+      if (JSON.stringify(canonicalize(release.systemHealthObserver)) !==
+          JSON.stringify(canonicalize(systemHealthObserverReleaseIdentity(ROOT)))) {
+        problems.push('system health observer release identity does not match repository sources')
+      }
+    } catch {
+      problems.push('system health observer release identity is invalid')
+    }
+  } else if (release.systemHealthObserver !== undefined) {
+    problems.push('system health observer release identity requires schema version 1.1.0')
+  }
   if (!/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(release.releaseId ?? '')) problems.push('release ID is invalid')
   if (!ENVIRONMENTS.has(release.environment)) problems.push('release environment is invalid')
   if (release.releaseLane !== undefined &&
@@ -458,6 +472,61 @@ export function edgeFunctionBundles(rootInput = ROOT, functionNames = RELEASE_ED
       Object.entries(runtimeConfigurations).sort(([left], [right]) => left.localeCompare(right)),
     ),
   }
+}
+
+export function systemHealthObserverReleaseIdentity(rootInput = ROOT) {
+  const root = resolve(rootInput)
+  const configPath = resolve(root, 'scripts/system-monitor/wrangler.jsonc')
+  const config = JSON.parse(readFileSync(configPath, 'utf8'))
+  const expectedUrl = 'https://iwevizmsedyqozxlawwl.supabase.co'
+  const variables = config.vars ?? {}
+  const database = config.d1_databases?.find((binding) => binding.binding === 'DB')
+  if (config.account_id !== '45dec251ed1c9627256f9b6ba24bcdff' ||
+      config.name !== 'nestscout-system-health-observer' ||
+      JSON.stringify(config.triggers?.crons) !== JSON.stringify(['* * * * *']) ||
+      variables.SUPABASE_HEALTH_URL !== expectedUrl ||
+      variables.SYSTEM_HEALTH_ENVIRONMENT !== 'production' ||
+      variables.SYSTEM_HEALTH_EXPECTED_PROJECT_REF !== 'iwevizmsedyqozxlawwl' ||
+      variables.SYSTEM_HEALTH_PROFILE_ID !== 'cloudflare-admin-v1' ||
+      database?.database_name !== 'nestscout-system-health-observer' ||
+      database?.database_id !== '33d39ec6-73a4-44e6-b030-fb9ee3e4f281') {
+    throw new Error('system health observer release target is not the approved Production profile')
+  }
+
+  const workerEntry = resolve(root, 'scripts/system-monitor/index.ts')
+  const workerInputs = [...collectImportClosure(root, workerEntry)]
+  workerInputs.push(configPath)
+  const workerFiles = [...new Set(workerInputs)].sort()
+  const migrationsDirectory = resolve(root, 'scripts/system-monitor/migrations')
+  const migrationFiles = collectFiles(migrationsDirectory)
+  if (migrationFiles.length === 0) throw new Error('system health D1 migration inventory is empty')
+  const migrationInputs = migrationFiles.map((file) => ({
+    path: repoPath(relative(root, file)),
+    sha256: sha256(readFileSync(file)),
+  }))
+  const edge = edgeFunctionBundles(root, ['system-monitor'])
+
+  return Object.freeze({
+    schemaVersion: 'cloudflare-admin-observer.v1',
+    profileId: variables.SYSTEM_HEALTH_PROFILE_ID,
+    environment: variables.SYSTEM_HEALTH_ENVIRONMENT,
+    projectRef: variables.SYSTEM_HEALTH_EXPECTED_PROJECT_REF,
+    supabaseUrl: variables.SUPABASE_HEALTH_URL,
+    cloudflareAccountId: config.account_id,
+    workerName: config.name,
+    workerCronSchedules: [...config.triggers.crons],
+    workerBundleSha256: digestFileSet(root, workerFiles),
+    workerInputs: workerFiles.map((file) => repoPath(relative(root, file))),
+    d1Database: Object.freeze({ binding: database.binding, name: database.database_name, id: database.database_id }),
+    d1Migrations: migrationInputs,
+    d1MigrationsSha256: digestFileSet(root, migrationFiles),
+    edgeFunction: Object.freeze({
+      name: 'system-monitor',
+      sha256: edge.digests['system-monitor'],
+      inputs: edge.inputs['system-monitor'],
+      runtimeConfiguration: edge.runtimeConfigurations['system-monitor'],
+    }),
+  })
 }
 
 function edgeDeploymentConfiguration(root, functionName, functionRoot) {

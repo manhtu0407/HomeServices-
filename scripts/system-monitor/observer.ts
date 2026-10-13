@@ -15,8 +15,7 @@ export type SystemHealthObserverEnv = {
   SYSTEM_HEALTH_OBSERVER_SECRET?: string
   SYSTEM_HEALTH_ENVIRONMENT?: string
   SYSTEM_HEALTH_EXPECTED_PROJECT_REF?: string
-  TELEGRAM_BOT_TOKEN?: string
-  TELEGRAM_CHAT_ID?: string
+  SYSTEM_HEALTH_PROFILE_ID?: string
 }
 
 type HealthStatus = 'green' | 'yellow' | 'red' | 'gray'
@@ -31,7 +30,10 @@ type SnapshotCheck = {
   metrics: Record<string, number | boolean | null>
 }
 type Snapshot = {
-  schema_version: 1
+  schema_version: 1 | 2
+  profile_id?: string
+  required_check_ids?: string[]
+  coverage_gaps?: Array<'app-crash' | 'push-notifications'>
   environment: string
   project_ref: string | null
   scheduled_at: string
@@ -62,15 +64,14 @@ type IncidentRow = {
 type ObserverDependencies = {
   fetcher?: typeof fetch
   now?: () => Date
-  sleep?: (durationMs: number) => Promise<void>
+  scheduledTime?: number
 }
-type NotificationResult = 'sent' | 'deferred' | 'failed'
+type TickClaim = { scheduledAt: string; ownerId: string; fencingToken: number }
 
 const RESPONSE_BYTES_LIMIT = 16 * 1024
 const REQUEST_TIMEOUT_MS = 5_000
-const MAX_NOTIFICATIONS_PER_TICK = 5
-const REMINDER_INTERVAL_MS = 30 * 60_000
 const INCIDENT_RETENTION_MS = 30 * 24 * 60 * 60_000
+const TICK_RETENTION_MS = 7 * 24 * 60 * 60_000
 const CLEANUP_INTERVAL_MS = 24 * 60 * 60_000
 const SAFE_REASON = /^[A-Z][A-Z0-9_]{0,63}$/u
 
@@ -80,73 +81,99 @@ export async function runSystemHealthObserver(
 ) {
   const now = dependencies.now?.() ?? new Date()
   const fetcher = dependencies.fetcher ?? fetch
-  const sleep = dependencies.sleep ?? ((durationMs) => new Promise((resolve) => setTimeout(resolve, durationMs)))
   const config = readConfig(env)
+  const scheduledMs = Number.isFinite(dependencies.scheduledTime) && (dependencies.scheduledTime ?? 0) > 0
+    ? dependencies.scheduledTime as number
+    : Math.floor(now.getTime() / 60_000) * 60_000
+  const scheduledAt = new Date(scheduledMs).toISOString()
   let snapshot: Snapshot | null = null
   let observerReachable = false
-  let outageReason: string | null = null
-
-  if (!config) outageReason = 'OBSERVER_NOT_CONFIGURED'
-  else {
-    try {
-      const response = await boundedFetch(fetcher, observerUrl(config.supabaseUrl, '/latest'), {
-        method: 'GET',
-        headers: { 'x-system-monitor-observer-secret': config.observerSecret },
-      })
-      if (!response.ok) throw new Error('SUPABASE_READ_FAILED')
-      observerReachable = true
-      const payload = await readJsonBounded(response, RESPONSE_BYTES_LIMIT)
-      const parsed = parseSnapshot(payload.snapshot)
-      const stateReason = validateSnapshot(parsed, config, now.getTime())
-      if (stateReason) outageReason = stateReason
-      else snapshot = parsed
-    } catch (error) {
-      outageReason = error instanceof Error && SAFE_REASON.test(error.message) ? error.message : 'SUPABASE_UNAVAILABLE'
-    }
-  }
-
-  let d1Healthy = true
-  let dispatcherStatus: HealthStatus = 'green'
+  let outageReason = config ? null : 'OBSERVER_NOT_CONFIGURED'
+  let d1Status: HealthStatus = 'green'
+  let observerStatus: HealthStatus = 'gray'
   let errorCode: string | null = null
+  let tick: TickClaim | null = null
+
   try {
     await ensureState(env.DB, now.toISOString())
-    const state = await readState(env.DB)
-    if (isDueForCleanup(state.last_cleanup_at, now.getTime())) await cleanupExpired(env.DB, now)
+    tick = await claimTick(env.DB, scheduledAt, now)
+    if (!tick) {
+      return { snapshotStatus: 'skipped', outageReason: null, d1Status: 'green', dispatcherStatus: 'green', skipped: 'DUPLICATE_TICK' } as const
+    }
+    const initialState = await readState(env.DB)
+    if (isDueForCleanup(initialState.last_cleanup_at, now.getTime())) await cleanupExpired(env.DB, now)
 
-    if (outageReason) {
-      const outage = await openOrUpdateOutage(env.DB, state, outageReason, now)
-      if (observerReachable && config) {
-        const synced = await syncExternalIncident(fetcher, config, outage, 'open')
-        if (synced) await markOutageSynced(env.DB, outage.incident_id, now.toISOString())
-        else dispatcherStatus = 'yellow'
+    if (config) {
+      try {
+        const response = await boundedFetch(fetcher, observerUrl(config.supabaseUrl, '/latest?schema_version=2'), {
+          method: 'GET',
+          headers: { 'x-system-monitor-observer-secret': config.observerSecret },
+        })
+        if (!response.ok) throw new Error('SUPABASE_READ_FAILED')
+        observerReachable = true
+        const payload = await readJsonBounded(response, RESPONSE_BYTES_LIMIT)
+        const parsed = parseSnapshot(payload.snapshot)
+        const stateReason = validateSnapshot(parsed, config, now.getTime())
+        if (stateReason) outageReason = stateReason
+        else snapshot = parsed
+      } catch (error) {
+        outageReason = error instanceof Error && SAFE_REASON.test(error.message) ? error.message : 'SUPABASE_UNAVAILABLE'
       }
-      const delivery = await deliverIncident(env, fetcher, sleep, outage, 'open', now)
-      if (delivery !== 'sent') dispatcherStatus = 'yellow'
+    }
+
+    if (!config) {
+      await assertTickOwner(env.DB, tick, now)
+      const state = await readState(env.DB)
+      const outage = await openOrUpdateOutage(env.DB, state, outageReason ?? 'OBSERVER_NOT_CONFIGURED', now)
+      errorCode = outage.reason_code
+    } else if (outageReason) {
+      await assertTickOwner(env.DB, tick, now)
+      const state = await readState(env.DB)
+      const outage = await openOrUpdateOutage(env.DB, state, outageReason, now)
+      errorCode = outage.reason_code
+      observerStatus = outage.severity === 'red' ? 'red' : 'yellow'
+      if (observerReachable && state.current_outage_synced !== 1) {
+        const synced = await syncExternalIncident(fetcher, config, outage, 'open')
+        await assertTickOwner(env.DB, tick, now)
+        if (synced) await markOutageSynced(env.DB, outage.incident_id, now.toISOString())
+        else observerStatus = 'yellow'
+      } else if (observerReachable) {
+        const synced = await syncExternalIncident(fetcher, config, outage, 'open')
+        if (!synced) observerStatus = 'yellow'
+      }
       await setObserverState(env.DB, outageReason, null, now.toISOString())
     } else if (snapshot && config) {
-      const stateAfterSync = await readState(env.DB)
-      if (stateAfterSync.current_outage_id) {
-        const resolved = await resolveOutage(env.DB, stateAfterSync, config, fetcher, now)
-        if (!resolved) dispatcherStatus = 'yellow'
-        else {
-          const delivery = await deliverIncident(env, fetcher, sleep, resolved, 'resolved', now)
-          if (delivery !== 'sent') dispatcherStatus = 'yellow'
+      await assertTickOwner(env.DB, tick, now)
+      const state = await readState(env.DB)
+      if (state.current_outage_id) {
+        const resolved = await resolveOutage(env.DB, state, config, fetcher, now)
+        if (!resolved) {
+          observerStatus = 'yellow'
+          errorCode = 'OUTAGE_RECONCILIATION_PENDING'
         }
       }
-      const incidentDispatch = await reconcileSnapshotIncidents(env, fetcher, sleep, snapshot, now)
-      if (incidentDispatch === 'failed') dispatcherStatus = 'yellow'
+      await assertTickOwner(env.DB, tick, now)
+      await reconcileSnapshotIncidents(env.DB, snapshot, now)
       await setObserverState(env.DB, null, snapshot.completed_at, now.toISOString())
+      if (observerStatus === 'gray') observerStatus = 'green'
     }
-  } catch {
-    d1Healthy = false
-    dispatcherStatus = 'gray'
-    errorCode = 'D1_UNAVAILABLE'
+
+    d1Status = 'green'
+  } catch (error) {
+    d1Status = 'gray'
+    observerStatus = 'gray'
+    errorCode = error instanceof Error && SAFE_REASON.test(error.message) ? error.message : 'D1_OR_OBSERVER_OPERATION_FAILED'
+    outageReason ??= errorCode
+  } finally {
+    if (tick) {
+      await completeTick(env.DB, tick, now, d1Status === 'gray' ? 'failed' : 'completed').catch(() => undefined)
+    }
   }
 
   if (config) {
     await postObserverHeartbeat(fetcher, config, {
-      dispatcher_status: dispatcherStatus,
-      d1_status: d1Healthy ? 'green' : 'gray',
+      dispatcher_status: observerStatus,
+      d1_status: d1Status,
       error_code: errorCode ?? (outageReason && SAFE_REASON.test(outageReason) ? outageReason : null),
     }).catch(() => undefined)
   }
@@ -154,109 +181,54 @@ export async function runSystemHealthObserver(
   return {
     snapshotStatus: snapshot ? 'fresh' : 'unavailable',
     outageReason,
-    d1Status: d1Healthy ? 'green' : 'gray',
-    dispatcherStatus,
+    d1Status,
+    dispatcherStatus: observerStatus,
   } as const
 }
 
 async function reconcileSnapshotIncidents(
-  env: SystemHealthObserverEnv,
-  fetcher: typeof fetch,
-  sleep: (durationMs: number) => Promise<void>,
+  db: D1Database,
   snapshot: Snapshot,
   now: Date,
-): Promise<'sent' | 'failed'> {
-  const active = new Map<string, { incidentId: string; fingerprint: string; component: IncidentComponent; severity: 'yellow' | 'red'; reasonCode: string; openedAt: string }>()
+) {
+  const activeFingerprints = new Set<string>()
   for (const check of snapshot.checks) {
     if ((check.status !== 'yellow' && check.status !== 'red') || !isComponent(check.component)) continue
-    const incidentId = safeIncidentId(check.incident_id) ?? `untracked-${check.component}-${check.check_id}`
-    const fingerprint = `${snapshot.environment}:${check.component}:${check.check_id}`.slice(0, 180)
-    active.set(incidentId, {
-      incidentId,
-      fingerprint,
-      component: check.component,
-      severity: check.status === 'red' ? 'red' : 'yellow',
-      reasonCode: check.reason_code,
-      openedAt: check.observed_at ?? snapshot.completed_at,
-    })
+    const fingerprint = (snapshot.environment + ':' + check.component + ':' + check.check_id).slice(0, 180)
+    activeFingerprints.add(fingerprint)
+    const previous = await db.prepare(
+      "SELECT incident_id, fingerprint, component, severity, status, reason_code, opened_at, last_seen_at, resolved_at FROM monitor_incidents WHERE fingerprint = ? AND status = 'open' ORDER BY opened_at DESC LIMIT 1",
+    ).bind(fingerprint).first<IncidentRow>()
+    const incidentId = previous?.incident_id ?? safeIncidentId(check.incident_id) ?? crypto.randomUUID()
+    const openedAt = previous?.opened_at ?? check.observed_at ?? snapshot.completed_at
+    const result = await db.prepare(
+      "INSERT INTO monitor_incidents (incident_id, fingerprint, component, severity, status, reason_code, opened_at, last_seen_at, last_notified_at, resolved_at) VALUES (?, ?, ?, ?, 'open', ?, ?, ?, NULL, NULL) ON CONFLICT(incident_id) DO UPDATE SET severity = excluded.severity, status = 'open', reason_code = excluded.reason_code, last_seen_at = excluded.last_seen_at, resolved_at = NULL",
+    ).bind(incidentId, fingerprint, check.component, check.status, check.reason_code, openedAt, now.toISOString()).run()
+    if (!result.success) throw new Error('D1_INCIDENT_WRITE_FAILED')
   }
+
   for (const check of snapshot.checks) {
-    if (check.component !== 'app' || check.check_id !== 'app-native-sentry' || check.metrics.sentry_errors !== null) continue
-    const incidentId = `untracked-${snapshot.environment}-app-sentry-coverage`
-    active.set(incidentId, {
-      incidentId,
-      fingerprint: sentryCoverageFingerprint(snapshot.environment),
-      component: 'app',
-      severity: 'yellow',
-      reasonCode: check.reason_code === 'SENTRY_NOT_CONFIGURED' ? check.reason_code : 'SENTRY_SOURCE_UNAVAILABLE',
-      openedAt: check.observed_at ?? snapshot.completed_at,
-    })
+    if (check.status !== 'green' || !isComponent(check.component)) continue
+    const fingerprint = (snapshot.environment + ':' + check.component + ':' + check.check_id).slice(0, 180)
+    const open = await db.prepare(
+      "SELECT incident_id FROM monitor_incidents WHERE fingerprint = ? AND status = 'open' ORDER BY opened_at DESC LIMIT 1",
+    ).bind(fingerprint).first<{ incident_id: string }>()
+    if (!open) continue
+    const resolvedAt = check.observed_at ?? snapshot.completed_at
+    const result = await db.prepare(
+      "UPDATE monitor_incidents SET status = 'resolved', resolved_at = ?, last_seen_at = ? WHERE incident_id = ? AND status = 'open'",
+    ).bind(resolvedAt, resolvedAt, open.incident_id).run()
+    if (!result.success) throw new Error('D1_INCIDENT_RESOLVE_FAILED')
   }
 
-  const existingResult = await env.DB.prepare(
-    "SELECT incident_id, fingerprint, component, severity, status, reason_code, opened_at, last_seen_at, last_notified_at, resolved_at FROM monitor_incidents WHERE status = 'open' ORDER BY opened_at ASC LIMIT 100",
-  ).all<IncidentRow>()
-  if (!existingResult.success) throw new Error('D1_READ_FAILED')
-  let result: NotificationResult = 'sent'
-  let sends = 0
-  const activeFingerprints = new Set([...active.values()].map((incident) => incident.fingerprint))
-  const greenFingerprints = new Set(snapshot.checks
-    .filter((check) => check.status === 'green')
-    .map((check) => `${snapshot.environment}:${check.component}:${check.check_id}`.slice(0, 180)))
-  if (snapshot.checks.some((check) => check.component === 'app' && check.check_id === 'app-native-sentry' && typeof check.metrics.sentry_errors === 'number')) {
-    greenFingerprints.add(sentryCoverageFingerprint(snapshot.environment))
-  }
-
-  for (const incident of active.values()) {
-    const previous = await env.DB.prepare(
-      'SELECT incident_id, fingerprint, component, severity, status, reason_code, opened_at, last_seen_at, last_notified_at, resolved_at FROM monitor_incidents WHERE incident_id = ? OR fingerprint = ? LIMIT 1',
-    ).bind(incident.incidentId, incident.fingerprint).first<IncidentRow>()
-    const isNew = !previous || previous.status === 'resolved'
-    await env.DB.prepare(
-      `INSERT INTO monitor_incidents (incident_id, fingerprint, component, severity, status, reason_code, opened_at, last_seen_at, last_notified_at, resolved_at)
-       VALUES (?, ?, ?, ?, 'open', ?, ?, ?, NULL, NULL)
-       ON CONFLICT(fingerprint) DO UPDATE SET incident_id = excluded.incident_id, component = excluded.component, severity = excluded.severity, status = 'open', reason_code = excluded.reason_code, last_seen_at = excluded.last_seen_at, resolved_at = NULL`,
-    ).bind(incident.incidentId, incident.fingerprint, incident.component, incident.severity, incident.reasonCode, incident.openedAt, now.toISOString()).run()
-
-    const dueReminder = Boolean(previous?.last_notified_at && now.getTime() - Date.parse(previous.last_notified_at) >= REMINDER_INTERVAL_MS)
-    const dueNotification = isNew || !previous?.last_notified_at || dueReminder
-    if (!dueNotification || sends >= MAX_NOTIFICATIONS_PER_TICK) continue
-    const kind = isNew || !previous?.last_notified_at ? 'open' : 'reminder'
-    const delivery = await deliverIncident(env, fetcher, sleep, {
-      incident_id: incident.incidentId,
-      fingerprint: incident.fingerprint,
-      component: incident.component,
-      severity: incident.severity,
-      reason_code: incident.reasonCode,
-      opened_at: previous?.opened_at ?? incident.openedAt,
-    }, kind, now)
-    if (delivery === 'sent') {
-      sends += 1
-      await env.DB.prepare('UPDATE monitor_incidents SET last_notified_at = ? WHERE incident_id = ?')
-        .bind(now.toISOString(), incident.incidentId).run()
-    } else result = 'failed'
-  }
-
-  for (const previous of existingResult.results) {
-    if (active.has(previous.incident_id) || activeFingerprints.has(previous.fingerprint)) continue
-    if (!greenFingerprints.has(previous.fingerprint)) continue
-    await env.DB.prepare("UPDATE monitor_incidents SET status = 'resolved', resolved_at = ?, last_seen_at = ? WHERE incident_id = ? AND status = 'open'")
-      .bind(now.toISOString(), now.toISOString(), previous.incident_id).run()
-    if (sends >= MAX_NOTIFICATIONS_PER_TICK) continue
-    const delivery = await deliverIncident(env, fetcher, sleep, previous, 'resolved', now)
-    if (delivery === 'sent') {
-      sends += 1
-      await env.DB.prepare('UPDATE monitor_incidents SET last_notified_at = ? WHERE incident_id = ?')
-        .bind(now.toISOString(), previous.incident_id).run()
-    } else result = 'failed'
-  }
-  return result
+  if (activeFingerprints.size > 100) throw new Error('SNAPSHOT_INCIDENT_LIMIT_EXCEEDED')
 }
-
 async function openOrUpdateOutage(db: D1Database, state: ObserverState, reasonCode: string, now: Date) {
   const incidentId = state.current_outage_id ?? crypto.randomUUID()
   const openedAt = state.current_outage_opened_at ?? now.toISOString()
   const fingerprint = `observer:${incidentId}`
+  const changed = state.current_outage_id === null || state.current_outage_reason !== reasonCode
+  const synced = changed ? 0 : state.current_outage_synced
   const incident = {
     incident_id: incidentId,
     fingerprint,
@@ -265,16 +237,24 @@ async function openOrUpdateOutage(db: D1Database, state: ObserverState, reasonCo
     reason_code: reasonCode,
     opened_at: openedAt,
   }
-  await db.prepare(
+  const incidentWrite = await db.prepare(
     `INSERT INTO monitor_incidents (incident_id, fingerprint, component, severity, status, reason_code, opened_at, last_seen_at, last_notified_at, resolved_at)
      VALUES (?, ?, 'operations', ?, 'open', ?, ?, ?, NULL, NULL)
      ON CONFLICT(incident_id) DO UPDATE SET reason_code = excluded.reason_code, last_seen_at = excluded.last_seen_at`,
   ).bind(incidentId, fingerprint, incident.severity, reasonCode, openedAt, now.toISOString()).run()
-  await db.prepare(
+  if (!incidentWrite.success) throw new Error('D1_OUTAGE_WRITE_FAILED')
+  const stateWrite = await db.prepare(
     `UPDATE monitor_state SET current_outage_id = ?, current_outage_reason = ?, current_outage_opened_at = ?, updated_at = ?
      WHERE singleton_id = 1`,
   ).bind(incidentId, reasonCode, openedAt, now.toISOString()).run()
-  return incident
+  if (!stateWrite.success) throw new Error('D1_STATE_WRITE_FAILED')
+  if (changed) {
+    const eventWrite = await db.prepare(
+      'INSERT INTO monitor_outage_events (event_id, external_incident_id, event_kind, reason_code, recorded_at, sync_status) VALUES (?, ?, ?, ?, ?, ?)',
+    ).bind(crypto.randomUUID(), incidentId, state.current_outage_id ? 'updated' : 'opened', reasonCode, now.toISOString(), synced === 1 ? 'synced' : 'pending').run()
+    if (!eventWrite.success) throw new Error('D1_OUTAGE_EVENT_WRITE_FAILED')
+  }
+  return { ...incident, synced }
 }
 
 async function resolveOutage(
@@ -296,108 +276,19 @@ async function resolveOutage(
   }
   const synced = await syncExternalIncident(fetcher, config, incident, 'resolved')
   if (!synced) return null
-  await db.prepare("UPDATE monitor_incidents SET status = 'resolved', resolved_at = ?, last_seen_at = ? WHERE incident_id = ?")
+  const incidentWrite = await db.prepare("UPDATE monitor_incidents SET status = 'resolved', resolved_at = ?, last_seen_at = ? WHERE incident_id = ?")
     .bind(now.toISOString(), now.toISOString(), incident.incident_id).run()
-  await db.prepare(
+  if (!incidentWrite.success) throw new Error('D1_OUTAGE_RESOLVE_FAILED')
+  const eventWrite = await db.prepare(
+    'INSERT INTO monitor_outage_events (event_id, external_incident_id, event_kind, reason_code, recorded_at, sync_status) VALUES (?, ?, ?, ?, ?, ?)',
+  ).bind(crypto.randomUUID(), incident.incident_id, 'resolved', incident.reason_code, now.toISOString(), 'synced').run()
+  if (!eventWrite.success) throw new Error('D1_OUTAGE_EVENT_WRITE_FAILED')
+  const stateWrite = await db.prepare(
     `UPDATE monitor_state SET current_outage_id = NULL, current_outage_reason = NULL, current_outage_opened_at = NULL, current_outage_synced = 0, updated_at = ?
      WHERE singleton_id = 1`,
   ).bind(now.toISOString()).run()
+  if (!stateWrite.success) throw new Error('D1_STATE_WRITE_FAILED')
   return incident
-}
-
-async function deliverIncident(
-  env: SystemHealthObserverEnv,
-  fetcher: typeof fetch,
-  sleep: (durationMs: number) => Promise<void>,
-  incident: { incident_id: string; component: IncidentComponent; severity: 'yellow' | 'red'; reason_code: string; opened_at: string },
-  kind: 'open' | 'reminder' | 'resolved',
-  now: Date,
-): Promise<NotificationResult> {
-  const deliveryKey = kind === 'reminder'
-    ? `incident:${incident.incident_id}:reminder:${Math.floor(now.getTime() / REMINDER_INTERVAL_MS)}`
-    : `incident:${incident.incident_id}:${kind}`
-  await env.DB.prepare(
-    `INSERT OR IGNORE INTO monitor_deliveries (delivery_key, incident_id, message_kind, status, attempts, next_attempt_at, lease_until, sent_at, error_code, created_at, updated_at)
-     VALUES (?, ?, ?, 'pending', 0, NULL, NULL, NULL, NULL, ?, ?)`,
-  ).bind(deliveryKey, incident.incident_id, kind, now.toISOString(), now.toISOString()).run()
-  const claim = await env.DB.prepare(
-    `UPDATE monitor_deliveries SET status = 'sending', attempts = attempts + 1, lease_until = ?, updated_at = ?
-     WHERE delivery_key = ? AND status != 'sent'
-       AND (status != 'sending' OR lease_until IS NULL OR lease_until <= ?)
-       AND (next_attempt_at IS NULL OR next_attempt_at <= ?)`,
-  ).bind(new Date(now.getTime() + 30_000).toISOString(), now.toISOString(), deliveryKey, now.toISOString(), now.toISOString()).run()
-  if ((claim.meta?.changes ?? 0) !== 1) {
-    const existing = await env.DB.prepare('SELECT status FROM monitor_deliveries WHERE delivery_key = ?')
-      .bind(deliveryKey).first<{ status: string }>()
-    return existing?.status === 'sent' ? 'sent' : 'deferred'
-  }
-
-  const message = buildTelegramMessage(incident, kind, now)
-  const sent = await sendTelegram(env, fetcher, sleep, message, now)
-  if (sent.kind === 'sent') {
-    await env.DB.prepare(
-      "UPDATE monitor_deliveries SET status = 'sent', sent_at = ?, lease_until = NULL, next_attempt_at = NULL, error_code = NULL, updated_at = ? WHERE delivery_key = ?",
-    ).bind(now.toISOString(), now.toISOString(), deliveryKey).run()
-    return 'sent'
-  }
-  await env.DB.prepare(
-    "UPDATE monitor_deliveries SET status = 'pending', lease_until = NULL, next_attempt_at = ?, error_code = ?, updated_at = ? WHERE delivery_key = ?",
-  ).bind(sent.retryAt, sent.errorCode, now.toISOString(), deliveryKey).run()
-  return sent.kind === 'deferred' ? 'deferred' : 'failed'
-}
-
-async function sendTelegram(
-  env: SystemHealthObserverEnv,
-  fetcher: typeof fetch,
-  sleep: (durationMs: number) => Promise<void>,
-  message: string,
-  now: Date,
-): Promise<{ kind: 'sent'; retryAt: null; errorCode: null } | { kind: 'deferred' | 'failed'; retryAt: string; errorCode: string }> {
-  const token = env.TELEGRAM_BOT_TOKEN ?? ''
-  const chatId = env.TELEGRAM_CHAT_ID ?? ''
-  if (!/^[0-9]{5,15}:[A-Za-z0-9_-]{20,100}$/u.test(token) || !/^-?[0-9]{5,20}$/u.test(chatId)) {
-    return { kind: 'failed', retryAt: new Date(now.getTime() + 15 * 60_000).toISOString(), errorCode: 'TELEGRAM_NOT_CONFIGURED' }
-  }
-  const endpoint = `https://api.telegram.org/bot${token}/sendMessage`
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const response = await boundedFetch(fetcher, endpoint, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text: message, disable_web_page_preview: true }),
-      })
-      const payload = await readJsonBounded(response, 4 * 1024).catch(() => null)
-      if (response.ok && asRecord(payload)?.ok === true) return { kind: 'sent', retryAt: null, errorCode: null }
-      if (response.status === 429) {
-        const retryAfter = readRetryAfter(payload) ?? 60
-        return { kind: 'deferred', retryAt: new Date(now.getTime() + retryAfter * 1000).toISOString(), errorCode: 'TELEGRAM_RATE_LIMITED' }
-      }
-      if (response.status < 500 || attempt === 2) {
-        return { kind: 'failed', retryAt: new Date(now.getTime() + 60_000).toISOString(), errorCode: 'TELEGRAM_DELIVERY_FAILED' }
-      }
-    } catch {
-      if (attempt === 2) return { kind: 'failed', retryAt: new Date(now.getTime() + 60_000).toISOString(), errorCode: 'TELEGRAM_TIMEOUT_OR_NETWORK' }
-    }
-    await sleep(250 * (attempt + 1))
-  }
-  return { kind: 'failed', retryAt: new Date(now.getTime() + 60_000).toISOString(), errorCode: 'TELEGRAM_DELIVERY_FAILED' }
-}
-
-function buildTelegramMessage(
-  incident: { incident_id: string; component: IncidentComponent; severity: 'yellow' | 'red'; reason_code: string; opened_at: string },
-  kind: 'open' | 'reminder' | 'resolved',
-  now: Date,
-) {
-  const title = kind === 'resolved' ? 'Đã phục hồi' : kind === 'reminder' ? 'Sự cố vẫn đang mở' : 'Phát hiện sự cố hệ thống'
-  const reasonCode = SAFE_REASON.test(incident.reason_code) ? incident.reason_code : 'UNKNOWN'
-  return [
-    `[NestScout] ${title}`,
-    `Thành phần: ${componentLabel(incident.component)}`,
-    `Mức độ: ${kind === 'resolved' ? 'đã phục hồi' : incident.severity === 'red' ? 'đỏ' : 'vàng'}`,
-    `Mã sự cố: ${incident.incident_id}`,
-    `Mã kiểm tra: ${reasonCode}`,
-    `Thời điểm: ${formatVietnamTime(now)}`,
-  ].join('\n')
 }
 
 async function syncExternalIncident(
@@ -437,6 +328,57 @@ async function ensureState(db: D1Database, now: string) {
   if (!result.success) throw new Error('D1_STATE_INIT_FAILED')
 }
 
+async function claimTick(db: D1Database, scheduledAt: string, now: Date): Promise<TickClaim | null> {
+  const current = await db.prepare('SELECT owner_id, fencing_token, lease_until, completed_at FROM monitor_ticks WHERE scheduled_at = ?')
+    .bind(scheduledAt).first<{ owner_id: string; fencing_token: number; lease_until: string; completed_at: string | null }>()
+  const ownerId = crypto.randomUUID()
+  const leaseUntil = new Date(now.getTime() + 45_000).toISOString()
+  if (current?.completed_at) return null
+  if (!current) {
+    try {
+      const inserted = await db.prepare(
+        "INSERT INTO monitor_ticks (scheduled_at, owner_id, fencing_token, lease_until, completed_at, outcome, updated_at) VALUES (?, ?, 1, ?, NULL, NULL, ?)",
+      ).bind(scheduledAt, ownerId, leaseUntil, now.toISOString()).run()
+      if (!inserted.success) throw new Error('D1_TICK_CLAIM_FAILED')
+    } catch {
+      const raced = await db.prepare('SELECT owner_id FROM monitor_ticks WHERE scheduled_at = ?').bind(scheduledAt).first<{ owner_id: string }>()
+      if (raced) return null
+      throw new Error('D1_TICK_CLAIM_FAILED')
+    }
+    return { scheduledAt, ownerId, fencingToken: 1 }
+  }
+  if (Date.parse(current.lease_until) > now.getTime()) return null
+  const claimed = await db.prepare(
+    "UPDATE monitor_ticks SET owner_id = ?, fencing_token = fencing_token + 1, lease_until = ?, updated_at = ? WHERE scheduled_at = ? AND completed_at IS NULL AND lease_until <= ?",
+  ).bind(ownerId, leaseUntil, now.toISOString(), scheduledAt, now.toISOString()).run()
+  if (!claimed.success || (claimed.meta?.changes ?? 0) !== 1) return null
+  const updated = await db.prepare('SELECT owner_id, fencing_token FROM monitor_ticks WHERE scheduled_at = ?')
+    .bind(scheduledAt).first<{ owner_id: string; fencing_token: number }>()
+  if (!updated || updated.owner_id !== ownerId || !Number.isSafeInteger(updated.fencing_token)) return null
+  return { scheduledAt, ownerId, fencingToken: updated.fencing_token }
+}
+
+async function assertTickOwner(db: D1Database, claim: TickClaim, now: Date) {
+  const current = await db.prepare('SELECT owner_id, fencing_token, lease_until, completed_at FROM monitor_ticks WHERE scheduled_at = ?')
+    .bind(claim.scheduledAt).first<{ owner_id: string; fencing_token: number; lease_until: string; completed_at: string | null }>()
+  if (!current || current.owner_id !== claim.ownerId || current.fencing_token !== claim.fencingToken ||
+      current.completed_at !== null || Date.parse(current.lease_until) <= now.getTime()) {
+    throw new Error('STALE_TICK_LEASE')
+  }
+}
+
+async function completeTick(db: D1Database, claim: TickClaim, now: Date, outcome: 'completed' | 'failed') {
+  const result = await db.prepare(
+    'UPDATE monitor_ticks SET completed_at = ?, outcome = ?, updated_at = ? WHERE scheduled_at = ? AND owner_id = ? AND fencing_token = ? AND completed_at IS NULL',
+  ).bind(now.toISOString(), outcome, now.toISOString(), claim.scheduledAt, claim.ownerId, claim.fencingToken).run()
+  if (!result.success) throw new Error('D1_TICK_COMPLETION_FAILED')
+  if ((result.meta?.changes ?? 0) === 1) {
+    const state = await db.prepare('UPDATE monitor_state SET last_completed_at = ?, last_error_code = ?, updated_at = ? WHERE singleton_id = 1')
+      .bind(now.toISOString(), outcome === 'completed' ? null : 'OBSERVER_TICK_FAILED', now.toISOString()).run()
+    if (!state.success) throw new Error('D1_STATE_WRITE_FAILED')
+  }
+}
+
 async function readState(db: D1Database): Promise<ObserverState> {
   const state = await db.prepare(
     'SELECT current_outage_id, current_outage_reason, current_outage_opened_at, current_outage_synced, last_cleanup_at FROM monitor_state WHERE singleton_id = 1',
@@ -446,8 +388,12 @@ async function readState(db: D1Database): Promise<ObserverState> {
 }
 
 async function markOutageSynced(db: D1Database, incidentId: string, now: string) {
-  await db.prepare('UPDATE monitor_state SET current_outage_synced = 1, updated_at = ? WHERE singleton_id = 1 AND current_outage_id = ?')
+  const result = await db.prepare('UPDATE monitor_state SET current_outage_synced = 1, updated_at = ? WHERE singleton_id = 1 AND current_outage_id = ?')
     .bind(now, incidentId).run()
+  if (!result.success) throw new Error('D1_STATE_WRITE_FAILED')
+  const events = await db.prepare("UPDATE monitor_outage_events SET sync_status = 'synced' WHERE external_incident_id = ? AND event_kind != 'resolved' AND sync_status = 'pending'")
+    .bind(incidentId).run()
+  if (!events.success) throw new Error('D1_OUTAGE_EVENT_SYNC_FAILED')
 }
 
 async function setObserverState(db: D1Database, errorCode: string | null, snapshotAt: string | null, now: string) {
@@ -456,14 +402,24 @@ async function setObserverState(db: D1Database, errorCode: string | null, snapsh
 }
 
 async function cleanupExpired(db: D1Database, now: Date) {
-  const cutoff = new Date(now.getTime() - INCIDENT_RETENTION_MS).toISOString()
+  const incidentCutoff = new Date(now.getTime() - INCIDENT_RETENTION_MS).toISOString()
+  const tickCutoff = new Date(now.getTime() - TICK_RETENTION_MS).toISOString()
   const statements = [
-    db.prepare("DELETE FROM monitor_incidents WHERE status = 'resolved' AND resolved_at < ?").bind(cutoff),
-    db.prepare("DELETE FROM monitor_deliveries WHERE status = 'sent' AND updated_at < ?").bind(cutoff),
-    db.prepare('UPDATE monitor_state SET last_cleanup_at = ?, updated_at = ? WHERE singleton_id = 1').bind(now.toISOString(), now.toISOString()),
+    db.prepare("DELETE FROM monitor_incidents WHERE incident_id IN (SELECT incident_id FROM monitor_incidents WHERE status = 'resolved' AND resolved_at < ? ORDER BY resolved_at LIMIT 200)").bind(incidentCutoff),
+    db.prepare("DELETE FROM monitor_outage_events WHERE event_id IN (SELECT event_id FROM monitor_outage_events WHERE sync_status = 'synced' AND event_kind = 'resolved' AND recorded_at < ? ORDER BY recorded_at LIMIT 200)").bind(incidentCutoff),
+    db.prepare("DELETE FROM monitor_ticks WHERE scheduled_at IN (SELECT scheduled_at FROM monitor_ticks WHERE scheduled_at < ? AND (completed_at IS NOT NULL OR lease_until < ?) ORDER BY scheduled_at LIMIT 2000)").bind(tickCutoff, tickCutoff),
   ]
   const results = await Promise.all(statements.map((statement) => statement.run()))
   if (results.some((result) => !result.success)) throw new Error('D1_CLEANUP_FAILED')
+  const remaining = await db.prepare("SELECT (SELECT COUNT(*) FROM monitor_incidents WHERE status = 'resolved' AND resolved_at < ?) + (SELECT COUNT(*) FROM monitor_outage_events WHERE sync_status = 'synced' AND event_kind = 'resolved' AND recorded_at < ?) AS count")
+    .bind(incidentCutoff, incidentCutoff).first<{ count: number }>()
+  const remainingTicks = await db.prepare('SELECT COUNT(*) AS count FROM monitor_ticks WHERE scheduled_at < ? AND (completed_at IS NOT NULL OR lease_until < ?)')
+    .bind(tickCutoff, tickCutoff).first<{ count: number }>()
+  if (!remaining || !remainingTicks) throw new Error('D1_CLEANUP_FAILED')
+  if (remaining.count === 0 && remainingTicks.count === 0) {
+    const state = await db.prepare('UPDATE monitor_state SET last_cleanup_at = ?, updated_at = ? WHERE singleton_id = 1').bind(now.toISOString(), now.toISOString()).run()
+    if (!state.success) throw new Error('D1_CLEANUP_FAILED')
+  }
 }
 
 function isDueForCleanup(lastCleanupAt: string | null, nowMs: number) {
@@ -477,18 +433,23 @@ function readConfig(env: SystemHealthObserverEnv): ObserverConfig | null {
   const secret = env.SYSTEM_HEALTH_OBSERVER_SECRET?.trim() ?? ''
   const environment = env.SYSTEM_HEALTH_ENVIRONMENT ?? ''
   const projectRef = env.SYSTEM_HEALTH_EXPECTED_PROJECT_REF ?? ''
+  const profileId = env.SYSTEM_HEALTH_PROFILE_ID ?? ''
   try {
     const url = new URL(rawUrl)
     if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co') || url.pathname !== '/' || url.username || url.password || url.search || url.hash) return null
     if (secret.length < 32 || /\s/u.test(secret)) return null
-    if (!['production', 'staging', 'local'].includes(environment) || !/^[a-z0-9]{8,40}$/u.test(projectRef)) return null
-    return { supabaseUrl: url.origin, observerSecret: secret, environment, projectRef }
+    if (environment !== 'production' || !/^[a-z0-9]{8,40}$/u.test(projectRef) || profileId !== 'cloudflare-admin-v1') return null
+    return { supabaseUrl: url.origin, observerSecret: secret, environment, projectRef, profileId }
   } catch {
     return null
   }
 }
 
-type ObserverConfig = { supabaseUrl: string; observerSecret: string; environment: string; projectRef: string }
+type ObserverConfig = { supabaseUrl: string; observerSecret: string; environment: string; projectRef: string; profileId: string }
+
+export function isSystemHealthObserverConfigured(env: SystemHealthObserverEnv) {
+  return readConfig(env) !== null
+}
 
 function observerUrl(base: string, path: string) {
   return new URL(`/functions/v1/system-monitor/observer${path}`, `${base.replace(/\/+$/u, '')}/`).toString()
@@ -496,28 +457,45 @@ function observerUrl(base: string, path: string) {
 
 function validateSnapshot(snapshot: Snapshot | null, config: ObserverConfig, nowMs: number): string | null {
   if (!snapshot) return 'SNAPSHOT_INVALID'
+  if (snapshot.schema_version !== 2 || snapshot.profile_id !== config.profileId) return 'PROFILE_UNAVAILABLE'
   if (snapshot.environment !== config.environment || snapshot.project_ref !== config.projectRef) return 'SNAPSHOT_IDENTITY_MISMATCH'
   const scheduled = Date.parse(snapshot.scheduled_at)
   const completed = Date.parse(snapshot.completed_at)
   const expires = Date.parse(snapshot.expires_at)
   if (!Number.isFinite(scheduled) || !Number.isFinite(completed) || !Number.isFinite(expires) ||
       scheduled > completed || completed > nowMs || expires <= completed || expires - completed > 180_000 ||
-      expires < nowMs || nowMs - completed > 180_000) return 'SNAPSHOT_STALE'
+      expires <= nowMs || nowMs - completed > 180_000) return 'SNAPSHOT_STALE'
   for (const check of snapshot.checks) {
     const observed = check.observed_at === null ? null : Date.parse(check.observed_at)
     if (observed !== null && (!Number.isFinite(observed) || observed > nowMs)) return 'SNAPSHOT_INVALID'
     if (check.status !== 'gray' && (observed === null || nowMs - observed > 180_000)) return 'SNAPSHOT_STALE'
   }
+  const observedIds = new Set(snapshot.checks.map((check) => check.check_id))
+  if ((snapshot.required_check_ids ?? []).some((checkId) => !observedIds.has(checkId))) return 'REQUIRED_CHECK_MISSING'
   return null
 }
 
 function parseSnapshot(value: unknown): Snapshot | null {
   const row = asRecord(value)
-  if (!row || row.schema_version !== 1 || !isStatus(row.overall_status) ||
+  if (!row || (row.schema_version !== 1 && row.schema_version !== 2) || !isStatus(row.overall_status) ||
       !['production', 'staging', 'local'].includes(String(row.environment)) ||
       !(row.project_ref === null || /^[a-z0-9]{8,40}$/u.test(String(row.project_ref))) ||
       !isDateString(row.scheduled_at) || !isDateString(row.completed_at) || !isDateString(row.expires_at) ||
       !Array.isArray(row.checks) || row.checks.length > 32) return null
+  if (row.schema_version === 2 && (row.profile_id !== 'cloudflare-admin-v1' || !Array.isArray(row.required_check_ids) ||
+      row.required_check_ids.length < 1 || row.required_check_ids.length > 32 ||
+      row.required_check_ids.some((value) => typeof value !== 'string' || !/^[a-z0-9][a-z0-9._-]{0,79}$/u.test(value)) ||
+      new Set(row.required_check_ids).size !== row.required_check_ids.length || !Array.isArray(row.coverage_gaps) ||
+      row.coverage_gaps.length !== 2)) return null
+  const coverageGaps = row.schema_version === 2 ? row.coverage_gaps as unknown[] : []
+  if (row.schema_version === 2) {
+    const sources = new Set<string>()
+    for (const item of coverageGaps) {
+      if (!['app-crash', 'push-notifications'].includes(String(item)) || sources.has(String(item))) return null
+      sources.add(String(item))
+    }
+    if (sources.size !== 2) return null
+  }
   const checks: SnapshotCheck[] = []
   const seenIds = new Set<string>()
   for (const item of row.checks) {
@@ -542,7 +520,12 @@ function parseSnapshot(value: unknown): Snapshot | null {
     })
   }
   const snapshot: Snapshot = {
-    schema_version: 1,
+    schema_version: row.schema_version,
+    ...(row.schema_version === 2 ? {
+      profile_id: row.profile_id as string,
+      required_check_ids: row.required_check_ids as string[],
+      coverage_gaps: coverageGaps as Snapshot['coverage_gaps'],
+    } : {}),
     environment: row.environment as string,
     project_ref: row.project_ref as string | null,
     scheduled_at: row.scheduled_at,
@@ -551,20 +534,17 @@ function parseSnapshot(value: unknown): Snapshot | null {
     overall_status: row.overall_status,
     checks,
   }
-  if (evaluateSnapshotStatus(checks) !== row.overall_status) return null
+  if (evaluateSnapshotStatus(checks, row.schema_version === 2 ? row.required_check_ids as string[] : []) !== row.overall_status) return null
   return snapshot
 }
 
-function evaluateSnapshotStatus(checks: readonly SnapshotCheck[]): HealthStatus {
+function evaluateSnapshotStatus(checks: readonly SnapshotCheck[], requiredCheckIds: readonly string[]): HealthStatus {
   if (checks.length === 0) return 'gray'
   if (checks.some((check) => check.status === 'red')) return 'red'
   if (checks.some((check) => check.status === 'yellow')) return 'yellow'
-  if (checks.some((check) => check.status === 'gray')) return 'gray'
+  const observedIds = new Set(checks.map((check) => check.check_id))
+  if (requiredCheckIds.some((checkId) => !observedIds.has(checkId)) || checks.some((check) => check.status === 'gray')) return 'gray'
   return 'green'
-}
-
-function sentryCoverageFingerprint(environment: string) {
-  return `${environment}:app:app-sentry-coverage`.slice(0, 180)
 }
 
 function isDateString(value: unknown): value is string {
@@ -573,7 +553,7 @@ function isDateString(value: unknown): value is string {
 
 async function boundedFetch(fetcher: typeof fetch, rawUrl: string, init: RequestInit) {
   const url = new URL(rawUrl)
-  if (url.protocol !== 'https:' || (!url.hostname.endsWith('.supabase.co') && url.hostname !== 'api.telegram.org')) {
+  if (url.protocol !== 'https:' || !url.hostname.endsWith('.supabase.co')) {
     throw new Error('OUTBOUND_URL_REJECTED')
   }
   return fetcher(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) })
@@ -624,21 +604,4 @@ function safeIncidentId(value: unknown): string | null {
 
 function isSafeToken(value: unknown, maxLength: number): value is string {
   return typeof value === 'string' && value.length > 0 && value.length <= maxLength && /^[A-Za-z0-9._:+-]+$/u.test(value)
-}
-
-function readRetryAfter(payload: unknown) {
-  const retryAfter = asRecord(asRecord(payload)?.parameters)?.retry_after
-  return typeof retryAfter === 'number' && Number.isInteger(retryAfter) ? Math.max(1, Math.min(3600, retryAfter)) : null
-}
-
-function componentLabel(component: IncidentComponent) {
-  return component === 'backend' ? 'Backend' : component === 'kael' ? 'Kael Agentic' : component === 'app' ? 'Ứng dụng' : 'Vận hành'
-}
-
-function formatVietnamTime(date: Date) {
-  return new Intl.DateTimeFormat('vi-VN', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-  }).format(date)
 }

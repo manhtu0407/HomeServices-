@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 import type { MobileApiContext } from '../../../../../../supabase/functions/mobile-api/_shared/http'
+import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
+import { createMobileApiHandler } from '../../../../../../supabase/functions/mobile-api/_shared/http'
 import { acceptBroadcast } from '../../../../../../supabase/functions/mobile-api/_shared/domains/matching/accept'
 
 export const PILLAR = {
@@ -67,6 +69,83 @@ describe('worker offer accept', () => {
         p_quote_id: QUOTE_ID,
       },
     ])
+  })
+
+  it('routes an authenticated Worker accept through the public HTTP handler to the durable candidate receipt', async () => {
+    const client = makeSequenceClient([], {
+      accept_priced_broadcast_durable_atomic: [{
+        data: [{
+          ok: true,
+          error_code: null,
+          job_status: 'worker_candidate_pending',
+          candidate_id: 'candidate-187',
+          already_applied: true,
+        }],
+        error: null,
+      }],
+    })
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: WORKER_ID },
+        role: 'worker',
+        supabase: client,
+        privilegedSupabase: client,
+        userSupabase: client,
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request(
+      'https://edge.test/jobs/' + JOB_ID + '/accept',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ quote_id: QUOTE_ID }),
+      },
+    ))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toEqual({
+      job_id: JOB_ID,
+      status: 'worker_candidate_pending',
+      candidate_id: 'candidate-187',
+      awaiting_customer_confirmation: true,
+      already_applied: true,
+    })
+    expect(client.calls.find((call) => call.table === 'rpc:accept_priced_broadcast_durable_atomic')?.operations)
+      .toContainEqual([
+        'rpc',
+        'accept_priced_broadcast_durable_atomic',
+        { p_job_id: JOB_ID, p_worker_id: WORKER_ID, p_quote_id: QUOTE_ID },
+      ])
+  })
+
+  it('rejects a Customer at the public HTTP route before the accept RPC', async () => {
+    const client = makeSequenceClient([])
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: '18700000-0000-4000-8000-000000000004' },
+        role: 'customer',
+        supabase: client,
+        privilegedSupabase: client,
+        userSupabase: client,
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request(
+      'https://edge.test/jobs/' + JOB_ID + '/accept',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ quote_id: QUOTE_ID }),
+      },
+    ))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(403)
+    expect(client.calls.some((call) => call.table === 'rpc:accept_priced_broadcast_durable_atomic')).toBe(false)
   })
 
   it('rejects an ineligible accept receipt without exposing candidate state', async () => {

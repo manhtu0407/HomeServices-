@@ -197,8 +197,8 @@ Customer  scope.decide - POST /scope-changes/:id/decide - decideScopeChange
              (request -> command -> effect, so the decision and its side effects are
               separately auditable and replayable)
 Writes    scope_changes row, jobs.final_price to the exact verified full-scope total on confirm,
-          job status back to one of the
-          five on-site statuses (or cancelled)
+          job status back to the saved valid on-site status when rejected;
+          an approved on-site proposal resumes `repairing`
 Emits     'scope_change_decided' (customer) or 'kael_decided_scope_change' (autonomy)
 Gates     validateScopeChangeEvidenceRefs - scopeChangeRiskConfig -
           getWorkerScopeChangeRate feeds the matching penalty, not an auto-punishment

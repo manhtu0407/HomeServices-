@@ -10,6 +10,7 @@ import {
 import { matchRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes'
 import {
   PUBLIC_COVERAGE_MINIMUM_WORKERS,
+  getServiceCoverageReadiness,
   readServiceCoverageReadiness,
 } from '../../../../../supabase/functions/mobile-api/_shared/domains/catalog/coverage'
 import {
@@ -38,6 +39,24 @@ const coverageMigrationPath = resolve(
   root,
   'supabase/migrations/20260904230000_public_coverage_capacity_reservation.sql',
 )
+const coverageUrl = 'https://example.test/functions/v1/mobile-api/services/coverage?service_type=plumbing&district_code=q7'
+
+function coverageHttpHandler(client: DbClient) {
+  const customerId = '11111111-1111-4111-8111-111111111111'
+  const customerAuth: MobileApiAuthResult = {
+    success: true,
+    user: { id: customerId },
+    role: 'customer',
+    supabase: client,
+    privilegedSupabase: client,
+    userSupabase: client,
+  }
+
+  return createMobileApiHandler({
+    authenticate: vi.fn(async () => customerAuth),
+    services: { getServiceCoverageReadiness } as unknown as MobileApiServices,
+  })
+}
 
 describe('public service coverage reservation gate', () => {
   it('exposes an authenticated Customer-only readiness route', () => {
@@ -95,6 +114,86 @@ describe('public service coverage reservation gate', () => {
     }])
   })
 
+  it('returns a closed readiness result when fewer than three eligible and reachable workers are available', async () => {
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = []
+    const client = {
+      rpc(name: string, args: Record<string, unknown>) {
+        calls.push({ name, args })
+        return Promise.resolve({
+          data: [{
+            service_type: 'plumbing',
+            district_code: 'q7',
+            status: 'closed',
+            minimum_worker_count: 3,
+            eligible_reachable_worker_count: 2,
+            required_capabilities: [],
+            reason_code: 'INSUFFICIENT_ELIGIBLE_WORKERS',
+            checked_at: '2026-09-04T05:00:00.000Z',
+            valid_until: '2026-09-04T05:00:30.000Z',
+          }],
+          error: null,
+        })
+      },
+    } as unknown as DbClient
+    const handler = coverageHttpHandler(client)
+
+    const response = await handler(new Request(coverageUrl))
+    const readiness = await response.json()
+
+    expect(response.status, pillarWhy(PILLAR, 'insufficient capacity is a truthful closed result, not a ready projection')).toBe(200)
+    expect(readiness).toMatchObject({
+      status: 'closed',
+      minimum_worker_count: 3,
+      eligible_reachable_worker_count: 2,
+      reason_code: 'INSUFFICIENT_ELIGIBLE_WORKERS',
+    })
+    expect(readiness).not.toHaveProperty('worker_ids')
+    expect(calls).toContainEqual({
+      name: 'get_service_coverage_readiness',
+      args: {
+        p_customer_id: '11111111-1111-4111-8111-111111111111',
+        p_district_code: 'q7',
+        p_service_type: 'plumbing',
+      },
+    })
+  })
+
+  it('fails closed with a retryable 503 when the coverage RPC is unavailable or returns contradictory readiness', async () => {
+    const unavailableRpc = vi.fn(async (name: string) => name === 'get_service_coverage_readiness'
+      ? { data: null, error: { code: 'DB_DOWN', message: 'private database diagnostic' } }
+      : { data: null, error: null })
+    const contradictoryRpc = vi.fn(async (name: string) => name === 'get_service_coverage_readiness'
+      ? {
+        data: [{
+          service_type: 'plumbing',
+          district_code: 'q7',
+          status: 'ready',
+          minimum_worker_count: 3,
+          eligible_reachable_worker_count: 2,
+          required_capabilities: [],
+          reason_code: 'READY',
+          checked_at: '2026-09-04T05:00:00.000Z',
+          valid_until: '2026-09-04T05:00:30.000Z',
+        }],
+        error: null,
+      }
+      : { data: null, error: null })
+    const unavailableHandler = coverageHttpHandler({ rpc: unavailableRpc } as unknown as DbClient)
+    const contradictoryHandler = coverageHttpHandler({ rpc: contradictoryRpc } as unknown as DbClient)
+    const [unavailableResponse, contradictoryResponse] = await Promise.all([
+      unavailableHandler(new Request(coverageUrl)),
+      contradictoryHandler(new Request(coverageUrl)),
+    ])
+    const unavailablePayload = await unavailableResponse.json()
+    const contradictoryPayload = await contradictoryResponse.json()
+
+    expect(unavailableResponse.status, pillarWhy(PILLAR, 'RPC failure stays recoverable and cannot become fake readiness')).toBe(503)
+    expect(contradictoryResponse.status, pillarWhy(PILLAR, 'ready with two workers violates the three-worker threshold')).toBe(503)
+    expect(unavailablePayload).toMatchObject({ code: 'COVERAGE_UNAVAILABLE' })
+    expect(contradictoryPayload).toMatchObject({ code: 'COVERAGE_UNAVAILABLE' })
+    expect(JSON.stringify(unavailablePayload)).not.toContain('private database diagnostic')
+  })
+
   it('rejects missing auth and a Worker role before coverage evaluation', async () => {
     const getServiceCoverageReadiness = vi.fn()
     const services = { getServiceCoverageReadiness } as unknown as MobileApiServices
@@ -119,7 +218,7 @@ describe('public service coverage reservation gate', () => {
       }),
       services,
     })
-    const url = 'https://example.test/functions/v1/mobile-api/services/coverage?service_type=plumbing&district_code=q7'
+    const url = coverageUrl
 
     const [missingResponse, workerResponse] = await Promise.all([
       missingHandler(new Request(url)),
@@ -161,9 +260,7 @@ describe('public service coverage reservation gate', () => {
     const invalidResponse = await handler(new Request(
       'https://example.test/functions/v1/mobile-api/services/coverage?service_type=plumbing&district_code=hcmc_all',
     ))
-    const validResponse = await handler(new Request(
-      'https://example.test/functions/v1/mobile-api/services/coverage?service_type=plumbing&district_code=q7',
-    ))
+    const validResponse = await handler(new Request(coverageUrl))
 
     expect(invalidResponse.status).toBe(400)
     expect(validResponse.status).toBe(200)

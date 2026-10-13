@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
+import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
+import { createMobileApiHandler } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import { matchCaseWorkResourceRoute } from '../../../../../supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes'
 import {
@@ -7,7 +9,8 @@ import {
   createJobMediaUpload,
   revokeJobMediaUploads,
 } from '../../../../../supabase/functions/mobile-api/_shared/domains/job/media'
-import type { PillarManifest } from '../pillar-manifest'
+import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../kael-edge-runtime/harness'
+import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 
 export const PILLAR = {
   id: 'P190-customer-media-upload',
@@ -20,8 +23,86 @@ export const PILLAR = {
 } as const satisfies PillarManifest
 
 const JOB_ID = '11111111-1111-4111-8111-111111111111'
+const CUSTOMER_ID = 'c1900000-0000-4000-8000-000000000001'
+const OTHER_CUSTOMER_ID = 'c1900000-0000-4000-8000-000000000002'
+const WORKER_ID = 'c1900000-0000-4000-8000-000000000003'
+
+const CUSTOMER_UPLOAD_STATES = [
+  { transactionState: 'official_match', jobStatus: 'worker_matched' },
+  { transactionState: 'scope_change_pending', jobStatus: 'scope_change_pending' },
+  { transactionState: 'completion_proposed', jobStatus: 'completed_by_worker' },
+] as const
+
+function uploadHttp(jobStatus: string, options: {
+  actorId?: string
+  signingFails?: boolean
+} = {}) {
+  const client = makeSequenceClient([], {
+    reserve_job_media_upload: [{
+      data: [{ allowed: true, expires_at: '2099-01-01T00:00:00.000Z' }],
+      error: null,
+    }],
+    fail_job_media_uploads: [{
+      data: [{ revoked_paths: [`${JOB_ID}/kael_reference/intent-reference.jpg`] }],
+      error: null,
+    }],
+  }, {
+    jobs: [{ data: {
+      customer_id: CUSTOMER_ID,
+      id: JOB_ID,
+      service_type: 'electrical',
+      status: jobStatus,
+      worker_id: WORKER_ID,
+    }, error: null }],
+  })
+  const storageRequests: string[] = []
+  Object.assign(client, {
+    storage: {
+      from(bucket: string) {
+        if (bucket !== 'job-media') throw new Error(`Unexpected bucket ${bucket}`)
+        return {
+          async createSignedUploadUrl(objectPath: string) {
+            storageRequests.push(objectPath)
+            if (options.signingFails) throw new Error('storage unavailable')
+            return {
+              data: { signedUrl: 'https://storage.example.test/upload', token: 'signed-token' },
+              error: null,
+            }
+          },
+        }
+      },
+    },
+  })
+  const handler = createMobileApiHandler({
+    authenticate: async () => ({
+      success: true,
+      user: { id: options.actorId ?? CUSTOMER_ID },
+      role: 'customer',
+      supabase: client,
+      privilegedSupabase: client,
+      userSupabase: client,
+    }),
+    services: createEdgeServices({}),
+  })
+  return {
+    client,
+    storageRequests,
+    run: () => handler(new Request(`https://edge.test/jobs/${JOB_ID}/media-upload`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        file_name: 'intent-reference.jpg',
+        file_size_bytes: 1024,
+        mime_type: 'image/jpeg',
+        stage: 'kael_reference',
+      }),
+    })),
+  }
+}
 
 describe('job media upload intent', () => {
+  installEdgeRuntimeTestHooks()
+
   it('exposes a participant-only upload-intent route before the attach route', () => {
     expect(matchCaseWorkResourceRoute(
       `/jobs/${JOB_ID}/media-upload`,
@@ -146,6 +227,51 @@ describe('job media upload intent', () => {
     })
 
     expect(operations).toEqual(['load-job', 'revoke-upload', 'remove-upload'])
+  })
+
+  it('Customer public media upload intent reserves the current upload stage without advancing the Customer job', async () => {
+    for (const { transactionState, jobStatus } of CUSTOMER_UPLOAD_STATES) {
+      const { client, run, storageRequests } = uploadHttp(jobStatus)
+      const response = await run()
+
+      expect(response.status, `${transactionState}: ${pillarWhy(PILLAR)}`).toBe(201)
+      const body = await response.json()
+      expect(body).toMatchObject({
+        bucket_id: 'job-media',
+        storage_ref: expect.stringMatching(/^supabase:\/\/job-media\//),
+        token: 'signed-token',
+        expires_in_seconds: 7200,
+      })
+      expect(body.object_path).toMatch(new RegExp(`^${JOB_ID}/kael_reference/[0-9a-f-]+-intent-reference\\.jpg$`))
+      expect(client.calls.filter(call => call.table === 'rpc:reserve_job_media_upload')).toHaveLength(1)
+      expect(client.calls.filter(call => call.table === 'jobs' && call.operations.some(operation => operation[0] === 'update'))).toEqual([])
+      expect(storageRequests).toHaveLength(1)
+    }
+  })
+
+  it('Customer public media upload intent refuses a non-owner Customer before quota reservation', async () => {
+    const { client, run, storageRequests } = uploadHttp('worker_matched', { actorId: OTHER_CUSTOMER_ID })
+    const response = await run()
+
+    expect(response.status, pillarWhy(PILLAR, 'another Customer cannot reserve uploads against the job')).toBe(404)
+    expect(client.calls.filter(call => call.table === 'rpc:reserve_job_media_upload')).toEqual([])
+    expect(storageRequests).toEqual([])
+  })
+
+  it('Customer public media upload intent revokes the reservation when signed upload preparation fails', async () => {
+    const { client, run, storageRequests } = uploadHttp('worker_matched', { signingFails: true })
+    const response = await run()
+
+    expect(response.status, pillarWhy(PILLAR, 'a failed Storage handshake must not leave quota reserved')).toBe(503)
+    expect(await response.json()).toMatchObject({ code: 'STORAGE_ERROR' })
+    expect(client.calls.filter(call => call.table === 'rpc:reserve_job_media_upload')).toHaveLength(1)
+    expect(client.calls.filter(call => call.table === 'rpc:fail_job_media_uploads')).toHaveLength(1)
+    expect(client.calls.find(call => call.table === 'rpc:fail_job_media_uploads')?.operations[0]?.[2]).toMatchObject({
+      p_job_id: JOB_ID,
+      p_owner_id: CUSTOMER_ID,
+      p_object_paths: expect.arrayContaining([expect.stringMatching(new RegExp(`^${JOB_ID}/kael_reference/`))]),
+    })
+    expect(storageRequests).toHaveLength(1)
   })
 })
 

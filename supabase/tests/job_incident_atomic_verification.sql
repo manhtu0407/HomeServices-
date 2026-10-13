@@ -72,6 +72,7 @@ declare
   v_apply_retry record;
   v_claim_job_stale record;
   v_claim_one record;
+  v_claim_same_id record;
   v_claim_two_blocked record;
   v_claim_two record;
   v_claim_retry record;
@@ -509,7 +510,7 @@ begin
   end if;
 
   select * into v_quote_one
-  from public.save_job_incident_scope_price_quote_atomic(
+  from public.save_job_incident_scope_quote_with_basis_atomic(
     v_incident_id,
     'a7200000-0000-4000-8000-000000000001',
     'a7100000-0000-4000-8000-000000000002',
@@ -525,7 +526,8 @@ begin
       'platform_fee', 35000,
       'worker_net', 315000
     ),
-    pg_catalog.clock_timestamp() + interval '20 minutes'
+    pg_catalog.clock_timestamp() + interval '20 minutes',
+    '{"schema_version":"scope_change_kael_review.v2","fallback_used":false,"provider":"anthropic"}'::jsonb
   );
   if v_quote_one.ok is not true then
     raise exception 'first worker-confirmed scope quote was not saved';
@@ -570,6 +572,21 @@ begin
     or v_claim_two_blocked.error_code <> 'PROPOSAL_IN_PROGRESS'
   then
     raise exception 'concurrent proposal claim was not excluded';
+  end if;
+  select * into v_claim_same_id
+  from public.claim_job_incident_scope_proposal_atomic(
+    'a7200000-0000-4000-8000-000000000001',
+    'a7100000-0000-4000-8000-000000000002',
+    'a7500000-0000-4000-8000-000000000001',
+    v_quote_one_id
+  );
+  if v_claim_same_id.claimed is not true
+    or v_claim_same_id.idempotent is not true
+    or v_claim_same_id.incident->>'revision' <> v_claim_one.incident->>'revision'
+    or v_claim_same_id.incident->>'scope_price_quote_confirmed_at'
+      <> v_claim_one.incident->>'scope_price_quote_confirmed_at'
+  then
+    raise exception 'same request claim retry changed quote confirmation or incident revision';
   end if;
   v_review := jsonb_set(
     v_review,
@@ -617,7 +634,7 @@ begin
     'a7600000-0000-4000-8000-000000000007'
   );
   select * into v_quote_two
-  from public.save_job_incident_scope_price_quote_atomic(
+  from public.save_job_incident_scope_quote_with_basis_atomic(
     v_incident_id,
     'a7200000-0000-4000-8000-000000000001',
     'a7100000-0000-4000-8000-000000000002',
@@ -633,7 +650,8 @@ begin
       'platform_fee', 35000,
       'worker_net', 315000
     ),
-    pg_catalog.clock_timestamp() + interval '20 minutes'
+    pg_catalog.clock_timestamp() + interval '20 minutes',
+    '{"schema_version":"scope_change_kael_review.v2","fallback_used":false,"provider":"anthropic"}'::jsonb
   );
   if v_quote_two.ok is not true then
     raise exception 'revised worker-confirmed scope quote was not saved';

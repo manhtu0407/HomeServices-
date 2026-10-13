@@ -60,6 +60,33 @@ describe('worker document resume projection', () => {
     expect(client.calls.find((call) => call.table === 'worker_profiles')?.operations).toContainEqual(['eq', 'id', WORKER])
   })
 
+  it('preserves an approved Worker profile without exposing private KYC refs', async () => {
+    const privateRef = `supabase://worker-verification/${WORKER}/`
+    const { client, response } = request({
+      id: WORKER, verification_status: 'approved', is_approved: true, is_available: true, is_suspended: false,
+      service_types: ['electrical'], selected_service_types: ['electrical'], active_service_types: ['electrical'],
+      districts: ['q1'], service_radius_km: 8,
+      cccd_front_url: `${privateRef}cccd-front/front.jpg`,
+      cccd_back_url: `${privateRef}cccd-back/back.jpg`,
+      selfie_url: `${privateRef}selfie/selfie.jpg`, bank_account: '123456789',
+    })
+    const result = await response
+    const body = await result.json()
+    expect(result.status, pillarWhy(PILLAR)).toBe(200)
+    expect(body, pillarWhy(PILLAR)).toMatchObject({
+      id: WORKER, verification_status: 'approved', is_approved: true, is_available: true, is_suspended: false,
+      service_types: ['electrical'], active_service_types: ['electrical'], districts: ['q1'], service_radius_km: 8,
+      has_cccd_front: true, has_cccd_back: true, has_cccd: true, has_selfie: true,
+      bank_account_masked: '****6789',
+    })
+    expect(JSON.stringify(body)).not.toContain(privateRef)
+    expect(JSON.stringify(body)).not.toContain('123456789')
+    for (const field of ['cccd_front_url', 'cccd_back_url', 'selfie_url', 'bank_account']) {
+      expect(body).not.toHaveProperty(field)
+    }
+    expect(client.calls.find((call) => call.table === 'worker_profiles')?.operations).toContainEqual(['eq', 'id', WORKER])
+  })
+
   it('does not invent documents for a missing profile', async () => {
     const { response } = request(null)
     expect(await (await response).json(), pillarWhy(PILLAR)).toMatchObject({

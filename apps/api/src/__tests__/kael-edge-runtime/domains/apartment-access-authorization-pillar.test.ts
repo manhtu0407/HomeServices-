@@ -19,16 +19,17 @@ const JOB = 'c1280000-0000-4000-8000-000000000001'
 const CUSTOMER = 'c1280000-0000-4000-8000-000000000002'
 const WORKER = 'c1280000-0000-4000-8000-000000000003'
 const CHECK_IN = '2026-09-08T01:00:00.000Z'
+const RPC_AUTHORIZED_STATUSES = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing', 'scope_change_pending', 'completed_by_worker'] as const
 const intent = { expected_worker_id: WORKER, expected_check_in_at: CHECK_IN }
 const receipt = { ok: true, error_code: null, job_id: JOB, worker_id: WORKER,
   checked_in_at: CHECK_IN, authorized_at: '2026-09-08T01:01:00.000Z', already_authorized: false }
 
-function setup(result: unknown = [receipt], role: 'customer' | 'worker' | 'admin' = 'customer', error = false) {
+function setup(result: unknown = [receipt], role: 'customer' | 'worker' | 'admin' = 'customer', error = false, jobStatus: typeof RPC_AUTHORIZED_STATUSES[number] = 'arrived') {
   const client = makeSequenceClient([], {
     authorize_apartment_access_atomic: [error
       ? { data: null, error: { code: 'DB_TIMEOUT', message: 'SECRET_DATABASE_DETAILS' } }
       : { data: result, error: null }],
-  }, { jobs: [{ data: { id: JOB, customer_id: CUSTOMER, worker_id: WORKER, status: 'arrived',
+  }, { jobs: [{ data: { id: JOB, customer_id: CUSTOMER, worker_id: WORKER, status: jobStatus,
     apartment_access_state: { worker_checked_in: true,
       check_in: { worker_id: WORKER, checked_in_at: CHECK_IN } } }, error: null },
     { data: { id: JOB }, error: null }] })
@@ -54,6 +55,20 @@ describe('Customer apartment authorization intent and receipt', () => {
       { table: 'rpc:authorize_apartment_access_atomic', operations: [['rpc', 'authorize_apartment_access_atomic', {
         p_job_id: JOB, p_customer_id: CUSTOMER, p_expected_worker_id: WORKER, p_expected_check_in_at: CHECK_IN }]] }])
     expect(client.calls.some(call => call.operations.some(op => ['insert', 'update'].includes(String(op[0]))))).toBe(false)
+  })
+
+  it('routes each RPC-authorized job state through one atomic command', async () => {
+    for (const jobStatus of RPC_AUTHORIZED_STATUSES) {
+      const { client, run } = setup([receipt], 'customer', false, jobStatus)
+      const response = await run()
+      expect(response.status, pillarWhy(PILLAR, `job_status=${jobStatus}`)).toBe(200)
+      expect(client.calls.filter(call => call.table === 'rpc:authorize_apartment_access_atomic')).toHaveLength(1)
+      expect(client.calls.find(call => call.table === 'rpc:authorize_apartment_access_atomic')?.operations).toEqual([
+        ['rpc', 'authorize_apartment_access_atomic', {
+          p_job_id: JOB, p_customer_id: CUSTOMER, p_expected_worker_id: WORKER, p_expected_check_in_at: CHECK_IN }],
+      ])
+      expect(client.calls.some(call => call.operations.some(op => ['insert', 'update'].includes(String(op[0]))))).toBe(false)
+    }
   })
 
   it.each(['worker', 'admin'] as const)('rejects %s acting as Customer before reading the job or authorizing access', async role => {

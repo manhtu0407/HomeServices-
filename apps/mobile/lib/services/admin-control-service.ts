@@ -429,7 +429,7 @@ export const adminControlService = {
   },
 
   getSystemHealth() {
-    return api.get<AdminSystemHealthResponse>('/admin/system/health')
+    return api.get<AdminSystemHealthResponse>('/admin/system/health?schema_version=2')
   },
 
   listSystemIncidents(filters: AdminSystemIncidentFilters = {}) {

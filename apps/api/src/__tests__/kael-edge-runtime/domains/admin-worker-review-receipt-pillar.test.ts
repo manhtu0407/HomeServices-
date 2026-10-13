@@ -41,6 +41,8 @@ function reviewHttp(stage: ReviewStage, data: unknown, options: {
   operator?: { status: string; capabilities: string[] }
   queueResults?: QueryResult[]
   error?: { code: string; message: string }
+  decision?: 'approve' | 'request_changes' | 'reject'
+  reason?: string
 } = {}) {
   const rpc = stage === 'access' ? 'admin_review_worker_application_atomic' : 'admin_review_worker_profile_snapshot_atomic'
   const client = makeSequenceClient([], { [rpc]: [{ data, error: options.error ?? null }] }, {
@@ -59,7 +61,8 @@ function reviewHttp(stage: ReviewStage, data: unknown, options: {
   })
   return { client, rpc, response: handler(new Request(
     `https://edge.test/admin/worker-applications/${APPLICATION}/${stage === 'access' ? 'decision' : 'profile-decision'}`,
-    { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: 'approve',
+    { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: options.decision ?? 'approve',
+      ...(options.reason === undefined ? {} : { reason: options.reason }),
       ...(stage === 'profile' ? { profile_review_queue_id: PROFILE_QUEUE, expected_profile_updated_at: AT } : {}),
     }) },
   )) }
@@ -130,6 +133,16 @@ describe.each(['access', 'profile'] as const)('Admin Worker %s review receipt', 
     expect(await result.text()).not.toContain('PRIVATE_DB_SENTINEL')
   })
 
+  it('does not acknowledge a timed-out review RPC as completed', async () => {
+    const result = await reviewHttp(stage, [receipt(stage)], {
+      error: { code: '57014', message: 'statement timeout PRIVATE_TIMEOUT_SENTINEL' },
+    }).response
+    expect(result.status).toBe(500)
+    const body = await result.text()
+    expect(body).toContain('DB_ERROR')
+    expect(body).not.toContain('PRIVATE_TIMEOUT_SENTINEL')
+  })
+
   it('preserves an explicit already-reviewed refusal instead of fabricating success', async () => {
     const result = await reviewHttp(stage, [receipt(stage, {
       ok: false, error_code: 'ALREADY_REVIEWED', worker_id: null, decided_at: null,
@@ -144,4 +157,37 @@ it('rejects a profile receipt for a Worker different from the selected applicati
   const result = await reviewHttp('profile', [receipt('profile', { worker_id: FOREIGN })]).response
   expect(result.status, pillarWhy(PILLAR)).toBe(500)
   expect(await result.json()).toMatchObject({ code: 'DB_ERROR' })
+})
+
+it.each([
+  { decision: 'request_changes', reason: 'Provide the missing verification details', status: 'acknowledged' },
+  { decision: 'reject', reason: 'The application does not meet the access requirements', status: 'resolved' },
+] as const)('routes the $decision decision and reason through the public review endpoint', async ({ decision, reason, status }) => {
+  const { response, client, rpc } = reviewHttp('access', [receipt('access', {
+    decision,
+    status_out: status,
+    role_out: 'customer',
+    verification_status_out: null,
+  })], {
+    decision,
+    reason,
+  })
+  const result = await response
+
+  expect(result.status, pillarWhy(PILLAR, 'each supported access review decision must be acknowledged only from its exact RPC receipt')).toBe(200)
+  expect(await result.json()).toMatchObject({ decision, status, role: 'customer', verification_status: null })
+  expect(client.calls.find(call => call.table === `rpc:${rpc}`)?.operations).toEqual([['rpc', rpc, {
+    p_queue_id: APPLICATION,
+    p_admin_id: ADMIN,
+    p_decision: decision,
+    p_reason: reason,
+  }]])
+})
+
+it.each(['request_changes', 'reject'] as const)('requires a reason before dispatching the %s decision', async (decision) => {
+  const { response, client, rpc } = reviewHttp('access', [receipt('access', { decision })], { decision })
+  const result = await response
+
+  expect(result.status).toBe(400)
+  expect(client.calls.some(call => call.table === `rpc:${rpc}`)).toBe(false)
 })

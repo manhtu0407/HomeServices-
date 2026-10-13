@@ -235,6 +235,16 @@ describe('mobile-api workflow orchestrator wrapper', () => {
     expect(scopeRequested.valid).toBe(true)
     expect(scopeApproved.valid).toBe(true)
     expect(scopeRejected.valid).toBe(true)
+    expect(validateWorkflowTransition({
+      event: 'scope_change_decided',
+      from: 'scope_change_pending',
+      to: 'cancelled',
+    }).valid).toBe(false)
+    expect(validateWorkflowTransition({
+      event: 'kael_decided_scope_change',
+      from: 'scope_change_pending',
+      to: 'cancelled',
+    }).valid).toBe(false)
 
     const servicesSource = readFileSync(
       join(process.cwd(), '../../supabase/functions/mobile-api/_shared/domains.ts'),

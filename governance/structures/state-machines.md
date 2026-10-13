@@ -128,8 +128,8 @@ A status change is never written from a raw status pair. It is written from an *
 | `customer_rejected_worker` | `worker_candidate_pending → broadcasting` | customer |
 | `worker_status_advanced` | `worker_matched→worker_on_way→arrived→inspecting→repairing` (one step at a time) | worker |
 | `scope_change_requested` | any of the five on-site statuses → `scope_change_pending` | worker |
-| `kael_decided_scope_change` | `scope_change_pending` → any of the five, or `cancelled` | Kael autonomy |
-| `scope_change_decided` | same set | customer |
+| `kael_decided_scope_change` | `scope_change_pending` → one of the five on-site statuses | Kael autonomy |
+| `scope_change_decided` | `scope_change_pending` → the saved resume status; an approved on-site proposal may return to `repairing` | customer |
 | `worker_completed` | `repairing → completed_by_worker` | worker |
 | `kael_confirmed_completion` | `completed_by_worker → confirmed_by_customer` | Kael autonomy |
 | `customer_confirmed_completion` | `completed_by_worker → confirmed_by_customer` | customer |

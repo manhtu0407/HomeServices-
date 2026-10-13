@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { isSystemMonitorEvidenceUrlAllowed } from '../../../../supabase/functions/system-monitor/collector'
+import { isSystemMonitorEvidenceUrlAllowed, normalizeSystemMonitorAggregate } from '../../../../supabase/functions/system-monitor/collector'
 import { createSystemMonitorBudgetedFetch, createSystemMonitorHandler, type MonitorStore } from '../../../../supabase/functions/system-monitor/handler'
 import { recordSystemMonitorWorkerCompletion, SYSTEM_MONITOR_WORKER_HEARTBEAT_TIMEOUT_MS } from '../../../../supabase/functions/_shared/system-monitor/worker-heartbeat'
 import { pillarWhy, type PillarManifest } from './pillar-manifest'
@@ -13,10 +13,10 @@ export const PILLAR = {
     'governance/RULES.md #0 (backend and mobile runtime boundaries)',
     'governance/RULES.md #8 (honest evidence and bounded data)',
   ],
-  target: 'supabase/functions/system-monitor/handler.ts; supabase/functions/system-monitor/collector.ts; supabase/functions/_shared/system-monitor/worker-heartbeat.ts',
+  target: 'supabase/functions/system-monitor/index.ts; supabase/functions/system-monitor/handler.ts; supabase/functions/system-monitor/collector.ts; supabase/functions/_shared/system-monitor/worker-heartbeat.ts',
   layer: 'security-negative',
   siblings: ['P351-system-health-monitor-contract', 'P352-system-health-monitor-sql'],
-  mutation: 'permit an inference URL, accept a missing evidence source as green, report an unpersisted delivery as sent, let a collector or worker heartbeat request outlive its deadline, or report a worker heartbeat as successful without abort support and these runtime assertions fail',
+  mutation: 'permit an inference or deferred-provider URL, coerce malformed aggregate or schedule evidence to zero, or let a collector/worker heartbeat exceed its deadline and these assertions fail',
 } as const satisfies PillarManifest
 
 const now = new Date('2026-10-11T12:30:00.000Z')
@@ -96,12 +96,35 @@ describe('System health monitor runtime pillar', () => {
 
   it('allows only the expected HTTPS evidence hosts and local HTTP, rejecting alternate schemes and ports', () => {
     expect(isSystemMonitorEvidenceUrlAllowed('https://abcdefgh.supabase.co/auth/v1/health')).toBe(true)
-    expect(isSystemMonitorEvidenceUrlAllowed('https://sentry.io/api/0/projects/nestscout-organization/4512235847614464/events/?statsPeriod=15m&per_page=50')).toBe(true)
+    expect(isSystemMonitorEvidenceUrlAllowed('https://sentry.io/api/0/projects/nestscout-organization/4512235847614464/events/?statsPeriod=15m&per_page=50')).toBe(false)
     expect(isSystemMonitorEvidenceUrlAllowed('http://127.0.0.1:54321/auth/v1/health')).toBe(true)
     expect(isSystemMonitorEvidenceUrlAllowed('ftp://localhost/auth/v1/health')).toBe(false)
     expect(isSystemMonitorEvidenceUrlAllowed('http://abcdefgh.supabase.co/auth/v1/health')).toBe(false)
     expect(isSystemMonitorEvidenceUrlAllowed('https://user:secret@abcdefgh.supabase.co/auth/v1/health')).toBe(false)
     expect(isSystemMonitorEvidenceUrlAllowed('https://abcdefgh.supabase.co:8443/auth/v1/health')).toBe(false)
+  })
+
+  it('rejects missing or malformed aggregate counts instead of converting them to zero', () => {
+    const kaelEvidence = {
+      valid_execution_count: 20,
+      failed_execution_count: 1,
+      api_call_count: 20,
+      api_failure_count: 2,
+      fallback_count: 1,
+      api_call_count_15m: 4,
+      open_circuit_count: 0,
+      learning_eligible_count: 0,
+      learning_oldest_due_at: null,
+    }
+    const mobileEvidence = { active_session_count: 2, api_failure_count: 1, platform_count: 1 }
+
+    expect(normalizeSystemMonitorAggregate(kaelEvidence, 'kael')).toEqual(kaelEvidence)
+    expect(normalizeSystemMonitorAggregate({ ...kaelEvidence, failed_execution_count: 'unknown' }, 'kael')).toBeNull()
+    const missingFailureCount: Record<string, unknown> = { ...kaelEvidence }
+    delete missingFailureCount.failed_execution_count
+    expect(normalizeSystemMonitorAggregate(missingFailureCount, 'kael')).toBeNull()
+    expect(normalizeSystemMonitorAggregate(mobileEvidence, 'mobile')).toEqual(mobileEvidence)
+    expect(normalizeSystemMonitorAggregate({ ...mobileEvidence, api_failure_count: null }, 'mobile')).toBeNull()
   })
 
   it('probes Storage and Realtime health and can report green when every required source is healthy', async () => {
@@ -117,14 +140,16 @@ describe('System health monitor runtime pillar', () => {
       metrics: { storage_status: 0, realtime_status: 0 },
     })
     expect([...fixture.fetchPaths].sort()).toEqual([
-      '/api/0/projects/nestscout-organization/4512235847614464/events/',
       '/auth/v1/health',
       '/functions/v1/mobile-api/harness/health',
       '/realtime/v1/healthcheck',
       '/storage/v1/health',
     ].sort())
+    expect(fixture.savedSnapshot).toMatchObject({ schema_version: 2, profile_id: 'cloudflare-admin-v1' })
+    expect(fixture.savedSnapshot?.schema_version === 2 ? fixture.savedSnapshot.coverage_gaps : null).toEqual(['app-crash', 'push-notifications'])
     expect(fixture.fetchPaths.some((path) => /(?:chat\/completions|\/messages|\/embeddings|\/responses)/u.test(path))).toBe(false)
     expect(fixture.heartbeat?.completionStatus).toBe('succeeded')
+    expect(fixture.heartbeat?.releaseId).toBe('harness-aaaaaaaaaaaa-bbbbbbbbbbbb')
   })
 
   it('keeps Storage gray when its health payload is malformed', async () => {
@@ -132,7 +157,7 @@ describe('System health monitor runtime pillar', () => {
     fixture.storagePayload = { healthy: 'false' }
     const response = await fixture.handler(monitorRequest())
 
-    expect(response.status).toBe(200)
+    expect(response.status, await response.clone().text()).toBe(200)
     expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'backend-storage-realtime-io')).toMatchObject({
       status: 'gray',
       reason_code: 'STORAGE_HEALTH_UNVERIFIED',
@@ -181,6 +206,53 @@ describe('System health monitor runtime pillar', () => {
       reason_code: 'ERROR_RATE_HIGH',
       metrics: { red_evaluations: 2 },
     })
+  })
+
+  it('keeps Kael health gray when a required aggregate counter is malformed', async () => {
+    const fixture = createFixture()
+    fixture.kaelEvidence = { ...fixture.kaelEvidence, failed_execution_count: 'not-a-count' }
+
+    const response = await fixture.handler(monitorRequest())
+
+    expect(response.status).toBe(200)
+    expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'kael-agentic')).toMatchObject({
+      status: 'gray',
+      reason_code: 'KAEL_EVIDENCE_INCOMPLETE',
+      sample_count: 20,
+      metrics: { failed: null, calls15m: 1 },
+    })
+    expect(fixture.savedSnapshot?.overall_status).toBe('gray')
+  })
+
+  it('keeps native App health gray when a required API failure count is malformed', async () => {
+    const fixture = createFixture()
+    fixture.mobileEvidence = { active_session_count: 1, api_failure_count: 'not-a-count', platform_count: 1 }
+
+    const response = await fixture.handler(monitorRequest())
+
+    expect(response.status).toBe(200)
+    expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'app-native-connectivity')).toMatchObject({
+      status: 'gray',
+      reason_code: 'NATIVE_SESSION_EVIDENCE_INCOMPLETE',
+      metrics: { api_failures: null },
+    })
+    expect(fixture.savedSnapshot?.overall_status).toBe('gray')
+  })
+
+  it('keeps scheduled worker health gray when required schedule metadata is absent', async () => {
+    const fixture = createFixture()
+    fixture.workers = fixture.workers.map((worker) => worker.job_name === 'kael-matching-maintainer'
+      ? { ...worker, expected_interval_seconds: null }
+      : worker)
+
+    const response = await fixture.handler(monitorRequest())
+
+    expect(response.status).toBe(200)
+    expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'backend-scheduled-workers')).toMatchObject({
+      status: 'gray',
+      reason_code: 'WORKER_EVIDENCE_INCOMPLETE',
+    })
+    expect(fixture.savedSnapshot?.overall_status).toBe('gray')
   })
 
   it('keeps an open Kael provider circuit yellow when there are too few recent executions', async () => {
@@ -237,25 +309,32 @@ describe('System health monitor runtime pillar', () => {
     })
   })
 
-  it.each([401, 403, 429, 500])('keeps Sentry coverage gray when Sentry returns %i', async (status) => {
-    const fixture = createFixture(status)
-    const response = await fixture.handler(new Request('https://monitor.test/functions/v1/system-monitor', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-system-monitor-secret': 'monitor-test-secret' },
-      body: JSON.stringify({ scheduled_at: now.toISOString(), trigger: 'scheduled' }),
-    }))
-    const responseText = await response.text()
-    const payload = JSON.parse(responseText) as { snapshot?: { overall_status: string } }
+  it('does not contact Sentry or Telegram even when legacy configuration values exist', async () => {
+    const fixture = createFixture()
+    const response = await fixture.handler(monitorRequest())
 
-    expect(response.status, responseText).toBe(200)
-    expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'app-native-sentry')).toMatchObject({
-      status: 'gray',
-      reason_code: 'SENTRY_SOURCE_UNAVAILABLE',
-    })
-    expect(payload.snapshot?.overall_status).not.toBe('green')
-    expect(fixture.sourceStates).toHaveLength(1)
-    expect(fixture.sourceStates[0].last_status_code).toBe(status)
-    expect(fixture.fetchPaths.some((path) => /(?:chat\/completions|\/messages|\/embeddings|\/responses)/u.test(path))).toBe(false)
+    expect(response.status).toBe(200)
+    expect(fixture.fetchPaths.some((path) => /(?:events\/|api\.telegram\.org)/iu.test(path))).toBe(false)
+    expect(fixture.savedSnapshot?.schema_version === 2 ? fixture.savedSnapshot.coverage_gaps : null).toEqual(['app-crash', 'push-notifications'])
+    expect(fixture.savedSnapshot?.checks.some((check) => check.check_id.includes('sentry'))).toBe(false)
+  })
+
+  it('negotiates snapshot v1 and v2 while projecting a gray coverage check for legacy readers', async () => {
+    const fixture = createFixture()
+    await fixture.handler(monitorRequest())
+
+    const v2Response = await fixture.handler(observerLatestRequest('2'))
+    expect(v2Response.status).toBe(200)
+    expect(await v2Response.json()).toMatchObject({ snapshot: { schema_version: 2, profile_id: 'cloudflare-admin-v1' } })
+
+    const v1Response = await fixture.handler(observerLatestRequest('1'))
+    const v1 = await v1Response.json() as { snapshot: { schema_version: number; overall_status: string; checks: Array<{ check_id: string; status: string }> } }
+    expect(v1Response.status).toBe(200)
+    expect(v1.snapshot.schema_version).toBe(1)
+    expect(v1.snapshot.overall_status).toBe('gray')
+    expect(v1.snapshot.checks).toContainEqual(expect.objectContaining({ check_id: 'profile-coverage-unsupported', status: 'gray' }))
+
+    expect((await fixture.handler(observerLatestRequest('3'))).status).toBe(400)
   })
 
   it('rejects an unauthenticated collector before any request or database access', async () => {
@@ -282,7 +361,7 @@ describe('System health monitor runtime pillar', () => {
     expect(requestSignal?.aborted).toBe(true)
   })
 
-  it('sends one Supabase-ledger fallback when Cloudflare reports dispatcher loss and a recovery on clear', async () => {
+  it('records observer heartbeat without sending an alert', async () => {
     const fixture = createFixture()
     fixture.observerTransition = {
       transition: 'opened',
@@ -292,10 +371,9 @@ describe('System health monitor runtime pillar', () => {
     }
     const open = await fixture.handler(observerHeartbeatRequest())
     expect(open.status).toBe(200)
-    expect(await open.json()).toMatchObject({ ok: true, alert_delivery: 'sent' })
-    expect(fixture.telegramMessages).toHaveLength(1)
-    expect(fixture.telegramMessages[0]).toContain('D1_UNAVAILABLE')
-    expect(fixture.fallbackClaims[0]).toContain('123e4567-e89b-42d3-a456-426614174000:open')
+    expect(await open.json()).toMatchObject({ ok: true, alert_delivery: 'disabled_by_profile' })
+    expect(fixture.observerHeartbeatWrites).toBe(1)
+    expect(fixture.fetchPaths.some((path) => /telegram|sentry/iu.test(path))).toBe(false)
 
     fixture.observerTransition = {
       transition: 'resolved',
@@ -305,67 +383,8 @@ describe('System health monitor runtime pillar', () => {
     }
     const recovery = await fixture.handler(observerHeartbeatRequest())
     expect(recovery.status).toBe(200)
-    expect(fixture.telegramMessages).toHaveLength(2)
-    expect(fixture.telegramMessages[1]).toContain('đã phục hồi')
-    expect(fixture.fallbackCompletions.map((item) => item.delivered)).toEqual([true, true])
-  })
-
-  it('retries Telegram fallback on the tick after retry_after without raw response logging', async () => {
-    const fixture = createFixture()
-    fixture.observerTransition = {
-      transition: 'opened',
-      incidentId: '123e4567-e89b-42d3-a456-426614174001',
-      openedAt: now.toISOString(),
-      reasonCode: 'D1_UNAVAILABLE',
-    }
-    fixture.telegramResponses.push(Response.json({ ok: false, description: 'private response', parameters: { retry_after: 90 } }, { status: 429 }))
-
-    const response = await fixture.handler(observerHeartbeatRequest())
-
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ alert_delivery: 'deferred' })
-    expect(fixture.telegramMessages).toHaveLength(1)
-    expect(fixture.fallbackCompletions[0]).toMatchObject({
-      delivered: false,
-      retryAt: new Date(now.getTime() + 90_000).toISOString(),
-      errorCode: 'TELEGRAM_RATE_LIMITED',
-    })
-    expect(JSON.stringify(fixture.fallbackCompletions)).not.toContain('private response')
-
-    fixture.now = new Date(now.getTime() + 89_000)
-    fixture.observerTransition = {
-      transition: 'none',
-      incidentId: '123e4567-e89b-42d3-a456-426614174001',
-      openedAt: now.toISOString(),
-      reasonCode: 'D1_UNAVAILABLE',
-    }
-    const beforeRetryAt = await fixture.handler(observerHeartbeatRequest())
-    expect(beforeRetryAt.status).toBe(200)
-    expect(await beforeRetryAt.json()).toMatchObject({ alert_delivery: 'deferred' })
-    expect(fixture.telegramMessages).toHaveLength(1)
-
-    fixture.now = new Date(now.getTime() + 90_000)
-    const afterRetryAt = await fixture.handler(observerHeartbeatRequest())
-    expect(afterRetryAt.status).toBe(200)
-    expect(await afterRetryAt.json()).toMatchObject({ alert_delivery: 'sent' })
-    expect(fixture.telegramMessages).toHaveLength(2)
-  })
-
-  it('does not report a Telegram alert as sent when its ledger completion is rejected', async () => {
-    const fixture = createFixture()
-    fixture.observerTransition = {
-      transition: 'opened',
-      incidentId: '123e4567-e89b-42d3-a456-426614174002',
-      openedAt: now.toISOString(),
-      reasonCode: 'D1_UNAVAILABLE',
-    }
-    fixture.fallbackCompletionAccepted = false
-
-    const response = await fixture.handler(observerHeartbeatRequest())
-
-    expect(response.status).toBe(503)
-    expect(await response.json()).toMatchObject({ error: 'OBSERVER_DELIVERY_STATE_FAILED' })
-    expect(fixture.telegramMessages).toHaveLength(1)
+    expect(fixture.observerHeartbeatWrites).toBe(2)
+    expect(fixture.fetchPaths.some((path) => /telegram|sentry/iu.test(path))).toBe(false)
   })
 
   it('rejects unknown observer heartbeat fields before touching state or Telegram', async () => {
@@ -374,7 +393,7 @@ describe('System health monitor runtime pillar', () => {
 
     expect(response.status).toBe(400)
     expect(fixture.observerHeartbeatWrites).toBe(0)
-    expect(fixture.telegramMessages).toEqual([])
+    expect(fixture.observerHeartbeatWrites).toBe(0)
   })
 })
 
@@ -383,6 +402,13 @@ function observerHeartbeatRequest(extra: Record<string, unknown> = {}) {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-system-monitor-observer-secret': 'observer-test-secret' },
     body: JSON.stringify({ dispatcher_status: 'gray', d1_status: 'gray', error_code: 'D1_UNAVAILABLE', ...extra }),
+  })
+}
+
+function observerLatestRequest(schemaVersion: string) {
+  return new Request(`https://monitor.test/functions/v1/system-monitor/observer/latest?schema_version=${schemaVersion}`, {
+    method: 'GET',
+    headers: { 'x-system-monitor-observer-secret': 'observer-test-secret' },
   })
 }
 
@@ -449,7 +475,7 @@ function previousIoSnapshot() {
   }
 }
 
-function createFixture(sentryStatus = 200) {
+function createFixture() {
   let currentNow = now
   let savedSnapshot: Awaited<ReturnType<MonitorStore['readLatestSnapshot']>> = null
   let previousSnapshot: Awaited<ReturnType<MonitorStore['readPreviousSnapshot']>> = null
@@ -459,14 +485,8 @@ function createFixture(sentryStatus = 200) {
     transition: 'none', incidentId: null, openedAt: null, reasonCode: null,
   }
   let claimed = false
-  const sourceStates: Array<{ last_status_code: number | null; backoff_until: string | null; consecutive_failures: number }> = []
   const fetchPaths: string[] = []
-  const telegramMessages: string[] = []
-  const telegramResponses: Response[] = []
-  const fallbackClaims: string[] = []
-  const fallbackCompletions: Array<Parameters<MonitorStore['completeFallbackDelivery']>[0]> = []
-  const fallbackStates = new Map<string, { delivered: boolean; retryAt: string | null; leaseExpiresAt: number | null }>()
-  let fallbackCompletionAccepted = true
+  let mobileEvidence: Record<string, unknown> = { active_session_count: 1, api_failure_count: 0, platform_count: 1 }
   let realtimeStatus = 200
   let workers = [
     'kael-matching-maintainer',
@@ -506,35 +526,14 @@ function createFixture(sentryStatus = 200) {
     async readPreviousSnapshot() { return previousSnapshot },
     async readWorkerEvidence() { return workers },
     async readKaelEvidence() { return kaelEvidence },
-    async readMobileEvidence() { return { active_session_count: 1, api_failure_count: 0, platform_count: 1 } },
+    async readMobileEvidence() { return mobileEvidence },
     async readObserverState() {
       return { observer_heartbeat_at: new Date(currentNow.getTime() - 1_000).toISOString(), dispatcher_status: 'green', d1_status: 'green' }
     },
     async readLatestSnapshot() { return savedSnapshot },
     async recordSnapshot(snapshot) { savedSnapshot = snapshot; return true },
     async writeWorkerHeartbeat(input) { heartbeat = input },
-    async readSourceState() { return null },
-    async writeSourceState(_source, state) { sourceStates.push(state) },
     async recordObserverHeartbeat() { observerHeartbeatWrites += 1; return observerTransition },
-    async claimFallbackDelivery(dedupeKey, _kind, claimedAt) {
-      fallbackClaims.push(dedupeKey)
-      const state = fallbackStates.get(dedupeKey)
-      const timestamp = Date.parse(claimedAt)
-      if (state?.delivered || (state?.leaseExpiresAt !== null && state?.leaseExpiresAt !== undefined && state.leaseExpiresAt > timestamp) ||
-          (state?.retryAt !== null && state?.retryAt !== undefined && Date.parse(state.retryAt) > timestamp)) return false
-      fallbackStates.set(dedupeKey, { delivered: false, retryAt: null, leaseExpiresAt: timestamp + 30_000 })
-      return true
-    },
-    async completeFallbackDelivery(input) {
-      fallbackCompletions.push(input)
-      if (!fallbackCompletionAccepted) return false
-      fallbackStates.set(input.dedupeKey, {
-        delivered: input.delivered,
-        retryAt: input.retryAt,
-        leaseExpiresAt: null,
-      })
-      return true
-    },
     async writeExternalObserverIncident() {},
   }
   const handler = createSystemMonitorHandler({
@@ -542,6 +541,7 @@ function createFixture(sentryStatus = 200) {
       SYSTEM_HEALTH_MONITOR_SECRET: 'monitor-test-secret',
       SYSTEM_HEALTH_OBSERVER_SECRET: 'observer-test-secret',
       SYSTEM_HEALTH_ENVIRONMENT: 'production',
+      HARNESS_RELEASE_ID: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
       SUPABASE_URL: 'https://abcdefgh.supabase.co',
       SUPABASE_SERVICE_ROLE_KEY: 'service-test-key',
       SUPABASE_ANON_KEY: 'anon-test-key',
@@ -553,7 +553,7 @@ function createFixture(sentryStatus = 200) {
     } as Record<string, string>)[name],
     createStore: () => store,
     now: () => currentNow,
-    fetcher: async (input, init) => {
+    fetcher: async (input) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input : input.url)
       fetchPaths.push(url.pathname)
       if (url.pathname.endsWith('/harness/health')) {
@@ -565,16 +565,6 @@ function createFixture(sentryStatus = 200) {
       if (url.pathname === '/storage/v1/health') return Response.json(storagePayload)
       if (url.pathname === '/realtime/v1/healthcheck') return new Response('ok', { status: realtimeStatus })
       if (url.pathname === '/auth/v1/health') return new Response('{}', { status: 200 })
-      if (url.pathname.endsWith('/events/')) {
-        return sentryStatus === 200
-          ? Response.json([])
-          : new Response('{}', { status: sentryStatus, headers: sentryStatus === 429 ? { 'retry-after': '90' } : undefined })
-      }
-      if (url.hostname === 'api.telegram.org') {
-        const body = typeof init?.body === 'string' ? JSON.parse(init.body) as { text: string } : { text: '' }
-        telegramMessages.push(body.text)
-        return telegramResponses.shift() ?? Response.json({ ok: true, result: { message_id: 1 } })
-      }
       throw new Error('Unexpected outbound request')
     },
   })
@@ -590,17 +580,12 @@ function createFixture(sentryStatus = 200) {
     set workers(value: typeof workers) { workers = value },
     get kaelEvidence() { return kaelEvidence },
     set kaelEvidence(value: Record<string, unknown>) { kaelEvidence = value },
+    set mobileEvidence(value: Record<string, unknown>) { mobileEvidence = value },
     set previousSnapshot(value: Awaited<ReturnType<MonitorStore['readPreviousSnapshot']>>) { previousSnapshot = value },
     set storagePayload(value: unknown) { storagePayload = value },
     set realtimeStatus(value: number) { realtimeStatus = value },
-    set fallbackCompletionAccepted(value: boolean) { fallbackCompletionAccepted = value },
     get observerHeartbeatWrites() { return observerHeartbeatWrites },
-    sourceStates,
     fetchPaths,
-    telegramMessages,
-    telegramResponses,
-    fallbackClaims,
-    fallbackCompletions,
   }
 }
 

@@ -131,8 +131,11 @@ function evaluateKaelRuntimePathControl(
 ): KaelRuntimePathControlFailure | null {
   const control = KAEL_RUNTIME_PATH_CONTROL[route.kind];
   if (!control) return null;
+  const mobileAction = route.kind === "jobs.openDispute" && actorRole === "worker"
+    ? "worker.open_dispute"
+    : control.mobileAction;
   const decision = evaluateKaelPathControl({
-    mobileAction: control.mobileAction,
+    mobileAction,
     workflowPhase: control.workflowPhase,
     actorRole,
     edgeRoute: control.edgeRoute,

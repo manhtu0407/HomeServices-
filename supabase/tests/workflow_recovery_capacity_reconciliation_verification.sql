@@ -223,10 +223,14 @@ do $admin_actions$
 declare
   v_case public.workflow_recovery_cases%rowtype;
   v_result record;
+  v_job_status text;
 begin
   select recovery.* into strict v_case
   from public.workflow_recovery_cases as recovery
   where recovery.job_id = 'd7000000-0000-4000-8000-000000000101';
+  select job.status::text into strict v_job_status
+  from public.jobs as job
+  where job.id = v_case.job_id;
 
   select * into strict v_result
   from public.admin_apply_workflow_recovery_action_atomic(
@@ -250,8 +254,10 @@ begin
     'd7000000-0000-4000-8000-000000000502',
     v_case.version
   );
-  if not v_result.ok or v_result.status <> 'acknowledged' or v_result.already_applied then
-    raise exception 'Admin acknowledgement failed: %', row_to_json(v_result);
+  if not v_result.ok or v_result.status <> 'acknowledged' or v_result.already_applied
+    or (select job.status::text from public.jobs as job where job.id = v_case.job_id) <> v_job_status
+  then
+    raise exception 'Admin acknowledgement failed or changed job state: %', row_to_json(v_result);
   end if;
 
   select * into strict v_result
@@ -274,6 +280,24 @@ begin
   from public.admin_apply_workflow_recovery_action_atomic(
     v_case.id,
     'd7000000-0000-4000-8000-000000000004',
+    'mark_contact_required',
+    'Customer contact is required before resolving this case.',
+    'd7000000-0000-4000-8000-000000000505',
+    v_case.version
+  );
+  if not v_result.ok or v_result.status <> 'action_required' or v_result.already_applied
+    or (select job.status::text from public.jobs as job where job.id = v_case.job_id) <> v_job_status
+  then
+    raise exception 'contact-required action changed the wrong lifecycle or job state: %', row_to_json(v_result);
+  end if;
+
+  select * into strict v_case
+  from public.workflow_recovery_cases
+  where id = v_case.id;
+  select * into strict v_result
+  from public.admin_apply_workflow_recovery_action_atomic(
+    v_case.id,
+    'd7000000-0000-4000-8000-000000000004',
     'resolve_verified',
     'Attempted resolution while workflow remains stuck.',
     'd7000000-0000-4000-8000-000000000503',
@@ -281,6 +305,9 @@ begin
   );
   if v_result.ok or v_result.error_code <> 'CASE_STILL_STUCK' then
     raise exception 'stuck case was falsely resolved: %', row_to_json(v_result);
+  end if;
+  if (select job.status::text from public.jobs as job where job.id = v_case.job_id) <> v_job_status then
+    raise exception 'refused recovery action changed the job state';
   end if;
 
   update public.jobs
@@ -301,7 +328,8 @@ begin
   );
   if not v_result.ok or v_result.status <> 'resolved'
     or (select count(*) from public.workflow_recovery_action_audit
-      where recovery_case_id = v_case.id) <> 2
+      where recovery_case_id = v_case.id) <> 3
+    or (select job.status::text from public.jobs as job where job.id = v_case.job_id) <> 'worker_matched'
   then
     raise exception 'verified recovery resolution failed: %', row_to_json(v_result);
   end if;

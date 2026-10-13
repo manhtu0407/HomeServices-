@@ -1,10 +1,10 @@
 -- @pillar id: P89-refund-obligation-integrity-sql
--- @pillar invariant: Paid cancellation requests preserve paid facts; approved refunds create capped durable obligations and cannot claim completed money without verified outbound receipts.
+-- @pillar invariant: Paid cancellation requests preserve paid facts; Customer and Worker disputes open from every eligible job state without changing job status; approved refunds create capped durable obligations and cannot claim completed money without verified outbound receipts.
 -- @pillar authority: governance/RULES.md #7; governance/RULES.md #8
 -- @pillar target: supabase/migrations/20260905104000_refund_obligation_integrity.sql
 -- @pillar layer: sql
--- @pillar siblings: P88-refund-obligations-runtime, P81-completion-media-attachment-sql
--- @pillar mutation: Remove the obligation triggers or refund-completion guard; approved refunds vanish or unverified completed refunds are inserted.
+-- @pillar siblings: P88-refund-obligations-runtime, P81-completion-media-attachment-sql, P189-dispute-lifecycle
+-- @pillar mutation: Remove obligation triggers, bypass the verified refund guard, reject an eligible Worker origin state, or conflate dispute state with jobs.status; the local SQL assertions turn red.
 
 begin;
 
@@ -36,7 +36,35 @@ select ('d8900000-0000-4000-8000-' || lpad(value::text, 12, '0'))::uuid,
   now(), now(), case when value = 102 then null else now() end,
   case when value = 102 then null else 450000 end, case when value = 102 then 'not_started' else 'manual_verified' end,
   'platform_bank_manual'
-from generate_series(101, 103) as value;
+from generate_series(101, 104) as value;
+
+insert into public.jobs(id, customer_id, worker_id, service_type, description, address_district, status, final_price)
+select ('d8900000-0000-4000-8000-' || lpad((104 + allowed.status_order)::text, 12, '0'))::uuid,
+  'd8900000-0000-4000-8000-000000000001', 'd8900000-0000-4000-8000-000000000002',
+  'plumbing', 'Dispute origin state fixture', 'q7', allowed.status, 450000
+from unnest(array[
+  'completed_by_worker'::public.job_status,
+  'confirmed_by_customer'::public.job_status,
+  'payment_pending'::public.job_status,
+  'paid'::public.job_status,
+  'reviewed'::public.job_status,
+  'scope_change_pending'::public.job_status,
+  'repairing'::public.job_status
+]) with ordinality as allowed(status, status_order);
+
+insert into public.jobs(id, customer_id, worker_id, service_type, description, address_district, status, final_price)
+select ('d8900000-0000-4000-8000-' || lpad((111 + allowed.status_order)::text, 12, '0'))::uuid,
+  'd8900000-0000-4000-8000-000000000001', 'd8900000-0000-4000-8000-000000000002',
+  'plumbing', 'Worker dispute origin state fixture', 'q7', allowed.status, 450000
+from unnest(array[
+  'completed_by_worker'::public.job_status,
+  'confirmed_by_customer'::public.job_status,
+  'payment_pending'::public.job_status,
+  'paid'::public.job_status,
+  'reviewed'::public.job_status,
+  'scope_change_pending'::public.job_status,
+  'repairing'::public.job_status
+]) with ordinality as allowed(status, status_order);
 
 insert into public.job_payment_orders(id, job_id, customer_id, worker_id, payment_method, status,
   gross_amount, platform_fee, worker_net, payment_code, transfer_content, qr_image_url,
@@ -111,11 +139,111 @@ $required_receipt_facts$;
 set local role service_role;
 set local request.jwt.claim.role = 'service_role';
 
+do $customer_dispute_origin_matrix$
+declare
+  v_index integer;
+  v_job uuid;
+  v_status public.job_status;
+  v_after_status public.job_status;
+  v_result record;
+begin
+  for v_index in 1..7 loop
+    v_job := ('d8900000-0000-4000-8000-' || lpad((104 + v_index)::text, 12, '0'))::uuid;
+    select status into strict v_status from public.jobs where id = v_job;
+    select * into strict v_result from public.open_dispute_atomic(
+      v_job,
+      'd8900000-0000-4000-8000-000000000001',
+      'customer',
+      'other',
+      'Đề nghị kiểm tra trạng thái tranh chấp ' || v_status::text || '.'
+    );
+    if v_result.ok is not true or v_result.error_code is not null or v_result.dispute_id is null
+      or v_result.evidence_snapshot_id is null or v_result.dispute_status is distinct from 'open'
+      or v_result.admin_review_required is not true then
+      raise exception 'P89_CUSTOMER_DISPUTE_ORIGIN_REJECTED status=% result=%', v_status, row_to_json(v_result);
+    end if;
+    select status into strict v_after_status from public.jobs where id = v_job;
+    if v_after_status is distinct from v_status
+      or not exists (
+        select 1 from public.disputes
+         where id = v_result.dispute_id and job_id = v_job and initiated_by = 'customer'
+           and initiated_by_id = 'd8900000-0000-4000-8000-000000000001'
+           and counter_party_id = 'd8900000-0000-4000-8000-000000000002'
+           and status = 'open' and evidence_snapshot_id = v_result.evidence_snapshot_id
+      )
+      or not exists (
+        select 1 from public.evidence_snapshots
+         where id = v_result.evidence_snapshot_id and job_id = v_job and evidence_locked_at is not null
+      ) then
+      raise exception 'P89_CUSTOMER_DISPUTE_ORIGIN_CHANGED_JOB_OR_RECEIPT status=% after=% result=%',
+        v_status, v_after_status, row_to_json(v_result);
+    end if;
+  end loop;
+end;
+$customer_dispute_origin_matrix$;
+
+do $worker_dispute_origin_matrix$
+declare
+  v_index integer;
+  v_job uuid;
+  v_status public.job_status;
+  v_after_status public.job_status;
+  v_result record;
+begin
+  select * into strict v_result from public.open_dispute_atomic(
+    'd8900000-0000-4000-8000-000000000112',
+    'd8900000-0000-4000-8000-000000000004',
+    'worker',
+    'other',
+    'Đề nghị kiểm tra quyền mở tranh chấp của Worker.'
+  );
+  if v_result.ok is not false or v_result.error_code is distinct from 'AUTH_FORBIDDEN'
+    or v_result.dispute_id is not null
+    or exists (select 1 from public.disputes where job_id = 'd8900000-0000-4000-8000-000000000112') then
+    raise exception 'P89_WORKER_DISPUTE_WRONG_ACTOR_WAS_ACCEPTED result=%', row_to_json(v_result);
+  end if;
+
+  for v_index in 1..7 loop
+    v_job := ('d8900000-0000-4000-8000-' || lpad((111 + v_index)::text, 12, '0'))::uuid;
+    select status into strict v_status from public.jobs where id = v_job;
+    select * into strict v_result from public.open_dispute_atomic(
+      v_job,
+      'd8900000-0000-4000-8000-000000000002',
+      'worker',
+      'other',
+      'Đề nghị kiểm tra trạng thái tranh chấp Worker ' || v_status::text || '.'
+    );
+    if v_result.ok is not true or v_result.error_code is not null or v_result.dispute_id is null
+      or v_result.evidence_snapshot_id is null or v_result.dispute_status is distinct from 'open'
+      or v_result.admin_review_required is not true then
+      raise exception 'P89_WORKER_DISPUTE_ORIGIN_REJECTED status=% result=%', v_status, row_to_json(v_result);
+    end if;
+    select status into strict v_after_status from public.jobs where id = v_job;
+    if v_after_status is distinct from v_status
+      or not exists (
+        select 1 from public.disputes
+         where id = v_result.dispute_id and job_id = v_job and initiated_by = 'worker'
+           and initiated_by_id = 'd8900000-0000-4000-8000-000000000002'
+           and counter_party_id = 'd8900000-0000-4000-8000-000000000001'
+           and status = 'open' and evidence_snapshot_id = v_result.evidence_snapshot_id
+      )
+      or not exists (
+        select 1 from public.evidence_snapshots
+         where id = v_result.evidence_snapshot_id and job_id = v_job and evidence_locked_at is not null
+      ) then
+      raise exception 'P89_WORKER_DISPUTE_ORIGIN_CHANGED_JOB_OR_RECEIPT status=% after=% result=%',
+        v_status, v_after_status, row_to_json(v_result);
+    end if;
+  end loop;
+end;
+$worker_dispute_origin_matrix$;
+
 do $review_and_obligation$
 declare
   v_receipt jsonb;
   v_replay jsonb;
   v_dispute record;
+  v_counter record;
   v_decision record;
   v_summary jsonb;
   v_request_id uuid;
@@ -153,6 +281,20 @@ begin
   if v_summary->>'state' <> 'review_required' or v_summary->>'amount_vnd' is not null then
     raise exception 'unapproved request advertised a refund amount';
   end if;
+  if not exists (select 1 from public.disputes where id = (v_receipt->>'dispute_id')::uuid and status = 'open')
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000101' and status = 'paid') then
+    raise exception 'opening a dispute changed the job state or returned the wrong dispute state';
+  end if;
+
+  select * into v_counter from public.submit_counter_statement_atomic(
+    (v_receipt->>'dispute_id')::uuid, 'd8900000-0000-4000-8000-000000000002',
+    'Tôi đã đọc nội dung tranh chấp và bổ sung phản hồi của mình.'
+  );
+  if v_counter.ok is not true or v_counter.dispute_status <> 'admin_review'
+    or not exists (select 1 from public.disputes where id = (v_receipt->>'dispute_id')::uuid and status = 'admin_review')
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000101' and status = 'paid') then
+    raise exception 'counter-statement did not advance the dispute independently of the job state';
+  end if;
 
   select * into v_decision from public.admin_decide_dispute_atomic(
     (v_receipt->>'dispute_id')::uuid, 'd8900000-0000-4000-8000-000000000003', 'customer_favor_partial',
@@ -163,6 +305,10 @@ begin
     or (v_summary->>'receipt_verification_available')::boolean is not false then
     raise exception 'approved dispute missing honest obligation';
   end if;
+  if not exists (select 1 from public.disputes where id = (v_receipt->>'dispute_id')::uuid and status = 'admin_decided')
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000101' and status = 'paid') then
+    raise exception 'Admin decision conflated the dispute state with the paid job state';
+  end if;
   update public.disputes set admin_decision = admin_decision where id = (v_receipt->>'dispute_id')::uuid;
   if (select count(*) from public.job_refund_obligations where job_id = 'd8900000-0000-4000-8000-000000000101') <> 1 then
     raise exception 'replayed dispute duplicated refund obligation';
@@ -170,6 +316,15 @@ begin
 
   select * into v_dispute from public.open_dispute_atomic('d8900000-0000-4000-8000-000000000101',
     'd8900000-0000-4000-8000-000000000001', 'customer', 'other', 'Đề nghị xem xét thêm bằng chứng.');
+  update public.disputes set status = 'awaiting_counter_party' where id = v_dispute.dispute_id;
+  select * into v_counter from public.submit_counter_statement_atomic(
+    v_dispute.dispute_id, 'd8900000-0000-4000-8000-000000000002',
+    'Tôi đã đọc nội dung tranh chấp và bổ sung phản hồi của mình.'
+  );
+  if v_counter.ok is not true or v_counter.dispute_status <> 'admin_review'
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000101' and status = 'paid') then
+    raise exception 'awaiting-counter-party path did not enter admin review independently of job status';
+  end if;
   begin
     perform * from public.admin_decide_dispute_atomic(v_dispute.dispute_id,
       'd8900000-0000-4000-8000-000000000003', 'customer_favor_partial', 400000, null,
@@ -178,8 +333,17 @@ begin
   exception when sqlstate 'P0001' then
     if sqlerrm <> 'REFUND_AMOUNT_EXCEEDS_PAID' then raise; end if;
   end;
-  if exists (select 1 from public.disputes where id = v_dispute.dispute_id and status = 'admin_decided') then
-    raise exception 'rejected refund left committed dispute decision';
+  if not exists (select 1 from public.disputes where id = v_dispute.dispute_id and status = 'admin_review')
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000101' and status = 'paid') then
+    raise exception 'rejected refund changed the dispute or job lifecycle';
+  end if;
+  select * into v_decision from public.admin_decide_dispute_atomic(v_dispute.dispute_id,
+    'd8900000-0000-4000-8000-000000000003', 'worker_favor', null, null,
+    'none', 'none', repeat('Đã kiểm tra bằng chứng và ghi nhận quyết định của Admin. ', 2));
+  if v_decision.ok is not true
+    or not exists (select 1 from public.disputes where id = v_dispute.dispute_id and status = 'admin_decided')
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000101' and status = 'paid') then
+    raise exception 'Admin review decision changed the job state or failed to close the dispute';
   end if;
 
   select * into v_dispute from public.open_dispute_atomic('d8900000-0000-4000-8000-000000000102',
@@ -192,6 +356,33 @@ begin
   exception when sqlstate 'P0001' then
     if sqlerrm <> 'REFUND_PAYMENT_UNVERIFIED' then raise; end if;
   end;
+  if not exists (select 1 from public.disputes where id = v_dispute.dispute_id and status = 'open')
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000102' and status = 'paid') then
+    raise exception 'failed refund decision changed the dispute or job lifecycle';
+  end if;
+
+  select * into v_dispute from public.open_dispute_atomic('d8900000-0000-4000-8000-000000000104',
+    'd8900000-0000-4000-8000-000000000001', 'customer', 'other', 'Đề nghị xem xét thêm bằng chứng.');
+  select * into v_decision from public.admin_decide_dispute_atomic(v_dispute.dispute_id,
+    'd8900000-0000-4000-8000-000000000003', 'worker_favor', null, null,
+    'none', 'none', repeat('Đã kiểm tra bằng chứng và ghi nhận quyết định của Admin. ', 2));
+  if v_decision.ok is not true
+    or not exists (select 1 from public.disputes where id = v_dispute.dispute_id and status = 'admin_decided')
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000104' and status = 'paid') then
+    raise exception 'Admin decision from an open dispute changed the job state or failed to close the dispute';
+  end if;
+
+  select * into v_dispute from public.open_dispute_atomic('d8900000-0000-4000-8000-000000000104',
+    'd8900000-0000-4000-8000-000000000001', 'customer', 'other', 'Đề nghị xem xét thêm bằng chứng.');
+  update public.disputes set status = 'awaiting_counter_party' where id = v_dispute.dispute_id;
+  select * into v_decision from public.admin_decide_dispute_atomic(v_dispute.dispute_id,
+    'd8900000-0000-4000-8000-000000000003', 'worker_favor', null, null,
+    'none', 'none', repeat('Đã kiểm tra bằng chứng và ghi nhận quyết định của Admin. ', 2));
+  if v_decision.ok is not true
+    or not exists (select 1 from public.disputes where id = v_dispute.dispute_id and status = 'admin_decided')
+    or not exists (select 1 from public.jobs where id = 'd8900000-0000-4000-8000-000000000104' and status = 'paid') then
+    raise exception 'Admin decision from the awaiting-counter-party state changed the job state or failed';
+  end if;
 
   begin
     perform public.request_paid_cancellation_review_atomic('d8900000-0000-4000-8000-000000000101',

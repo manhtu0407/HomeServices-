@@ -359,6 +359,7 @@ export const availabilityToggleSchema = z.object({
 // description + reason + photo_urls only.
 export const workerScopeChangeSchema = z.object({
   client_request_id: clientRequestIdSchema,
+  quote_id: clientRequestIdSchema.optional(),
   new_description: z.string().trim().min(10).max(2000),
   reason: z.string().trim().min(10).max(1000),
   photo_urls: z.array(z.string().regex(

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useReducer, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import { AppState, FlatList, Share, StyleSheet, View, type ListRenderItemInfo } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 
@@ -29,6 +29,7 @@ type SeverityFilter = 'all' | 'yellow' | 'red'
 type TimeFilter = '24h' | '7d' | '30d'
 
 type HealthDataQuality = 'available' | 'partial' | 'unavailable'
+const HEALTH_EVIDENCE_MAX_AGE_MS = 180_000
 
 type HealthWorkspaceState = {
   health: AdminSystemHealthResponse | null
@@ -36,9 +37,8 @@ type HealthWorkspaceState = {
   loaded: boolean
   dataQuality: HealthDataQuality
   loading: boolean
-  refreshing: boolean
-  loadError: string | null
-  refreshMessage: string | null
+  healthError: string | null
+  incidentsError: string | null
   selectedId: string | null
   detail: AdminSystemIncidentDetailResponse | null
   detailLoading: boolean
@@ -51,14 +51,16 @@ type HealthWorkspaceState = {
   buildId: string
   filterAnchor: number
   now: number
-  manualRefresh: boolean
 }
 
 type HealthWorkspaceAction =
   | { type: 'loadStarted' }
-  | { type: 'loadSucceeded'; health: AdminSystemHealthResponse; incidents: SystemIncidentPacket[]; dataQuality: HealthDataQuality; now: number }
-  | { type: 'loadFailed'; message: string }
+  | { type: 'healthSucceeded'; health: AdminSystemHealthResponse; now: number }
+  | { type: 'healthFailed'; message: string }
+  | { type: 'incidentsSucceeded'; incidents: SystemIncidentPacket[]; dataQuality: HealthDataQuality }
+  | { type: 'incidentsFailed'; message: string }
   | { type: 'loadFinished' }
+  | { type: 'clockAdvanced'; now: number }
   | { type: 'detailReset' }
   | { type: 'detailStarted' }
   | { type: 'detailSucceeded'; detail: AdminSystemIncidentDetailResponse }
@@ -71,16 +73,13 @@ type HealthWorkspaceAction =
   | { type: 'periodChanged'; value: TimeFilter; filterAnchor: number }
   | { type: 'releaseFilterChanged'; value: string }
   | { type: 'buildFilterChanged'; value: string }
-  | { type: 'manualRefreshStarted' }
-  | { type: 'refreshMessageChanged'; value: string | null }
-  | { type: 'manualRefreshFinished' }
 
 function createHealthWorkspaceState(): HealthWorkspaceState {
   return {
-    health: null, incidents: [], loaded: false, dataQuality: 'unavailable', loading: true, refreshing: false,
-    loadError: null, refreshMessage: null, selectedId: null, detail: null, detailLoading: false, detailError: null,
+    health: null, incidents: [], loaded: false, dataQuality: 'unavailable', loading: true,
+    healthError: null, incidentsError: null, selectedId: null, detail: null, detailLoading: false, detailError: null,
     status: 'open', severity: 'all', component: 'all', period: '7d', releaseId: '', buildId: '',
-    filterAnchor: Date.now(), now: 0, manualRefresh: false,
+    filterAnchor: Date.now(), now: 0,
   }
 }
 
@@ -88,14 +87,20 @@ function healthWorkspaceReducer(state: HealthWorkspaceState, action: HealthWorks
   switch (action.type) {
     case 'loadStarted': {
       const hasData = state.health !== null || state.loaded
-      return { ...state, loading: !hasData, refreshing: hasData }
+      return { ...state, loading: !hasData }
     }
-    case 'loadSucceeded':
-      return { ...state, health: action.health, incidents: action.incidents, dataQuality: action.dataQuality, loaded: true, loadError: null, now: action.now }
-    case 'loadFailed':
-      return { ...state, loadError: action.message, dataQuality: state.health !== null || state.loaded ? 'partial' : 'unavailable' }
+    case 'healthSucceeded':
+      return { ...state, health: action.health, loaded: true, healthError: null, now: action.now }
+    case 'healthFailed':
+      return { ...state, healthError: action.message }
+    case 'incidentsSucceeded':
+      return { ...state, incidents: action.incidents, dataQuality: action.dataQuality, loaded: true, incidentsError: null }
+    case 'incidentsFailed':
+      return { ...state, incidentsError: action.message, dataQuality: state.loaded ? 'partial' : 'unavailable' }
     case 'loadFinished':
-      return { ...state, loading: false, refreshing: false }
+      return { ...state, loading: false }
+    case 'clockAdvanced':
+      return { ...state, now: action.now }
     case 'detailReset':
       return { ...state, detail: null, detailLoading: false, detailError: null }
     case 'detailStarted':
@@ -120,12 +125,6 @@ function healthWorkspaceReducer(state: HealthWorkspaceState, action: HealthWorks
       return { ...state, releaseId: action.value }
     case 'buildFilterChanged':
       return { ...state, buildId: action.value }
-    case 'manualRefreshStarted':
-      return { ...state, manualRefresh: true, refreshMessage: null }
-    case 'refreshMessageChanged':
-      return { ...state, refreshMessage: action.value }
-    case 'manualRefreshFinished':
-      return { ...state, manualRefresh: false }
   }
 }
 
@@ -133,8 +132,8 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
   const labels = copy[language]
   const [state, dispatch] = useReducer(healthWorkspaceReducer, undefined, createHealthWorkspaceState)
   const {
-    health, incidents, loaded, dataQuality, loading, refreshing, loadError, refreshMessage, selectedId, detail,
-    detailLoading, detailError, status, severity, component, period, releaseId, buildId, filterAnchor, now, manualRefresh,
+    health, incidents, loaded, dataQuality, loading, healthError, incidentsError, selectedId, detail,
+    detailLoading, detailError, status, severity, component, period, releaseId, buildId, filterAnchor, now,
   } = state
   const detailSequence = useRef(0)
   const loadSequence = useRef(0)
@@ -142,6 +141,25 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
   const pendingLoad = useRef<(() => void) | null>(null)
   const reloadRef = useRef<(() => void) | null>(null)
   const hasData = health !== null || loaded
+
+  useEffect(() => {
+    const snapshot = health?.snapshot
+    if (!snapshot || !now) return
+
+    const deadlines = [Date.parse(snapshot.expires_at)]
+    for (const check of snapshot.checks) {
+      if (!check.observed_at) continue
+      const observedAt = Date.parse(check.observed_at)
+      if (Number.isFinite(observedAt) && observedAt <= now) deadlines.push(observedAt + HEALTH_EVIDENCE_MAX_AGE_MS + 1)
+    }
+    const futureDeadlines = deadlines.filter((deadline) => Number.isFinite(deadline) && deadline > now)
+    if (futureDeadlines.length === 0) return
+    const nextDeadline = Math.min(...futureDeadlines)
+
+    // Refresh the displayed clock at evidence expiry even when the next API poll fails.
+    const timer = setTimeout(() => dispatch({ type: 'clockAdvanced', now: Date.now() }), Math.max(0, nextDeadline - Date.now()))
+    return () => clearTimeout(timer)
+  }, [health, now])
 
   const filters = useMemo<AdminSystemIncidentFilters>(() => ({
     component,
@@ -166,16 +184,21 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
       loadLock.current = true
       const requestSequence = loadSequence.current
       dispatch({ type: 'loadStarted' })
-      void Promise.all([
+      void Promise.allSettled([
         adminControlService.getSystemHealth(),
         adminControlService.listSystemIncidents(filters),
-      ]).then(([healthResult, incidentResult]) => {
-        if (!healthResult.success || !incidentResult.success) throw new Error('SYSTEM_HEALTH_LOAD_FAILED')
+      ]).then(([healthSettled, incidentSettled]) => {
         if (!focused || requestSequence !== loadSequence.current) return
-        dispatch({ type: 'loadSucceeded', health: healthResult.data, incidents: incidentResult.data.records, dataQuality: incidentResult.data.data_quality, now: Date.now() })
-      }).catch(() => {
-        if (!focused || requestSequence !== loadSequence.current) return
-        dispatch({ type: 'loadFailed', message: labels.loadError })
+        if (healthSettled.status === 'fulfilled' && healthSettled.value.success) {
+          dispatch({ type: 'healthSucceeded', health: healthSettled.value.data, now: Date.now() })
+        } else {
+          dispatch({ type: 'healthFailed', message: labels.loadError })
+        }
+        if (incidentSettled.status === 'fulfilled' && incidentSettled.value.success) {
+          dispatch({ type: 'incidentsSucceeded', incidents: incidentSettled.value.data.records, dataQuality: incidentSettled.value.data.data_quality })
+        } else {
+          dispatch({ type: 'incidentsFailed', message: labels.loadError })
+        }
       }).finally(() => {
         loadLock.current = false
         if (focused && requestSequence === loadSequence.current) {
@@ -207,6 +230,15 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
   }, [filters, labels.loadError]))
 
   useFocusEffect(useCallback(() => {
+    if (actor.access_level !== 'owner') return
+    let focused = true
+    void adminControlService.refreshSystemHealth()
+      .catch(() => undefined)
+      .finally(() => { if (focused) reloadRef.current?.() })
+    return () => { focused = false }
+  }, [actor.access_level]))
+
+  useFocusEffect(useCallback(() => {
     if (!selectedId) { dispatch({ type: 'detailReset' }); return }
     let focused = true
     const sequence = ++detailSequence.current
@@ -220,26 +252,11 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
     return () => { focused = false; detailSequence.current += 1 }
   }, [labels.detailError, selectedId]))
 
-  const onRefresh = useCallback(() => reloadRef.current?.(), [])
-  const onManualRefresh = useCallback(async () => {
-    dispatch({ type: 'manualRefreshStarted' })
-    try {
-      const result = await adminControlService.refreshSystemHealth()
-      if (result.success) {
-        dispatch({ type: 'refreshMessageChanged', value: result.data.accepted ? labels.refreshAccepted : labels.refreshUnavailable })
-        reloadRef.current?.()
-      } else dispatch({ type: 'refreshMessageChanged', value: labels.refreshUnavailable })
-    } catch {
-      dispatch({ type: 'refreshMessageChanged', value: labels.refreshUnavailable })
-    } finally {
-      dispatch({ type: 'manualRefreshFinished' })
-    }
-  }, [labels.refreshAccepted, labels.refreshUnavailable])
   const selectIncident = useCallback((id: string) => dispatch({ type: 'incidentSelected', id }), [])
   const selectPeriod = useCallback((value: string) => dispatch({ type: 'periodChanged', value: value as TimeFilter, filterAnchor: Date.now() }), [])
   const row = useCallback(({ item }: ListRenderItemInfo<SystemIncidentPacket>) => <AdminSystemRow
-    accessibilityLabel={`${item.component}. ${statusLabel(item.status, language)}. ${severityLabel(item.severity, language)}. ${reasonLabel(item.reason_code, language)}`}
-    aside={`${severityLabel(item.severity, language)} · ${statusLabel(item.status, language)}`}
+    accessibilityLabel={`${item.component}. ${incidentStatusLabel(item, language)}. ${severityLabel(item.severity, language)}. ${reasonLabel(item.reason_code, language)}`}
+    aside={`${severityLabel(item.severity, language)} · ${incidentStatusLabel(item, language)}`}
     id={item.incident_id}
     meta={`${checkLabel(item.detector, language)} · ${adminSystemFormatDate(item.updated_at, language)} · ${item.release_id ?? labels.releaseMissing}`}
     onPress={selectIncident}
@@ -249,15 +266,8 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
 
   const snapshot = health?.snapshot ?? null
   const expired = snapshot ? !Number.isFinite(Date.parse(snapshot.expires_at)) || Date.parse(snapshot.expires_at) <= now : true
-  const overall = snapshot && !expired ? snapshot.overall_status : 'gray'
+  const overall = effectiveOverallStatus(snapshot, now)
   const listHeader = <View style={styles.header}>
-    <View style={styles.titleRow}>
-      <View style={styles.titleBlock}>
-        <AdminText accessibilityRole="header" textRole="title2" style={styles.strong}>{labels.title}</AdminText>
-        <AdminText textRole="footnote" style={styles.secondary}>{labels.subtitle}</AdminText>
-      </View>
-      <FinanceSecondaryButton disabled={refreshing || loading} label={refreshing ? labels.updating : labels.reload} loading={refreshing || loading} onPress={onRefresh} />
-    </View>
     <View accessibilityLabel={`${labels.overall}: ${statusLabel(overall, language)}`} style={styles.statusPanel}>
       <StatusMark status={overall} language={language} />
       <View style={styles.statusText}>
@@ -265,8 +275,16 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
         <AdminText textRole="footnote" style={styles.secondary}>{snapshot ? `${labels.checkedAt} ${adminSystemFormatDate(snapshot.completed_at, language)} · ${expired ? labels.expired : labels.expiresAt + ' ' + adminSystemFormatDate(snapshot.expires_at, language)}` : labels.noSnapshot}</AdminText>
       </View>
     </View>
+    {healthError ? <AdminSystemState compact label={healthError} /> : null}
     {snapshot ? <View style={styles.checks}>
       {snapshot.checks.map((check) => <HealthCheckRow check={check} key={check.check_id} language={language} now={now} />)}
+    </View> : null}
+    {snapshot?.schema_version === 2 ? snapshot.coverage_gaps.map((gap) => <View accessibilityLabel={coverageGapLabel(gap, language)} key={gap} style={styles.coverageGap}>
+      <StatusMark status="gray" language={language} />
+      <AdminText textRole="caption1" style={styles.secondary}>{coverageGapLabel(gap, language)}</AdminText>
+    </View>) : snapshot ? <View accessibilityLabel={coverageGapLabel('profile-coverage-unsupported', language)} style={styles.coverageGap}>
+      <StatusMark status="gray" language={language} />
+      <AdminText textRole="caption1" style={styles.secondary}>{coverageGapLabel('profile-coverage-unsupported', language)}</AdminText>
     </View> : null}
     {health?.observer ? <View style={styles.observer}>
       <AdminText textRole="headline" style={styles.strong}>{labels.observer}</AdminText>
@@ -275,14 +293,12 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
       <AdminSystemField label={labels.d1} value={statusLabel(health.observer.d1_status, language)} />
       {health.observer.last_error_code ? <AdminSystemField label={labels.lastSafeError} value={health.observer.last_error_code} /> : null}
     </View> : null}
-    {actor.access_level === 'owner' ? <FinanceSecondaryButton disabled={manualRefresh} label={manualRefresh ? labels.refreshing : labels.forceRefresh} loading={manualRefresh} onPress={() => { void onManualRefresh() }} /> : null}
-    {refreshMessage ? <AdminText accessibilityLiveRegion="polite" textRole="footnote" style={styles.secondary}>{refreshMessage}</AdminText> : null}
     {loading && !hasData ? <AdminSystemState label={labels.loading} loading /> : null}
-    {loadError ? <AdminSystemState actionLabel={labels.retry} compact label={loadError} onAction={onRefresh} /> : null}
     <View style={styles.sectionHeading}>
       <AdminText accessibilityRole="header" textRole="headline" style={styles.strong}>{labels.incidents}</AdminText>
       <AdminText textRole="caption1" style={styles.secondary}>{qualityLabel(dataQuality, language)} · {incidents.length} {labels.records}</AdminText>
     </View>
+    {incidentsError ? <AdminSystemState compact label={incidentsError} /> : null}
     <View style={styles.filterGroup}>
       <FilterRow label={labels.status} values={['all', 'open', 'resolved']} selected={status} language={language} onSelect={(value) => dispatch({ type: 'statusFilterChanged', value: value as IncidentStatusFilter })} />
       <FilterRow label={labels.severity} values={['all', 'yellow', 'red']} selected={severity} language={language} onSelect={(value) => dispatch({ type: 'severityFilterChanged', value: value as SeverityFilter })} />
@@ -300,7 +316,7 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
     contentContainerStyle={adminSystemStyles.listContent}
     data={incidents}
     keyExtractor={(item) => item.incident_id}
-    ListEmptyComponent={loading && !hasData ? null : <AdminSystemState compact label={loadError ? labels.noDataAfterError : labels.noIncidents} />}
+    ListEmptyComponent={loading && !hasData ? null : <AdminSystemState compact label={incidentsError && incidents.length === 0 ? labels.noDataAfterError : labels.noIncidents} />}
     ListHeaderComponent={listHeader}
     renderItem={row}
     showsVerticalScrollIndicator={false}
@@ -321,7 +337,7 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
 }
 
 function HealthCheckRow({ check, language, now }: { check: SystemHealthCheck; language: AppLanguage; now: number }) {
-  const stale = !check.observed_at || !Number.isFinite(Date.parse(check.observed_at)) || Date.parse(check.observed_at) > now || now - Date.parse(check.observed_at) > 180_000
+  const stale = isSystemHealthCheckStale(check, now)
   const status: SystemHealthStatus = stale ? 'gray' : check.status
   const labels = copy[language]
   return <View accessibilityLabel={`${componentLabel(check.component, language)}: ${statusLabel(status, language)}. ${reasonLabel(check.reason_code, language)}`} style={styles.checkRow} testID={`admin-system-health-check-${check.check_id}`}>
@@ -332,6 +348,30 @@ function HealthCheckRow({ check, language, now }: { check: SystemHealthCheck; la
     </View>
     <AdminText textRole="caption1" style={styles.meta}>{statusLabel(status, language)}</AdminText>
   </View>
+}
+
+function isSystemHealthCheckStale(check: SystemHealthCheck, now: number) {
+  const observedAt = check.observed_at ? Date.parse(check.observed_at) : Number.NaN
+  return !Number.isFinite(observedAt) || observedAt > now || now - observedAt > HEALTH_EVIDENCE_MAX_AGE_MS
+}
+
+function effectiveOverallStatus(snapshot: NonNullable<AdminSystemHealthResponse['snapshot']> | null, now: number): SystemHealthStatus {
+  if (!snapshot) return 'gray'
+  if (snapshot.schema_version !== 2) return 'gray'
+
+  const expiresAt = Date.parse(snapshot.expires_at)
+  const snapshotStale = !Number.isFinite(expiresAt) || expiresAt <= now
+  const checkEvidenceStale = snapshot.checks.some((check) => isSystemHealthCheckStale(check, now))
+  const observedIds = new Set(snapshot.checks.map((check) => check.check_id))
+  const missingRequired = snapshot.required_check_ids.some((checkId) => !observedIds.has(checkId))
+  if (snapshotStale || checkEvidenceStale || missingRequired) return 'gray'
+  return snapshot.overall_status
+}
+
+function coverageGapLabel(source: string, language: AppLanguage) {
+  const vi = source === 'app-crash' ? 'Chưa bật theo dõi crash' : source === 'push-notifications' ? 'Chưa bật thông báo đẩy' : 'Chưa xác định đầy đủ độ phủ hệ thống'
+  const en = source === 'app-crash' ? 'Crash monitoring is not enabled' : source === 'push-notifications' ? 'Push notifications are not enabled' : 'System coverage is not fully identified'
+  return language === 'vi' ? vi : en
 }
 
 function IncidentDetail({ detail, error, language, loading, onBack, onExport }: {
@@ -350,7 +390,7 @@ function IncidentDetail({ detail, error, language, loading, onBack, onExport }: 
   return <AdminSystemDetailScroll>
     <AdminSystemDetailHeader language={language} onBack={onBack} subtitle={`${packet.incident_id} · ${componentLabel(packet.component, language)}`} title={labels.incidentDetail} />
     <StatusMark status={packet.severity} language={language} />
-    <AdminSystemField label={labels.status} value={statusLabel(packet.status, language)} />
+    <AdminSystemField label={labels.status} value={incidentStatusLabel(packet, language)} />
     <AdminSystemField label={labels.severity} value={severityLabel(packet.severity, language)} />
     <AdminSystemField label={labels.reason} value={reasonLabel(packet.reason_code, language)} />
     <AdminSystemField label={labels.detector} value={checkLabel(packet.detector, language)} />
@@ -358,7 +398,7 @@ function IncidentDetail({ detail, error, language, loading, onBack, onExport }: 
     <AdminSystemDivider />
     <AdminSystemField label={labels.openedAt} value={adminSystemFormatDate(packet.opened_at, language)} />
     <AdminSystemField label={labels.updatedAt} value={adminSystemFormatDate(packet.updated_at, language)} />
-    {packet.resolved_at ? <AdminSystemField label={labels.resolvedAt} value={adminSystemFormatDate(packet.resolved_at, language)} /> : null}
+    {packet.resolved_at ? <AdminSystemField label={packet.reason_code === 'SOURCE_DEFERRED_BY_PROFILE' ? labels.closedAt : labels.resolvedAt} value={adminSystemFormatDate(packet.resolved_at, language)} /> : null}
     <AdminSystemDivider />
     <AdminSystemField label={labels.release} value={packet.release_id ?? labels.notRecorded} />
     <AdminSystemField label={labels.build} value={packet.build_id ?? labels.notRecorded} />
@@ -372,7 +412,7 @@ function IncidentDetail({ detail, error, language, loading, onBack, onExport }: 
     <View style={styles.detailSection}>
       <AdminText accessibilityRole="header" textRole="headline" style={styles.strong}>{labels.timeline}</AdminText>
       <AdminSystemDivider />
-      {detail.history.map((event) => <AdminSystemField key={`${event.event}:${event.at}`} label={labels.historyEvent[event.event]} value={`${adminSystemFormatDate(event.at, language)} · ${reasonLabel(event.reason_code, language)}`} />)}
+      {detail.history.map((event) => <AdminSystemField key={`${event.event}:${event.at}`} label={historyEventLabel(event.event, event.reason_code, language)} value={`${adminSystemFormatDate(event.at, language)} · ${reasonLabel(event.reason_code, language)}`} />)}
     </View>
     <AdminText textRole="footnote" style={styles.secondary}>{packet.evidence_limit}</AdminText>
     <FinanceSecondaryButton label={labels.exportPacket} onPress={() => { void onExport() }} />
@@ -401,6 +441,14 @@ function StatusMark({ language, status }: { language: AppLanguage; status: Syste
 }
 
 function statusLabel(status: string, language: AppLanguage) { return copy[language].statusValue[status as SystemHealthStatus] ?? copy[language].statusValue.gray }
+function incidentStatusLabel(packet: SystemIncidentPacket, language: AppLanguage) {
+  if (packet.status === 'resolved' && packet.reason_code === 'SOURCE_DEFERRED_BY_PROFILE') return copy[language].closedByConfiguration
+  return statusLabel(packet.status, language)
+}
+function historyEventLabel(event: 'opened' | 'updated' | 'resolved', reasonCode: string, language: AppLanguage) {
+  if (event === 'resolved' && reasonCode === 'SOURCE_DEFERRED_BY_PROFILE') return copy[language].closedByConfiguration
+  return copy[language].historyEvent[event]
+}
 function severityLabel(severity: 'yellow' | 'red', language: AppLanguage) { return copy[language].severityValue[severity] }
 function componentLabel(component: string, language: AppLanguage) { return (copy[language].componentValue as Record<string, string>)[component] ?? (language === 'vi' ? 'Thành phần hệ thống' : 'System component') }
 function checkLabel(checkId: string, language: AppLanguage) { return (copy[language].checkValue as Record<string, string>)[checkId] ?? copy[language].unknownCheck }
@@ -421,7 +469,7 @@ const reasonTranslations: Record<string, readonly [string, string]> = {
   API_OFFLINE: ['Ứng dụng đang ngoại tuyến', 'The App is offline'],
   API_REACHABLE: ['Ứng dụng kết nối được với API', 'The App can reach the API'],
   API_TIMEOUT: ['Yêu cầu tới API hết thời gian chờ', 'The API request timed out'],
-  APP_ERRORS_OBSERVED: ['Sentry ghi nhận lỗi ứng dụng', 'Sentry observed App errors'],
+  APP_ERRORS_OBSERVED: ['Có lỗi ứng dụng được ghi nhận', 'App errors were recorded'],
   AUTH_EVIDENCE_MISSING: ['Chưa có bằng chứng xác thực', 'Authentication evidence is unavailable'],
   AUTH_HEALTH_REACHABLE: ['Dịch vụ xác thực phản hồi', 'Authentication service responded'],
   AUTH_UNAVAILABLE: ['Dịch vụ xác thực không phản hồi thành công', 'Authentication service did not return success'],
@@ -436,11 +484,11 @@ const reasonTranslations: Record<string, readonly [string, string]> = {
   DATABASE_UNAVAILABLE: ['Không đọc được cơ sở dữ liệu', 'Database read failed'],
   DATABASE_EVIDENCE_MISSING: ['Chưa có bằng chứng cơ sở dữ liệu', 'Database evidence is unavailable'],
   DATABASE_READ_SUCCEEDED: ['Phép đọc cơ sở dữ liệu đã đạt', 'Database read succeeded'],
-  DISPATCHER_UNAVAILABLE: ['Bộ gửi cảnh báo không hoạt động', 'Alert dispatcher is unavailable'],
+  DISPATCHER_UNAVAILABLE: ['Bộ giám sát bên ngoài không phản hồi', 'The external observer did not respond'],
   EDGE_AVAILABLE: ['Edge API đã phản hồi', 'Edge API responded'],
   EDGE_EVIDENCE_MISSING: ['Chưa có bằng chứng từ Edge API', 'Edge API evidence is unavailable'],
   EDGE_UNAVAILABLE: ['Edge API không phản hồi thành công', 'Edge API did not return success'],
-  FATAL_APP_ERRORS: ['Sentry ghi nhận lỗi nghiêm trọng của ứng dụng', 'Sentry observed fatal App errors'],
+  FATAL_APP_ERRORS: ['Có lỗi nghiêm trọng của ứng dụng được ghi nhận', 'Fatal App errors were recorded'],
   IO_CHECKS_HEALTHY: ['Storage và Realtime đã phản hồi khỏe mạnh', 'Storage and Realtime health checks passed'],
   IO_CHECKS_UNVERIFIED: ['Kho tệp và kết nối thời gian thực chưa được kiểm tra hoạt động', 'Storage and Realtime I/O checks are not verified'],
   INSUFFICIENT_SAMPLE: ['Chưa đủ 20 mẫu để đánh giá tỷ lệ lỗi', 'Fewer than 20 samples are available for error-rate evaluation'],
@@ -452,6 +500,7 @@ const reasonTranslations: Record<string, readonly [string, string]> = {
   ERROR_RATE_WITHIN_RANGE: ['Tỷ lệ lỗi dưới ngưỡng cảnh báo', 'The error rate is below the warning threshold'],
   INVALID_EVIDENCE: ['Bằng chứng không hợp lệ để tính tỷ lệ lỗi', 'Evidence is invalid for error-rate evaluation'],
   KAEL_EVIDENCE_MISSING: ['Chưa có bằng chứng Kael', 'Kael evidence is unavailable'],
+  KAEL_EVIDENCE_INCOMPLETE: ['Bằng chứng Kael thiếu hoặc sai định dạng', 'Kael evidence is incomplete or malformed'],
   LEARNING_QUEUE_EVIDENCE_MISSING: ['Chưa có đủ dữ liệu về hàng đợi học tập', 'Learning queue evidence is incomplete'],
   LEARNING_QUEUE_SCHEDULE_UNAVAILABLE: ['Chưa xác minh được lịch xử lý hàng đợi học tập', 'The learning queue processing schedule is unverified'],
   LEARNING_QUEUE_STALE: ['Hàng đợi học tập quá hạn xử lý theo lịch hiện có', 'Learning queue items exceeded the configured fallback window'],
@@ -461,6 +510,7 @@ const reasonTranslations: Record<string, readonly [string, string]> = {
   MONITOR_NOT_CONFIGURED: ['Thiếu cấu hình cần thiết cho bộ giám sát', 'The monitor is missing required configuration'],
   MONITOR_RUN_FAILED: ['Lượt giám sát không hoàn tất', 'The monitor run did not complete'],
   NATIVE_SESSION_EVIDENCE_MISSING: ['Chưa có bằng chứng gần đây từ ứng dụng trên thiết bị', 'No recent native App session evidence'],
+  NATIVE_SESSION_EVIDENCE_INCOMPLETE: ['Bằng chứng phiên ứng dụng thiếu hoặc sai định dạng', 'Native App session evidence is incomplete or malformed'],
   NATIVE_API_DEGRADED: ['Một số yêu cầu API từ ứng dụng trên thiết bị bị suy giảm', 'Some native App API requests are degraded'],
   NATIVE_API_FAILURES: ['Một số yêu cầu API từ ứng dụng trên thiết bị thất bại', 'Some native App API requests failed'],
   NATIVE_SESSIONS_CONNECTED: ['Ứng dụng trên thiết bị kết nối được với Backend', 'Native App sessions can reach the backend'],
@@ -490,9 +540,6 @@ const reasonTranslations: Record<string, readonly [string, string]> = {
   RESPONSE_INVALID_JSON: ['Nguồn kiểm tra trả dữ liệu không hợp lệ', 'The evidence source returned invalid data'],
   RESPONSE_TOO_LARGE: ['Phản hồi từ nguồn kiểm tra vượt giới hạn kích thước', 'The evidence response exceeded the size limit'],
   RUN_ALREADY_CLAIMED: ['Lượt kiểm tra trong phút này đã được nhận xử lý', 'This minute’s monitor run has already been claimed'],
-  SENTRY_NOT_CONFIGURED: ['Sentry chưa được cấu hình', 'Sentry is not configured'],
-  SENTRY_OK: ['Sentry đã hoạt động', 'Sentry is healthy'],
-  SENTRY_SOURCE_UNAVAILABLE: ['Chưa đọc được bằng chứng từ Sentry', 'Sentry evidence is unavailable'],
   STORAGE_EVIDENCE_MISSING: ['Chưa nhận được bằng chứng từ Storage', 'Storage evidence is unavailable'],
   STORAGE_HEALTH_UNVERIFIED: ['Storage chưa xác nhận trạng thái hoạt động', 'Storage did not confirm a healthy state'],
   STORAGE_HEALTHY: ['Storage đã xác nhận hoạt động', 'Storage confirmed it is healthy'],
@@ -510,13 +557,10 @@ const reasonTranslations: Record<string, readonly [string, string]> = {
   REALTIME_UNAVAILABLE: ['Dịch vụ Realtime không phản hồi thành công', 'Realtime health endpoint did not return success'],
   SUPABASE_READ_FAILED: ['Không đọc được dữ liệu Supabase', 'Supabase data could not be read'],
   SUPABASE_UNAVAILABLE: ['Supabase không phản hồi', 'Supabase is unavailable'],
-  TELEGRAM_DELIVERY_FAILED: ['Telegram không xác nhận gửi cảnh báo', 'Telegram did not confirm alert delivery'],
-  TELEGRAM_NOT_CONFIGURED: ['Telegram chưa được cấu hình', 'Telegram is not configured'],
-  TELEGRAM_RATE_LIMITED: ['Telegram đang giới hạn tốc độ gửi', 'Telegram rate limited alert delivery'],
-  TELEGRAM_TIMEOUT_OR_NETWORK: ['Gửi cảnh báo Telegram hết thời gian hoặc mất kết nối', 'Telegram delivery timed out or lost its connection'],
   UNAUTHORIZED: ['Yêu cầu giám sát không được xác thực', 'The monitor request is not authenticated'],
   UNKNOWN: ['Nguyên nhân chưa được phân loại', 'The reason has not been classified'],
   WORKER_EVIDENCE_MISSING: ['Chưa có bằng chứng hoàn tất worker', 'Worker completion evidence is missing'],
+  WORKER_EVIDENCE_INCOMPLETE: ['Bằng chứng cấu hình lịch worker thiếu hoặc sai định dạng', 'Worker schedule configuration evidence is incomplete or malformed'],
   WORKER_FAILED: ['Có worker được ghi nhận thất bại', 'A worker execution failed'],
   WORKER_LATE: ['Worker chạy trễ', 'A worker execution is late'],
   WORKER_NOT_OBSERVED: ['Chưa ghi nhận lần chạy worker theo lịch', 'The scheduled worker run has not been observed'],
@@ -528,15 +572,15 @@ const common = {
   statusValue: { green: 'Xanh', yellow: 'Vàng', red: 'Đỏ', gray: 'Chưa xác minh' },
   severityValue: { yellow: 'Cảnh báo', red: 'Nghiêm trọng' },
   componentValue: { all: 'Tất cả', backend: 'Backend', kael: 'Kael', app: 'Ứng dụng', observer: 'Bộ giám sát' },
-  filterValue: { all: 'Tất cả', open: 'Đang mở', resolved: 'Đã phục hồi', red: 'Đỏ', yellow: 'Vàng', '24h': '24 giờ', '7d': '7 ngày', '30d': '30 ngày' },
+  filterValue: { all: 'Tất cả', open: 'Đang mở', resolved: 'Đã đóng', red: 'Đỏ', yellow: 'Vàng', '24h': '24 giờ', '7d': '7 ngày', '30d': '30 ngày' },
   qualityValue: { available: 'Có dữ liệu', partial: 'Dữ liệu một phần', unavailable: 'Chưa có dữ liệu' },
   checkValue: {
     'backend-edge-availability': 'Khả dụng của Edge API', 'backend-release-identity': 'Định danh bản phát hành',
     'backend-auth-availability': 'Khả dụng của xác thực', 'backend-database-availability': 'Khả dụng của cơ sở dữ liệu',
     'backend-storage-realtime-io': 'Hoạt động của kho tệp và kết nối thời gian thực', 'backend-core': 'Dịch vụ máy chủ',
     'backend-scheduled-workers': 'Tác vụ nền theo lịch', 'kael-agentic': 'Tác nhân Kael',
-    'app-native-connectivity': 'Kết nối ứng dụng trên thiết bị', 'app-native-sentry': 'Lỗi ứng dụng từ Sentry',
-    'app-sentry-coverage': 'Độ phủ theo dõi lỗi ứng dụng', 'observer-dispatcher': 'Bộ gửi cảnh báo bên ngoài',
+    'app-native-connectivity': 'Kết nối ứng dụng trên thiết bị', 'profile-coverage-unsupported': 'Độ phủ hệ thống chưa được xác định',
+    'observer-dispatcher': 'Trạng thái bộ giám sát bên ngoài',
   },
   unknownCheck: 'Phép kiểm tra hệ thống',
   reasonValue: Object.fromEntries(Object.entries(reasonTranslations).map(([key, value]) => [key, value[0]])),
@@ -547,40 +591,39 @@ const english = {
   statusValue: { green: 'Green', yellow: 'Yellow', red: 'Red', gray: 'Unverified' },
   severityValue: { yellow: 'Warning', red: 'Critical' },
   componentValue: { all: 'All', backend: 'Backend', kael: 'Kael', app: 'App', observer: 'Observer' },
-  filterValue: { all: 'All', open: 'Open', resolved: 'Recovered', red: 'Red', yellow: 'Yellow', '24h': '24 hours', '7d': '7 days', '30d': '30 days' },
+  filterValue: { all: 'All', open: 'Open', resolved: 'Closed', red: 'Red', yellow: 'Yellow', '24h': '24 hours', '7d': '7 days', '30d': '30 days' },
   qualityValue: { available: 'Evidence available', partial: 'Partial evidence', unavailable: 'No evidence' },
   checkValue: {
     'backend-edge-availability': 'Edge API availability', 'backend-release-identity': 'Release identity',
     'backend-auth-availability': 'Authentication availability', 'backend-database-availability': 'Database availability',
     'backend-storage-realtime-io': 'Storage and Realtime operation', 'backend-core': 'Backend services',
     'backend-scheduled-workers': 'Scheduled background jobs', 'kael-agentic': 'Kael agent',
-    'app-native-connectivity': 'On-device app connectivity', 'app-native-sentry': 'App errors from Sentry',
-    'app-sentry-coverage': 'App error monitoring coverage', 'observer-dispatcher': 'External alert dispatcher',
+    'app-native-connectivity': 'On-device app connectivity', 'profile-coverage-unsupported': 'System coverage is not identified',
+    'observer-dispatcher': 'External observer status',
   },
   unknownCheck: 'System check',
   reasonValue: Object.fromEntries(Object.entries(reasonTranslations).map(([key, value]) => [key, value[1]])),
-  historyEvent: { opened: 'Incident opened', updated: 'Updated', resolved: 'Recovered' },
+  historyEvent: { opened: 'Incident opened', updated: 'Updated', resolved: 'Closed' },
 }
 
 const copy = {
   vi: {
     ...common,
-    title: 'Sức khỏe hệ thống', subtitle: 'Bằng chứng tự cập nhật mỗi phút · chỉ đọc · không gọi AI thử', overall: 'Tổng thể', checkedAt: 'Kiểm tra', expiresAt: 'Hết hạn', expired: 'Bằng chứng đã cũ', noSnapshot: 'Chưa có kết quả kiểm tra hợp lệ; chưa thể xác nhận hệ thống đang hoạt động tốt.', observer: 'Bộ giám sát Cloudflare', observerHeartbeat: 'Tín hiệu gần nhất', dispatcher: 'Bộ gửi cảnh báo', d1: 'Kho D1', lastSafeError: 'Mã lỗi gần nhất', forceRefresh: 'Chạy kiểm tra ngay', refreshing: 'Đang chạy…', refreshAccepted: 'Đã tiếp nhận yêu cầu làm mới.', refreshUnavailable: 'Không thể làm mới; trạng thái hiện tại được giữ nguyên.', reload: 'Tải lại', updating: 'Đang cập nhật…', loading: 'Đang tải bằng chứng hệ thống…', loadError: 'Không thể tải bằng chứng hệ thống.', detailError: 'Không thể tải chi tiết sự cố.', retry: 'Thử lại', incidents: 'Sự cố', records: 'mục', status: 'Trạng thái', severity: 'Mức độ', component: 'Thành phần', timeRange: 'Khoảng thời gian', releaseFilter: 'Lọc theo bản phát hành', buildFilter: 'Lọc theo mã bản dựng', releaseMissing: 'Chưa gắn bản phát hành', noIncidents: 'Không có sự cố phù hợp với bộ lọc.', noDataAfterError: 'Không có dữ liệu hiển thị; lần tải gần nhất thất bại.', sampleMissing: 'Chưa ghi nhận số mẫu', samples: 'mẫu', evidenceStale: 'Bằng chứng thiếu hoặc đã cũ', chooseIncident: 'Chọn một sự cố để xem bằng chứng đã lọc.', detailLoading: 'Đang tải chi tiết sự cố…', incidentDetail: 'Chi tiết sự cố', reason: 'Bằng chứng hiện tại', detector: 'Bộ phát hiện', fingerprint: 'Mã nhận diện', openedAt: 'Bắt đầu', updatedAt: 'Cập nhật gần nhất', resolvedAt: 'Phục hồi lúc', release: 'Bản phát hành', build: 'Bản dựng', platform: 'Nền tảng', route: 'Loại tuyến', stage: 'Giai đoạn', trace: 'Dấu vết', run: 'Lượt chạy', request: 'Yêu cầu', supportCode: 'Mã hỗ trợ', evidenceLimit: 'Chỉ gồm dữ liệu vận hành đã cho phép; không chứa nội dung khách hàng, bí mật hoặc kết luận về nguyên nhân.', timeline: 'Diễn tiến', exportPacket: 'Xuất hồ sơ đã lọc', exportTitle: 'Hồ sơ sự cố Kael', exportError: 'Không thể xuất hồ sơ sự cố.', back: 'Quay lại', notRecorded: 'Chưa ghi nhận', reasonCode: 'Mã', historyEvent: common.historyEvent,
+    overall: 'Tổng thể', checkedAt: 'Kiểm tra', expiresAt: 'Hết hạn', expired: 'Bằng chứng đã cũ', noSnapshot: 'Chưa có kết quả kiểm tra hợp lệ; chưa thể xác nhận hệ thống đang hoạt động tốt.', observer: 'Bộ giám sát Cloudflare', observerHeartbeat: 'Tín hiệu gần nhất', dispatcher: 'Trạng thái bộ giám sát', d1: 'Kho D1', lastSafeError: 'Mã lỗi gần nhất', loading: 'Đang tải bằng chứng hệ thống…', loadError: 'Không thể tải bằng chứng hệ thống.', detailError: 'Không thể tải chi tiết sự cố.', incidents: 'Sự cố', records: 'mục', status: 'Trạng thái', severity: 'Mức độ', component: 'Thành phần', timeRange: 'Khoảng thời gian', releaseFilter: 'Lọc theo bản phát hành', buildFilter: 'Lọc theo mã bản dựng', releaseMissing: 'Chưa gắn bản phát hành', noIncidents: 'Không có sự cố phù hợp với bộ lọc.', noDataAfterError: 'Không có dữ liệu hiển thị; lần tải gần nhất thất bại.', sampleMissing: 'Chưa ghi nhận số mẫu', samples: 'mẫu', evidenceStale: 'Bằng chứng thiếu hoặc đã cũ', chooseIncident: 'Chọn một sự cố để xem bằng chứng đã lọc.', detailLoading: 'Đang tải chi tiết sự cố…', incidentDetail: 'Chi tiết sự cố', reason: 'Bằng chứng hiện tại', detector: 'Bộ phát hiện', fingerprint: 'Mã nhận diện', openedAt: 'Bắt đầu', updatedAt: 'Cập nhật gần nhất', resolvedAt: 'Phục hồi lúc', closedAt: 'Kết thúc theo cấu hình lúc', closedByConfiguration: 'Kết thúc theo cấu hình', release: 'Bản phát hành', build: 'Bản dựng', platform: 'Nền tảng', route: 'Loại tuyến', stage: 'Giai đoạn', trace: 'Dấu vết', run: 'Lượt chạy', request: 'Yêu cầu', supportCode: 'Mã hỗ trợ', evidenceLimit: 'Chỉ gồm dữ liệu vận hành đã cho phép; không chứa nội dung khách hàng, bí mật hoặc kết luận về nguyên nhân.', timeline: 'Diễn tiến', exportPacket: 'Xuất hồ sơ đã lọc', exportTitle: 'Hồ sơ sự cố Kael', exportError: 'Không thể xuất hồ sơ sự cố.', back: 'Quay lại', notRecorded: 'Chưa ghi nhận', reasonCode: 'Mã', historyEvent: common.historyEvent,
   },
   en: {
     ...english,
-    title: 'System health', subtitle: 'Evidence refreshes every minute · read-only · no AI probes', overall: 'Overall', checkedAt: 'Checked', expiresAt: 'Expires', expired: 'Evidence is stale', noSnapshot: 'No valid snapshot is available; the system cannot be confirmed green.', observer: 'Cloudflare observer', observerHeartbeat: 'Last heartbeat', dispatcher: 'Alert dispatcher', d1: 'D1 store', lastSafeError: 'Last error code', forceRefresh: 'Run check now', refreshing: 'Running…', refreshAccepted: 'Refresh request accepted.', refreshUnavailable: 'Unable to refresh; current status is unchanged.', reload: 'Reload', updating: 'Updating…', loading: 'Loading system evidence…', loadError: 'Unable to load system evidence.', detailError: 'Unable to load incident details.', retry: 'Retry', incidents: 'Incidents', records: 'records', status: 'Status', severity: 'Severity', component: 'Component', timeRange: 'Time range', releaseFilter: 'Filter by release', buildFilter: 'Filter by build ID', releaseMissing: 'Release not attached', noIncidents: 'No incidents match these filters.', noDataAfterError: 'No data is available; the latest request failed.', sampleMissing: 'Sample count not recorded', samples: 'samples', evidenceStale: 'Evidence is missing or stale', chooseIncident: 'Select an incident to inspect its sanitized evidence.', detailLoading: 'Loading incident details…', incidentDetail: 'Incident detail', reason: 'Current evidence', detector: 'Detector', fingerprint: 'Fingerprint', openedAt: 'Opened', updatedAt: 'Last updated', resolvedAt: 'Recovered at', release: 'Release', build: 'Build', platform: 'Platform', route: 'Route kind', stage: 'Stage', trace: 'Trace', run: 'Run', request: 'Request', supportCode: 'Support code', evidenceLimit: 'Only allowlisted operational aggregates; no customer content, secrets, or proven root cause.', timeline: 'Timeline', exportPacket: 'Export sanitized packet', exportTitle: 'Kael incident packet', exportError: 'Unable to export the incident packet.', back: 'Back', notRecorded: 'Not recorded', reasonCode: 'Code', historyEvent: english.historyEvent,
+    overall: 'Overall', checkedAt: 'Checked', expiresAt: 'Expires', expired: 'Evidence is stale', noSnapshot: 'No valid snapshot is available; the system cannot be confirmed green.', observer: 'Cloudflare observer', observerHeartbeat: 'Last heartbeat', dispatcher: 'Cloudflare Worker status', d1: 'D1 store', lastSafeError: 'Last error code', loading: 'Loading system evidence…', loadError: 'Unable to load system evidence.', detailError: 'Unable to load incident details.', incidents: 'Incidents', records: 'records', status: 'Status', severity: 'Severity', component: 'Component', timeRange: 'Time range', releaseFilter: 'Filter by release', buildFilter: 'Filter by build ID', releaseMissing: 'Release not attached', noIncidents: 'No incidents match these filters.', noDataAfterError: 'No data is available; the latest request failed.', sampleMissing: 'Sample count not recorded', samples: 'samples', evidenceStale: 'Evidence is missing or stale', chooseIncident: 'Select an incident to inspect its sanitized evidence.', detailLoading: 'Loading incident details…', incidentDetail: 'Incident detail', reason: 'Current evidence', detector: 'Detector', fingerprint: 'Fingerprint', openedAt: 'Opened', updatedAt: 'Last updated', resolvedAt: 'Recovered at', closedAt: 'Ended by configuration at', closedByConfiguration: 'Ended by configuration', release: 'Release', build: 'Build', platform: 'Platform', route: 'Route kind', stage: 'Stage', trace: 'Trace', run: 'Run', request: 'Request', supportCode: 'Support code', evidenceLimit: 'Only allowlisted operational aggregates; no customer content, secrets, or proven root cause.', timeline: 'Timeline', exportPacket: 'Export sanitized packet', exportTitle: 'Kael incident packet', exportError: 'Unable to export the incident packet.', back: 'Back', notRecorded: 'Not recorded', reasonCode: 'Code', historyEvent: english.historyEvent,
   },
 } as const
 
 const styles = StyleSheet.create({
   header: { gap: spacing.md, paddingBottom: spacing.lg },
-  titleRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, justifyContent: 'space-between' },
-  titleBlock: { flex: 1, gap: spacing.xs, minWidth: 220 },
   strong: { color: color.text.strong },
   secondary: { color: color.text.secondary },
   meta: { color: color.text.muted },
   statusPanel: { alignItems: 'center', backgroundColor: color.surface.soft, borderColor: color.surface.stroke, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: spacing.md, padding: spacing.md },
+  coverageGap: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   statusText: { flex: 1, gap: spacing.xs },
   statusMark: { alignItems: 'center', borderRadius: 10, borderWidth: StyleSheet.hairlineWidth, gap: 2, justifyContent: 'center', minHeight: 48, minWidth: 68, paddingHorizontal: spacing.xs, paddingVertical: spacing.xs },
   status_green: { backgroundColor: color.mint.mint50, borderColor: color.mint.mint300 },

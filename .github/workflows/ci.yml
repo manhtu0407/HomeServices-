@@ -273,6 +273,7 @@ jobs:
           pnpm --filter @nestscout/api test:vitest --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
           pnpm --filter @nestscout/api test:node
           pnpm --filter @nestscout/shared test
+          pnpm test:system-monitor-deployment
           pnpm test:system-monitor-worker
           pnpm --filter @nestscout/mobile test --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
           pnpm --filter @nestscout/sandbox test

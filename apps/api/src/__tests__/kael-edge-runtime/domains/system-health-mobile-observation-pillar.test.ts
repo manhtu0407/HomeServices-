@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { recordMobileHealthObservation } from '../../../../../../supabase/functions/mobile-api/_shared/domains/monitoring/mobile-health'
-import type { MobileHealthObservationInput } from '../../../../../../supabase/functions/_shared/contracts/system-health'
+import type { EdgeMobileHealthObservationInput as MobileHealthObservationInput } from '../../../../../../supabase/functions/_shared/contracts/system-health'
 import type { MobileApiContext } from '../../../../../../supabase/functions/mobile-api/_shared/platform/auth'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 

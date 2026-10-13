@@ -34,12 +34,76 @@ begin
 end;
 $fixtures$;
 
+do $matrix_actors$
+begin
+  insert into auth.users(id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+    values('c1290000-0000-4000-8000-000000000005','authenticated','authenticated',
+      'apartment-p129-matrix-customer@example.test','{"provider":"email","providers":["email"]}','{}',now(),now());
+  insert into auth.users(id,aud,role,email,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+    values('c1290000-0000-4000-8000-000000000006','authenticated','authenticated',
+      'apartment-p129-matrix-worker@example.test','{"provider":"email","providers":["email"]}','{}',now(),now());
+  update public.profiles set role='worker' where id='c1290000-0000-4000-8000-000000000006';
+  insert into public.worker_profiles(id,service_types,selected_service_types,years_experience,districts,
+    problem_specializations,is_approved,is_available,legal_name,date_of_birth,verification_status)
+    values('c1290000-0000-4000-8000-000000000006',array['plumbing']::public.service_type[],
+      array['plumbing']::public.service_type[],5,array['q7'],array[]::text[],true,true,
+      'Apartment matrix worker','1990-01-01','approved');
+end;
+$matrix_actors$;
+
 insert into public.jobs(id,customer_id,worker_id,service_type,description,address_district,status,quote_mode,apartment_access_state)
 values('c1290000-0000-4000-8000-000000000101','c1290000-0000-4000-8000-000000000001',
   'c1290000-0000-4000-8000-000000000003','plumbing','Apartment authorization fixture','q7','arrived','rfq',
   '{"worker_checked_in":true,"check_in":{"worker_id":"c1290000-0000-4000-8000-000000000003","checked_in_at":"2026-09-08T01:00:00.000Z","mode":"geofence"}}');
 
+insert into public.jobs(id,customer_id,worker_id,service_type,description,address_district,status,quote_mode,final_price,apartment_access_state)
+select ('c1290000-0000-4000-8000-'||lpad((109+allowed.status_order)::text,12,'0'))::uuid,
+  'c1290000-0000-4000-8000-000000000005','c1290000-0000-4000-8000-000000000006',
+  'plumbing','Apartment authorization state fixture','q7',allowed.status,'rfq',
+  case when allowed.status in ('repairing','completed_by_worker') then 100000 else null end,
+  jsonb_build_object('worker_checked_in',true,'check_in',jsonb_build_object(
+    'worker_id','c1290000-0000-4000-8000-000000000006',
+    'checked_in_at','2026-09-08T01:00:00.000Z','mode','geofence'))
+from unnest(array[
+  'worker_matched'::public.job_status,
+  'worker_on_way'::public.job_status,
+  'arrived'::public.job_status,
+  'inspecting'::public.job_status,
+  'repairing'::public.job_status,
+  'scope_change_pending'::public.job_status,
+  'completed_by_worker'::public.job_status
+]) with ordinality as allowed(status,status_order);
+
 set local role service_role;
+do $status_matrix$
+declare
+  v_index integer;
+  v_job uuid;
+  v_status public.job_status;
+  v_after_status public.job_status;
+  v_state jsonb;
+  v_result record;
+begin
+  for v_index in 1..7 loop
+    v_job:=('c1290000-0000-4000-8000-'||lpad((109+v_index)::text,12,'0'))::uuid;
+    select status into strict v_status from public.jobs where id=v_job;
+    select * into strict v_result from public.authorize_apartment_access_atomic(v_job,
+      'c1290000-0000-4000-8000-000000000005','c1290000-0000-4000-8000-000000000006','2026-09-08T01:00:00.000Z');
+    if not v_result.ok or v_result.error_code is not null or v_result.job_id is distinct from v_job
+      or v_result.worker_id is distinct from 'c1290000-0000-4000-8000-000000000006'::uuid
+      or v_result.checked_in_at is distinct from '2026-09-08T01:00:00.000Z'
+      or v_result.authorized_at is null or v_result.already_authorized then
+      raise exception 'P129_STATUS_MATRIX_AUTHORIZATION_INVALID status=% result=%',v_status,row_to_json(v_result);
+    end if;
+    select status,apartment_access_state into strict v_after_status,v_state from public.jobs where id=v_job;
+    if v_after_status is distinct from v_status
+      or v_state->>'authorized_worker_id' is distinct from 'c1290000-0000-4000-8000-000000000006'
+      or v_state->>'authorized_check_in_at' is distinct from '2026-09-08T01:00:00.000Z' then
+      raise exception 'P129_STATUS_MATRIX_CHANGED_JOB_OR_AUTHORITY status=% actual=% state=%',v_status,v_after_status,v_state;
+    end if;
+  end loop;
+end;
+$status_matrix$;
 do $authorize$
 declare
   v_job constant uuid:='c1290000-0000-4000-8000-000000000101';

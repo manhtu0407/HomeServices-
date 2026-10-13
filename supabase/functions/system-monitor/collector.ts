@@ -4,10 +4,10 @@ import {
   evaluateSystemHealth,
   isSystemEvidenceFresh,
   systemHealthSnapshotSchema,
-  type AvailabilityState,
-  type SystemHealthCheck,
-  type SystemHealthSnapshot,
-  type SystemHealthStatus,
+  type EdgeAvailabilityState as AvailabilityState,
+  type EdgeSystemHealthCheck as SystemHealthCheck,
+  type EdgeSystemHealthSnapshot as SystemHealthSnapshot,
+  type EdgeSystemHealthStatus as SystemHealthStatus,
 } from "../_shared/contracts/system-health.ts";
 
 export type SystemMonitorEvidence = {
@@ -19,7 +19,6 @@ export type SystemMonitorEvidence = {
   readonly workers: readonly Record<string, unknown>[] | null;
   readonly kael: Record<string, unknown> | null;
   readonly mobile: Record<string, unknown> | null;
-  readonly sentry: { readonly configured: boolean; readonly status: number | null; readonly fatal: number; readonly errors: number };
   readonly observer: Record<string, unknown> | null;
 };
 
@@ -99,13 +98,17 @@ export function buildSystemHealthSnapshot(input: SnapshotInput): SystemHealthSna
   checks.push(backendIoCheck(input.evidence.storage, input.evidence.realtime, previous.get("backend-storage-realtime-io"), observedAt, window));
   checks.push(workerCheck(input.evidence.workers, observedAt, window));
   checks.push(kaelCheck(input.evidence.kael, input.evidence.workers, previous.get("kael-agentic"), input.now, observedAt, window));
-  checks.push(appCheck(input.evidence.mobile, input.evidence.sentry, observedAt));
+  checks.push(mobileCheck(input.evidence.mobile, observedAt, window));
   checks.push(observerCheck(input.evidence.observer, input.now, observedAt));
 
-  const overallStatus = evaluateSystemHealth(checks);
+  const requiredCheckIds = checks.map((item) => item.check_id);
+  const overallStatus = evaluateSystemHealth(checks, requiredCheckIds);
   const projectRefOutput = safeProjectRef(input.expectedProjectRef);
   const snapshot: SystemHealthSnapshot = {
-    schema_version: 1,
+    schema_version: 2,
+    profile_id: "cloudflare-admin-v1",
+    required_check_ids: requiredCheckIds,
+    coverage_gaps: ["app-crash", "push-notifications"],
     environment: input.environment,
     project_ref: projectRefOutput,
     release_id: releaseId,
@@ -136,11 +139,6 @@ export function isSystemMonitorEvidenceUrlAllowed(rawUrl: string): boolean {
     const localHost = url.hostname === "127.0.0.1" || url.hostname === "localhost";
     if (localHost) return url.protocol === "http:" && !url.search && paths.has(url.pathname);
     if (url.protocol !== "https:" || url.port) return false;
-    if (url.hostname === "api.sentry.io" || url.hostname === "sentry.io") {
-      const eventPath = /^\/api\/0\/projects\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/events\/$/u.test(url.pathname);
-      const query = [...url.searchParams.entries()];
-      return eventPath && query.length === 2 && url.searchParams.get("statsPeriod") === "15m" && url.searchParams.get("per_page") === "50";
-    }
     if (/^[a-z0-9]{8,40}\.supabase\.co$/u.test(url.hostname)) {
       return !url.search && paths.has(url.pathname);
     }
@@ -150,13 +148,51 @@ export function isSystemMonitorEvidenceUrlAllowed(rawUrl: string): boolean {
   }
 }
 
+export function normalizeSystemMonitorAggregate(
+  value: unknown,
+  source: "kael" | "mobile",
+): Record<string, unknown> | null {
+  const row = asRecord(value);
+  if (!row) return null;
+  const countKeys = source === "kael"
+    ? [
+      "valid_execution_count", "failed_execution_count", "api_call_count", "api_failure_count",
+      "fallback_count", "api_call_count_15m", "open_circuit_count", "learning_eligible_count",
+    ]
+    : ["active_session_count", "api_failure_count", "platform_count"];
+  const aggregate: Record<string, unknown> = {};
+  for (const key of countKeys) {
+    const count = row[key];
+    if (!isBoundedCount(count)) return null;
+    aggregate[key] = count;
+  }
+  if (source === "kael") {
+    if (!("learning_oldest_due_at" in row)) return null;
+    const oldestDueAt = row.learning_oldest_due_at;
+    if (oldestDueAt !== null && (typeof oldestDueAt !== "string" || !Number.isFinite(Date.parse(oldestDueAt)))) return null;
+    aggregate.learning_oldest_due_at = oldestDueAt;
+  }
+  return aggregate;
+}
+
+function isBoundedCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 2_147_483_647;
+}
+
 function check(input: Omit<SystemHealthCheck, "incident_id">): SystemHealthCheck {
-  return { ...input, incident_id: null };
+  const { evidence_window: evidenceWindow, ...fields } = input;
+  const metrics = Object.fromEntries(Object.entries(fields.metrics).filter(([key, value]) => value !== 0 || key.endsWith("_status")));
+  return {
+    ...fields,
+    metrics,
+    ...(evidenceWindow === null ? {} : { evidence_window: evidenceWindow }),
+  };
 }
 
 function combineBackendChecks(checks: readonly SystemHealthCheck[], observedAt: string) {
   const status = worstStatus(checks.map((item) => item.status));
   const selected = checks.find((item) => item.status === status);
+  const edge = checks.find((item) => item.check_id === "backend-edge-availability");
   return check({
     check_id: "backend-core",
     component: "backend",
@@ -166,8 +202,9 @@ function combineBackendChecks(checks: readonly SystemHealthCheck[], observedAt: 
     evidence_window: null,
     sample_count: checks.filter((item) => item.sample_count !== null).length,
     metrics: {
-      edge_fails: metricNumber(checks.find((item) => item.check_id === "backend-edge-availability")?.metrics.fails),
-      edge_successes: metricNumber(checks.find((item) => item.check_id === "backend-edge-availability")?.metrics.successes),
+      edge_status: statusCode(edge?.status),
+      edge_fails: metricNumber(edge?.metrics.fails),
+      edge_successes: metricNumber(edge?.metrics.successes),
       auth_ok: metricStatus(checks, "backend-auth-availability"),
       db_ok: metricStatus(checks, "backend-database-availability"),
       release_ok: checks.find((item) => item.check_id === "backend-release-identity")?.status === "green"
@@ -175,7 +212,7 @@ function combineBackendChecks(checks: readonly SystemHealthCheck[], observedAt: 
         : checks.find((item) => item.check_id === "backend-release-identity")?.status === "red"
         ? false
         : null,
-      project_ok: metricBoolean(checks, "backend-release-identity", "project_match"),
+      project: metricBoolean(checks, "backend-release-identity", "project_match"),
     },
   });
 }
@@ -358,9 +395,14 @@ function workerCheck(workers: readonly Record<string, unknown>[] | null, observe
   let failed = 0;
   let missing = 0;
   let late = 0;
+  let incomplete = 0;
   const nowMs = Date.parse(observedAt);
   for (const worker of enabled) {
     if (worker.cron_enabled === false) failed += 1;
+    else if (worker.cron_enabled !== true) {
+      missing += 1;
+      incomplete += 1;
+    }
     const finishedAt = typeof worker.last_finished_at === "string" ? worker.last_finished_at : null;
     const lastStatus = worker.last_status;
     if (lastStatus === "failed" || lastStatus === "error") failed += 1;
@@ -374,15 +416,27 @@ function workerCheck(workers: readonly Record<string, unknown>[] | null, observe
       continue;
     }
     if (worker.schedule_kind === "interval") {
-      const dueMs = (metricNumber(worker.expected_interval_seconds) + metricNumber(worker.grace_seconds)) * 1000;
-      if (dueMs > 0 && nowMs - Date.parse(finishedAt) > dueMs) late += 1;
+      if (!isBoundedCount(worker.expected_interval_seconds) || worker.expected_interval_seconds < 1 ||
+          !isBoundedCount(worker.grace_seconds)) {
+        missing += 1;
+        incomplete += 1;
+        continue;
+      }
+      const dueMs = (worker.expected_interval_seconds + worker.grace_seconds) * 1000;
+      if (nowMs - Date.parse(finishedAt) > dueMs) late += 1;
     } else if (worker.schedule_kind === "daily") {
-      const graceMs = metricNumber(worker.grace_seconds) * 1000;
+      if (!isBoundedCount(worker.grace_seconds)) {
+        missing += 1;
+        incomplete += 1;
+        continue;
+      }
+      const graceMs = worker.grace_seconds * 1000;
       const hour = worker.daily_utc_hour;
       const minute = worker.daily_utc_minute;
       if (!Number.isInteger(hour) || (hour as number) < 0 || (hour as number) > 23 ||
           !Number.isInteger(minute) || (minute as number) < 0 || (minute as number) > 59) {
         missing += 1;
+        incomplete += 1;
         continue;
       }
       const todayDue = new Date(observedAt);
@@ -390,6 +444,9 @@ function workerCheck(workers: readonly Record<string, unknown>[] | null, observe
       const todayGraceExpiresAt = todayDue.getTime() + graceMs;
       const latestDueMs = nowMs > todayGraceExpiresAt ? todayDue.getTime() : todayDue.getTime() - 24 * 60 * 60 * 1000;
       if (nowMs > latestDueMs + graceMs && Date.parse(finishedAt) < latestDueMs) late += 1;
+    } else {
+      missing += 1;
+      incomplete += 1;
     }
   }
   const status: SystemHealthStatus = failed > 0 || late > 0 ? "red" : missing > 0 ? "gray" : "green";
@@ -397,7 +454,7 @@ function workerCheck(workers: readonly Record<string, unknown>[] | null, observe
     check_id: "backend-scheduled-workers",
     component: "backend",
     status,
-    reason_code: failed > 0 ? "WORKER_FAILED" : late > 0 ? "WORKER_LATE" : missing > 0 ? "WORKER_NOT_OBSERVED" : "WORKERS_OK",
+    reason_code: failed > 0 ? "WORKER_FAILED" : late > 0 ? "WORKER_LATE" : incomplete > 0 ? "WORKER_EVIDENCE_INCOMPLETE" : missing > 0 ? "WORKER_NOT_OBSERVED" : "WORKERS_OK",
     observed_at: status === "gray" ? null : observedAt,
     evidence_window: null,
     sample_count: enabled.length,
@@ -415,6 +472,30 @@ function kaelCheck(
 ) {
   if (evidence === null) {
     return check({ check_id: "kael-agentic", component: "kael", status: "gray", reason_code: "KAEL_EVIDENCE_MISSING", observed_at: null, evidence_window: null, sample_count: null, metrics: {} });
+  }
+  const requiredCounts = [
+    evidence.valid_execution_count,
+    evidence.failed_execution_count,
+    evidence.api_call_count,
+    evidence.api_failure_count,
+    evidence.fallback_count,
+    evidence.api_call_count_15m,
+    evidence.open_circuit_count,
+    evidence.learning_eligible_count,
+  ];
+  const oldestDue = evidence.learning_oldest_due_at;
+  if (!requiredCounts.every(isBoundedCount) || !("learning_oldest_due_at" in evidence) ||
+      oldestDue !== null && (typeof oldestDue !== "string" || !Number.isFinite(Date.parse(oldestDue)))) {
+    return check({
+      check_id: "kael-agentic",
+      component: "kael",
+      status: "gray",
+      reason_code: "KAEL_EVIDENCE_INCOMPLETE",
+      observed_at: observedAt,
+      evidence_window: window,
+      sample_count: nullableCount(evidence.valid_execution_count),
+      metrics: { failed: nullableCount(evidence.failed_execution_count), calls15m: nullableCount(evidence.api_call_count_15m) },
+    });
   }
   const sampleCount = metricNumber(evidence.valid_execution_count);
   const failureCount = metricNumber(evidence.failed_execution_count);
@@ -490,8 +571,22 @@ function learningQueueEvidence(
 }
 
 function mobileCheck(evidence: Record<string, unknown> | null, observedAt: string, window: { from: string; to: string }) {
-  if (evidence === null || !Number.isInteger(evidence.active_session_count)) {
+  if (evidence === null) {
     return check({ check_id: "app-native-connectivity", component: "app", status: "gray", reason_code: "NATIVE_SESSION_EVIDENCE_MISSING", observed_at: null, evidence_window: null, sample_count: null, metrics: {} });
+  }
+  if (!isBoundedCount(evidence.active_session_count) || !isBoundedCount(evidence.api_failure_count) ||
+      !isBoundedCount(evidence.platform_count) || evidence.api_failure_count > evidence.active_session_count ||
+      evidence.platform_count > evidence.active_session_count) {
+    return check({
+      check_id: "app-native-connectivity",
+      component: "app",
+      status: "gray",
+      reason_code: "NATIVE_SESSION_EVIDENCE_INCOMPLETE",
+      observed_at: isBoundedCount(evidence.active_session_count) ? observedAt : null,
+      evidence_window: isBoundedCount(evidence.active_session_count) ? window : null,
+      sample_count: nullableCount(evidence.active_session_count),
+      metrics: { api_failures: nullableCount(evidence.api_failure_count), platforms: nullableCount(evidence.platform_count) },
+    });
   }
   const sessions = metricNumber(evidence.active_session_count);
   const status = sessions === 0 ? "gray" : evidence.api_failure_count === sessions ? "red" : metricNumber(evidence.api_failure_count) > 0 ? "yellow" : "green";
@@ -504,52 +599,6 @@ function mobileCheck(evidence: Record<string, unknown> | null, observedAt: strin
     evidence_window: sessions === 0 ? null : window,
     sample_count: sessions,
     metrics: { api_failures: metricNumber(evidence.api_failure_count), platforms: metricNumber(evidence.platform_count) },
-  });
-}
-
-function appCheck(mobileEvidence: Record<string, unknown> | null, sentryEvidence: SystemMonitorEvidence["sentry"], observedAt: string) {
-  const mobile = mobileCheck(mobileEvidence, observedAt, { from: observedAt, to: observedAt });
-  const sentry = sentryCheck(sentryEvidence, observedAt, { from: observedAt, to: observedAt });
-  const status = worstStatus([mobile.status, sentry.status]);
-  const reasonCode = sentry.status === "red" ? sentry.reason_code
-    : mobile.status === "red" ? mobile.reason_code
-    : sentry.status === "yellow" ? sentry.reason_code
-    : mobile.status === "yellow" ? mobile.reason_code
-    : sentry.status === "gray" ? sentry.reason_code
-    : mobile.reason_code;
-  const mobileSessions = metricNumber(mobileEvidence?.active_session_count);
-  return check({
-    check_id: "app-native-sentry",
-    component: "app",
-    status,
-    reason_code: reasonCode,
-    observed_at: mobileSessions === 0 && sentry.status === "gray" ? null : observedAt,
-    evidence_window: null,
-    sample_count: mobileEvidence === null && sentry.status === "gray"
-      ? null
-      : mobileSessions + metricNumber(sentry.sample_count),
-    metrics: {
-      api_failures: mobileEvidence === null ? null : metricNumber(mobileEvidence.api_failure_count),
-      fatal: sentry.status === "gray" ? null : metricNumber(sentry.metrics.fatal_count),
-      sentry_errors: sentry.status === "gray" ? null : metricNumber(sentry.sample_count),
-    },
-  });
-}
-
-function sentryCheck(evidence: SystemMonitorEvidence["sentry"], observedAt: string, window: { from: string; to: string }) {
-  if (!evidence.configured || evidence.status === null || evidence.status < 200 || evidence.status >= 300) {
-    return check({ check_id: "app-sentry-coverage", component: "app", status: "gray", reason_code: !evidence.configured ? "SENTRY_NOT_CONFIGURED" : "SENTRY_SOURCE_UNAVAILABLE", observed_at: null, evidence_window: null, sample_count: null, metrics: {} });
-  }
-  const status: SystemHealthStatus = evidence.fatal > 0 ? "red" : evidence.errors > 0 ? "yellow" : "green";
-  return check({
-    check_id: "app-sentry-coverage",
-    component: "app",
-    status,
-    reason_code: evidence.fatal > 0 ? "FATAL_APP_ERRORS" : evidence.errors > 0 ? "APP_ERRORS_OBSERVED" : "SENTRY_OK",
-    observed_at: observedAt,
-    evidence_window: window,
-    sample_count: evidence.errors,
-    metrics: { fatal_count: evidence.fatal, error_count: evidence.errors, http_status: evidence.status },
   });
 }
 
@@ -588,6 +637,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function metricNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function nullableCount(value: unknown): number | null {
+  return isBoundedCount(value) ? value : null;
 }
 
 function safeProjectRef(value: unknown): string | null {

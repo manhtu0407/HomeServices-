@@ -8,7 +8,7 @@ import type { QueryResult } from '../harness/sequence-client'
 
 export const PILLAR = {
   id: 'P86-customer-completion-http',
-  invariant: 'Only the owning Customer can confirm completion through HTTP; the real domain preserves atomic evidence/state refusals and recovers the same unpaid operation after a lost response',
+  invariant: 'Only the owning Customer can confirm completion through HTTP; the real domain preserves atomic evidence/state refusals and recovers the same unpaid operation after the committed job is payment_pending',
   authority: ['governance/RULES.md #7', 'approved Production Agentic Transaction Readiness plan (Customer-only completion)'],
   target: 'supabase/functions/mobile-api/_shared/domains/payment/manual-bank.ts',
   layer: 'security-negative',
@@ -39,6 +39,7 @@ function setup(input: {
   role?: 'customer' | 'worker' | 'admin'
   actorId?: string
   status?: string
+  jobStatuses?: string[]
   finalPrice?: number | null
   rpcResults?: QueryResult[]
   enabled?: boolean
@@ -51,7 +52,8 @@ function setup(input: {
   const client = makeSequenceClient([], {
     confirm_completion_manual_bank_atomic: input.rpcResults ?? [{ data: [receipt()], error: null }],
     insert_notification_atomic: [{ data: [{ notification_id: 'notification-1' }], error: null }],
-  }, { jobs: Array.from({ length: 4 }, () => ({ data: job, error: null })) })
+  }, { jobs: (input.jobStatuses ?? Array.from({ length: 4 }, () => job.status))
+    .map((status) => ({ data: { ...job, status }, error: null })) })
   const handler = createMobileApiHandler({
     authenticate: async () => ({
       success: true, user: { id: input.actorId ?? CUSTOMER }, role: input.role ?? 'customer',
@@ -89,8 +91,10 @@ describe('Customer completion at the public HTTP boundary', () => {
     expect(response.headers.get('x-support-code')).toMatch(/^[A-Z0-9]{8}$/)
   })
 
-  it('recovers the same operation on retry without issuing a second notification', async () => {
-    const { client, confirm } = setup({ rpcResults: [
+  it('recovers the same operation after the relaunch sees committed payment_pending without another notification', async () => {
+    const { client, confirm } = setup({
+      jobStatuses: ['completed_by_worker', 'payment_pending'],
+      rpcResults: [
       { data: [receipt()], error: null }, { data: [receipt(true)], error: null },
     ] })
     const first = await (await confirm()).json()

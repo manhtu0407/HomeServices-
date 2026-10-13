@@ -84,7 +84,7 @@ export async function previewScopeChangeFromJobIncident(
   });
   const saved = await callAtomicIncidentRpc(
     client,
-    "save_job_incident_scope_price_quote_atomic",
+    "save_job_incident_scope_quote_with_basis_atomic",
     {
       p_expected_revision: asNumber(incident.revision),
       p_incident_id: asString(incident.id),
@@ -93,6 +93,7 @@ export async function previewScopeChangeFromJobIncident(
       p_quote_expires_at: expiresAt,
       p_quote_id: quote.quote_id,
       p_worker_id: ctx.user.id,
+      p_analysis: prepared.analysis,
     },
     INCIDENT_MESSAGES.update,
   );

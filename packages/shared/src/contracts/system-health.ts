@@ -14,13 +14,13 @@ export const systemHealthCheckSchema = z.object({
   evidence_window: z.object({
     from: z.iso.datetime({ offset: true }),
     to: z.iso.datetime({ offset: true }),
-  }).strict().nullable(),
+  }).strict().nullable().optional(),
   sample_count: z.number().int().nonnegative().nullable(),
   metrics: z.record(z.string().regex(/^[a-z][a-z0-9_]{0,39}$/), systemHealthMetricSchema).refine((metrics) => Object.keys(metrics).length <= 32),
-  incident_id: z.string().regex(/^[a-zA-Z0-9_-]{8,80}$/).nullable(),
+  incident_id: z.string().regex(/^[a-zA-Z0-9_-]{8,80}$/).nullable().optional(),
 }).strict()
 
-export const systemHealthSnapshotSchema = z.object({
+const systemHealthSnapshotFields = {
   schema_version: z.literal(1),
   environment: z.enum(['production', 'staging', 'local']),
   project_ref: z.string().regex(/^[a-z0-9]{8,40}$/).nullable(),
@@ -30,7 +30,28 @@ export const systemHealthSnapshotSchema = z.object({
   expires_at: z.iso.datetime({ offset: true }),
   overall_status: systemHealthStatusSchema,
   checks: z.array(systemHealthCheckSchema).max(32),
-}).strict()
+}
+
+const systemHealthSnapshotV1Schema = z.object(systemHealthSnapshotFields).strict()
+export const systemHealthCoverageGapSchema = z.enum(['app-crash', 'push-notifications'])
+const systemHealthSnapshotV2Schema = z.object({
+  ...systemHealthSnapshotFields,
+  schema_version: z.literal(2),
+  profile_id: z.literal('cloudflare-admin-v1'),
+  required_check_ids: z.array(z.string().regex(/^[a-z0-9][a-z0-9._-]{0,79}$/)).min(1).max(32),
+  coverage_gaps: z.array(systemHealthCoverageGapSchema).max(16),
+}).strict().superRefine((snapshot, context) => {
+  if (new Set(snapshot.required_check_ids).size !== snapshot.required_check_ids.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['required_check_ids'], message: 'Required check IDs must be unique.' })
+  }
+  if (new Set(snapshot.coverage_gaps).size !== snapshot.coverage_gaps.length) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['coverage_gaps'], message: 'Coverage gap sources must be unique.' })
+  }
+})
+export const systemHealthSnapshotSchema = z.discriminatedUnion('schema_version', [
+  systemHealthSnapshotV1Schema,
+  systemHealthSnapshotV2Schema,
+])
 
 export type SystemHealthCheck = z.infer<typeof systemHealthCheckSchema>
 export type SystemHealthSnapshot = z.infer<typeof systemHealthSnapshotSchema>
@@ -50,10 +71,15 @@ export const mobileHealthObservationInputSchema = z.object({
 
 export type MobileHealthObservationInput = z.infer<typeof mobileHealthObservationInputSchema>
 
-export function evaluateSystemHealth(checks: readonly Pick<SystemHealthCheck, 'status'>[]): SystemHealthStatus {
+export function evaluateSystemHealth(
+  checks: readonly Pick<SystemHealthCheck, 'status' | 'check_id'>[],
+  requiredCheckIds: readonly string[] = [],
+): SystemHealthStatus {
   if (checks.length === 0) return 'gray'
   if (checks.some((check) => check.status === 'red')) return 'red'
   if (checks.some((check) => check.status === 'yellow')) return 'yellow'
+  const observedIds = new Set(checks.map((check) => check.check_id))
+  if (requiredCheckIds.some((checkId) => !observedIds.has(checkId))) return 'gray'
   if (checks.some((check) => check.status === 'gray')) return 'gray'
   return 'green'
 }
@@ -157,11 +183,11 @@ const isoOrNull = (value: unknown): string | null => {
 }
 
 const INCIDENT_METRIC_KEYS = new Set([
-  'edge_status', 'edge_fails', 'edge_successes', 'auth_ok', 'db_ok', 'release_ok', 'project_ok',
+  'edge_status', 'edge_fails', 'edge_successes', 'auth_ok', 'db_ok', 'release_ok', 'project',
   'fails', 'successes', 'failed', 'late', 'missing', 'execution_failure_rate', 'samples', 'calls15m',
   'fallbacks', 'circuits', 'learning', 'learning_age_seconds', 'red_evaluations', 'storage_status', 'storage_fails',
-  'storage_successes', 'realtime_status', 'realtime_fails', 'realtime_successes', 'sessions', 'api_failures', 'platforms', 'fatal', 'sentry_errors',
-  'sentry_ok', 'fatal_count', 'error_count', 'http_status', 'd1_healthy', 'dispatcher_healthy',
+  'storage_successes', 'realtime_status', 'realtime_fails', 'realtime_successes', 'sessions', 'api_failures', 'platforms', 'fatal',
+  'fatal_count', 'error_count', 'http_status', 'd1_healthy', 'dispatcher_healthy',
 ])
 
 function safeIncidentMetrics(value: unknown): Record<string, number | boolean | null> {
@@ -191,7 +217,7 @@ function safeIncidentTimeline(value: unknown): SystemIncidentPacket['timeline'] 
 function incidentRunbook(component: string): Pick<SystemIncidentPacket, 'owner_area' | 'suggested_checks'> {
   if (component === 'backend') return { owner_area: 'backend', suggested_checks: ['Check the mobile-api and Edge release identity.', 'Compare the detector evidence window with its worker completion heartbeat.'] }
   if (component === 'kael') return { owner_area: 'kael', suggested_checks: ['Inspect aggregate harness outcomes, provider circuit state, fallback and learning eligibility.', 'Separate provider failures from valid policy or permission blocks.'] }
-  if (component === 'app') return { owner_area: 'mobile', suggested_checks: ['Verify the native release/build attribution in Sentry.', 'Compare native API observations with the matching backend evidence window.'] }
+  if (component === 'app') return { owner_area: 'mobile', suggested_checks: ['Verify native release/build attribution and the active-session heartbeat.', 'Compare native API observations with the matching backend evidence window.'] }
   return { owner_area: 'operations', suggested_checks: ['Check Cloudflare Worker heartbeat and D1 dispatcher state.', 'Compare observer outage records with the Supabase incident external ID.'] }
 }
 

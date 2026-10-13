@@ -130,7 +130,6 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
     ["scope_change_pending", "arrived"],
     ["scope_change_pending", "inspecting"],
     ["scope_change_pending", "repairing"],
-    ["scope_change_pending", "cancelled"],
   ],
   scope_change_decided: [
     ["scope_change_pending", "worker_matched"],
@@ -138,7 +137,6 @@ const WORKFLOW_EVENT_TRANSITIONS: Record<WorkflowTransitionEvent, ReadonlyArray<
     ["scope_change_pending", "arrived"],
     ["scope_change_pending", "inspecting"],
     ["scope_change_pending", "repairing"],
-    ["scope_change_pending", "cancelled"],
   ],
   worker_completed: [["repairing", "completed_by_worker"]],
   customer_confirmed_completion: [["completed_by_worker", "confirmed_by_customer"]],

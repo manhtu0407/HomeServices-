@@ -7,6 +7,8 @@ import {
   registerDevicePushToken,
   unregisterDevicePushToken,
 } from '../../../../../../supabase/functions/mobile-api/_shared/domains/notification/notifications-inbox'
+import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
+import { createMobileApiHandler } from '../../../../../../supabase/functions/mobile-api/_shared/http'
 
 export const PILLAR = {
   id: 'P185-device-push-token-binding',
@@ -80,6 +82,89 @@ describe('device push token actor binding', () => {
     ])
   })
 
+  it('routes authenticated Worker token registration through the public HTTP handler with sanitized metadata', async () => {
+    const client = makeSequenceClient([], {
+      register_device_push_token_atomic: [{
+        data: [{ token_id: TOKEN_ID, enabled_out: true, updated_at_ts: UPDATED_AT }],
+        error: null,
+      }],
+    })
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: WORKER_ID },
+        role: 'worker',
+        supabase: client,
+        privilegedSupabase: client,
+        userSupabase: client,
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request('https://edge.test/notifications/device-token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'android',
+        push_token: 'ExponentPushToken[p185]',
+        permission_status: 'granted',
+        safe_metadata: {
+          project_id_available: true,
+          role: 'customer',
+          source: 'expo-notifications',
+        },
+      }),
+    }))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toEqual({
+      token_id: TOKEN_ID,
+      enabled: true,
+      updated_at: UPDATED_AT,
+    })
+    expect(client.calls.find((call) => call.table === 'rpc:register_device_push_token_atomic')?.operations)
+      .toContainEqual([
+        'rpc',
+        'register_device_push_token_atomic',
+        {
+          p_user_id: WORKER_ID,
+          p_platform: 'android',
+          p_push_token: 'ExponentPushToken[p185]',
+          p_permission_status: 'granted',
+          p_safe_metadata: {
+            project_id_available: true,
+            role: 'worker',
+            source: 'expo-notifications',
+          },
+        },
+      ])
+  })
+
+  it('rejects missing authentication on the public register route before the atomic RPC', async () => {
+    const client = makeSequenceClient([])
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: false,
+        status: 401,
+        error: 'Vui lòng đăng nhập',
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request('https://edge.test/notifications/device-token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        platform: 'android',
+        push_token: 'ExponentPushToken[p185]',
+        permission_status: 'granted',
+      }),
+    }))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(401)
+    expect(client.calls.some((call) => call.table === 'rpc:register_device_push_token_atomic')).toBe(false)
+  })
+
   it('rejects a malformed registration receipt without acknowledging a token', async () => {
     const client = makeSequenceClient([{
       data: [{ token_id: TOKEN_ID, enabled_out: 'true', updated_at_ts: UPDATED_AT }],
@@ -118,6 +203,66 @@ describe('device push token actor binding', () => {
         p_push_token: 'ExponentPushToken[p185]',
       },
     ])
+  })
+
+  it('routes an authenticated Worker token removal through the public HTTP handler to its atomic receipt', async () => {
+    const client = makeSequenceClient([], {
+      unregister_device_push_token_atomic: [{
+        data: [{ token_id: TOKEN_ID, unregistered_out: true, updated_at_ts: UPDATED_AT }],
+        error: null,
+      }],
+    })
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: WORKER_ID },
+        role: 'worker',
+        supabase: client,
+        privilegedSupabase: client,
+        userSupabase: client,
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request('https://edge.test/notifications/device-token', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ push_token: 'ExponentPushToken[p185]' }),
+    }))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toEqual({
+      token_id: TOKEN_ID,
+      unregistered: true,
+      updated_at: UPDATED_AT,
+    })
+    expect(client.calls.find((call) => call.table === 'rpc:unregister_device_push_token_atomic')?.operations)
+      .toContainEqual([
+        'rpc',
+        'unregister_device_push_token_atomic',
+        { p_user_id: WORKER_ID, p_push_token: 'ExponentPushToken[p185]' },
+      ])
+  })
+
+  it('rejects missing authentication on the public unregister route before the atomic RPC', async () => {
+    const client = makeSequenceClient([])
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: false,
+        status: 401,
+        error: 'Vui lòng đăng nhập',
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request('https://edge.test/notifications/device-token', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ push_token: 'ExponentPushToken[p185]' }),
+    }))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(401)
+    expect(client.calls.some((call) => call.table === 'rpc:unregister_device_push_token_atomic')).toBe(false)
   })
 
   it('rejects an absent unregister receipt without claiming removal', async () => {

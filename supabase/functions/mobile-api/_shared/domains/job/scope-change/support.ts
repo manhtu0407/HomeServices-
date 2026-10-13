@@ -16,8 +16,10 @@ import {
   buildScopeChangeOutputs,
   computeScopeChangeEstimate,
   type EdgeAiSecrets,
+  type ScopeChangeKaelAnalysis,
   updateKaelProgress,
 } from "../../../kael/index.ts";
+import { scopeChangeEstimateSchema } from "../../../kael/contracts/types.ts";
 import type { ScopeChangeStatus } from "../../../../../_shared/domain.ts";
 import {
   getWorkerScopeChangeRate,
@@ -39,6 +41,7 @@ export async function prepareScopeChangeEstimate(input: {
   readonly originalPriceMax: number;
   readonly evidencePhotoRefs: string[];
   readonly directClaimId: string | null;
+  readonly analysisOverride?: ScopeChangeKaelAnalysis;
 }) {
   const { client, ctx, job, jobId, request, secrets } = input;
   const { originalPriceMax, evidencePhotoRefs, directClaimId } = input;
@@ -52,21 +55,21 @@ export async function prepareScopeChangeEstimate(input: {
   const serviceType = asServiceType(job.service_type);
   let analysis: Awaited<ReturnType<typeof computeScopeChangeEstimate>>;
   try {
-    analysis = await computeScopeChangeEstimate(
-      {
-        serviceType,
-        district: nullableString(job.address_district),
-        originalDescription: nullableString(job.description) ?? "",
-        originalProblemSummary: nullableString(job.kael_problem_identified),
-        originalComplexity: asComplexityOrNull(job.kael_complexity),
-        originalPriceMin: nullableNumber(job.kael_price_min),
-        originalPriceMax,
-        workerReportedDescription: request.new_description,
-        workerReason: request.reason,
-      },
-      secrets,
-      { client, actorId: ctx.user.id },
-    );
+    analysis = input.analysisOverride ?? await computeScopeChangeEstimate(
+        {
+          serviceType,
+          district: nullableString(job.address_district),
+          originalDescription: nullableString(job.description) ?? "",
+          originalProblemSummary: nullableString(job.kael_problem_identified),
+          originalComplexity: asComplexityOrNull(job.kael_complexity),
+          originalPriceMin: nullableNumber(job.kael_price_min),
+          originalPriceMax,
+          workerReportedDescription: request.new_description,
+          workerReason: request.reason,
+        },
+        secrets,
+        { client, actorId: ctx.user.id },
+      );
   } catch (error) {
     await releaseDirectScopeClaim(
       client,
@@ -168,10 +171,70 @@ export async function prepareScopeChangeEstimate(input: {
     customer_card: scopeChangeOutputs.customer_card,
   };
   return {
+    analysis,
     estimate,
     enrichedEstimate,
     scopeChangeOutputs,
     jobScopeProgressTarget,
+  };
+}
+
+export function parseSavedScopeChangeAnalysis(
+  value: unknown,
+  job: Record<string, unknown>,
+  originalPriceMax: number,
+): ScopeChangeKaelAnalysis | null {
+  const row = asRecord(value);
+  const parsed = scopeChangeEstimateSchema.safeParse({
+    problem_slug: row.problem_slug,
+    complexity_assessment: row.complexity_assessment,
+    confidence: row.confidence,
+    confirmed_facts: row.confirmed_facts,
+    unknowns: row.unknowns,
+    pricing_factors: row.pricing_factors,
+    problem_summary: row.problem_summary,
+    advisory: row.advisory,
+  });
+  const provider = row.provider;
+  const model = row.model;
+  const computedAt = asString(row.computed_at);
+  const costUsd = row.cost_usd;
+  const latencyMs = row.latency_ms;
+  const disclaimer = asString(row.disclaimer);
+  if (
+    !parsed.success ||
+    row.schema_version !== "scope_change_kael_review.v2" ||
+    row.prompt_version !== "scope-change-estimate.2026-08-14.v3" ||
+    row.version !== "scope-change-estimate.2026-08-14.v3" ||
+    row.fallback_used !== false ||
+    (provider !== "anthropic" && provider !== "deepseek") ||
+    (model !== null && (typeof model !== "string" || model.length > 100)) ||
+    !Number.isFinite(Date.parse(computedAt)) ||
+    (costUsd !== null && (typeof costUsd !== "number" || !Number.isFinite(costUsd))) ||
+    typeof latencyMs !== "number" || !Number.isFinite(latencyMs) || latencyMs < 0
+    || !disclaimer || disclaimer.length > 500
+  ) {
+    return null;
+  }
+  return {
+    ...parsed.data,
+    schema_version: "scope_change_kael_review.v2",
+    prompt_version: "scope-change-estimate.2026-08-14.v3",
+    version: "scope-change-estimate.2026-08-14.v3",
+    model: model as string | null,
+    disclaimer,
+    computed_at: computedAt,
+    cost_usd: costUsd as number | null,
+    latency_ms: latencyMs,
+    input_summary: {
+      service_type: asServiceType(job.service_type),
+      district: nullableString(job.address_district),
+      original_problem_summary: nullableString(job.kael_problem_identified),
+      original_price_min: nullableNumber(job.kael_price_min),
+      original_price_max: originalPriceMax,
+    },
+    provider,
+    fallback_used: false,
   };
 }
 

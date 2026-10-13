@@ -21,6 +21,13 @@ function steps(text) {
   }))
 }
 
+test('the collector auth secret reaches both Edge runtime and Vault before Cron is enabled', () => {
+  const collectorStep = steps(strict).get('Deploy and attest the system health collector before its observer') ?? ''
+  assert.match(collectorStep, /SYSTEM_HEALTH_MONITOR_SECRET=\$SYSTEM_HEALTH_MONITOR_SECRET/u)
+  assert.match(collectorStep, /supabase secrets set --env-file/u)
+  assert.match(collectorStep, /configure-vault-secret\.mjs/u)
+})
+
 test('the committed verification workflow is exactly what the generator derives from the strict one', () => {
   assert.equal(
     verification,
@@ -37,8 +44,12 @@ test('every mutation and rollback step is the strict workflow text, byte for byt
     'Apply exact expand-only migration inventory',
     'Verify hosted migration watermark',
     'Register immutable release',
+    'Verify the registered system monitor baseline before changing schedules',
+    'Apply pinned Cloudflare D1 migrations without deleting evidence',
     'Configure exact synthetic cohort canary',
     'Bind candidate release identity before one Edge deploy',
+    'Deploy and attest the system health collector before its observer',
+    'Deploy Cloudflare observer and verify its live D1 tick',
     'Verify hosted candidate identity and bundle state',
     'Redownload and byte-prove the exact hosted candidate import closure',
     'Attest provider-owned deployment identity after byte proof',
@@ -48,6 +59,7 @@ test('every mutation and rollback step is the strict workflow text, byte for byt
     'Prove the final synthetic cohort is clean before promotion',
     'Atomically promote the proven release',
     'Record the final Dev-review result in Supabase Production',
+    'Roll back system monitor schedules while preserving D1 evidence',
     'Abort canary, restore identity, and redeploy downloaded rollback',
     'Upload immutable release, smoke, and rollback evidence',
   ]
@@ -124,9 +136,15 @@ test('push readiness is recorded as it is instead of being required, and nothing
   }
   for (const secret of [
     'SUPABASE_ACCESS_TOKEN', 'PRODUCTION_SUPABASE_ANON_KEY', 'PRODUCTION_SUPABASE_SERVICE_ROLE_KEY', 'ANTHROPIC_API_KEY',
-    'DEEPSEEK_API_KEY', 'PERPLEXITY_API_KEY', 'VIETMAP_API_KEY', 'EXPO_TOKEN', 'PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL',
+    'DEEPSEEK_API_KEY', 'PERPLEXITY_API_KEY', 'VIETMAP_API_KEY', 'EXPO_TOKEN', 'CLOUDFLARE_API_TOKEN',
+    'SYSTEM_HEALTH_MONITOR_SECRET', 'SYSTEM_HEALTH_OBSERVER_SECRET', 'PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL',
     'PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD', 'PRODUCTION_SYNTHETIC_WORKER_EMAIL', 'PRODUCTION_SYNTHETIC_WORKER_PASSWORD',
-  ]) assert.ok(verification.includes(`test -n "$${secret}"`), `${secret} must still be required`)
+  ].filter((secret) => !secret.startsWith('SYSTEM_HEALTH_'))) {
+    assert.ok(verification.includes(`test -n "$${secret}"`), `${secret} must still be required`)
+  }
+  assert.ok(verification.includes('test -n "$CLOUDFLARE_API_TOKEN"'), 'Cloudflare deploy access must still be required')
+  assert.ok(verification.includes('[[ "$SYSTEM_HEALTH_MONITOR_SECRET" =~ ^[0-9a-f]{64}$ ]]'))
+  assert.ok(verification.includes('[[ "$SYSTEM_HEALTH_OBSERVER_SECRET" =~ ^[0-9a-f]{64}$ ]]'))
 })
 
 test('every action is pinned to a full commit SHA and no step persists credentials', () => {
@@ -163,7 +181,8 @@ test('derivation does not depend on the strict schedule cadence or the comments 
   assert.notEqual(retimed, strict)
   const derived = deriveVerificationWorkflow(retimed)
   assert.equal(derived, verification)
-  assert.equal(derived.includes('cron'), false)
+  const triggers = derived.split('\npermissions:\n', 1)[0]
+  assert.doesNotMatch(triggers, /^\s+- cron:/mu)
   assert.match(derived, /^on:\n  workflow_dispatch:\n/mu)
 })
 

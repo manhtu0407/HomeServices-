@@ -1,10 +1,10 @@
 -- @pillar id: P352-system-health-monitor-sql
--- @pillar invariant: Monitor writes are service-only, mobile observations are limited across caller-chosen sessions for one hashed actor, manual refreshes are limited to once per minute, Cron schedules minute monitoring without a configured monitor secret and sends no request until required secrets exist, alert deliveries are fenced by their active lease, late snapshots cannot overwrite newer evidence, incidents stay unique, and retention only prunes monitor-owned rows.
+-- @pillar invariant: Monitor writes are service-only, mobile observations are limited across caller-chosen sessions for one hashed actor, manual refreshes are limited to once per minute, Cron guards its request until required secrets exist, rollback can stop the minute schedule without deleting evidence, Cloudflare snapshots require complete evidence, and retention only prunes monitor-owned rows.
 -- @pillar authority: user-approved System Health Monitoring implementation plan | governance/RULES.md #8 (retain diagnostic failure evidence and never expose private data)
 -- @pillar target: supabase/migrations/20261011100000_system_health_monitor.sql
 -- @pillar layer: sql
 -- @pillar siblings: P351-system-health-monitor-contract, P18-capability-registry-parity
--- @pillar mutation: Require a configured monitor secret before scheduling Cron, remove the request secret guard, lease conflict predicate, manual refresh cooldown, actor-level mobile observation limit, stale-delivery fence, or seven-day actor limiter cleanup; permit an authenticated table read or resolve incidents on gray evidence; the assertions below raise.
+-- @pillar mutation: Remove the Cron request secret guard, rollback-only schedule stop, lease conflict predicate, manual refresh cooldown, actor-level mobile observation limit, required-check gray normalization, or seven-day actor limiter cleanup; permit client table reads or resolve incidents on gray evidence; the assertions below raise.
 
 begin;
 set local statement_timeout = '60s';
@@ -27,16 +27,12 @@ declare
   v_occurrence_count integer;
   v_probe boolean;
   v_schedule_registered boolean;
+  v_schedule_disabled boolean;
   v_schedule_command text;
   v_worker_evidence jsonb;
   v_kael_evidence jsonb;
   v_dispatcher_state jsonb;
   v_dispatcher_incident_id uuid;
-  v_delivery_claim boolean;
-  v_delivery_completed boolean;
-  v_delivery_key text := 'p352-dispatcher-fallback:local:open';
-  v_delivery_claimed_at timestamptz;
-  v_delivery_retry_claimed_at timestamptz;
   v_now timestamptz := clock_timestamp();
 begin
   if to_regclass('cron.job') is null or to_regclass('vault.secrets') is null then
@@ -81,6 +77,9 @@ begin
      or has_function_privilege('authenticated', 'public.claim_system_health_run(text,timestamptz,uuid,integer)', 'execute')
      or has_function_privilege('authenticated', 'public.claim_system_health_manual_refresh(text,timestamptz)', 'execute')
      or has_function_privilege('authenticated', 'public.claim_system_health_delivery(text,text,timestamptz,integer)', 'execute')
+     or has_function_privilege('anon', 'public.disable_system_health_monitor()', 'execute')
+     or has_function_privilege('authenticated', 'public.disable_system_health_monitor()', 'execute')
+     or not has_function_privilege('service_role', 'public.disable_system_health_monitor()', 'execute')
      or has_function_privilege('service_role', 'private.prune_system_health_data(integer)', 'execute') then
     raise exception 'P352: monitor mutation/retention RPC grants are too broad';
   end if;
@@ -115,34 +114,6 @@ begin
   v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'green', 'green', null, clock_timestamp());
   if v_dispatcher_state->>'transition' <> 'resolved' or (v_dispatcher_state->>'incident_id')::uuid <> v_dispatcher_incident_id then
     raise exception 'P352: dispatcher recovery must close the same incident';
-  end if;
-
-  v_delivery_claimed_at := clock_timestamp();
-  v_delivery_claim := public.claim_system_health_delivery(v_delivery_key, 'dispatcher_down', v_delivery_claimed_at, 30);
-  v_second := public.claim_system_health_delivery(v_delivery_key, 'dispatcher_down', clock_timestamp(), 30);
-  if not v_delivery_claim or v_second then
-    raise exception 'P352: one Supabase alert delivery lease must block concurrent duplicate sends';
-  end if;
-  v_delivery_completed := public.complete_system_health_delivery(
-    v_delivery_key, false, v_delivery_claimed_at + interval '90 seconds', 'TELEGRAM_RATE_LIMITED', v_delivery_claimed_at
-  );
-  if not v_delivery_completed or public.claim_system_health_delivery(v_delivery_key, 'dispatcher_down', clock_timestamp(), 30) then
-    raise exception 'P352: a Telegram retry_after must defer delivery attempts';
-  end if;
-  update public.system_health_deliveries
-  set next_attempt_at = clock_timestamp() - interval '1 second',
-      lease_expires_at = clock_timestamp() - interval '1 second'
-  where dedupe_key = v_delivery_key;
-  v_delivery_retry_claimed_at := clock_timestamp();
-  if not public.claim_system_health_delivery(v_delivery_key, 'dispatcher_down', v_delivery_retry_claimed_at, 30) then
-    raise exception 'P352: a due fallback delivery must be reclaimable';
-  end if;
-  if public.complete_system_health_delivery(v_delivery_key, true, null, null, v_delivery_claimed_at) then
-    raise exception 'P352: a stale delivery completion must not overwrite a newer lease';
-  end if;
-  if not public.complete_system_health_delivery(v_delivery_key, true, null, null, v_delivery_retry_claimed_at)
-    or public.claim_system_health_delivery(v_delivery_key, 'dispatcher_down', clock_timestamp(), 30) then
-    raise exception 'P352: a delivered fallback notification must remain deduplicated';
   end if;
 
   update public.system_monitor_leases
@@ -247,6 +218,26 @@ begin
     raise exception 'P352: recovery must append a lifecycle event';
   end if;
 
+  v_snapshot := v_snapshot || jsonb_build_object(
+    'schema_version', 2,
+    'profile_id', 'cloudflare-admin-v1',
+    'required_check_ids', jsonb_build_array('edge-availability', 'backend-database-availability'),
+    'coverage_gaps', jsonb_build_array('app-crash', 'push-notifications')
+  );
+  v_snapshot := jsonb_set(v_snapshot, '{completed_at}', to_jsonb(clock_timestamp() + interval '4 seconds'));
+  if not public.record_system_health_snapshot(v_snapshot) then
+    raise exception 'P352: a profile v2 snapshot with missing required evidence must be accepted safely';
+  end if;
+  if not exists (
+    select 1 from public.system_health_snapshots
+    where environment = 'local' and scheduled_at = v_bucket and schema_version = 2
+      and profile_id = 'cloudflare-admin-v1' and overall_status = 'gray'
+      and checks @> '[{"check_id":"backend-database-availability","status":"gray","reason_code":"REQUIRED_CHECK_MISSING"}]'::jsonb
+      and jsonb_array_length(coverage_gaps) = 2
+  ) then
+    raise exception 'P352: missing required evidence must be materialized as gray in profile v2';
+  end if;
+
   v_first := public.record_system_mobile_observation(
     'local', v_session_hash, v_actor_hash, 'ios', 'p352-test', 'build-1', clock_timestamp(), 'green', 'API_REACHABLE', 42
   );
@@ -300,14 +291,32 @@ begin
     raise exception 'P352: Kael evidence must return bounded aggregate fields';
   end if;
 
+  v_schedule_disabled := public.disable_system_health_monitor();
+  if v_schedule_disabled is not true or exists (select 1 from cron.job where jobname = 'system-health-monitor') then
+    raise exception 'P352: rollback must stop the minute collector without deleting monitoring data';
+  end if;
+
   v_probe := public.system_monitor_health_probe();
   if not v_probe then raise exception 'P352: the read-only database probe must return success'; end if;
   if jsonb_array_length(public.get_system_monitor_worker_evidence()) <> 5 then
     raise exception 'P352: the versioned scheduled-worker inventory must include all five monitored jobs';
   end if;
 
+  v_snapshot := jsonb_set(v_snapshot, '{checks}', v_snapshot->'checks' || jsonb_build_array(jsonb_build_object(
+    'check_id', 'backend-database-availability',
+    'component', 'backend',
+    'status', 'green',
+    'reason_code', 'DATABASE_AVAILABLE',
+    'observed_at', clock_timestamp() + interval '5 seconds',
+    'evidence_window', null,
+    'sample_count', 1,
+    'metrics', '{}'::jsonb,
+    'incident_id', null
+  )));
+  v_snapshot := jsonb_set(v_snapshot, '{completed_at}', to_jsonb(clock_timestamp() + interval '5 seconds'));
+  v_snapshot := jsonb_set(v_snapshot, '{overall_status}', '"red"'::jsonb);
   begin
-    perform public.record_system_health_snapshot(jsonb_set(v_snapshot, '{overall_status}', '"red"'::jsonb));
+    perform public.record_system_health_snapshot(v_snapshot);
     raise exception 'P352: a status that disagrees with its checks must be rejected';
   exception when sqlstate '22023' then null;
   end;

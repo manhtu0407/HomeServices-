@@ -86,6 +86,55 @@ values (
       "customer_confirmation_required":true,"worker_confirmation_required":true}}'::jsonb
 );
 
+insert into public.jobs(id, customer_id, worker_id, service_type, description,
+  address_district, status, final_price)
+values (
+  'd8700000-0000-4000-8000-000000000102',
+  'd8700000-0000-4000-8000-000000000001', 'd8700000-0000-4000-8000-000000000002',
+  'plumbing', 'Scope rejection resume verification', 'q7', 'scope_change_pending', 200000
+);
+
+insert into public.kael_job_incidents(id, job_id, opened_by, status,
+  reported_description, reported_reason, evidence_status, revision,
+  scope_price_quote_id, scope_price_quote, scope_price_quote_revision,
+  scope_price_quote_expires_at, scope_price_quote_confirmed_at)
+select
+  'd8700000-0000-4000-8000-000000000302',
+  'd8700000-0000-4000-8000-000000000102', opened_by, status,
+  reported_description, reported_reason, evidence_status, revision,
+  'd8700000-0000-4000-8000-000000000402',
+  pg_catalog.jsonb_set(
+    pg_catalog.jsonb_set(
+      pg_catalog.jsonb_set(scope_price_quote, '{quote_id}', '"d8700000-0000-4000-8000-000000000402"'::jsonb),
+      '{incident_id}', '"d8700000-0000-4000-8000-000000000302"'::jsonb
+    ),
+    '{job_id}', '"d8700000-0000-4000-8000-000000000102"'::jsonb
+  ),
+  1, now() + interval '15 minutes', now()
+from public.kael_job_incidents
+where id = 'd8700000-0000-4000-8000-000000000301';
+
+insert into public.scope_change_requests(id, job_id, worker_id,
+  requested_description, reason, status, kael_computed_min, kael_computed_max,
+  request_timing, resume_job_status, kael_review)
+select
+  'd8700000-0000-4000-8000-000000000202',
+  'd8700000-0000-4000-8000-000000000102', worker_id,
+  requested_description, 'Customer rejection must resume the prior job state.',
+  'waiting_customer_decision', kael_computed_min, kael_computed_max,
+  request_timing, 'arrived',
+  pg_catalog.jsonb_set(
+    pg_catalog.jsonb_set(
+      kael_review,
+      '{worker_price_confirmation,quote_id}',
+      '"d8700000-0000-4000-8000-000000000402"'::jsonb
+    ),
+    '{worker_price_confirmation,confirmed_at}',
+    pg_catalog.to_jsonb(now())
+  )
+from public.scope_change_requests
+where id = 'd8700000-0000-4000-8000-000000000201';
+
 set local role service_role;
 set local request.jwt.claim.role = 'service_role';
 
@@ -94,6 +143,7 @@ declare
   v_result record;
   v_role public.user_role;
   v_actor uuid;
+  v_resume_status public.job_status;
   v_job_before jsonb;
   v_scope_before jsonb;
 begin
@@ -197,6 +247,44 @@ begin
       where id = 'd8700000-0000-4000-8000-000000000201') then
     raise exception 'duplicate decision repeated or reversed atomic effects';
   end if;
+
+  foreach v_resume_status in array array[
+    'worker_matched'::public.job_status,
+    'worker_on_way'::public.job_status,
+    'arrived'::public.job_status,
+    'inspecting'::public.job_status,
+    'repairing'::public.job_status
+  ] loop
+    update public.jobs
+      set status = 'scope_change_pending',
+          final_price = 200000,
+          scope_change_customer_decision = null,
+          scope_change_price_min = null,
+          scope_change_price_max = null
+      where id = 'd8700000-0000-4000-8000-000000000102';
+    update public.scope_change_requests
+      set status = 'waiting_customer_decision',
+          customer_decision_at = null,
+          resume_job_status = v_resume_status
+      where id = 'd8700000-0000-4000-8000-000000000202';
+
+    select * into strict v_result from public.decide_scope_change_atomic(
+      'd8700000-0000-4000-8000-000000000202',
+      'd8700000-0000-4000-8000-000000000001', 'reject'
+    );
+    if not v_result.ok or v_result.scope_status is distinct from 'rejected_by_customer' then
+      raise exception 'Customer rejection did not settle the scope request at resume status %: %',
+        v_resume_status, row_to_json(v_result);
+    end if;
+    if not exists (select 1 from public.jobs
+      where id = 'd8700000-0000-4000-8000-000000000102'
+        and status = v_resume_status and final_price = 200000
+        and scope_change_customer_decision = 'rejected'
+        and scope_change_price_min is null and scope_change_price_max is null) then
+      raise exception 'Customer rejection did not resume prior status % and preserve agreed price',
+        v_resume_status;
+    end if;
+  end loop;
 end;
 $authority$;
 

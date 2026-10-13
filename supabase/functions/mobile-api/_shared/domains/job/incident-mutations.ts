@@ -1,5 +1,5 @@
-import { asNumber, asString } from "../../platform/coercions.ts";
-import { db, type DbClient } from "../../platform/db.ts";
+import { asNumber, asString, nullableNumber } from "../../platform/coercions.ts";
+import { db, dbQuery, type DbClient, workflowDb } from "../../platform/db.ts";
 import {
   requestScopeChange,
   validateScopeChangeEvidenceRefs,
@@ -33,6 +33,8 @@ import {
   stringArray,
 } from "./incident-data.ts";
 import { advanceJobIncident } from "./incident-assistant.ts";
+import { parseSavedScopeChangeAnalysis } from "./scope-change/support.ts";
+import { parseScopeChangeWorkerQuote } from "./scope-change/worker-quote.ts";
 
 export { INCIDENT_MESSAGES } from "./incident-contracts.ts";
 export type { IncidentRow } from "./incident-contracts.ts";
@@ -115,11 +117,23 @@ export async function proposeScopeChangeFromJobIncident(
   secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
-  await requireJobAccess(client, jobId, ctx, {
+  const job = await requireJobAccess(client, jobId, ctx, {
     requiredRole: "worker",
-    select: "id, status, customer_id, worker_id",
+    select:
+      "id, status, customer_id, worker_id, service_type, description, address_district, kael_problem_identified, kael_complexity, kael_price_min, kael_price_max, kael_estimate_card_v3",
   });
   const claimId = input.client_request_id;
+  const basisResult = await dbQuery<Array<Record<string, unknown>>>(
+    workflowDb(ctx).rpc("load_job_incident_scope_quote_basis", {
+      p_quote_id: input.quote_id,
+      p_job_id: jobId,
+      p_worker_id: ctx.user.id,
+    }),
+  );
+  if (basisResult.error) {
+    apiFailure("DB_ERROR", INCIDENT_MESSAGES.inspect, 500);
+  }
+  const quoteBasis = basisResult.data?.[0] ?? null;
   const claim = await callAtomicIncidentRpc(
     client,
     "claim_job_incident_scope_proposal_atomic",
@@ -159,6 +173,29 @@ export async function proposeScopeChangeFromJobIncident(
     );
   }
   const incidentId = asString(incident.id);
+  const originalPriceMax = nullableNumber(job.kael_price_max);
+  const quote = parseScopeChangeWorkerQuote(incident.scope_price_quote);
+  const confirmedAt = asString(incident.scope_price_quote_confirmed_at);
+  const quoteExpiresAt = asString(quoteBasis?.expires_at);
+  const analysis = originalPriceMax !== null && quoteBasis &&
+      asString(quoteBasis.incident_id) === incidentId &&
+      asNumber(quoteBasis.incident_revision) + 1 === asNumber(incident.revision) &&
+      asString(incident.scope_price_quote_id) === input.quote_id &&
+      asNumber(incident.scope_price_quote_revision) === asNumber(incident.revision) &&
+      quote?.quote_id === input.quote_id &&
+      quote.expires_at === quoteExpiresAt &&
+      Number.isFinite(Date.parse(confirmedAt)) &&
+      Date.parse(confirmedAt) <= Date.parse(quoteExpiresAt)
+    ? parseSavedScopeChangeAnalysis(quoteBasis.analysis, job, originalPriceMax)
+    : null;
+  if (!analysis) {
+    await releaseScopeProposalClaim(client, jobId, incidentId, claimId);
+    apiFailure(
+      "QUOTE_CHANGED",
+      "Báo giá đã thay đổi hoặc hết hạn. Thợ cần kiểm tra lại trước khi gửi đề xuất.",
+      409,
+    );
+  }
 
   try {
     const scope = await requestScopeChange(
@@ -172,6 +209,7 @@ export async function proposeScopeChangeFromJobIncident(
       secrets,
       { claimId, incidentId },
       {
+        analysis,
         confirmedAt: asString(incident.scope_price_quote_confirmed_at),
         quoteId: input.quote_id,
         storedQuote: incident.scope_price_quote,

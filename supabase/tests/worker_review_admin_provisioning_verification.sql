@@ -88,6 +88,9 @@ declare
   v_access_queue constant uuid := 'b3200000-0000-4000-8000-000000000001';
   v_profile_queue uuid;
   v_profile_revision timestamptz;
+  v_access_decided_at timestamptz;
+  v_access_audit_count bigint;
+  v_access_review_count bigint;
   v_provisioning uuid;
   v_retry_provisioning uuid;
   v_result record;
@@ -125,12 +128,52 @@ begin
   if v_result.ok is not true or v_result.role_out <> 'worker'::public.user_role then
     raise exception 'access approval did not grant Worker Sections access';
   end if;
+  v_access_decided_at := v_result.decided_at;
+  if v_access_decided_at is null then
+    raise exception 'access approval did not return a durable decision timestamp';
+  end if;
   if not exists (
     select 1 from public.worker_profiles
     where id = v_worker and verification_status = 'draft'
       and not is_approved and not is_available
   ) then
     raise exception 'access approval incorrectly verified or enabled the worker';
+  end if;
+
+  select count(*) into v_access_audit_count from public.kael_permission_audit
+  where actor_id = v_owner and action = 'review' and topic = 'worker_application'
+    and safe_metadata->>'queue_id' = v_access_queue::text;
+  select count(*) into v_access_review_count from public.admin_worker_application_reviews
+  where queue_id = v_access_queue and decision = 'approve';
+  if v_access_audit_count <> 1 or v_access_review_count <> 1 then
+    raise exception 'first access decision did not persist one audit and review row: audit=%, review=%',
+      v_access_audit_count, v_access_review_count;
+  end if;
+
+  select * into v_result from public.admin_review_worker_application_atomic(
+    v_access_queue, v_owner, 'approve', null
+  );
+  if v_result.ok is not true or v_result.queue_id <> v_access_queue
+     or v_result.worker_id <> v_worker or v_result.decision <> 'approve'
+     or v_result.decided_at <> v_access_decided_at then
+    raise exception 'same-decision retry did not return the original access receipt';
+  end if;
+
+  select * into v_result from public.admin_review_worker_application_atomic(
+    v_access_queue, v_owner, 'reject', 'Attempt to replace the completed review'
+  );
+  if v_result.ok is not false or v_result.error_code <> 'ALREADY_REVIEWED' then
+    raise exception 'a different retry replaced the completed access decision';
+  end if;
+
+  select count(*) into v_access_audit_count from public.kael_permission_audit
+  where actor_id = v_owner and action = 'review' and topic = 'worker_application'
+    and safe_metadata->>'queue_id' = v_access_queue::text;
+  select count(*) into v_access_review_count from public.admin_worker_application_reviews
+  where queue_id = v_access_queue and decision = 'approve';
+  if v_access_audit_count <> 1 or v_access_review_count <> 1 then
+    raise exception 'retry duplicated or replaced access audit data: audit=%, review=%',
+      v_access_audit_count, v_access_review_count;
   end if;
 
   select * into v_result from public.save_worker_registration_draft_atomic(

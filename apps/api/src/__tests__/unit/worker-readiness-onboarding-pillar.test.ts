@@ -240,6 +240,63 @@ describe('worker readiness and onboarding', () => {
       .toContainEqual(['rpc', 'get_current_worker_application', { p_actor_id: APPLICANT }])
   })
 
+  it('reads a never-submitted applicant as a draft without sending a submission', async () => {
+    const { client, read } = applicationHttp({ applicationResults: [{ data: [], error: null }], tableResults: {
+      profiles: [{ data: { role: 'customer' }, error: null }],
+      worker_profiles: [{ data: null, error: null }],
+      jobs: [{ data: [], error: null }],
+      job_worker_candidates: [{ data: [], error: null }],
+      matching_capacity_reservations: [{ data: [], error: null }],
+    } })
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({
+      application: { application_id: null, status: 'not_submitted', can_submit: true, can_resume: false },
+      ready_for_matching: false,
+    })
+    expect(client.calls.filter((call) => call.table === 'rpc:submit_worker_application_atomic')).toEqual([])
+  })
+
+  it('rehydrates a pending application through HTTP without submitting it again', async () => {
+    const { client, read } = applicationHttp({
+      applicationResults: [{ data: [{ id: APPLICATION, created_at: OBSERVED_AT, safe_metadata: {} }], error: null }],
+      tableResults: {
+        profiles: [{ data: { role: 'customer' }, error: null }],
+        worker_profiles: [{ data: null, error: null }],
+        jobs: [{ data: [], error: null }],
+        job_worker_candidates: [{ data: [], error: null }],
+        matching_capacity_reservations: [{ data: [], error: null }],
+        admin_worker_application_reviews: [{ data: null, error: null }],
+      },
+    })
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({
+      application: { application_id: APPLICATION, status: 'pending_review', can_submit: false, can_resume: false },
+      ready_for_matching: false,
+    })
+    expect(client.calls.filter((call) => call.table === 'rpc:submit_worker_application_atomic')).toEqual([])
+  })
+
+  it('rehydrates the approved access decision through HTTP', async () => {
+    const { client, read } = applicationHttp({ applicationResults: [{
+      data: [{ id: APPLICATION, created_at: OBSERVED_AT, safe_metadata: {} }], error: null,
+    }], tableResults: {
+      profiles: [{ data: { role: 'worker' }, error: null }],
+      worker_profiles: [{ data: null, error: null }],
+      jobs: [{ data: [], error: null }],
+      job_worker_candidates: [{ data: [], error: null }],
+      matching_capacity_reservations: [{ data: [], error: null }],
+      admin_worker_application_reviews: [{ data: { decision: 'approve', reason: null, decided_at: OBSERVED_AT }, error: null }],
+    } })
+    const response = await read()
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({
+      application: { application_id: APPLICATION, status: 'approved', can_submit: false, can_resume: false },
+    })
+    expect(client.calls.filter((call) => call.table === 'rpc:submit_worker_application_atomic')).toEqual([])
+  })
+
   it('reports unavailable readiness instead of inventing a not-submitted application on DB failure', async () => {
     const { read } = applicationHttp({ applicationResults: [{ data: null, error: { code: '57014', message: 'private database detail' } }], tableResults: {
       profiles: [{ data: { role: 'customer' }, error: null }],

@@ -17,13 +17,13 @@ export const PILLAR = {
 const WORKER = 'd7300000-0000-4000-8000-000000000001'
 const AT = '2026-09-09T00:00:00.123456+00:00'
 const receipt = { ok: true, error_code: null, worker_id: WORKER, verification_status: 'draft', updated_at: AT }
-function request(data: unknown = [receipt], error: { code: string; message: string } | null = null) {
+function request(data: unknown = [receipt], error: { code: string; message: string } | null = null, role: 'customer' | 'worker' | 'admin' = 'worker') {
   const client = makeSequenceClient([], {
     save_worker_registration_draft_atomic: [{ data, error }],
   })
   const handler = createMobileApiHandler({
     authenticate: async () => ({
-      success: true, user: { id: WORKER, authProvider: 'email' }, role: 'worker',
+      success: true, user: { id: WORKER, authProvider: 'email' }, role,
       supabase: client, privilegedSupabase: client, userSupabase: client,
     }),
     services: createEdgeServices({}),
@@ -74,6 +74,31 @@ describe('Worker draft acknowledgement', () => {
     expect(result.headers.get('x-support-code')).toMatch(/^[A-Z0-9]{8}$/)
   })
 
+  it('accepts an access-approved Worker at the public route', async () => {
+    const { client, response } = request()
+    const result = await response
+    expect(result.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await result.json()).toEqual({ worker_id: WORKER, verification_status: 'draft', updated_at: AT })
+    expect(client.calls.find((call) => call.table === 'rpc:save_worker_registration_draft_atomic')?.operations)
+      .toEqual([['rpc', 'save_worker_registration_draft_atomic', {
+        p_actor_id: WORKER, p_worker_id: WORKER, p_draft: { districts: ['q1'] },
+      }]])
+  })
+
+  it('denies a Customer before the Worker draft RPC', async () => {
+    const { client, response } = request([receipt], null, 'customer')
+    const result = await response
+    expect(result.status, pillarWhy(PILLAR)).toBe(403)
+    expect(client.calls).toEqual([])
+  })
+
+  it('does not claim progress when an access-approved draft receipt is missing', async () => {
+    const { client, response } = request([], null, 'worker')
+    const result = await response
+    expect(result.status, pillarWhy(PILLAR)).toBe(500)
+    expect(await result.json()).toMatchObject({ code: 'DB_ERROR' })
+    expect(client.calls.filter((call) => call.table === 'rpc:save_worker_registration_draft_atomic')).toHaveLength(1)
+  })
   it('returns the actor-bound draft receipt and preserves the server timestamp precision', async () => {
     const { client, response } = request()
     const result = await response

@@ -1,4 +1,4 @@
-import { isSystemEvidenceFresh, type MobileHealthObservationInput } from "../../../../_shared/contracts/system-health.ts";
+import { isSystemEvidenceFresh, type EdgeMobileHealthObservationInput as MobileHealthObservationInput } from "../../../../_shared/contracts/system-health.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { dbQuery, workflowDb } from "../../platform/db.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";

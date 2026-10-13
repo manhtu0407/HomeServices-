@@ -125,6 +125,17 @@ export async function dispatchJobRoute(
     case "jobs.scopeChange": {
       const input = workerScopeChangeSchema.safeParse(await readJson(request));
       if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      if (input.data.quote_id) {
+        const proposal = await services.proposeScopeChangeFromJobIncident(
+          ctx,
+          route.jobId,
+          {
+            client_request_id: input.data.client_request_id,
+            quote_id: input.data.quote_id,
+          },
+        );
+        return proposal.scope_change;
+      }
       return services.requestScopeChange(ctx, route.jobId, input.data);
     }
     case "jobs.kaelIncidentGet":

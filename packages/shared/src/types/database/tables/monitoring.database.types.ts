@@ -240,12 +240,15 @@ export type MonitoringTables = {
         Row: {
           checks: Json
           completed_at: string
+          coverage_gaps: Json | null
           created_at: string
           environment: string
           expires_at: string
           overall_status: string
+          profile_id: string | null
           project_ref: string | null
           release_id: string | null
+          required_check_ids: Json | null
           scheduled_at: string
           schema_version: number
           snapshot_id: string
@@ -253,12 +256,15 @@ export type MonitoringTables = {
         Insert: {
           checks: Json
           completed_at: string
+          coverage_gaps?: Json | null
           created_at?: string
           environment: string
           expires_at: string
           overall_status: string
+          profile_id?: string | null
           project_ref?: string | null
           release_id?: string | null
+          required_check_ids?: Json | null
           scheduled_at: string
           schema_version?: number
           snapshot_id?: string
@@ -266,12 +272,15 @@ export type MonitoringTables = {
         Update: {
           checks?: Json
           completed_at?: string
+          coverage_gaps?: Json | null
           created_at?: string
           environment?: string
           expires_at?: string
           overall_status?: string
+          profile_id?: string | null
           project_ref?: string | null
           release_id?: string | null
+          required_check_ids?: Json | null
           scheduled_at?: string
           schema_version?: number
           snapshot_id?: string

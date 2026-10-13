@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 456,
-    "migrationDigest": "89d8a16e88e4199eb64f418304a8b3b536f9f5fe7e68da47089806305586c759"
+    "migrationCount": 459,
+    "migrationDigest": "b2aefbb754f7650e77c19ebb5939235abb2154577692e0a6b0e3a3159f415976"
   },
   "actors": [
     "anonymous",
@@ -5022,6 +5022,14 @@
       ]
     },
     {
+      "signature": "configure_system_health_monitor_secret(text)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "confirm_completion_manual_bank_atomic(uuid, uuid, text, integer, text, text, text, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -5218,6 +5226,14 @@
     {
       "signature": "detect_workflow_recovery_cases(timestamp with time zone)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "disable_system_health_monitor()",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -5615,6 +5631,14 @@
     },
     {
       "signature": "list_matching_deprioritized_workers(uuid[])",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "load_job_incident_scope_quote_basis(uuid, uuid, uuid)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
@@ -6415,6 +6439,14 @@
     },
     {
       "signature": "save_job_incident_scope_price_quote_atomic(uuid, uuid, uuid, integer, uuid, jsonb, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "save_job_incident_scope_quote_with_basis_atomic(uuid, uuid, uuid, integer, uuid, jsonb, timestamp with time zone, jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

@@ -116,6 +116,44 @@ begin
 end;
 $notification$;
 
+insert into public.jobs(id,customer_id,service_type,description,address_district,status,quote_mode)
+values
+  ('c1180000-0000-4000-8000-000000000104','c1180000-0000-4000-8000-000000000001',
+    'plumbing','Before-A7 cancellation fixture','q7','awaiting_customer_confirm','rfq'),
+  ('c1180000-0000-4000-8000-000000000105','c1180000-0000-4000-8000-000000000001',
+    'plumbing','Before worker acceptance cancellation fixture','q7','broadcasting','rfq');
+do $before_accept$
+declare
+  v_result record;
+  v_case record;
+begin
+  for v_case in
+    select * from (values
+      ('c1180000-0000-4000-8000-000000000104'::uuid, 'before_a7'::text),
+      ('c1180000-0000-4000-8000-000000000105'::uuid, 'after_a7_before_worker_accept'::text)
+    ) as cases(job_id, sub_case)
+  loop
+    select * into strict v_result from public.request_customer_cancellation_atomic(
+      v_case.job_id,'c1180000-0000-4000-8000-000000000001','no_reason_provided',null);
+    if not v_result.ok or v_result.sub_case is distinct from v_case.sub_case
+      or v_result.job_status is distinct from 'cancelled'::public.job_status
+      or (select status from public.jobs where id=v_case.job_id) is distinct from 'cancelled'::public.job_status
+      or not exists (select 1 from public.customer_cancellation_records
+        where job_id=v_case.job_id and status='requested' and sub_case=v_case.sub_case)
+      or exists (select 1 from public.notifications where job_id=v_case.job_id) then
+      raise exception 'P118_PRE_ACCEPT_CANCELLATION_OUTCOME_MISMATCH: %', row_to_json(v_result);
+    end if;
+    select * into strict v_result from public.request_customer_cancellation_atomic(
+      v_case.job_id,'c1180000-0000-4000-8000-000000000001','no_reason_provided',null);
+    if v_result.ok or v_result.error_code is distinct from 'ALREADY_REQUESTED'
+      or v_result.job_status is distinct from 'cancelled'::public.job_status
+      or (select count(*) from public.customer_cancellation_records where job_id=v_case.job_id) <> 1 then
+      raise exception 'P118_PRE_ACCEPT_CANCELLATION_REPLAY_CHANGED_RECEIPT: %', row_to_json(v_result);
+    end if;
+  end loop;
+end;
+$before_accept$;
+
 insert into public.jobs(id,customer_id,worker_id,service_type,description,address_district,status,quote_mode,scheduled_at)
 values('c1180000-0000-4000-8000-000000000102','c1180000-0000-4000-8000-000000000001',
   'c1180000-0000-4000-8000-000000000002','plumbing','Scheduled cancellation fixture','q7','worker_matched','rfq',now()+interval '2 days');

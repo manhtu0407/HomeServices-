@@ -191,7 +191,7 @@ import type {
   EdgeWorkerWithdrawalRequestListResponse,
 } from "../domains/contracts/worker-payout.ts";
 import type { AdminControlServices } from "./routes/admin-control-services-contract.ts";
-import type { MobileHealthObservationInput } from "../../../_shared/contracts/system-health.ts";
+import type { EdgeMobileHealthObservationInput as MobileHealthObservationInput } from "../../../_shared/contracts/system-health.ts";
 import type { ProgramServices } from "./routes/program-services-contract.ts";
 import type {
   EdgeKaelMemoryDeleteResponse,

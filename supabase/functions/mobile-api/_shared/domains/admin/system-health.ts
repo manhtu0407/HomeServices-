@@ -1,8 +1,8 @@
 import {
   sanitizeSystemIncidentPacket,
   systemHealthSnapshotSchema,
-  type SystemIncidentPacket,
-  type SystemHealthSnapshot,
+  type EdgeSystemIncidentPacket as SystemIncidentPacket,
+  type EdgeSystemHealthSnapshot as SystemHealthSnapshot,
 } from "../../../../_shared/contracts/system-health.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { db, dbQuery } from "../../platform/db.ts";
@@ -16,10 +16,10 @@ const INCIDENT_COLUMNS = "incident_id,external_incident_id,fingerprint,component
 const SAFE_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/u;
 const SAFE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
-export async function getSystemHealth(ctx: MobileApiContext): Promise<AdminSystemContracts["healthResponse"]> {
+export async function getSystemHealth(ctx: MobileApiContext, schemaVersion: 1 | 2): Promise<AdminSystemContracts["healthResponse"]> {
   const [snapshotResult, observerResult] = await Promise.all([
     dbQuery<Row>(db(ctx).from("system_health_snapshots")
-      .select("schema_version,environment,project_ref,release_id,scheduled_at,completed_at,expires_at,overall_status,checks")
+      .select("schema_version,profile_id,required_check_ids,coverage_gaps,environment,project_ref,release_id,scheduled_at,completed_at,expires_at,overall_status,checks")
       .eq("environment", healthEnvironment(ctx)).order("scheduled_at", { ascending: false }).limit(1).maybeSingle()),
     dbQuery<Row>(db(ctx).from("system_health_observer_state")
       .select("observer_heartbeat_at,dispatcher_status,d1_status,last_snapshot_at,last_error_code")
@@ -29,9 +29,34 @@ export async function getSystemHealth(ctx: MobileApiContext): Promise<AdminSyste
 
   const parsedSnapshot = snapshotResult.data ? systemHealthSnapshotSchema.safeParse(snapshotResult.data) : null;
   const observer = observerResult.data ? serializeObserver(observerResult.data) : null;
+  let snapshot = parsedSnapshot?.success ? parsedSnapshot.data : null;
+  if (snapshot?.schema_version === 2 && schemaVersion === 1) {
+    const checks = [...snapshot.checks, {
+      check_id: "profile-coverage-unsupported",
+      component: "app",
+      status: "gray" as const,
+      reason_code: "PROFILE_COVERAGE_UNSUPPORTED",
+      observed_at: snapshot.completed_at,
+      evidence_window: null,
+      sample_count: null,
+      metrics: {},
+      incident_id: null,
+    }];
+    snapshot = {
+      schema_version: 1,
+      environment: snapshot.environment,
+      project_ref: snapshot.project_ref,
+      release_id: snapshot.release_id,
+      scheduled_at: snapshot.scheduled_at,
+      completed_at: snapshot.completed_at,
+      expires_at: snapshot.expires_at,
+      overall_status: snapshot.overall_status === "red" || snapshot.overall_status === "yellow" ? snapshot.overall_status : "gray",
+      checks,
+    };
+  }
   return {
     generated_at: new Date().toISOString(),
-    snapshot: parsedSnapshot?.success ? parsedSnapshot.data : null,
+    snapshot,
     observer,
   };
 }

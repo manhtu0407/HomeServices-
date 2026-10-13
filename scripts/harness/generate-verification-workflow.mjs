@@ -16,9 +16,17 @@ const DOWNLOAD = 'actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c
 const expression = (text) => text.replaceAll('@{{', '${{')
 
 const PUSH_READINESS_ENV = String.raw`          EXPO_TOKEN: @{{ secrets.EXPO_TOKEN }}
+          CLOUDFLARE_API_TOKEN: @{{ secrets.CLOUDFLARE_API_TOKEN }}
+          SYSTEM_HEALTH_MONITOR_SECRET: @{{ secrets.SYSTEM_HEALTH_MONITOR_SECRET }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: @{{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
           NESTSCOUT_ANDROID_FCM_V1_READY: @{{ vars.NESTSCOUT_ANDROID_FCM_V1_READY }}
           NESTSCOUT_IOS_APNS_READY: @{{ vars.NESTSCOUT_IOS_APNS_READY }}
           NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY: @{{ vars.NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY }}
+`
+const VERIFICATION_RELEASE_CONFIG_ENV = String.raw`          EXPO_TOKEN: @{{ secrets.EXPO_TOKEN }}
+          CLOUDFLARE_API_TOKEN: @{{ secrets.CLOUDFLARE_API_TOKEN }}
+          SYSTEM_HEALTH_MONITOR_SECRET: @{{ secrets.SYSTEM_HEALTH_MONITOR_SECRET }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: @{{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
 `
 
 const PUSH_READINESS_TESTS = String.raw`          test "$NESTSCOUT_ANDROID_FCM_V1_READY" = "true"
@@ -124,7 +132,7 @@ export function deriveVerificationWorkflow(strictText) {
 
   text = replaceOnce(text, '      - name: Require complete encrypted Production release configuration\n',
     '      - name: Require the encrypted Production release configuration, recording push readiness as it is\n')
-  text = replaceOnce(text, expression(PUSH_READINESS_ENV), '          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}\n')
+  text = replaceOnce(text, expression(PUSH_READINESS_ENV), expression(VERIFICATION_RELEASE_CONFIG_ENV))
   text = replaceOnce(text, PUSH_READINESS_TESTS, '')
 
   text = replaceOnce(text,

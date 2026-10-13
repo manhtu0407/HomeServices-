@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 456,
+  "migrationCount": 459,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,10 +102,10 @@
       }
     ]
   },
-  "migrationsSha256": "777b77c08785d7af6f038f0668a5b85113fcc62512eee71267ee4225f5544f5a",
+  "migrationsSha256": "301d819c903af16c491601f6babc355d67e43c58797dc9d4067884e3cfae6c2c",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "2f433dde1bf358ad1ceada0916087f881cb28a3aa641c1c957d977fd6f4ad929"
+    "sha256": "97e4af9ab4c40b17adffbbe26c8455f999ff58732310aadc5e2e0fc0f3975444"
   },
   "entries": [
     {
@@ -3299,6 +3299,27 @@
       "file": "supabase/migrations/20261013110000_worker_travel_position.sql",
       "sha256": "be9c668b600fdc7785ca66f77dcdd6dd7c7cb898a5e27173bba1edccb4452748",
       "bytes": 6639
+    },
+    {
+      "version": "20261013120000",
+      "name": "scope_change_quote_analysis_receipt",
+      "file": "supabase/migrations/20261013120000_scope_change_quote_analysis_receipt.sql",
+      "sha256": "c50e4767a1148aca244d4aedeb775f2ddf67dd8371ab067fed76e2b078a17a5c",
+      "bytes": 10579
+    },
+    {
+      "version": "20261013121000",
+      "name": "system_health_profile_v2",
+      "file": "supabase/migrations/20261013121000_system_health_profile_v2.sql",
+      "sha256": "725d24f8679e4dd67fdc4012328c4942b8557040fdffcd4254f640a8c34c4e02",
+      "bytes": 7720
+    },
+    {
+      "version": "20261013122000",
+      "name": "system_health_monitor_secret_bootstrap",
+      "file": "supabase/migrations/20261013122000_system_health_monitor_secret_bootstrap.sql",
+      "sha256": "7cf5c6a3834124b2c7c3fb27ac67c80aa523bd471ada89ff021fed398d82a8d2",
+      "bytes": 2009
     }
   ]
 }
