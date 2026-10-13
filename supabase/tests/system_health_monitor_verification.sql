@@ -1,10 +1,10 @@
 -- @pillar id: P352-system-health-monitor-sql
--- @pillar invariant: Monitor writes are service-only, mobile observations are limited across caller-chosen sessions for one hashed actor, manual refreshes are limited to once per minute, Cron guards its request until required secrets exist, rollback can stop the minute schedule without deleting evidence, Cloudflare snapshots require complete evidence, and retention only prunes monitor-owned rows.
+-- @pillar invariant: Monitor writes are service-only, mobile observations are limited across caller-chosen sessions for one hashed actor, manual refreshes are limited to once per minute, observer availability changes require two consecutive samples, stale heartbeats cannot replace newer state, Cron guards its request until required secrets exist, rollback can stop the minute schedule without deleting evidence, Cloudflare snapshots require complete evidence, and retention only prunes monitor-owned rows.
 -- @pillar authority: user-approved System Health Monitoring implementation plan | governance/RULES.md #8 (retain diagnostic failure evidence and never expose private data)
--- @pillar target: supabase/migrations/20261011100000_system_health_monitor.sql
+-- @pillar target: supabase/migrations/20261011100000_system_health_monitor.sql; supabase/migrations/20261014100000_system_health_availability_debounce.sql
 -- @pillar layer: sql
 -- @pillar siblings: P351-system-health-monitor-contract, P18-capability-registry-parity
--- @pillar mutation: Remove the Cron request secret guard, rollback-only schedule stop, lease conflict predicate, manual refresh cooldown, actor-level mobile observation limit, required-check gray normalization, or seven-day actor limiter cleanup; permit client table reads or resolve incidents on gray evidence; the assertions below raise.
+-- @pillar mutation: Remove the Cron request secret guard, rollback-only schedule stop, lease conflict predicate, manual refresh cooldown, actor-level mobile observation limit, required-check gray normalization, seven-day actor limiter cleanup, two-sample observer availability threshold, or stale-heartbeat fence; permit client table reads or resolve incidents on gray evidence; the assertions below raise.
 
 begin;
 set local statement_timeout = '60s';
@@ -33,6 +33,7 @@ declare
   v_kael_evidence jsonb;
   v_dispatcher_state jsonb;
   v_dispatcher_incident_id uuid;
+  v_observer_heartbeat_at timestamptz;
   v_now timestamptz := clock_timestamp();
 begin
   if to_regclass('cron.job') is null or to_regclass('vault.secrets') is null then
@@ -102,18 +103,47 @@ begin
     raise exception 'P352: a live lease must allow one owner only';
   end if;
 
-  v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'gray', 'gray', 'D1_UNAVAILABLE', v_now);
+  v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'green', 'gray', 'D1_UNAVAILABLE', v_now);
+  if v_dispatcher_state->>'transition' <> 'none' or v_dispatcher_state->>'incident_id' is not null then
+    raise exception 'P352: one dispatcher loss must stay degraded without opening an incident';
+  end if;
+  v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'gray', 'gray', 'D1_UNAVAILABLE', clock_timestamp());
   v_dispatcher_incident_id := (v_dispatcher_state->>'incident_id')::uuid;
   if v_dispatcher_state->>'transition' <> 'opened' or v_dispatcher_incident_id is null then
-    raise exception 'P352: the first dispatcher loss must atomically open one stable incident';
+    raise exception 'P352: two consecutive dispatcher losses must open one stable incident';
   end if;
   v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'gray', 'gray', 'D1_UNAVAILABLE', clock_timestamp());
   if v_dispatcher_state->>'transition' <> 'none' or (v_dispatcher_state->>'incident_id')::uuid <> v_dispatcher_incident_id then
     raise exception 'P352: repeated dispatcher loss must reuse its active incident';
   end if;
   v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'green', 'green', null, clock_timestamp());
+  if v_dispatcher_state->>'transition' <> 'none' or (v_dispatcher_state->>'incident_id')::uuid <> v_dispatcher_incident_id then
+    raise exception 'P352: one healthy dispatcher sample must leave the incident open';
+  end if;
+  v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'gray', 'gray', 'D1_UNAVAILABLE', clock_timestamp());
+  if v_dispatcher_state->>'transition' <> 'none' or (v_dispatcher_state->>'incident_id')::uuid <> v_dispatcher_incident_id then
+    raise exception 'P352: a failed sample must break the recovery streak';
+  end if;
+  v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'green', 'green', null, clock_timestamp());
+  if v_dispatcher_state->>'transition' <> 'none' or (v_dispatcher_state->>'incident_id')::uuid <> v_dispatcher_incident_id then
+    raise exception 'P352: the first healthy sample after a failure must leave the incident open';
+  end if;
+  v_dispatcher_state := public.record_system_monitor_observer_heartbeat('local', 'green', 'green', null, clock_timestamp());
   if v_dispatcher_state->>'transition' <> 'resolved' or (v_dispatcher_state->>'incident_id')::uuid <> v_dispatcher_incident_id then
-    raise exception 'P352: dispatcher recovery must close the same incident';
+    raise exception 'P352: two consecutive healthy samples must close the same incident';
+  end if;
+  select observer_heartbeat_at into v_observer_heartbeat_at
+  from public.system_health_observer_state where environment = 'local';
+  v_dispatcher_state := public.record_system_monitor_observer_heartbeat(
+    'local', 'gray', 'gray', 'D1_UNAVAILABLE', v_observer_heartbeat_at - interval '1 microsecond'
+  );
+  if v_dispatcher_state->>'transition' <> 'none' or v_dispatcher_state->>'incident_id' is not null
+    or not exists (
+      select 1 from public.system_health_observer_state
+      where environment = 'local' and observer_heartbeat_at = v_observer_heartbeat_at
+        and active_dispatcher_incident_id is null
+    ) then
+    raise exception 'P352: a late heartbeat must not replace the newest observer state';
   end if;
 
   update public.system_monitor_leases

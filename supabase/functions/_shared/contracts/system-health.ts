@@ -183,7 +183,8 @@ const isoOrNull = (value: unknown): string | null => {
 }
 
 const INCIDENT_METRIC_KEYS = new Set([
-  'edge_status', 'edge_fails', 'edge_successes', 'auth_ok', 'db_ok', 'release_ok', 'project',
+  'edge_status', 'edge_fails', 'edge_successes', 'auth_status', 'auth_fails', 'auth_successes', 'auth_ok',
+  'db_status', 'db_fails', 'db_successes', 'db_ok', 'release_ok', 'project',
   'fails', 'successes', 'failed', 'late', 'missing', 'execution_failure_rate', 'samples', 'calls15m',
   'fallbacks', 'circuits', 'learning', 'learning_age_seconds', 'red_evaluations', 'storage_status', 'storage_fails',
   'storage_successes', 'realtime_status', 'realtime_fails', 'realtime_successes', 'sessions', 'api_failures', 'platforms', 'fatal', 'sentry_errors',

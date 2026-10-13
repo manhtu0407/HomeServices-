@@ -47,6 +47,9 @@ type ObserverState = {
   current_outage_reason: string | null
   current_outage_opened_at: string | null
   current_outage_synced: number
+  consecutive_supabase_failures: number
+  consecutive_supabase_successes: number
+  last_supabase_failure_reason: string | null
   last_cleanup_at: string | null
 }
 type IncidentRow = {
@@ -126,9 +129,24 @@ export async function runSystemHealthObserver(
       const state = await readState(env.DB)
       const outage = await openOrUpdateOutage(env.DB, state, outageReason ?? 'OBSERVER_NOT_CONFIGURED', now)
       errorCode = outage.reason_code
+    } else if (outageReason && !observerReachable) {
+      await assertTickOwner(env.DB, tick, now)
+      const state = await readState(env.DB)
+      const failures = Math.min(Math.max(0, state.consecutive_supabase_failures) + 1, 2)
+      await updateSupabaseAvailability(env.DB, failures, 0, outageReason, now.toISOString())
+      observerStatus = failures < 2 ? 'yellow' : 'red'
+      errorCode = failures < 2
+        ? outageReason.length <= 47 ? `${outageReason}_FIRST_SAMPLE` : 'SUPABASE_READ_FIRST_SAMPLE'
+        : outageReason
+      if (failures >= 2 || state.current_outage_id !== null) {
+        const outage = await openOrUpdateOutage(env.DB, state, outageReason, now)
+        errorCode = outage.reason_code
+        await setObserverState(env.DB, outageReason, null, now.toISOString())
+      }
     } else if (outageReason) {
       await assertTickOwner(env.DB, tick, now)
       const state = await readState(env.DB)
+      await updateSupabaseAvailability(env.DB, 0, 0, outageReason, now.toISOString())
       const outage = await openOrUpdateOutage(env.DB, state, outageReason, now)
       errorCode = outage.reason_code
       observerStatus = outage.severity === 'red' ? 'red' : 'yellow'
@@ -136,7 +154,6 @@ export async function runSystemHealthObserver(
         const synced = await syncExternalIncident(fetcher, config, outage, 'open')
         await assertTickOwner(env.DB, tick, now)
         if (synced) await markOutageSynced(env.DB, outage.incident_id, now.toISOString())
-        else observerStatus = 'yellow'
       } else if (observerReachable) {
         const synced = await syncExternalIncident(fetcher, config, outage, 'open')
         if (!synced) observerStatus = 'yellow'
@@ -146,11 +163,30 @@ export async function runSystemHealthObserver(
       await assertTickOwner(env.DB, tick, now)
       const state = await readState(env.DB)
       if (state.current_outage_id) {
-        const resolved = await resolveOutage(env.DB, state, config, fetcher, now)
-        if (!resolved) {
-          observerStatus = 'yellow'
-          errorCode = 'OUTAGE_RECONCILIATION_PENDING'
+        const successes = Math.min(Math.max(0, state.consecutive_supabase_successes) + 1, 2)
+        await updateSupabaseAvailability(env.DB, 0, successes, null, now.toISOString())
+        outageReason = state.current_outage_reason
+        if (successes >= 2) {
+          const resolved = await resolveOutage(env.DB, state, config, fetcher, now)
+          if (resolved) {
+            outageReason = null
+          } else {
+            observerStatus = 'yellow'
+            errorCode = 'OUTAGE_RECONCILIATION_PENDING'
+          }
+        } else if (state.current_outage_synced !== 1) {
+          const incident = await readCurrentOutage(env.DB, state.current_outage_id)
+          const opened = incident ? await syncExternalIncident(fetcher, config, incident, 'open') : false
+          if (opened) await markOutageSynced(env.DB, state.current_outage_id, now.toISOString())
+          else {
+            observerStatus = 'yellow'
+            errorCode = 'OUTAGE_RECONCILIATION_PENDING'
+          }
         }
+        if (observerStatus === 'gray') observerStatus = 'green'
+      } else {
+        await updateSupabaseAvailability(env.DB, 0, 0, null, now.toISOString())
+        observerStatus = 'green'
       }
       await assertTickOwner(env.DB, tick, now)
       await reconcileSnapshotIncidents(env.DB, snapshot, now)
@@ -174,7 +210,7 @@ export async function runSystemHealthObserver(
     await postObserverHeartbeat(fetcher, config, {
       dispatcher_status: observerStatus,
       d1_status: d1Status,
-      error_code: errorCode ?? (outageReason && SAFE_REASON.test(outageReason) ? outageReason : null),
+      error_code: errorCode ?? (observerStatus !== 'green' && outageReason && SAFE_REASON.test(outageReason) ? outageReason : null),
     }).catch(() => undefined)
   }
 
@@ -233,7 +269,7 @@ async function openOrUpdateOutage(db: D1Database, state: ObserverState, reasonCo
     incident_id: incidentId,
     fingerprint,
     component: 'operations' as const,
-    severity: reasonCode === 'OBSERVER_NOT_CONFIGURED' ? 'red' as const : 'yellow' as const,
+    severity: 'red',
     reason_code: reasonCode,
     opened_at: openedAt,
   }
@@ -244,9 +280,9 @@ async function openOrUpdateOutage(db: D1Database, state: ObserverState, reasonCo
   ).bind(incidentId, fingerprint, incident.severity, reasonCode, openedAt, now.toISOString()).run()
   if (!incidentWrite.success) throw new Error('D1_OUTAGE_WRITE_FAILED')
   const stateWrite = await db.prepare(
-    `UPDATE monitor_state SET current_outage_id = ?, current_outage_reason = ?, current_outage_opened_at = ?, updated_at = ?
+    `UPDATE monitor_state SET current_outage_id = ?, current_outage_reason = ?, current_outage_opened_at = ?, current_outage_synced = ?, updated_at = ?
      WHERE singleton_id = 1`,
-  ).bind(incidentId, reasonCode, openedAt, now.toISOString()).run()
+  ).bind(incidentId, reasonCode, openedAt, synced, now.toISOString()).run()
   if (!stateWrite.success) throw new Error('D1_STATE_WRITE_FAILED')
   if (changed) {
     const eventWrite = await db.prepare(
@@ -255,6 +291,12 @@ async function openOrUpdateOutage(db: D1Database, state: ObserverState, reasonCo
     if (!eventWrite.success) throw new Error('D1_OUTAGE_EVENT_WRITE_FAILED')
   }
   return { ...incident, synced }
+}
+
+async function readCurrentOutage(db: D1Database, incidentId: string) {
+  return await db.prepare(
+    'SELECT incident_id, reason_code, opened_at FROM monitor_incidents WHERE incident_id = ? AND status = \'open\' LIMIT 1',
+  ).bind(incidentId).first<{ incident_id: string; reason_code: string; opened_at: string }>()
 }
 
 async function resolveOutage(
@@ -284,7 +326,7 @@ async function resolveOutage(
   ).bind(crypto.randomUUID(), incident.incident_id, 'resolved', incident.reason_code, now.toISOString(), 'synced').run()
   if (!eventWrite.success) throw new Error('D1_OUTAGE_EVENT_WRITE_FAILED')
   const stateWrite = await db.prepare(
-    `UPDATE monitor_state SET current_outage_id = NULL, current_outage_reason = NULL, current_outage_opened_at = NULL, current_outage_synced = 0, updated_at = ?
+    `UPDATE monitor_state SET current_outage_id = NULL, current_outage_reason = NULL, current_outage_opened_at = NULL, current_outage_synced = 0, consecutive_supabase_failures = 0, consecutive_supabase_successes = 0, last_supabase_failure_reason = NULL, updated_at = ?
      WHERE singleton_id = 1`,
   ).bind(now.toISOString()).run()
   if (!stateWrite.success) throw new Error('D1_STATE_WRITE_FAILED')
@@ -381,10 +423,23 @@ async function completeTick(db: D1Database, claim: TickClaim, now: Date, outcome
 
 async function readState(db: D1Database): Promise<ObserverState> {
   const state = await db.prepare(
-    'SELECT current_outage_id, current_outage_reason, current_outage_opened_at, current_outage_synced, last_cleanup_at FROM monitor_state WHERE singleton_id = 1',
+    'SELECT current_outage_id, current_outage_reason, current_outage_opened_at, current_outage_synced, consecutive_supabase_failures, consecutive_supabase_successes, last_supabase_failure_reason, last_cleanup_at FROM monitor_state WHERE singleton_id = 1',
   ).first<ObserverState>()
   if (!state) throw new Error('D1_STATE_MISSING')
   return state
+}
+
+async function updateSupabaseAvailability(
+  db: D1Database,
+  failures: number,
+  successes: number,
+  failureReason: string | null,
+  now: string,
+) {
+  const result = await db.prepare(
+    'UPDATE monitor_state SET consecutive_supabase_failures = ?, consecutive_supabase_successes = ?, last_supabase_failure_reason = ?, updated_at = ? WHERE singleton_id = 1',
+  ).bind(failures, successes, failureReason, now).run()
+  if (!result.success) throw new Error('D1_STATE_WRITE_FAILED')
 }
 
 async function markOutageSynced(db: D1Database, incidentId: string, now: string) {

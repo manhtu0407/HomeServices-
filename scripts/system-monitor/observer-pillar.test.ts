@@ -11,10 +11,10 @@ export const PILLAR = {
     'user-approved System Health Monitoring implementation plan',
     'governance/RULES.md #8 (bounded evidence and honest health state)',
   ],
-  target: 'scripts/system-monitor/observer.ts; scripts/system-monitor/migrations/0002_observer_occurrences_and_ticks.sql',
+  target: 'scripts/system-monitor/observer.ts; scripts/system-monitor/migrations/0002_observer_occurrences_and_ticks.sql; scripts/system-monitor/migrations/0003_supabase_availability_streak.sql',
   layer: 'integration',
   siblings: ['P351-system-health-monitor-contract', 'P352-system-health-monitor-sql', 'P353-system-health-monitor-runtime'],
-  mutation: 'remove the D1 tick fence, recurrence index, profile validation, or outage ledger writes and the corresponding local D1 behavior assertions fail',
+  mutation: 'remove the D1 tick fence, recurrence index, profile validation, outage ledger writes, or two-sample availability threshold and the corresponding local D1 behavior assertions fail',
 } as const satisfies PillarManifest
 
 const TEST_NOW = Date.parse('2026-10-11T12:00:00.000Z')
@@ -24,9 +24,17 @@ beforeAll(async () => {
   const migration = inject<string>('systemMonitorD1Migration')
   const current = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'monitor_ticks'")
     .first<{ name: string }>()
-  if (current) return
-  for (const statement of migration.split(';').map((part) => part.trim()).filter(Boolean)) {
-    await env.DB.prepare(statement).run()
+  if (!current) {
+    for (const statement of migration.split(';').map((part) => part.trim()).filter(Boolean)) {
+      await env.DB.prepare(statement).run()
+    }
+  }
+  const stateColumns = await env.DB.prepare('PRAGMA table_info(monitor_state)').all<{ name: string }>()
+  if (!stateColumns.results.some((column) => column.name === 'consecutive_supabase_failures')) {
+    const availabilityMigration = inject<string>('systemMonitorD1AvailabilityMigration')
+    for (const statement of availabilityMigration.split(';').map((part) => part.trim()).filter(Boolean)) {
+      await env.DB.prepare(statement).run()
+    }
   }
 })
 
@@ -34,7 +42,7 @@ beforeEach(async () => {
   await env.DB.prepare('DELETE FROM monitor_ticks').run()
   await env.DB.prepare('DELETE FROM monitor_outage_events').run()
   await env.DB.prepare('DELETE FROM monitor_incidents').run()
-  await env.DB.prepare("UPDATE monitor_state SET current_outage_id = NULL, current_outage_reason = NULL, current_outage_opened_at = NULL, current_outage_synced = 0, last_snapshot_at = NULL, last_cleanup_at = NULL, last_completed_at = NULL, last_error_code = NULL, updated_at = ? WHERE singleton_id = 1")
+  await env.DB.prepare("UPDATE monitor_state SET current_outage_id = NULL, current_outage_reason = NULL, current_outage_opened_at = NULL, current_outage_synced = 0, consecutive_supabase_failures = 0, consecutive_supabase_successes = 0, last_supabase_failure_reason = NULL, last_snapshot_at = NULL, last_cleanup_at = NULL, last_completed_at = NULL, last_error_code = NULL, updated_at = ? WHERE singleton_id = 1")
     .bind(new Date(TEST_NOW).toISOString()).run()
 })
 
@@ -113,24 +121,80 @@ describe('Cloudflare system health observer with local D1', () => {
     ])
   })
 
-  it('records outage and recovery events in D1 and syncs both with one external incident ID', async () => {
+  it('opens after two failed Supabase reads and resolves after two fresh reads', async () => {
     const fixture = createFixture(() => makeSnapshot(TEST_NOW + 60_000, [{
       check_id: 'backend-database-availability', component: 'backend', status: 'green', reason_code: 'DATABASE_READ_SUCCEEDED', incident_id: null,
     }]))
     fixture.failSupabase = true
-    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW), scheduledTime: TEST_NOW })
+    const firstFailure = await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW), scheduledTime: TEST_NOW })
+    expect(firstFailure).toMatchObject({ outageReason: 'SUPABASE_UNAVAILABLE', dispatcherStatus: 'yellow' })
+    expect(await env.DB.prepare('SELECT COUNT(*) AS count FROM monitor_incidents').first<{ count: number }>()).toEqual({ count: 0 })
+    expect(await env.DB.prepare('SELECT consecutive_supabase_failures, consecutive_supabase_successes FROM monitor_state WHERE singleton_id = 1')
+      .first<{ consecutive_supabase_failures: number; consecutive_supabase_successes: number }>())
+      .toEqual({ consecutive_supabase_failures: 1, consecutive_supabase_successes: 0 })
+
+    const secondFailure = await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 60_000), scheduledTime: TEST_NOW + 60_000 })
+    expect(secondFailure).toMatchObject({ outageReason: 'SUPABASE_UNAVAILABLE', dispatcherStatus: 'red' })
     const opened = await env.DB.prepare("SELECT external_incident_id, event_kind, sync_status FROM monitor_outage_events WHERE event_kind = 'opened'")
       .first<{ external_incident_id: string; event_kind: string; sync_status: string }>()
     expect(opened).toMatchObject({ event_kind: 'opened', sync_status: 'pending' })
+    expect(await env.DB.prepare('SELECT severity, status FROM monitor_incidents WHERE incident_id = ?')
+      .bind(opened?.external_incident_id).first<{ severity: string; status: string }>()).toEqual({ severity: 'red', status: 'open' })
 
     fixture.failSupabase = false
-    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 60_000), scheduledTime: TEST_NOW + 60_000 })
+    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 120_000), scheduledTime: TEST_NOW + 120_000 })
+    expect(fixture.externalIncidents.map((item) => item.status)).toEqual(['open'])
+    expect(await env.DB.prepare("SELECT status FROM monitor_incidents WHERE incident_id = ?")
+      .bind(opened?.external_incident_id).first<{ status: string }>()).toEqual({ status: 'open' })
+
+    fixture.failSupabase = true
+    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 180_000), scheduledTime: TEST_NOW + 180_000 })
+    expect(await env.DB.prepare('SELECT consecutive_supabase_failures, consecutive_supabase_successes FROM monitor_state WHERE singleton_id = 1')
+      .first<{ consecutive_supabase_failures: number; consecutive_supabase_successes: number }>())
+      .toEqual({ consecutive_supabase_failures: 1, consecutive_supabase_successes: 0 })
+    expect(await env.DB.prepare("SELECT status FROM monitor_incidents WHERE incident_id = ?")
+      .bind(opened?.external_incident_id).first<{ status: string }>()).toEqual({ status: 'open' })
+    expect(fixture.externalIncidents.map((item) => item.status)).toEqual(['open'])
+    expect(await env.DB.prepare('SELECT current_outage_synced FROM monitor_state WHERE singleton_id = 1')
+      .first<{ current_outage_synced: number }>()).toEqual({ current_outage_synced: 1 })
+
+    fixture.failSupabase = false
+    fixture.snapshot = () => makeSnapshot(TEST_NOW + 240_000, [{
+      check_id: 'backend-database-availability', component: 'backend', status: 'green', reason_code: 'DATABASE_READ_SUCCEEDED', incident_id: null,
+    }])
+    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 240_000), scheduledTime: TEST_NOW + 240_000 })
+    expect(fixture.externalIncidents.map((item) => item.status)).toEqual(['open'])
+    fixture.snapshot = () => makeSnapshot(TEST_NOW + 300_000, [{
+      check_id: 'backend-database-availability', component: 'backend', status: 'green', reason_code: 'DATABASE_READ_SUCCEEDED', incident_id: null,
+    }])
+    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 300_000), scheduledTime: TEST_NOW + 300_000 })
     expect(fixture.externalIncidents.map((item) => item.status)).toEqual(['open', 'resolved'])
     expect(fixture.externalIncidents[0].external_incident_id).toBe(opened?.external_incident_id)
     const events = await env.DB.prepare('SELECT event_kind, sync_status FROM monitor_outage_events ORDER BY recorded_at, event_kind')
       .all<{ event_kind: string; sync_status: string }>()
     expect(events.results.map((event) => event.event_kind)).toEqual(['opened', 'resolved'])
     expect(events.results.every((event) => event.sync_status === 'synced')).toBe(true)
+  })
+
+  it('does not combine Supabase failures separated by a fresh snapshot', async () => {
+    const fixture = createFixture(() => makeSnapshot(TEST_NOW + 60_000, [{
+      check_id: 'backend-database-availability', component: 'backend', status: 'green', reason_code: 'DATABASE_READ_SUCCEEDED', incident_id: null,
+    }]))
+    fixture.failSupabase = true
+    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW), scheduledTime: TEST_NOW })
+
+    fixture.failSupabase = false
+    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 60_000), scheduledTime: TEST_NOW + 60_000 })
+    expect(await env.DB.prepare('SELECT COUNT(*) AS count FROM monitor_incidents').first<{ count: number }>()).toEqual({ count: 0 })
+
+    fixture.failSupabase = true
+    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 120_000), scheduledTime: TEST_NOW + 120_000 })
+    expect(await env.DB.prepare('SELECT consecutive_supabase_failures FROM monitor_state WHERE singleton_id = 1')
+      .first<{ consecutive_supabase_failures: number }>()).toEqual({ consecutive_supabase_failures: 1 })
+    expect(await env.DB.prepare('SELECT COUNT(*) AS count FROM monitor_incidents').first<{ count: number }>()).toEqual({ count: 0 })
+
+    await runSystemHealthObserver(fixture.config, { fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 180_000), scheduledTime: TEST_NOW + 180_000 })
+    expect(await env.DB.prepare('SELECT COUNT(*) AS count FROM monitor_incidents').first<{ count: number }>()).toEqual({ count: 1 })
   })
 
   it.each([179_000, 180_000, 181_000])('expires snapshot at the exact boundary (%i ms)', async (ageMs) => {
