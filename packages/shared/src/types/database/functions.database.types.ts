@@ -2785,7 +2785,6 @@ export type DatabaseFunctions = {
           scope_status: Database["public"]["Enums"]["scope_change_status"]
         }[]
       }
-      disable_system_health_monitor: { Args: never; Returns: boolean }
       detect_workflow_recovery_cases: {
         Args: { p_observed_at?: string }
         Returns: {
@@ -2795,6 +2794,7 @@ export type DatabaseFunctions = {
           resolved_count: number
         }[]
       }
+      disable_system_health_monitor: { Args: never; Returns: boolean }
       distance_km: {
         Args: { lat1: number; lat2: number; lng1: number; lng2: number }
         Returns: number
