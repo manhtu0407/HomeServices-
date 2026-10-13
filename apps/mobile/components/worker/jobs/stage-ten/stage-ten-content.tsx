@@ -359,7 +359,6 @@ const stylesLight = StyleSheet.create({
   },
   root: {
     alignSelf: 'center',
-    backgroundColor: stageTenTokensLight.page,
     maxWidth: stageTenTokensLight.referenceContentWidth * MAX_GEOMETRY_SCALE,
     width: '100%',
   },

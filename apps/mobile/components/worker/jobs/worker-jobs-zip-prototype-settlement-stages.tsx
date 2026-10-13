@@ -1,28 +1,19 @@
 import { WorkerStageElevenRuntime, type WorkerStageElevenRuntimeProps } from './stage-eleven/stage-eleven-runtime'
-import { Image } from 'expo-image'
-import { View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { color } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { useJobMediaPreviewUrls } from '@/lib/job-media-preview'
 import { formatVnd, textByLanguage } from '../ui/format'
 import { WorkerV5BoundaryNote } from '../ui/metrics-surfaces'
-import type { WorkerV5OfferDetailRow } from './offer'
 import { StageNineEmptyStage } from './stage-nine/stage-nine-empty-stage'
+import { StageNineSubmittedStage, type StageNineSubmittedStep } from './stage-nine/stage-nine-submitted-stage'
 import { isStageNineRecordEmpty, readStageNineRecordState } from './stage-nine/stage-nine-model'
 import { stageNineTokens } from './stage-nine/stage-nine-tokens'
 import { StageTenContent } from './stage-ten/stage-ten-content'
 import { buildWorkerStageTenRuntime } from './stage-ten/stage-ten-runtime'
 import {
-  Text,
-  WorkerJobsLegacyPrototypeStageActionButton,
   type WorkerJobsLegacyPrototypeRuntime,
-  workerJobsLegacyPrototypeStageNineWorkart,
 } from './worker-jobs-zip-prototype-shared'
-import { prototypeStyles as prototypeStylesLight } from './worker-jobs-zip-prototype-styles'
-import { WorkerJobsLegacyPrototypeOfferInfoGroup } from './worker-jobs-zip-prototype-early-stages'
-import { useWorkerColor, useWorkerThemedStyles } from '../ui/worker-dark-styles'
 
 export function WorkerJobsLegacyPrototypeStageNineBody({
   actionBusy,
@@ -43,8 +34,6 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
   reduceTransparency: boolean
   runtime: WorkerJobsLegacyPrototypeRuntime
 }) {
-  const prototypeStyles = useWorkerThemedStyles(prototypeStylesLight)
-  const wc = useWorkerColor()
   const insets = useSafeAreaInsets()
   const record = readStageNineRecordState(runtime.state.deal)
   const { awaitingDirectPaymentConfirmation, customerConfirmed, hasSubmittedArtifact, paymentRecorded, sourceCount } = record
@@ -84,23 +73,25 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
     : hasSubmittedArtifact
       ? textByLanguage(language, 'Đang chờ', 'Waiting')
       : textByLanguage(language, 'Chưa có', 'Not ready')
-  const rows: WorkerV5OfferDetailRow[] = [
+  const recordDone = sourceCount > 0
+  const paymentDone = paymentRecorded && !awaitingDirectPaymentConfirmation
+  const steps: StageNineSubmittedStep[] = [
     {
-      icon: 'document',
       title: textByLanguage(language, 'Hồ sơ hoàn tất', 'Completion record'),
       meta: textByLanguage(language, 'Ảnh và ghi chú đã gửi', 'Photos and note submitted'),
+      state: recordDone ? 'done' : 'pending',
       status: sourceCount > 0 ? textByLanguage(language, `${sourceCount} mục`, `${sourceCount} items`) : textByLanguage(language, 'Chưa có', 'None'),
     },
     {
-      icon: 'profile',
       title: textByLanguage(language, 'Khách kiểm tra', 'Customer review'),
       meta: textByLanguage(language, 'Phản hồi từ khách', 'Customer response'),
+      state: customerConfirmed ? 'done' : recordDone ? 'current' : 'pending',
       status: customerConfirmed ? textByLanguage(language, 'Đã xác nhận', 'Confirmed') : textByLanguage(language, 'Đang chờ', 'Waiting'),
     },
     {
-      icon: 'wallet',
       title: textByLanguage(language, 'Thanh toán', 'Payment'),
       meta: textByLanguage(language, 'Theo phương thức đã chọn', 'Selected payment method'),
+      state: paymentDone ? 'done' : customerConfirmed || awaitingDirectPaymentConfirmation ? 'current' : 'pending',
       status: awaitingDirectPaymentConfirmation
         ? textByLanguage(language, 'Cần đối soát', 'Needs reconciliation')
         : paymentRecorded
@@ -109,36 +100,21 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
     },
   ]
 
+  const nextLabel = awaitingDirectPaymentConfirmation
+    ? textByLanguage(language, 'Chờ đối soát', 'Awaiting reconciliation')
+    : paymentRecorded ? textByLanguage(language, 'Mở công việc đã hoàn tất', 'Open completed job')
+      : customerConfirmed ? textByLanguage(language, 'Chờ xác minh thanh toán', 'Awaiting payment verification')
+        : textByLanguage(language, 'Chờ khách xác nhận', 'Waiting for customer')
+
   return (
-    <View style={prototypeStyles.bodyStack} testID="worker-v5-stage-nine-prototype">
-      <View style={[prototypeStyles.stageSubmissionHero, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }]} testID="worker-v5-stage-nine-hero">
-        <View style={prototypeStyles.stageSubmissionCopy}>
-          <Text style={prototypeStyles.stageSubmissionKicker}>{textByLanguage(language, 'Hồ sơ hoàn tất', 'Completion record')}</Text>
-          <Text numberOfLines={2} style={prototypeStyles.stageSubmissionTitle}>{heroTitle}</Text>
-          <Text numberOfLines={2} style={prototypeStyles.stageSubmissionMeta}>{heroMeta}</Text>
-        </View>
-        <View style={prototypeStyles.stageSubmissionStatus}>
-          <Image
-            accessibilityIgnoresInvertColors
-            accessible={false}
-            contentFit="contain"
-            source={workerJobsLegacyPrototypeStageNineWorkart}
-            style={prototypeStyles.stageSubmissionStatusArtwork}
-            testID="worker-v5-stage-nine-status-workart"
-          />
-          <Text style={prototypeStyles.stageSubmissionStatusText}>{statusLabel}</Text>
-        </View>
-      </View>
-
-      <View style={[prototypeStyles.offerInfoCard, reduceTransparency && { backgroundColor: wc('surface', color.mint.white) }]} testID="worker-v5-stage-nine-status-card">
-        <WorkerJobsLegacyPrototypeOfferInfoGroup
-          rows={rows}
-          testID="worker-v5-stage-nine-status-list"
-          title={textByLanguage(language, 'Trạng thái xử lý', 'Processing status')}
-        />
-      </View>
-
-      {awaitingDirectPaymentConfirmation ? (
+    <StageNineSubmittedStage
+      actionLabels={{ next: nextLabel, view: textByLanguage(language, 'Xem hồ sơ', 'View record') }}
+      heroMeta={heroMeta}
+      heroTitle={heroTitle}
+      nextDisabled={!paymentRecorded || actionBusy}
+      note={(
+        <>
+          {awaitingDirectPaymentConfirmation ? (
         <WorkerV5BoundaryNote
           body={textByLanguage(
             language,
@@ -148,30 +124,19 @@ export function WorkerJobsLegacyPrototypeStageNineBody({
           title={textByLanguage(language, 'Chờ nền tảng đối soát', 'Awaiting platform reconciliation')}
         />
       ) : null}
-
-      {updateError}
-
-      <View style={prototypeStyles.stageActionRow}>
-        <WorkerJobsLegacyPrototypeStageActionButton
-          label={textByLanguage(language, 'Xem hồ sơ', 'View record')}
-          onPress={navigateToEvidence}
-          testID="worker-v5-completion-submitted-timeline-action"
-        />
-        <WorkerJobsLegacyPrototypeStageActionButton
-          disabled={!paymentRecorded || actionBusy}
-          label={awaitingDirectPaymentConfirmation
-            ? textByLanguage(language, 'Chờ đối soát', 'Awaiting reconciliation')
-            : paymentRecorded ? textByLanguage(language, 'Mở công việc đã hoàn tất', 'Open completed job')
-              : customerConfirmed ? textByLanguage(language, 'Chờ xác minh thanh toán', 'Awaiting payment verification')
-                : textByLanguage(language, 'Chờ khách xác nhận', 'Waiting for customer')}
-          onPress={navigateNext}
-          primary
-          testID="worker-v5-completion-submitted-next-action"
-        />
-      </View>
-    </View>
+          {updateError}
+        </>
+      )}
+      onNext={navigateNext}
+      onView={navigateToEvidence}
+      sectionTitle={textByLanguage(language, 'Trạng thái xử lý', 'Processing status')}
+      statusLabel={statusLabel}
+      statusTone={customerConfirmed ? 'done' : hasSubmittedArtifact ? 'waiting' : 'idle'}
+      steps={steps}
+    />
   )
 }
+
 export function WorkerJobsLegacyPrototypeStageTenBody({
   language,
   navigateToEarnings,

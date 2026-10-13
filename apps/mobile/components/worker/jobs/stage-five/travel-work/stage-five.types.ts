@@ -4,7 +4,7 @@ import type { StageFiveLanguage } from './stage-five-copy'
 
 export type StageFiveJobStatus = 'worker_candidate_pending' | 'worker_matched' | 'worker_on_way' | 'arrived' | 'inspecting' | 'repairing' | 'scope_change_pending' | 'completed_by_worker' | 'completed' | 'closed' | 'cancelled'
 export type TaskPhase = 'prepare' | 'working' | 'inspect' | 'finish' | 'handover'
-export type ActionId = 'back' | 'call' | 'chat' | 'details' | 'directions' | 'share' | 'guide' | 'recenter' | 'layers' | 'startTravel' | 'arrival' | 'editArrival' | 'progress' | 'pause' | 'photo' | 'note' | 'scope' | 'support' | 'complete'
+export type ActionId = 'back' | 'call' | 'chat' | 'directions' | 'share' | 'recenter' | 'layers' | 'startTravel' | 'arrival' | 'pause' | 'photo' | 'note' | 'scope' | 'support' | 'complete'
 export interface ActionSpec {
   enabled: boolean
   onPress: () => void | Promise<void>
@@ -42,6 +42,8 @@ export interface WorkModel {
   serviceCategory: string | null
   addressLine: string | null
   photo?: ImageSourcePropType
+  /** Service workart shown when the job has no customer photo. */
+  workart?: ImageSourcePropType
   arrivedLabel: string | null
   startedLabel: string | null
   /** Server timestamp. Never initialise production timing with Date.now(). */

@@ -65,7 +65,7 @@ const LAYOUT = {
 } as const
 
 const TYPE = {
-  action: 'footnote',
+  action: 'callout',
   attachmentHint: 'caption2',
   attachmentTitle: 'caption1',
   eyebrow: 'caption2',
@@ -108,45 +108,6 @@ function StageSixText(props: TextProps) {
 
 function useSvgId(prefix: string) {
   return `${prefix}-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
-}
-
-// SVG objectBoundingBox gradients skew with the box aspect ratio; these endpoints reproduce CSS `linear-gradient(<angle>)` exactly.
-function cssGradientLine(angle: number, width: number, height: number) {
-  const radians = (angle * Math.PI) / 180
-  const dx = Math.sin(radians)
-  const dy = -Math.cos(radians)
-  const half = (Math.abs(width * dx) + Math.abs(height * dy)) / 2
-  return { x1: width / 2 - dx * half, x2: width / 2 + dx * half, y1: height / 2 - dy * half, y2: height / 2 + dy * half }
-}
-
-const SECONDARY_STOPS = [['0%', CLight.secondaryStart], ['100%', CLight.secondaryEnd]] as const
-
-function StageSixButtonBackground({ radius }: { radius: number }) {
-  const stageSixTokens = useWorkerThemedTokens(stageSixTokensLight)
-  const fillId = useSvgId('stage-six-button-fill')
-  const [size, setSize] = useState<{ height: number; width: number } | null>(null)
-  const line = size ? cssGradientLine(stageSixTokens.gradients.secondaryAngle, size.width, size.height) : null
-
-  const handleLayout = (event: LayoutChangeEvent) => {
-    const { height, width } = event.nativeEvent.layout
-    if (width <= 0 || height <= 0) return
-    setSize((previous) => (previous && Math.abs(previous.width - width) < 0.5 && Math.abs(previous.height - height) < 0.5 ? previous : { height, width }))
-  }
-
-  return (
-    <View onLayout={handleLayout} pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {size && line ? (
-        <Svg height={size.height} width={size.width}>
-          <Defs>
-            <LinearGradient gradientUnits="userSpaceOnUse" id={fillId} x1={line.x1} x2={line.x2} y1={line.y1} y2={line.y2}>
-              {SECONDARY_STOPS.map(([offset, stopColor]) => <Stop key={offset} offset={offset} stopColor={stopColor} />)}
-            </LinearGradient>
-          </Defs>
-          <Rect fill={`url(#${fillId})`} height={size.height} rx={radius} width={size.width} x={0} y={0} />
-        </Svg>
-      ) : null}
-    </View>
-  )
 }
 
 function StageSixConnectorFill() {
@@ -208,6 +169,7 @@ export function StageSixTimeline({
   const attachments = nonNegativeCount(attachmentCount)
   const editLocked = busy || !canEdit
   const primaryLocked = busy || primaryDisabled
+  const primaryMuted = primaryDisabled && !busy
   const pressedStyle = reduceMotion ? styles.pressedStatic : styles.pressed
   const rowMinHeight = compact ? stageTapSize(L.row.minHeight, scale) : s(L.row.minHeight)
   const buttonMinHeight = stageTapSize(L.button.height, scale)
@@ -446,7 +408,6 @@ export function StageSixTimeline({
             ]}
             testID="worker-v5-stage-six-edit-action"
           >
-            <StageSixButtonBackground radius={s(L.button.radius)} />
             <StageSixIcon color={C.secondaryInk} name="edit" size={s(L.glyph.edit)} />
             <StageSixText numberOfLines={1} style={[styles.actionText, styles.secondaryText, type(TYPE.action)]}>{textByLanguage(language, 'Chỉnh sửa', 'Edit')}</StageSixText>
           </Pressable>
@@ -461,20 +422,14 @@ export function StageSixTimeline({
               { borderRadius: s(L.button.radius), gap: s(L.button.gap), minHeight: buttonMinHeight, paddingHorizontal: s(6) },
               styles.primary,
               compact ? styles.flexPrimary : { width: s(LAYOUT.wide.button.primaryWidth) },
-              primaryLocked && styles.disabled,
+              primaryMuted && styles.primaryMuted,
               pressed && pressedStyle,
             ]}
             testID="worker-v5-stage-six-primary-action"
           >
-            <PrimaryCtaFill radius={s(L.button.radius)} />
-            {busy ? (
-              <ActivityIndicator color={C.white} size="small" testID="worker-v5-stage-six-primary-busy" />
-            ) : (
-              <View style={[styles.checkDisc, { borderRadius: s(L.glyph.checkDisc / 2), height: s(L.glyph.checkDisc), width: s(L.glyph.checkDisc) }]}>
-                <StageSixIcon color={C.checkGlyph} name="check" size={s(L.glyph.check)} strokeWidth={2.3} />
-              </View>
-            )}
-            <StageSixText numberOfLines={2} style={[styles.actionText, styles.primaryText, type(TYPE.action)]}>{primaryLabel}</StageSixText>
+            {primaryMuted ? null : <PrimaryCtaFill radius={s(L.button.radius)} />}
+            {busy ? <ActivityIndicator color={C.white} size="small" testID="worker-v5-stage-six-primary-busy" /> : null}
+            <StageSixText numberOfLines={2} style={[styles.actionText, styles.primaryText, primaryMuted && styles.mutedText, type(TYPE.action)]}>{primaryLabel}</StageSixText>
           </Pressable>
         </View>
       </View>
@@ -529,14 +484,15 @@ const stylesLight = StyleSheet.create({
   buttonPair: { alignItems: 'center', flexDirection: 'row' },
   buttonPairCompact: { width: '100%' },
   action: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
-  secondary: { backgroundColor: CLight.secondaryBase },
+  secondary: { backgroundColor: 'transparent', borderColor: CLight.cardBorder, borderWidth: 1 },
   primary: { backgroundColor: CLight.primaryBase, ...primaryCtaFrame },
   flexSecondary: { flex: 1, minWidth: 0 },
   flexPrimary: { flex: 1.3, minWidth: 0 },
   actionText: { color: CLight.white, fontWeight: '600' },
   secondaryText: { color: CLight.secondaryInk, flexShrink: 1 },
   primaryText: { flexShrink: 1, textAlign: 'center' },
-  checkDisc: { alignItems: 'center', backgroundColor: CLight.checkDisc, boxShadow: stageSixTokensLight.shadows.checkDisc, justifyContent: 'center' },
+  primaryMuted: { backgroundColor: 'transparent', borderColor: CLight.cardBorder, borderWidth: 1, boxShadow: 'none' },
+  mutedText: { color: CLight.muted },
   pressed: { opacity: 0.88, transform: [{ scale: 0.982 }] },
   pressedStatic: { opacity: 0.88 },
   disabled: { opacity: 0.48 },

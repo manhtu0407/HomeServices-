@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native'
-import { Dimensions } from 'react-native'
+import { Dimensions, StyleSheet } from 'react-native'
 
 import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
 import { waitingCopy } from '../waiting-copy'
@@ -146,7 +146,7 @@ describe('Production Worker waiting stages', () => {
     }, 'the host screen owns leaving this surface, not a control drawn inside it')
   })
 
-  it('offsets the shared body composition by the approved design amount', () => {
+  it('starts the shared body close to the top of the page on both waiting stages', () => {
     const dimensionsSpy = jest.spyOn(Dimensions, 'get').mockReturnValue({ fontScale: 1, height: 500, scale: 1, width: 390 })
     const model = buildWaitingModel('scope-approval', {
       jobId: 'job-1',
@@ -158,13 +158,12 @@ describe('Production Worker waiting stages', () => {
 
     const scale = 390 / waitingTokens.width
     withPillarContext(PILLAR, () => {
-      expect(screen.getByTestId('waiting-body-scope-approval')).toHaveStyle({ paddingTop: waitingTokens.layout.bodyOffset * scale })
-      expect(screen.getByTestId('waiting-scope-approval')).toHaveStyle({ minHeight: (waitingTokens.contentHeight + waitingTokens.layout.bodyOffset) * scale })
-    }, 'both waiting stages share the same centered body offset, on a device short enough that the design floor still wins')
+      expect(screen.getByTestId('waiting-body-scope-approval')).toHaveStyle({ paddingTop: 20 * scale })
+    }, 'both waiting stages share one compact top offset instead of a tall reserved gap')
     dimensionsSpy.mockRestore()
   })
 
-  it('stretches its own background to the bottom of a tall device instead of stopping short', () => {
+  it('paints no backdrop of its own, so the page background shows through on a tall device', () => {
     const dimensionsSpy = jest.spyOn(Dimensions, 'get').mockReturnValue({ fontScale: 1, height: 1200, scale: 1, width: 390 })
     const model = buildWaitingModel('customer-confirmation', {
       jobId: 'job-1',
@@ -174,8 +173,10 @@ describe('Production Worker waiting stages', () => {
     render(<WaitingContent model={model} language="vi" onOpenDetails={jest.fn()} reduceMotion />)
 
     withPillarContext(PILLAR, () => {
-      expect(screen.getByTestId('waiting-customer-confirmation')).toHaveStyle({ minHeight: Math.round(1200 * 0.92) })
-    }, 'a tall viewport must not leave a mismatched blank strip below the approved artwork')
+      const root = StyleSheet.flatten(screen.getByTestId('waiting-customer-confirmation').props.style)
+      expect(root).not.toHaveProperty('backgroundColor')
+      expect(root.minHeight).toBe(0)
+    }, 'the screen must not paint a block that differs from the page behind it')
     dimensionsSpy.mockRestore()
   })
 

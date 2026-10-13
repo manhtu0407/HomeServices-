@@ -272,7 +272,6 @@ export function workerJobToSnapshot(job: WorkerJobListResponse['jobs'][number]):
           estimatedEarningLabel: formatNullableSinglePrice(job.estimated_earning),
         }
       : null,
-    scopeChange: null,
     finalPrice: job.final_price,
     paymentRailAvailable: false,
     paymentRailProvider: null,

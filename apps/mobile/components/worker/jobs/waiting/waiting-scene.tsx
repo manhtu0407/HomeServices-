@@ -1,7 +1,7 @@
 import React from 'react'
 import { View } from 'react-native'
 import { PrimaryCtaFill } from '@/components/ui/primary-cta-fill'
-import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg'
 import { useWorkerColor } from '../../ui/worker-dark-styles'
 
 export function WaitingClockIcon({ size = 24, color = '#073448' }: { size?: number; color?: string }) {
@@ -18,7 +18,6 @@ export function WaitingAtmosphere({ id }: { id: string }) {
         <LinearGradient id={`${id}-bg`} x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={tc('surface', '#FCFFFE')}/><Stop offset="0.8" stopColor={tc('surface', '#F4FFFC')}/><Stop offset="1" stopColor={tc('surface', '#FBFFFE')}/></LinearGradient>
         <RadialGradient id={`${id}-haze`}><Stop offset="0" stopColor="#86E3D1" stopOpacity="0.25"/><Stop offset="1" stopColor="#A4F0DB" stopOpacity="0"/></RadialGradient>
       </Defs>
-      <Rect width={560} height={890} fill={`url(#${id}-bg)`}/>
       <Circle cx={475} cy={132} r={49} fill={`url(#${id}-haze)`}/><Circle cx={72} cy={390} r={53} fill={`url(#${id}-haze)`}/><Circle cx={190} cy={710} r={100} fill={`url(#${id}-haze)`}/>
     </Svg>
   </View>

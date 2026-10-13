@@ -47,15 +47,11 @@ function makeActions(calls: string[]): Actions {
   return {
     back: action('back'),
     chat: action('chat'),
-    details: action('details'),
-    guide: action('guide'),
-    progress: action('progress'),
     pause: action('pause'),
     photo: action('photo'),
     note: action('note'),
     scope: action('scope'),
     support: action('support'),
-    editArrival: action('editArrival'),
     complete: action('complete'),
     call: { enabled: false, onPress: () => undefined },
   }
@@ -164,7 +160,8 @@ describe('Worker Production Stage 5', () => {
 
       expect(screen.getByText('Chưa có công việc')).toBeOnTheScreen()
       expect(screen.getByText('Thông tin địa chỉ được bảo vệ')).toBeOnTheScreen()
-      expect(screen.getByText('Bắt đầu lúc —')).toBeOnTheScreen()
+      expect(screen.getByText('Bắt đầu lúc')).toBeOnTheScreen()
+      expect(screen.getAllByText('—')).toHaveLength(2)
       expect(screen.getByTestId('stage5-primary')).toBeDisabled()
     }, 'unknown backend state must remain an explicit empty state')
   })

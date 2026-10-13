@@ -67,11 +67,15 @@ export function localWorkflowReducer(
         lastError: action.error,
       }
     case 'hydrate_remote_job': {
-      const deal = createDealFromRemoteJob(action.job)
+      const hydrated = createDealFromRemoteJob(action.job)
       const workerGate = action.workerGate ?? 'remote_backend'
-      if (!deal || !isLocalWorkerGate(workerGate)) {
+      if (!hydrated || !isLocalWorkerGate(workerGate)) {
         return withError(state, 'Dữ liệu đồng bộ từ backend không hợp lệ')
       }
+      const keepsHeldScope = action.job.scopeChange === undefined
+        && hydrated.backendStatus === 'scope_change_pending'
+        && state.deal?.id === hydrated.id
+      const deal = keepsHeldScope ? { ...hydrated, scopeChange: state.deal?.scopeChange ?? null } : hydrated
       return {
         deal,
         workerGate,
@@ -481,6 +485,11 @@ function createDealFromRemoteJob(job: LocalRemoteJobSnapshot): LocalDeal | null 
     scheduledAt: job.scheduledAt ?? null,
     createdAt: job.createdAt ?? null,
     matchedAt: job.matchedAt ?? null,
+    arrivedAt: job.arrivedAt ?? null,
+    workStartedAt: job.workStartedAt ?? null,
+    workPausedAt: job.workPausedAt ?? null,
+    workPausedMs: job.workPausedMs ?? 0,
+    workerWorkNote: job.workerWorkNote ?? null,
     completedAt: job.completedAt ?? null,
     confirmedAt: job.confirmedAt ?? null,
     paidAt: job.paidAt ?? null,
