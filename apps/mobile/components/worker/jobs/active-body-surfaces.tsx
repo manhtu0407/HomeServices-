@@ -1,5 +1,5 @@
 import { memo, type ComponentType } from 'react'
-import { View, type StyleProp, type ViewStyle } from 'react-native'
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import type { LocalDeal } from '@nestscout/shared'
 
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
@@ -18,6 +18,8 @@ import { WorkerV5PrimaryButtonFill } from '../ui/primitives-surfaces'
 import { useWorkerV5RoutePreview, type WorkerV5RoutePreview, type WorkerV5RoutePreviewState } from './use-worker-route-preview'
 import { styles as stylesLight } from './active-body-styles'
 import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
+import { getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
+import { typography } from '@/design/theme'
 
 type WorkerV5CaseAuraComponent = ComponentType<{
   scope: string
@@ -43,6 +45,29 @@ type WorkerV5RouteMapComponent = ComponentType<{
   reduceTransparency: boolean
   routePreview: WorkerV5RoutePreviewState
 }>
+
+// While the worker is on the way the customer follows the trip. The worker is told so, and told when the
+// phone gives no position, so nobody assumes the customer can see a trip that is not being shared.
+export function TripSharingNotice({ deal, language, locationStatus }: {
+  deal: LocalDeal | null
+  language: AppLanguage
+  locationStatus: WorkerV5RoutePreviewState['locationStatus']
+}) {
+  const tokens = getWorkerThemeTokens(useWorkerThemeMode())
+  if (deal?.status !== 'worker_on_way' || locationStatus === 'loading') return null
+  const sharing = locationStatus === 'ready'
+  return (
+    <Text style={[noticeStyles.text, { color: tokens.muted }]} testID="worker-v5-trip-sharing-notice">
+      {sharing
+        ? textByLanguage(language, 'Khách đang theo dõi vị trí của bạn trên đường tới. Vị trí được xoá khi bạn tới nơi.', 'The customer follows your position on the way. It is deleted when you arrive.')
+        : textByLanguage(language, 'Chưa có vị trí của bạn nên khách chưa theo dõi được hành trình.', 'Your position is unavailable, so the customer cannot follow the trip yet.')}
+    </Text>
+  )
+}
+
+const noticeStyles = StyleSheet.create({
+  text: { ...typography.footnote },
+})
 
 export function WorkerV5RouteEtaBody({
   actionBusy,
@@ -93,6 +118,7 @@ export function WorkerV5RouteEtaBody({
   return (
     <View style={styles.sectionStack}>
       <RouteMapStage deal={deal} language={language} reduceTransparency={reduceTransparency} routePreview={routePreview} />
+      <TripSharingNotice deal={deal} language={language} locationStatus={routePreview.locationStatus} />
       <EtaSummaryCard deal={deal} language={language} reduceTransparency={reduceTransparency} route={routePreview.route} />
       <WorkerV5InfoGrid
         auraScope="ActiveRoute"

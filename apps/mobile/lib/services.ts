@@ -18,7 +18,7 @@ import {
   decideKaelIntakeConfirmation,
   type MobileKaelScheduleWindowInput,
 } from './kael-chat-client'
-import type { AcceptBroadcastResponse, AvailabilityToggleResponse, BroadcastListResponse, ConfirmationOperationResponse, CustomerScopeDecisionResponse, DevicePushTokenInput, DevicePushTokenResponse, DeclineBroadcastResponse, EarningsResponse, ServiceCatalogResponse, CreateJobResponse, CustomerActiveJobResponse, CustomerAvatarResponse, CustomerAvatarUploadResponse, CustomerServiceHistoryResponse, PendingDecisionsResponse, ThreadsResponse, KaelMemoryResponse, JobDetailResponse, JobMediaAttachInput, JobMediaRevokeRequest, JobMediaRevokeResult, JobMediaUploadRequest, JobMediaUploadIntentResponse, ApartmentAccessAuthorizeResponse, JobMediaAttachResponse, JobMessageListResponse, JobMessageSendResponse, ConfirmKaelChatResponse, CustomerCancellationResponse, CustomerKaelConversationArchiveResponse, CustomerKaelConversationListResponse, CustomerKaelConversationResponse, CustomerKaelFeedbackResponse, CustomerRefundAccountResponse, CustomerRefundAccountSaveInput, CustomerAddressSaveInput, CustomerProfileInsightsResponse, CustomerFavoriteWorkerResponse, DisputeAdminDecisionResponse, DisputeCounterStatementResponse, DisputeOpenResponse, KaelAssistantResponse, KaelChatResponse, KaelChatMediaUploadResponse, KaelMemorySelfViewResponse, KaelChatProgressResponse, KaelLearningCandidateApproveResponse, KaelLearningCandidateListResponse, KaelLearningCandidateRejectResponse, KaelPublicCharterPayload, MatchingDeliveryResponse, MatchingHeartbeatResponse, MatchingPushDeliveryAckInput, MatchingPushDeliveryAckResponse, NotificationListResponse, NotificationReadResponse, PaymentIntentResponse, ManualBankPaymentClaimInput, ManualBankPaymentClaimResponse, PlacesAutocompleteResponse, PlacesResolveResponse, FavoriteWorkersForMatchingResponse, StatusUpdateResponse, ConfirmCompletionResponse, ReviewResponse, WorkerJobListResponse, WorkerApplicationResponse, WorkerReadinessResponse, WorkerBroadcastProposalInput, WorkerBroadcastProposalResponse, WorkerPerformanceInsightsResponse, WorkerPayoutMethodResponse, WorkerPayoutMethodSaveInput, WorkerWithdrawalRequestCreateInput, WorkerWithdrawalRequestCreateResponse, WorkerWithdrawalRequestListResponse, WorkerProfileResponse, WorkerAvatarUploadResponse, WorkerAvatarUpdateResponse, WorkerActivityMinuteResponse, WorkerRoutePreviewResponse, WorkerRegisterResponse, WorkerCancellationRequestInput, WorkerCancellationResponse, WorkerKaelChatListResponse, WorkerKaelChatArchiveResponse, WorkerKaelChatResponse, WorkerKaelFeedbackResponse, WorkerKaelTrainingConsentResponse, WorkerKaelClarifyResponse, JobIncidentResponse, JobIncidentScopePricePreviewResponse, JobIncidentScopeProposalResponse, WorkerScopeChangeResponse, WorkerCandidateDecisionResponse, WorkerCandidateResponse } from './api-types'
+import type { AcceptBroadcastResponse, AvailabilityToggleResponse, BroadcastListResponse, ConfirmationOperationResponse, CustomerScopeDecisionResponse, DevicePushTokenInput, DevicePushTokenResponse, DeclineBroadcastResponse, EarningsResponse, ServiceCatalogResponse, CreateJobResponse, CustomerActiveJobResponse, CustomerAvatarResponse, CustomerAvatarUploadResponse, CustomerServiceHistoryResponse, PendingDecisionsResponse, ThreadsResponse, KaelMemoryResponse, JobDetailResponse, JobMediaAttachInput, JobMediaRevokeRequest, JobMediaRevokeResult, JobMediaUploadRequest, JobMediaUploadIntentResponse, ApartmentAccessAuthorizeResponse, JobMediaAttachResponse, JobMessageListResponse, JobMessageSendResponse, ConfirmKaelChatResponse, CustomerCancellationResponse, CustomerKaelConversationArchiveResponse, CustomerKaelConversationListResponse, CustomerKaelConversationResponse, CustomerKaelFeedbackResponse, CustomerRefundAccountResponse, CustomerRefundAccountSaveInput, CustomerAddressSaveInput, CustomerProfileInsightsResponse, CustomerFavoriteWorkerResponse, DisputeAdminDecisionResponse, DisputeCounterStatementResponse, DisputeOpenResponse, KaelAssistantResponse, KaelChatResponse, KaelChatMediaUploadResponse, KaelMemorySelfViewResponse, KaelChatProgressResponse, KaelLearningCandidateApproveResponse, KaelLearningCandidateListResponse, KaelLearningCandidateRejectResponse, KaelPublicCharterPayload, MatchingDeliveryResponse, MatchingHeartbeatResponse, MatchingPushDeliveryAckInput, MatchingPushDeliveryAckResponse, NotificationListResponse, NotificationReadResponse, PaymentIntentResponse, ManualBankPaymentClaimInput, ManualBankPaymentClaimResponse, PlacesAutocompleteResponse, PlacesResolveResponse, FavoriteWorkersForMatchingResponse, StatusUpdateResponse, ConfirmCompletionResponse, CompletionNudgeResponse, ReviewResponse, WorkerJobListResponse, WorkerApplicationResponse, WorkerReadinessResponse, WorkerBroadcastProposalInput, WorkerBroadcastProposalResponse, WorkerPerformanceInsightsResponse, WorkerPayoutMethodResponse, WorkerPayoutMethodSaveInput, WorkerWithdrawalRequestCreateInput, WorkerWithdrawalRequestCreateResponse, WorkerWithdrawalRequestListResponse, WorkerProfileResponse, WorkerAvatarUploadResponse, WorkerAvatarUpdateResponse, WorkerActivityMinuteResponse, WorkerRoutePreviewResponse, WorkerRegisterResponse, WorkerCancellationRequestInput, WorkerCancellationResponse, WorkerKaelChatListResponse, WorkerKaelChatArchiveResponse, WorkerKaelChatResponse, WorkerKaelFeedbackResponse, WorkerKaelTrainingConsentResponse, WorkerKaelClarifyResponse, JobIncidentResponse, JobIncidentScopePricePreviewResponse, JobIncidentScopeProposalResponse, WorkerScopeChangeResponse, WorkerCandidateDecisionResponse, WorkerCandidateResponse } from './api-types'
 import type { AvailabilityToggleInput, CustomerCancellationRequestInput, CustomerKaelConversationCreateInput, CustomerKaelConversationMode, CustomerKaelConversationPinInput, CustomerKaelConversationRenameInput, CustomerKaelConversationTurnInput, CustomerKaelFeedbackInput, CustomerScopeDecisionInput, DisputeAdminDecisionInput, DisputeCounterStatementInput, DisputeOpenRequestInput, DevicePushTokenUnregisterInput, DevicePushTokenUnregisterResponse, JobCreateInput, JobIncidentScopePricePreviewInput, JobIncidentScopeProposalInput, JobStatus, CustomerKaelMemoryPreferenceUpdateInput, CustomerAvatarUploadInput, CustomerAvatarUpdateInput, KaelAssistantInput, KaelWorkerClarifyInput, KaelChatCreateInput, KaelChatConfirmInput, KaelChatEvidenceInput, KaelChatTurnInput, KaelPerformanceMode, PlacesAutocompleteInput, ReviewInput, WorkerApplicationSubmitInput, WorkerRegisterInput, WorkerRegistrationDraftInput, WorkerServiceAreaUpdateInput, WorkerServicePreferencesUpdateInput, WorkerAvatarUploadInput, WorkerAvatarUpdateInput, WorkerKaelChatCreateInput, WorkerKaelChatMode, WorkerKaelChatPinInput, WorkerKaelChatRenameInput, WorkerKaelFeedbackInput, WorkerKaelTrainingConsentInput, WorkerKaelChatTurnInput, WorkerKaelMemoryPreferenceUpdateInput, WorkerScopeChangeInput } from '@nestscout/shared'
 export { adminControlService } from './services/admin-control-service'
 
@@ -240,6 +240,10 @@ export const jobService = {
 
   confirmCompletion(jobId: string) {
     return api.post<ConfirmCompletionResponse>(`/jobs/${encodeURIComponent(jobId)}/confirm-completion`)
+  },
+
+  nudgeWorkerCompletion(jobId: string) {
+    return api.post<CompletionNudgeResponse>(`/jobs/${encodeURIComponent(jobId)}/nudge-completion`)
   },
 
   createPaymentOrder(jobId: string) {
@@ -676,14 +680,16 @@ export const workerService = {
   },
 }
 
+const workerRouteUrl = (jobId: string, leaf: 'route-preview' | 'travel-position', origin: { latitude: number; longitude: number }) =>
+  `/workers/me/jobs/${encodeURIComponent(jobId)}/${leaf}?origin_lat=${origin.latitude.toFixed(6)}&origin_lng=${origin.longitude.toFixed(6)}`
+
 export const workerRouteService = {
-  getPreview(jobId: string, origin: { latitude: number; longitude: number }) {
-    const query = new URLSearchParams({
-      origin_lat: origin.latitude.toFixed(6),
-      origin_lng: origin.longitude.toFixed(6),
-    })
-    return api.get<WorkerRoutePreviewResponse>(`/workers/me/jobs/${encodeURIComponent(jobId)}/route-preview?${query.toString()}`)
-  },
+  getPreview: (jobId: string, origin: { latitude: number; longitude: number }) =>
+    api.get<WorkerRoutePreviewResponse>(workerRouteUrl(jobId, 'route-preview', origin)),
+
+  // On the way, the same lookup also shares the position with the customer: one computation, one shape.
+  reportTravelPosition: (jobId: string, origin: { latitude: number; longitude: number }) =>
+    api.post<WorkerRoutePreviewResponse>(workerRouteUrl(jobId, 'travel-position', origin)),
 
   async getMapImage(uri: string, headers: Record<string, string>) {
     if (!isTrustedWorkerRouteMapUri(uri)) {

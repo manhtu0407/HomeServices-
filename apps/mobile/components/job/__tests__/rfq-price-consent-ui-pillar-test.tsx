@@ -26,7 +26,7 @@ it.each(['light','dark'] as const)('shows exact human quote and explicit Custome
   const value = state()
   const view = render(<RfqPricePanelView actorRole="customer" language="vi" tokens={getCustomerThemeTokens(mode)} state={value} />)
   expect(view.getByText(proposal.scope_summary)).toBeTruthy()
-  expect(view.getByTestId('rfq-exact-total').props.children.join('')).toBe('220.000 VND')
+  expect([view.getByTestId('rfq-exact-total').props.children].flat().join('')).toBe('220.000đ')
   fireEvent.press(view.getByTestId('rfq-price-approve'))
   expect(value.decide).toHaveBeenCalledWith(true)
   expect(view.queryByTestId('rfq-price-send')).toBeNull()

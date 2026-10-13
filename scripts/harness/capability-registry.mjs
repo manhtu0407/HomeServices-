@@ -230,7 +230,7 @@ function rolesForUndeclared(kind) {
 function riskFor(kind, methods, roles) {
   if (kind.startsWith('admin.') || (roles.length === 1 && roles[0] === 'admin')) return 'administrative'
   if (confirmationFor(kind) !== 'none' || /paymentIntent|cashPaymentConfirm|stagingPaymentConfirm/iu.test(kind)) return 'money'
-  if (/deletion|avatar|media|memory|candidate|accessAuthorize|cancellation|serviceArea|servicePreferences|routeMap|routePreview|voice|refund|commission|dispute|review/iu.test(kind)) return 'sensitive'
+  if (/deletion|avatar|media|memory|candidate|accessAuthorize|cancellation|serviceArea|servicePreferences|routeMap|routePreview|travelPosition|voice|refund|commission|dispute|review/iu.test(kind)) return 'sensitive'
   if (methods.length && methods.every((method) => method === 'GET')) return 'read'
   return 'write'
 }

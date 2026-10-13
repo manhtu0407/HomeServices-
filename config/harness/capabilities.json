@@ -3,7 +3,7 @@
   "source": {
     "routeRoot": "supabase/functions/mobile-api/_shared/http/routes",
     "fileCount": 23,
-    "sha256": "292e0112f9496212ae6fa6c9687b1d4d27e0d26985c079bcde0758a82c9678b8"
+    "sha256": "9b780dde61cab2833efa8d2399324c7bafeee43f3508aa04fb5bd9693f5d0ebd"
   },
   "entries": [
     {
@@ -3586,6 +3586,29 @@
       ]
     },
     {
+      "kind": "jobs.nudgeCompletion",
+      "capability": "mobile.route.jobs.nudgeCompletion",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "customer"
+      ],
+      "risk": "write",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "job",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 120000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/job.ts"
+      ]
+    },
+    {
       "kind": "jobs.openDispute",
       "capability": "mobile.route.jobs.openDispute",
       "public": false,
@@ -6152,6 +6175,29 @@
       "envelopeTtlMs": 60000,
       "sources": [
         "supabase/functions/mobile-api/_shared/http/routes/worker.ts"
+      ]
+    },
+    {
+      "kind": "workers.travelPosition",
+      "capability": "mobile.route.workers.travelPosition",
+      "public": false,
+      "methods": [
+        "POST"
+      ],
+      "roles": [
+        "admin",
+        "worker"
+      ],
+      "risk": "sensitive",
+      "operationClass": "idempotent_write",
+      "sideEffectClass": "idempotent-write",
+      "privileged": true,
+      "resourceType": "system",
+      "requiresResourceCheck": true,
+      "confirmationGate": "none",
+      "envelopeTtlMs": 60000,
+      "sources": [
+        "supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts"
       ]
     },
     {

@@ -5,6 +5,7 @@
 import { asJobStatus, asNumber, asServiceType, asString, asStringArray, nullableComplexity, nullableNumber, nullableRecord, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { JOB_DETAIL_SELECT, parseKaelProgressSnapshot } from "../../platform/job-state.ts";
+import { safeCandidateBirthYear, safeCandidateGender } from "../matching/candidate-profile.ts";
 import { getJobBroadcastState } from "../matching/broadcasts.ts";
 import {
   getMatchingState,
@@ -28,6 +29,8 @@ import { listCustomerServiceHistory } from "./customer-history.ts";
 import { getCurrentJobIncidentReview } from "./incident.ts";
 import { estimateWorkerNet, frozenWorkerCommissionTier } from "../payment/commission.ts";
 import { projectWorkerJobBrief } from "../worker/job-brief.ts";
+import { readCompletionNudgeState } from "./completion-nudge.ts";
+import { readJobWorkerTravel } from "../worker/travel-position.ts";
 import {
   resolveSyntheticActorScope,
   scopeQueryToSyntheticActor,
@@ -68,7 +71,7 @@ export async function getJob(
   const hasPaymentReceipt = job.status === "payment_pending" ||
     paymentProvider === "platform_bank_manual" || paymentProvider === "direct_worker";
   const incidentReviewVisible = job.status === "inspecting" || job.status === "repairing";
-  const [initialBroadcastState, currentJobIncident, currentScopeChange, worker, paymentReceipt] = await Promise.all([
+  const [initialBroadcastState, currentJobIncident, currentScopeChange, worker, paymentReceipt, completionNudge, workerTravel] = await Promise.all([
     job.status === "broadcasting" ? getJobBroadcastState(client, jobId) : null,
     incidentReviewVisible ? getCurrentJobIncidentReview(client, jobId) : null,
     job.status === "scope_change_pending" ? getCurrentScopeChange(client, jobId) : null,
@@ -80,6 +83,12 @@ export async function getJob(
         ctx.role,
         ctx.role === "customer" ? ctx.user.id : null,
       )
+      : null,
+    job.status === "repairing" && (ctx.role === "customer" || ctx.role === "worker")
+      ? readCompletionNudgeState(privilegedClient, jobId)
+      : null,
+    job.status === "worker_on_way" && ctx.role === "customer"
+      ? readJobWorkerTravel(privilegedClient, jobId, ctx.user.id)
       : null,
   ]);
   let broadcastState = initialBroadcastState;
@@ -198,6 +207,8 @@ export async function getJob(
       reviewed_at: nullableString(job.reviewed_at),
     },
     worker,
+    completion_nudge: completionNudge,
+    worker_travel: workerTravel,
     broadcast_state: broadcastState,
     matching_state: matchingState,
     current_job_incident: currentJobIncident,
@@ -239,7 +250,7 @@ async function loadJobWorkerSummary(
       client.from("profiles").select("full_name, avatar_url").eq("id", workerId).maybeSingle(),
     ),
     dbQuery<Record<string, unknown>>(
-      client.from("worker_profiles").select("legal_name, rating, total_jobs").eq("id", workerId).maybeSingle(),
+      client.from("worker_profiles").select("legal_name, rating, total_jobs, years_experience, date_of_birth, gender").eq("id", workerId).maybeSingle(),
     ),
   ]);
   if (profile.error || worker.error || !profile.data || !worker.data) {
@@ -251,5 +262,8 @@ async function loadJobWorkerSummary(
     id: workerId,
     rating: Math.max(0, Math.min(5, asNumber(worker.data.rating))),
     total_jobs: Math.max(0, Math.trunc(asNumber(worker.data.total_jobs))),
+    birth_year: safeCandidateBirthYear(worker.data.date_of_birth),
+    gender: safeCandidateGender(worker.data.gender),
+    years_experience: Math.max(0, Math.trunc(asNumber(worker.data.years_experience))),
   };
 }

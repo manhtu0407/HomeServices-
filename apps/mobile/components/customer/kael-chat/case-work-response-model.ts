@@ -54,7 +54,7 @@ export function buildIntakeConfirmationResponseModel(
         noteTitle: 'Kael đã đối chiếu thông tin',
         phase: 'intake_started',
         status: 'Chờ bạn xác nhận',
-        title: 'Xác nhận thông tin công việc',
+        title: 'Xác nhận thông tin',
       }
     : {
         actionKind: 'none',
@@ -62,9 +62,11 @@ export function buildIntakeConfirmationResponseModel(
         noteTitle: 'Kael checked the information',
         phase: 'intake_started',
         status: 'Awaiting confirmation',
-        title: 'Confirm work details',
+        title: 'Confirm details',
       }
 }
+
+const MAX_HEADER_TITLE_LENGTH = 26
 
 const ACTION_BY_PHASE: Readonly<Partial<Record<WorkflowPhase, CaseWorkResponseActionKind>>> = Object.freeze({
   completed_by_worker: 'completion',
@@ -148,7 +150,7 @@ const VI_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
     noteCopy: 'Kiểm tra kết quả và báo lại ngay nếu còn điểm chưa đúng hoặc chưa đủ.',
     noteTitle: 'Trước khi hoàn tất',
     status: 'Cần kiểm tra',
-    title: 'Kết quả công việc đã sẵn sàng',
+    title: 'Kết quả đã sẵn sàng',
   },
   customer_confirmed_completion: {
     noteCopy: 'Quy trình chỉ chuyển sang thanh toán sau xác nhận hoàn tất của bạn.',
@@ -160,7 +162,7 @@ const VI_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
     noteCopy: 'Đánh giá và các dấu mốc thật của công việc được giữ trong mục Hoạt động.',
     noteTitle: 'Thông tin đã lưu',
     status: 'Đã hoàn tất',
-    title: 'Phiên công việc đã khép lại',
+    title: 'Công việc đã khép lại',
   },
   inspecting: {
     noteCopy: 'Thợ kiểm tra hiện trạng, mọi thay đổi ngoài phạm vi vẫn cần được xác nhận.',
@@ -172,7 +174,7 @@ const VI_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
     noteCopy: 'Kael giữ nguyên nội dung bạn gửi và bắt đầu sắp xếp thông tin cho phiên công việc này.',
     noteTitle: 'Đã ghi nhận',
     status: 'Đã tiếp nhận',
-    title: 'Yêu cầu của bạn đã được tiếp nhận',
+    title: 'Đã tiếp nhận yêu cầu',
   },
   kael_collecting: {
     noteCopy: 'Kael đang gom mô tả, khu vực và bằng chứng thành một yêu cầu rõ ràng.',
@@ -184,19 +186,19 @@ const VI_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
     noteCopy: 'Kael đang kiểm tra phạm vi, rủi ro và dữ liệu còn thiếu trước khi đề xuất phương án.',
     noteTitle: 'Kael đang kiểm tra',
     status: 'Đang phân tích',
-    title: 'Phân tích hiện trạng và phương án',
+    title: 'Đang phân tích hiện trạng',
   },
   kael_explaining: {
     noteCopy: 'Phạm vi và ước tính đã được chuẩn bị để bạn xem trước khi đưa ra quyết định.',
     noteTitle: 'Phương án đề xuất',
     status: 'Đã có phương án',
-    title: 'Phương án xử lý đã sẵn sàng',
+    title: 'Phương án đã sẵn sàng',
   },
   matching: {
     noteCopy: 'Kael đang đối chiếu kỹ năng, khu vực phục vụ và khả năng nhận việc thật.',
     noteTitle: 'Điều Kael đang đối chiếu',
     status: 'Đang kết nối',
-    title: 'Tìm thợ phù hợp với hạng mục',
+    title: 'Đang tìm thợ phù hợp',
   },
   paid: {
     noteCopy: 'Thanh toán đã được hệ thống xác nhận, bạn có thể gửi đánh giá cho công việc này.',
@@ -208,7 +210,7 @@ const VI_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
     noteCopy: 'Hệ thống đang chờ trạng thái thanh toán thật được xác nhận trước khi mở bước đánh giá.',
     noteTitle: 'Trạng thái thanh toán',
     status: 'Chờ thanh toán',
-    title: 'Thanh toán đang chờ xác nhận',
+    title: 'Thanh toán cho công việc',
   },
   repairing: {
     noteCopy: 'Kael chỉ cập nhật khi có thay đổi quan trọng liên quan đến phạm vi, tiến độ hoặc an toàn.',
@@ -220,25 +222,25 @@ const VI_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
     noteCopy: 'Giá và phạm vi cũ vẫn được giữ nguyên. Phần phát sinh chưa được phép thực hiện cho tới khi Kael đưa ra đề xuất có căn cứ và bạn xác nhận lại.',
     noteTitle: 'Quyền quyết định vẫn thuộc về bạn',
     status: 'Đang thu thập căn cứ',
-    title: 'Kael đang kiểm tra thay đổi phạm vi',
+    title: 'Đang kiểm tra phát sinh',
   },
   scope_change_pending: {
     noteCopy: 'Công việc đang tạm dừng ở phần thay đổi để chờ quyết định hợp lệ.',
     noteTitle: 'Lý do thay đổi',
     status: 'Cần quyết định',
-    title: 'Có đề xuất thay đổi phạm vi',
+    title: 'Đề xuất thay đổi phạm vi',
   },
   ticket_review: {
     noteCopy: 'Chỉ xác nhận khi phạm vi và ước tính đã rõ, đúng với nhu cầu của bạn.',
     noteTitle: 'Quyền quyết định của bạn',
     status: 'Cần xác nhận',
-    title: 'Phương án đang chờ bạn quyết định',
+    title: 'Chờ bạn chốt phương án',
   },
   worker_candidate_review: {
     noteCopy: 'Xem hồ sơ an toàn và danh sách kiểm tra đã lưu trước khi đưa ra quyết định.',
     noteTitle: 'Trước khi chọn thợ',
     status: 'Cần xác nhận',
-    title: 'Hồ sơ thợ đã sẵn sàng để xem',
+    title: 'Hồ sơ thợ đã sẵn sàng',
   },
   worker_matched: {
     noteCopy: 'Phạm vi công việc và dữ liệu cần thiết đã được chuyển sang bảng công việc.',
@@ -250,30 +252,30 @@ const VI_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
     noteCopy: 'Thời gian đến chỉ hiển thị khi hệ thống nhận được cập nhật thật từ công việc.',
     noteTitle: 'Cập nhật thời gian',
     status: 'Đang di chuyển',
-    title: 'Thợ đang di chuyển đến nơi',
+    title: 'Thợ đang trên đường đến',
   },
 })
 
 const EN_COPY: Readonly<Record<WorkflowPhase, PhaseCopy>> = Object.freeze({
   arrived: { noteCopy: 'The work area will be inspected before service begins.', noteTitle: 'Next step', status: 'Arrived', title: 'The worker has arrived' },
-  cancelled: { noteCopy: 'This session stopped at the system-confirmed state and will not reopen itself.', noteTitle: 'Work status', status: 'Cancelled', title: 'The work has been cancelled' },
-  completed_by_worker: { noteCopy: 'Review the result and report anything incomplete or incorrect.', noteTitle: 'Before completion', status: 'Review needed', title: 'The work result is ready' },
-  customer_confirmed_completion: { noteCopy: 'The workflow moves to payment only after your completion confirmation.', noteTitle: 'Next step', status: 'Confirmed', title: 'Completion has been confirmed' },
-  done: { noteCopy: 'The review and real work milestones remain available in Activity.', noteTitle: 'Saved information', status: 'Complete', title: 'The work session is closed' },
+  cancelled: { noteCopy: 'This session stopped at the system-confirmed state and will not reopen itself.', noteTitle: 'Work status', status: 'Cancelled', title: 'The job was cancelled' },
+  completed_by_worker: { noteCopy: 'Review the result and report anything incomplete or incorrect.', noteTitle: 'Before completion', status: 'Review needed', title: 'The result is ready' },
+  customer_confirmed_completion: { noteCopy: 'The workflow moves to payment only after your completion confirmation.', noteTitle: 'Next step', status: 'Confirmed', title: 'Completion confirmed' },
+  done: { noteCopy: 'The review and real work milestones remain available in Activity.', noteTitle: 'Saved information', status: 'Complete', title: 'The job is closed' },
   inspecting: { noteCopy: 'The worker is inspecting the site; every out-of-scope change still requires confirmation.', noteTitle: 'Safe scope', status: 'Inspecting', title: 'Inspecting the work area' },
-  intake_started: { noteCopy: 'Kael keeps what you sent intact and starts organizing it for this work session.', noteTitle: 'Recorded', status: 'Received', title: 'Your request has been received' },
-  kael_collecting: { noteCopy: 'Kael is organizing the description, area, and evidence into a clear request.', noteTitle: 'Organizing information', status: 'Collecting', title: 'Kael is clarifying the request' },
-  kael_estimating: { noteCopy: 'Kael is checking scope, risk, and missing information before proposing an approach.', noteTitle: 'What Kael is checking', status: 'Analyzing', title: 'Analyzing the situation and approach' },
-  kael_explaining: { noteCopy: 'The scope and estimate are ready for your review before any decision.', noteTitle: 'Proposed approach', status: 'Approach ready', title: 'The service approach is ready' },
+  intake_started: { noteCopy: 'Kael keeps what you sent intact and starts organizing it for this work session.', noteTitle: 'Recorded', status: 'Received', title: 'Request received' },
+  kael_collecting: { noteCopy: 'Kael is organizing the description, area, and evidence into a clear request.', noteTitle: 'Organizing information', status: 'Collecting', title: 'Clarifying your request' },
+  kael_estimating: { noteCopy: 'Kael is checking scope, risk, and missing information before proposing an approach.', noteTitle: 'What Kael is checking', status: 'Analyzing', title: 'Analyzing the situation' },
+  kael_explaining: { noteCopy: 'The scope and estimate are ready for your review before any decision.', noteTitle: 'Proposed approach', status: 'Approach ready', title: 'Your approach is ready' },
   matching: { noteCopy: 'Kael is comparing skills, service area, and real availability.', noteTitle: 'What Kael is matching', status: 'Connecting', title: 'Finding a suitable worker' },
   paid: { noteCopy: 'Payment has been confirmed by the system, so you can review this work.', noteTitle: 'After payment', status: 'Paid', title: 'Payment has been confirmed' },
-  payment_pending: { noteCopy: 'The system is waiting for a real payment status before review becomes available.', noteTitle: 'Payment status', status: 'Payment pending', title: 'Payment is awaiting confirmation' },
+  payment_pending: { noteCopy: 'The system is waiting for a real payment status before review becomes available.', noteTitle: 'Payment status', status: 'Payment pending', title: 'Confirming your payment' },
   repairing: { noteCopy: 'Kael reports only important changes to scope, progress, or safety.', noteTitle: 'Change tracking', status: 'In progress', title: 'Work has started' },
-  scope_change_reviewing: { noteCopy: 'The prior scope and price remain unchanged. Changed work is not authorized until Kael produces an evidence-backed proposal and you confirm it again.', noteTitle: 'You retain the decision', status: 'Collecting evidence', title: 'Kael is reviewing the scope change' },
-  scope_change_pending: { noteCopy: 'The changed work is paused until a valid decision is recorded.', noteTitle: 'Reason for change', status: 'Decision needed', title: 'A scope change has been proposed' },
-  ticket_review: { noteCopy: 'Confirm only when the scope and estimate are clear and match your request.', noteTitle: 'Your decision', status: 'Confirmation needed', title: 'The proposal is waiting for your decision' },
-  worker_candidate_review: { noteCopy: 'Review the safe profile and your saved checklist before deciding.', noteTitle: 'Before choosing', status: 'Confirmation needed', title: 'The worker profile is ready' },
-  worker_matched: { noteCopy: 'The agreed scope and required information are now on the work board.', noteTitle: 'Information handed over', status: 'Worker matched', title: 'The worker has been confirmed' },
+  scope_change_reviewing: { noteCopy: 'The prior scope and price remain unchanged. Changed work is not authorized until Kael produces an evidence-backed proposal and you confirm it again.', noteTitle: 'You retain the decision', status: 'Collecting evidence', title: 'Reviewing the change' },
+  scope_change_pending: { noteCopy: 'The changed work is paused until a valid decision is recorded.', noteTitle: 'Reason for change', status: 'Decision needed', title: 'Scope change proposed' },
+  ticket_review: { noteCopy: 'Confirm only when the scope and estimate are clear and match your request.', noteTitle: 'Your decision', status: 'Confirmation needed', title: 'Your decision is needed' },
+  worker_candidate_review: { noteCopy: 'Review the safe profile and your saved checklist before deciding.', noteTitle: 'Before choosing', status: 'Confirmation needed', title: 'Worker profile ready' },
+  worker_matched: { noteCopy: 'The agreed scope and required information are now on the work board.', noteTitle: 'Information handed over', status: 'Worker matched', title: 'Worker confirmed' },
   worker_on_way: { noteCopy: 'Arrival time appears only when the system receives a real work update.', noteTitle: 'Arrival update', status: 'On the way', title: 'The worker is on the way' },
 })
 
@@ -385,19 +387,18 @@ function dynamicPhaseCopy({
             noteCopy: 'Lượt chờ trước đã kết thúc mà chưa có thợ nhận. Bạn có thể gửi lại cho nhóm thợ phù hợp.',
             noteTitle: 'Chưa có thợ phản hồi',
             status: 'Có thể tìm lại',
-            title: `Chưa ghép được thợ ${service.toLocaleLowerCase('vi-VN')}`,
+            title: 'Chưa tìm được thợ',
           }
         : {
             noteCopy: 'The previous wait ended without a worker accepting. You can send the request to eligible workers again.',
             noteTitle: 'No worker responded',
             status: 'Retry available',
-            title: `No ${service.toLocaleLowerCase('en-US')} worker matched yet`,
+            title: 'No worker matched yet',
           }
     }
-    return {
-      ...copy,
-      title: language === 'vi' ? `Đang tìm thợ ${service.toLocaleLowerCase('vi-VN')}` : `Finding a ${service.toLocaleLowerCase('en-US')} worker`,
-    }
+    const serviceTitle = language === 'vi' ? `Đang tìm thợ ${service.toLocaleLowerCase('vi-VN')}` : `Finding a ${service.toLocaleLowerCase('en-US')} worker`
+    // The service name only goes in the header while it fits one line; a long one stays in the receipt below.
+    return serviceTitle.length <= MAX_HEADER_TITLE_LENGTH ? { ...copy, title: serviceTitle } : copy
   }
 
   if (phase === 'ticket_review' && deal?.estimate?.priceRangeLabel) {
@@ -423,7 +424,8 @@ function dynamicPhaseCopy({
 
   if (phase === 'worker_matched' && deal?.workerProfile?.fullName.trim()) {
     const name = deal.workerProfile.fullName.trim()
-    return { ...copy, title: language === 'vi' ? `${name} đã được xác nhận` : `${name} has been confirmed` }
+    const given = workerGivenName(name)
+    return { ...copy, title: language === 'vi' ? `Thợ ${given} đã được xác nhận` : `${given} has been confirmed` }
   }
 
   if (phase === 'worker_on_way' && deal?.broadcast?.secondsRemaining) {
@@ -545,7 +547,7 @@ function dynamicPhaseCopy({
           noteCopy: 'Hệ thống vẫn đang kiểm tra bản ghi giao dịch. Bước đánh giá chỉ mở sau khi thanh toán được xác thực.',
           noteTitle: 'Đang xác minh thanh toán',
           status: 'Đang chờ xác thực',
-          title: 'Thanh toán đang được xác minh',
+          title: 'Đang xác minh thanh toán',
         }
       : {
           ...copy,
@@ -581,7 +583,7 @@ function dynamicPhaseCopy({
             noteCopy: 'Số tiền chuyển khoản chưa khớp với yêu cầu. Không chuyển thêm tiền; hệ thống cần đối chiếu giao dịch trước khi có bước tiếp theo.',
             noteTitle: 'Cần đối chiếu thanh toán',
             status: 'Cần đối chiếu',
-            title: 'Thanh toán cần được kiểm tra',
+            title: 'Thanh toán cần kiểm tra',
           }
         : {
             ...copy,
@@ -613,7 +615,7 @@ function dynamicPhaseCopy({
             noteCopy: 'Thanh toán hiện chưa thể tiếp tục. Hệ thống chỉ mở bước tiếp theo sau khi nhận được trạng thái giao dịch hợp lệ.',
             noteTitle: 'Trạng thái thanh toán',
             status: 'Cần kiểm tra',
-            title: 'Thanh toán chưa thể tiếp tục',
+            title: 'Thanh toán bị gián đoạn',
           }
         : {
             ...copy,
@@ -640,6 +642,13 @@ function dynamicPhaseCopy({
   }
 
   return copy
+}
+
+// A phase header holds one line, so a confirmed worker is named by the given name, the last word of a Vietnamese
+// name in either language. The full name stays in the worker summary below.
+function workerGivenName(fullName: string) {
+  const words = fullName.split(/\s+/).filter(Boolean)
+  return words[words.length - 1] ?? fullName
 }
 
 function compactText(value: string | null | undefined) {

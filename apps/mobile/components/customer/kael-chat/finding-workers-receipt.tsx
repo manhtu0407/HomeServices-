@@ -1,6 +1,7 @@
 import { typography } from '@/design/theme'
 import { useCallback, useMemo, useReducer, useRef, useSyncExternalStore } from 'react'
 import { Image } from 'expo-image'
+import Svg, { Path } from 'react-native-svg'
 import {
   Modal,
   Platform,
@@ -196,57 +197,57 @@ function ScopedFindingWorkersReceipt({
     <View style={styles.root} testID="customer-v21-finding-workers-receipt">
       <KaelLiquidStatusTransition
         reduceMotion={reduceMotion || Platform.OS === 'web'}
-        style={[styles.signal, { backgroundColor: tokens.service, borderColor: tokens.border }]}
+        style={styles.stage}
         transitionKey={transitionKey}
       >
-        <Text accessibilityLiveRegion="polite" style={[styles.signalTitle, { color: tokens.primary }]}>
+        <Text accessibilityLiveRegion="polite" style={[styles.stageTitle, { color: tokens.primary }]}>
           {stageCopy.title}
         </Text>
-        <Text style={[styles.signalCopy, { color: tokens.muted }]}>{stageCopy.body}</Text>
+        <Text style={[styles.stageCopy, { color: tokens.muted }]}>{stageCopy.body}</Text>
       </KaelLiquidStatusTransition>
 
-      <View style={[styles.receipt, { backgroundColor: tokens.raised, borderColor: tokens.border }]}>
-        <Text accessibilityRole="header" style={[styles.receiptTitle, { color: tokens.text }]}>
+      <View style={[styles.section, { borderTopColor: tokens.border }]}>
+        <Text accessibilityRole="header" style={[styles.sectionTitle, { color: tokens.muted }]}>
           {copy.receiptTitle}
         </Text>
         <View style={styles.checks} testID="customer-v21-finding-workers-checks">
           {matchingState.checks.map((check) => (
             <View key={check.kind} style={styles.checkRow}>
-              <View style={[styles.checkMark, { backgroundColor: check.state === 'verified' ? tokens.service : tokens.ghost }]} />
-              <View style={styles.checkText}>
-                <Text style={[styles.checkLabel, { color: tokens.text }]}>{copy.checks[check.kind]}</Text>
-                <Text style={[styles.checkState, { color: tokens.muted }]}>
-                  {check.state === 'verified' ? copy.verified : copy.checking}
-                </Text>
-              </View>
+              <CheckGlyph tokens={tokens} verified={check.state === 'verified'} />
+              <Text style={[styles.checkLabel, { color: tokens.text }]}>{copy.checks[check.kind]}</Text>
+              <Text style={[styles.checkState, { color: check.state === 'verified' ? tokens.primary : tokens.muted }]}>
+                {check.state === 'verified' ? copy.verified : copy.checking}
+              </Text>
             </View>
           ))}
         </View>
+      </View>
 
-        {matchingState.batch ? (
-          <View style={[styles.batch, { borderTopColor: tokens.border }]} testID="customer-v21-finding-workers-batch">
-            <Text style={[styles.batchLabel, { color: tokens.text }]}>
-              {matchingState.batch.strategy === 'saved_worker' ? copy.savedWorkerBatch : copy.generalBatch}
+      {matchingState.batch ? (
+        <View style={[styles.section, { borderTopColor: tokens.border }]} testID="customer-v21-finding-workers-batch">
+          <Text style={[styles.sectionTitle, { color: tokens.muted }]}>
+            {matchingState.batch.strategy === 'saved_worker' ? copy.savedWorkerBatch : copy.generalBatch}
+          </Text>
+          <Text style={[styles.batchCopy, { color: tokens.text }]}>
+            {copy.batchCount(matchingState.batch.recipient_count, matchingState.batch.attempt)}
+          </Text>
+          {hasActiveBatch && visibleSeconds !== null && visibleSeconds !== undefined ? (
+            <Text
+              accessibilityElementsHidden
+              accessible={false}
+              style={[styles.countdown, { color: tokens.primary }]}
+              testID="customer-v21-finding-workers-countdown"
+            >
+              {(matchingState.batch.strategy === 'saved_worker' ? copy.savedRemaining : copy.remaining)(formatCountdown(visibleSeconds))}
             </Text>
-            <Text style={[styles.batchCopy, { color: tokens.muted }]}>
-              {copy.batchCount(matchingState.batch.recipient_count, matchingState.batch.attempt)}
-            </Text>
-            {hasActiveBatch && visibleSeconds !== null && visibleSeconds !== undefined ? (
-              <Text
-                accessibilityElementsHidden
-                accessible={false}
-                style={[styles.countdown, { color: tokens.primary }]}
-                testID="customer-v21-finding-workers-countdown"
-              >
-                {copy.remaining(formatCountdown(visibleSeconds))}
-              </Text>
-            ) : null}
-          </View>
-        ) : null}
+          ) : null}
+        </View>
+      ) : null}
 
-        {matchingState.event_history.length > 0 ? (
-          <View style={[styles.timeline, { borderTopColor: tokens.border }]} testID="customer-v21-finding-workers-timeline">
-            <Text style={[styles.timelineTitle, { color: tokens.text }]}>{copy.timelineTitle}</Text>
+      {matchingState.event_history.length > 0 ? (
+        <View style={[styles.section, { borderTopColor: tokens.border }]} testID="customer-v21-finding-workers-timeline">
+          <Text style={[styles.sectionTitle, { color: tokens.muted }]}>{copy.timelineTitle}</Text>
+          <View style={styles.timeline}>
             {matchingState.event_history.map((event, index) => (
               <View key={`${event.kind}:${event.occurred_at}:${index}`} style={styles.timelineRow}>
                 <View style={[styles.timelineDot, { backgroundColor: tokens.primary }]} />
@@ -256,8 +257,8 @@ function ScopedFindingWorkersReceipt({
               </View>
             ))}
           </View>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
       {matchingState.stage === 'awaiting_choice' ? (
         <View style={styles.actions} testID="customer-v21-finding-workers-choice-actions">
@@ -272,7 +273,6 @@ function ScopedFindingWorkersReceipt({
             disabled={choiceLocked}
             label={preferenceBusy ? copy.choosing : copy.chooseSaved}
             onPress={() => void openSavedWorkers()}
-            size="small"
             testID="customer-v21-finding-workers-saved-open"
           />
           <KaelButton
@@ -280,7 +280,6 @@ function ScopedFindingWorkersReceipt({
             disabled={choiceLocked}
             label={copy.chooseGeneral}
             onPress={() => void choosePreference({ auto_general: true, mode: 'general' })}
-            size="small"
             testID="customer-v21-finding-workers-general"
             variant="secondary"
           />
@@ -294,7 +293,6 @@ function ScopedFindingWorkersReceipt({
             disabled={actionBusy}
             label={retryBusy || retryingWorkerSearch ? copy.retrying : copy.retry}
             onPress={() => void retry()}
-            size="small"
             testID="customer-v21-finding-workers-exhausted-retry"
           />
           <KaelButton
@@ -302,7 +300,6 @@ function ScopedFindingWorkersReceipt({
             disabled={actionBusy}
             label={stopBusy ? copy.stopping : copy.stop}
             onPress={() => void stop()}
-            size="small"
             testID="customer-v21-finding-workers-stop"
             variant="secondary"
           />
@@ -327,6 +324,25 @@ function ScopedFindingWorkersReceipt({
         visible={savedWorkersOpen}
         workers={savedWorkers}
       />
+    </View>
+  )
+}
+
+function CheckGlyph({ tokens, verified }: { tokens: CustomerThemeTokens; verified: boolean }) {
+  return (
+    <View
+      style={[
+        styles.checkMark,
+        verified
+          ? { backgroundColor: tokens.primary, borderColor: tokens.primary }
+          : { backgroundColor: 'transparent', borderColor: tokens.borderStrong },
+      ]}
+    >
+      {verified ? (
+        <Svg height={10} viewBox="0 0 24 24" width={10}>
+          <Path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke={tokens.primaryText} strokeLinecap="round" strokeLinejoin="round" strokeWidth={3.5} />
+        </Svg>
+      ) : null}
     </View>
   )
 }
@@ -571,6 +587,7 @@ function receiptCopy(language: AppLanguage) {
       loadingSaved: 'Loading your saved workers…',
       receiptTitle: 'Matching receipt',
       remaining: (value: string) => `${value} remaining for this batch`,
+      savedRemaining: (value: string) => `${value} left for your saved worker to respond`,
       retry: 'Find workers again',
       retrying: 'Finding workers again',
       savedEmpty: 'There are no saved workers eligible for this request.',
@@ -638,6 +655,7 @@ function receiptCopy(language: AppLanguage) {
     loadingSaved: 'Đang tải thợ đã lưu…',
     receiptTitle: 'Biên nhận tìm thợ',
     remaining: (value: string) => `Còn ${value} cho lượt này`,
+    savedRemaining: (value: string) => `Còn ${value} để thợ đã lưu phản hồi`,
     retry: 'Tìm lại thợ',
     retrying: 'Đang tìm lại thợ',
     savedEmpty: 'Không có thợ đã lưu phù hợp với yêu cầu này.',
@@ -674,23 +692,23 @@ function receiptCopy(language: AppLanguage) {
 }
 
 const styles = StyleSheet.create({
-  actions: { gap: 10, marginTop: 14 },
-  batch: { borderTopWidth: StyleSheet.hairlineWidth, gap: 4, marginTop: 14, paddingTop: 14 },
-  batchCopy: { ...typography.footnote },
-  batchLabel: { ...typography.subheadline, fontWeight: '600' },
-  checkLabel: { ...typography.footnote, fontWeight: '600' },
-  checkMark: { borderRadius: 5, height: 10, marginTop: 5, width: 10 },
-  checkRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
-  checkState: { ...typography.caption1 },
-  checkText: { flex: 1, gap: 1 },
-  checks: { gap: 10, marginTop: 12 },
+  actions: { gap: 10, marginTop: 22 },
+  batchCopy: { ...typography.subheadline, marginTop: 6 },
+  checkLabel: { flex: 1, ...typography.subheadline },
+  checkMark: { alignItems: 'center', borderRadius: 9, borderWidth: 1.5, height: 18, justifyContent: 'center', width: 18 },
+  checkRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  checkState: { ...typography.footnote, fontWeight: '600' },
+  checks: { gap: 14, marginTop: 12 },
   consent: { alignItems: 'flex-start', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 10, minHeight: 48, padding: 12 },
   consentLabel: { flex: 1, ...typography.subheadline },
   consentMark: { ...typography.title3 },
-  countdown: { ...typography.footnote, fontWeight: '600', fontVariant: ['tabular-nums'], marginTop: 2 },
-  receipt: { borderRadius: 16, borderWidth: 1, marginTop: 12, padding: 14 },
-  receiptTitle: { ...typography.subheadline, fontWeight: '600' },
+  countdown: { ...typography.subheadline, fontWeight: '600', fontVariant: ['tabular-nums'], marginTop: 4 },
   root: { gap: 0 },
+  section: { borderTopWidth: StyleSheet.hairlineWidth, marginTop: 20, paddingTop: 18 },
+  sectionTitle: { ...typography.footnote, fontWeight: '600' },
+  stage: { gap: 8 },
+  stageCopy: { ...typography.body },
+  stageTitle: { ...typography.subheadline, fontWeight: '600' },
   sheet: { alignSelf: 'center', borderRadius: 22, borderWidth: 1, maxHeight: '78%', maxWidth: 620, padding: 18, width: '100%' },
   sheetBackdrop: { ...StyleSheet.absoluteFill },
   sheetBody: { ...typography.footnote },
@@ -701,12 +719,9 @@ const styles = StyleSheet.create({
   sheetScreen: { backgroundColor: 'rgba(7, 27, 31, 0.46)', flex: 1, justifyContent: 'flex-end', padding: 16 },
   sheetState: { ...typography.subheadline, paddingVertical: 6 },
   sheetTitle: { ...typography.title3, fontWeight: '600' },
-  signal: { borderRadius: 14, borderWidth: 1, gap: 3, padding: 13 },
-  signalCopy: { ...typography.subheadline },
-  signalTitle: { ...typography.subheadline, fontWeight: '600' },
-  timeline: { borderTopWidth: StyleSheet.hairlineWidth, gap: 9, marginTop: 14, paddingTop: 14 },
-  timelineCopy: { flex: 1, ...typography.caption1 },
-  timelineDot: { borderRadius: 3, height: 6, marginTop: 6, width: 6 },
+  timeline: { gap: 12, marginTop: 12 },
+  timelineCopy: { flex: 1, ...typography.subheadline },
+  timelineDot: { borderRadius: 3, height: 6, marginTop: 7, width: 6 },
   timelineRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 9 },
   timelineTitle: { ...typography.subheadline, fontWeight: '600' },
   workerAvailability: { ...typography.caption1, fontWeight: '600' },

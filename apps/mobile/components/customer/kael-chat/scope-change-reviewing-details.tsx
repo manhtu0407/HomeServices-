@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import type { ReactNode } from 'react'
 import type { LocalDeal } from '@nestscout/shared'
 
+import { typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import { formatVnd } from './case-work-money-display-model'
@@ -38,11 +39,7 @@ export function ScopeChangeReviewingDetails({
     : `${heldPrice ? `Price held for the prior scope: ${heldPrice}. ` : ''}Kael has not confirmed a new price. Decide only after the proposal separately shows the added work, pricing basis, and new total.`
 
   return (
-    <View
-      accessibilityLiveRegion="polite"
-      style={[styles.container, { backgroundColor: tokens.base, borderColor: tokens.border }]}
-      testID="customer-v21-case-work-scope-reviewing"
-    >
+    <View accessibilityLiveRegion="polite" style={styles.container} testID="customer-v21-case-work-scope-reviewing">
       <ReviewSection
         label={language === 'vi' ? 'Báo cáo từ thợ' : 'Worker report'}
         testID="customer-v21-case-work-scope-review-worker"
@@ -117,9 +114,9 @@ function ReviewSection({
   tokens: CustomerThemeTokens
 }) {
   return (
-    <View style={styles.section} testID={testID}>
+    <View style={[styles.section, { borderTopColor: tokens.border }]} testID={testID}>
       <Text style={[styles.sectionLabel, { color: tokens.text }]}>{label}</Text>
-      <View style={[styles.sectionBody, { borderLeftColor: tokens.primary }]}>{children}</View>
+      <View style={styles.sectionBody}>{children}</View>
     </View>
   )
 }
@@ -142,18 +139,12 @@ function FactRow({
 }
 
 const styles = StyleSheet.create({
-  body: { fontSize: 13, lineHeight: 19 },
-  container: {
-    borderRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-  },
-  factLabel: { fontSize: 12, fontWeight: '700', lineHeight: 17 },
+  body: { ...typography.footnote },
+  container: { gap: 18 },
+  factLabel: { ...typography.footnote, fontWeight: '600' },
   factRow: { gap: 3 },
-  locked: { fontSize: 12, fontWeight: '700', lineHeight: 18 },
-  section: { gap: 7 },
-  sectionBody: { borderLeftWidth: 2, gap: 10, paddingLeft: 12 },
-  sectionLabel: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  locked: { ...typography.footnote, fontWeight: '600' },
+  section: { borderTopWidth: StyleSheet.hairlineWidth, gap: 10, paddingTop: 16 },
+  sectionBody: { gap: 12 },
+  sectionLabel: { ...typography.subheadline, fontWeight: '600' },
 })

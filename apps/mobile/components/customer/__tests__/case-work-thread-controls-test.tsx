@@ -6,6 +6,68 @@ import { getCustomerThemeTokens } from '../customer-theme'
 import { AgenticCaseThreadPanel } from '../kael-chat/chat-case-thread-stateful-surfaces'
 
 describe('Case Work phase controls', () => {
+  describe('completion reminder while the worker is repairing', () => {
+    const open = { canNudge: true, reason: null, used: 0, maxAllowed: 3, lastNudgedAt: null, nextAvailableAt: null } as const
+    const repairing = (nudge: LocalDeal['completionNudge']) => {
+      const deal = dealFixture('repairing')
+      deal.completionNudge = nudge
+      return deal
+    }
+
+    it('sends the reminder through the workflow action and keeps the report entry beside it', async () => {
+      const onNudgeCompletion = jest.fn(async () => true)
+      renderPanel(repairing(open), jest.fn(), jest.fn(), jest.fn(), { onNudgeCompletion })
+      expect(screen.getByTestId('customer-v21-case-work-report-worker')).toBeTruthy()
+      fireEvent.press(screen.getByTestId('customer-v21-completion-nudge-send'))
+      await waitFor(() => expect(onNudgeCompletion).toHaveBeenCalledTimes(1))
+    })
+
+    it('locks the button and says when the next reminder opens during the cooldown', () => {
+      const onNudgeCompletion = jest.fn(async () => true)
+      const next = new Date(Date.now() + 12 * 60_000).toISOString()
+      renderPanel(
+        repairing({ canNudge: false, reason: 'COOLDOWN', used: 1, maxAllowed: 3, lastNudgedAt: new Date().toISOString(), nextAvailableAt: next }),
+        jest.fn(), jest.fn(), jest.fn(), { onNudgeCompletion },
+      )
+      fireEvent.press(screen.getByTestId('customer-v21-completion-nudge-send'))
+      expect(onNudgeCompletion).not.toHaveBeenCalled()
+      expect(screen.getByTestId('customer-v21-completion-nudge-note').props.children).toMatch(/sau 12 phút/)
+    })
+
+    it('opens the button again once the cooldown window has passed', async () => {
+      const onNudgeCompletion = jest.fn(async () => true)
+      renderPanel(
+        repairing({ canNudge: false, reason: 'COOLDOWN', used: 1, maxAllowed: 3, lastNudgedAt: '2026-10-13T03:00:00.000Z', nextAvailableAt: '2026-10-13T03:15:00.000Z' }),
+        jest.fn(), jest.fn(), jest.fn(), { onNudgeCompletion },
+      )
+      fireEvent.press(screen.getByTestId('customer-v21-completion-nudge-send'))
+      await waitFor(() => expect(onNudgeCompletion).toHaveBeenCalledTimes(1))
+    })
+
+    it.each([
+      ['WORK_PAUSED', /tạm dừng/],
+      ['LIMIT_REACHED', /đủ 3 lần/],
+    ] as const)('keeps the button locked and explains %s', (reason, message) => {
+      const onNudgeCompletion = jest.fn(async () => true)
+      renderPanel(
+        repairing({ canNudge: false, reason, used: reason === 'LIMIT_REACHED' ? 3 : 0, maxAllowed: 3, lastNudgedAt: null, nextAvailableAt: null }),
+        jest.fn(), jest.fn(), jest.fn(), { onNudgeCompletion },
+      )
+      fireEvent.press(screen.getByTestId('customer-v21-completion-nudge-send'))
+      expect(onNudgeCompletion).not.toHaveBeenCalled()
+      expect(screen.getByTestId('customer-v21-completion-nudge-note').props.children).toMatch(message)
+    })
+
+    it('shows no reminder when the server has not reported one, and never outside repair', () => {
+      renderPanel(repairing(null))
+      expect(screen.queryByTestId('customer-v21-completion-nudge-send')).toBeNull()
+      const inspecting = dealFixture('inspecting')
+      inspecting.completionNudge = open
+      renderPanel(inspecting)
+      expect(screen.queryByTestId('customer-v21-completion-nudge-send')).toBeNull()
+    })
+  })
+
   it('locks retry and stop while the workflow is still reconciling a retry', () => {
     const deal = dealFixture('broadcasting', 'waiting_customer_decision', 'expired')
     deal.matchingState = { stage: 'exhausted', strategy: 'general', batch: null, checks: [], event_history: [] }
@@ -110,7 +172,7 @@ describe('Case Work phase controls', () => {
     })
 
     expect(screen.getByTestId('customer-v21-case-manual-payment-ready')).toBeOnTheScreen()
-    expect(screen.getByTestId('customer-v21-case-manual-payment-ready-formula-mint-aura')).toBeOnTheScreen()
+    expect(screen.queryByTestId('customer-v21-case-manual-payment-ready-formula-mint-aura')).not.toBeOnTheScreen()
     expect(screen.getByTestId('customer-v21-case-manual-qr')).toBeOnTheScreen()
     expect(StyleSheet.flatten(screen.getByTestId('customer-v21-case-manual-qr-frame').props.style)).toMatchObject({
       aspectRatio: 1,
@@ -289,6 +351,7 @@ function renderPanel(
     retryingWorkerSearch?: boolean
     onClaimManualBankPayment?: () => Promise<boolean>
     onCreateManualBankPaymentOrder?: () => Promise<boolean>
+    onNudgeCompletion?: () => Promise<boolean>
     onRefreshPayment?: () => Promise<boolean>
     onSubmitReview?: (input: { rating: number; tags: string[]; comment?: string }) => Promise<boolean>
     paymentRailProvider?: 'platform_bank_manual' | 'sepay_vietqr' | null
@@ -315,6 +378,7 @@ function renderPanel(
        onClaimManualBankPayment={options.onClaimManualBankPayment ?? jest.fn(async () => false)}
        onChooseMatchingPreference={jest.fn(async () => false)}
       onLoadSavedWorkers={jest.fn(async () => [])}
+      onNudgeCompletion={options.onNudgeCompletion ?? jest.fn(async () => true)}
       onRefreshPayment={options.onRefreshPayment ?? jest.fn(async () => false)}
       onApproveQuote={jest.fn()}
       onApproveScopeChange={jest.fn()}

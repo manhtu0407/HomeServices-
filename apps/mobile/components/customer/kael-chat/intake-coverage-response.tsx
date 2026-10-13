@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native'
 
+import { typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 
@@ -32,8 +33,8 @@ export function ConfirmationReconciliationResponse({
 }
 
 const styles = StyleSheet.create({
-  body: { fontSize: 15, lineHeight: 22 },
+  body: { ...typography.subheadline },
   card: { borderRadius: 22, borderWidth: 1, gap: 12, padding: 18 },
-  item: { fontSize: 14, lineHeight: 20 },
-  title: { fontSize: 20, fontWeight: '800', lineHeight: 26 },
+  item: { ...typography.footnote },
+  title: { ...typography.title3, fontWeight: '600' },
 })

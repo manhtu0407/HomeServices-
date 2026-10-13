@@ -55,11 +55,12 @@ describe('Kael Chat mascot production integration', () => {
     const sources = [
       readFileSync(join(mobileRoot, 'components/customer/kael-chat/kael-empty-hero.tsx'), 'utf8'),
       readFileSync(join(mobileRoot, 'components/customer/kael-chat/kael-response-surface.tsx'), 'utf8'),
-      readFileSync(join(mobileRoot, 'components/customer/kael-chat/case-work-response.tsx'), 'utf8'),
       readFileSync(join(mobileRoot, 'components/customer/kael-chat/kael-process-line-view.tsx'), 'utf8'),
     ]
+    const caseWork = readFileSync(join(mobileRoot, 'components/customer/kael-chat/case-work-response.tsx'), 'utf8')
 
     sources.forEach((source) => expect(source).toContain('KaelChatMascot'))
+    expect(caseWork).toContain('KaelPhaseAvatar')
     expect(sources[0]).not.toContain('KaelCoreV9')
   })
 })

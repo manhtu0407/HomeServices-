@@ -178,12 +178,12 @@ describe('Agentic estimate adjustment', () => {
   it('keeps the estimate headings visibly prioritized', () => {
     renderPanel()
 
-    const serviceTitleStyle = StyleSheet.flatten(
-      screen.getByTestId('customer-v21-case-work-response-title').props.style,
-    )
+    const serviceTitle = screen.getByTestId('customer-v21-case-work-response-title')
+    const serviceTitleStyle = StyleSheet.flatten(serviceTitle.props.style)
     const noteTitleStyle = StyleSheet.flatten(screen.getByText('Phạm vi và ước tính').props.style)
 
-    expect(serviceTitleStyle).toMatchObject({ fontSize: 22, fontWeight: '600' })
+    expect(serviceTitleStyle.fontWeight).toBe('600')
+    expect(serviceTitle.props.numberOfLines).toBe(1)
     expect(noteTitleStyle.fontWeight).toBe('600')
   })
 })

@@ -1,7 +1,7 @@
 // Edge service apartment-access domain (C4 6a, services/* split): the X-2 unit-access projection
 // + sanitize/persist/state-builder helpers + authorizeApartmentAccess. Imported directly by services.ts.
 
-import { asJobStatus, asRecord, nullableRecord, nullableString } from "../../platform/coercions.ts";
+import { asJobStatus, asRecord, asString, nullableRecord, nullableString } from "../../platform/coercions.ts";
 import { db, dbQuery, workflowDb, type DbClient } from "../../platform/db.ts";
 import { compactMetadata } from "../../platform/domain-utils.ts";
 import { evaluateJobChatContactGuard, normalizeGuardText } from "../job/chat-guard.ts";
@@ -33,6 +33,7 @@ type AddressAccessView = {
   worker_checked_in: boolean;
   authorization_context: ApartmentAccessAuthorizationInput | null;
   authorization_receipt: ApartmentAccessAuthorizationReceipt | null;
+  check_in_photo_refs?: string[];
   check_in_required: boolean;
   identity_check_required: boolean;
   customer_handoff_required: boolean;
@@ -185,6 +186,19 @@ export function mergeApartmentAccessProfiles(
   };
 }
 
+const CUSTOMER_CHECK_IN_PHOTO_LIMIT = 3;
+
+// Only the worker's own lobby photos of this job reach the customer, and only as private storage refs
+// the app signs with the customer's session: anything else in the stored list is dropped.
+function customerCheckInPhotoRefs(stored: unknown, jobId: string): string[] {
+  if (!Array.isArray(stored)) return [];
+  const prefix = `supabase://job-media/${jobId}/access_check_in/`;
+  return stored
+    .filter((ref): ref is string => typeof ref === "string" && ref.startsWith(prefix))
+    .filter((ref) => /^[A-Za-z0-9][A-Za-z0-9._-]{0,220}$/.test(ref.slice(prefix.length)) && !ref.includes(".."))
+    .slice(0, CUSTOMER_CHECK_IN_PHOTO_LIMIT);
+}
+
 export function projectAddressAccess(
   row: Record<string, unknown>,
   role: MobileApiContext["role"],
@@ -224,6 +238,9 @@ export function projectAddressAccess(
   const authorizationReceipt = authorizationContext && exactUnitReleased && receipt.success &&
     receipt.data.worker_id === authorizationContext.expected_worker_id &&
     receipt.data.checked_in_at === authorizationContext.expected_check_in_at ? receipt.data : null;
+  const checkInPhotoRefs = role === "customer" && workerCheckedIn && !exactUnitReleased
+    ? customerCheckInPhotoRefs(checkInRecord?.photo_urls, asString(row.id))
+    : [];
   const workerAddress = stage === "unit_released"
     ? rawAddress
     : stage === "building_released"
@@ -248,7 +265,8 @@ export function projectAddressAccess(
       role === "worker" ? stage : releasedStage,
       evidenceMode,
       workerCheckedIn,
-    ), authorization_context: authorizationContext, authorization_receipt: authorizationReceipt },
+    ), authorization_context: authorizationContext, authorization_receipt: authorizationReceipt,
+    ...(role === "customer" ? { check_in_photo_refs: checkInPhotoRefs } : {}) },
   };
 }
 

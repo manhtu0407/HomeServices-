@@ -23,6 +23,18 @@ export type WorkerV5RoutePreviewState = {
 }
 
 const ROUTE_REFRESH_DISTANCE_METERS = 80
+// A worker stuck in traffic moves less than the refresh distance, so the last position is sent again at
+// this pace and the customer keeps seeing a live trip instead of a stale one.
+const TRAVEL_HEARTBEAT_MS = 45_000
+const REPORT_TOO_SOON = 429
+
+// The worker's own map must never depend on sharing the trip: when the report is refused for any reason
+// but "too soon", the plain preview answers instead.
+async function requestRoute(jobId: string, origin: { latitude: number; longitude: number }, sharing: boolean) {
+  if (!sharing) return workerRouteService.getPreview(jobId, origin)
+  const reported = await workerRouteService.reportTravelPosition(jobId, origin)
+  return reported.success || reported.status === REPORT_TOO_SOON ? reported : workerRouteService.getPreview(jobId, origin)
+}
 
 type LocationSnapshot = {
   key: string
@@ -40,6 +52,7 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
   const hasRouteDestination = Boolean(
     jobId && deal?.broadcast?.addressAccess?.release_stage !== 'area_only',
   )
+  const sharing = deal?.backendStatus === 'worker_on_way'
   const lifecycleKey = useRouteLifecycleKey(enabled && hasRouteDestination ? jobId : null)
   const [locationSnapshot, setLocationSnapshot] = useState<LocationSnapshot | null>(null)
   const [routeSnapshot, setRouteSnapshot] = useState<RouteSnapshot | null>(null)
@@ -107,7 +120,7 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
   useEffect(() => {
     if (!jobId || !origin || !routeKey) return
     let cancelled = false
-    void workerRouteService.getPreview(jobId, origin)
+    void requestRoute(jobId, origin, sharing)
       .then((result) => {
         if (cancelled || !result.success) return
         setRouteSnapshot({
@@ -125,7 +138,15 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
     return () => {
       cancelled = true
     }
-  }, [jobId, origin, routeKey])
+  }, [jobId, origin, routeKey, sharing])
+
+  useEffect(() => {
+    if (!sharing || !jobId || !origin) return
+    const timer = setInterval(() => {
+      void workerRouteService.reportTravelPosition(jobId, origin).catch(() => undefined)
+    }, TRAVEL_HEARTBEAT_MS)
+    return () => clearInterval(timer)
+  }, [jobId, origin, sharing])
 
   const mapUri = useMemo(() => {
     if (!enabled || !hasRouteDestination || !jobId || !origin) return null

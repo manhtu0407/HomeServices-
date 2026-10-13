@@ -65,7 +65,7 @@ async function main() {
   process.once('SIGINT', () => { void stop().then(() => process.exit(130)) })
   process.once('SIGTERM', () => { void stop().then(() => process.exit(143)) })
   metro.once('exit', (code) => { void backend.close().then(() => process.exit(code ?? 1)) })
-  console.log(`mock on http://127.0.0.1:${MOCK_PORT}; open http://localhost:${APP_PORT}/kael-chat?mode=case&sessionId=${SESSION_ID}`)
+  console.log(`mock on http://127.0.0.1:${MOCK_PORT}; phase index http://127.0.0.1:${MOCK_PORT}/__mock/phases; chat example http://localhost:${APP_PORT}/kael-chat?mode=case&sessionId=${SESSION_ID}`)
 }
 
 main().catch((error) => {

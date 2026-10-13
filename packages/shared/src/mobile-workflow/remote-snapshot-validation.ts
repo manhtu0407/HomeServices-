@@ -131,6 +131,8 @@ function isOptionalAddressAccess(value: unknown): boolean {
     || value.release_stage !== 'unit_released' || receipt.data.worker_id !== context.data.expected_worker_id
     || receipt.data.checked_in_at !== context.data.expected_check_in_at)) return false
   const profile = value.access_profile
+  const photos = value.check_in_photo_refs
+  if (photos !== undefined && !(Array.isArray(photos) && photos.length <= 3 && photos.every((ref) => isNonEmptyBoundedString(ref, 400)))) return false
   return (value.release_stage === 'area_only' || value.release_stage === 'building_released' || value.release_stage === 'unit_released') &&
     typeof value.exact_unit_released === 'boolean' &&
     (value.worker_checked_in === undefined || typeof value.worker_checked_in === 'boolean') &&
@@ -268,6 +270,44 @@ function isOptionalPaymentRailProvider(value: unknown): value is LocalRemoteJobS
   return value === undefined || value === null || (typeof value === 'string' && PAYMENT_RAIL_PROVIDER_SET.has(value))
 }
 
+const MAX_TRAVEL_ROUTE_POINTS = 300
+
+function isCoordinatePair(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 2 &&
+    typeof value[0] === 'number' && Number.isFinite(value[0]) && Math.abs(value[0]) <= 90 &&
+    typeof value[1] === 'number' && Number.isFinite(value[1]) && Math.abs(value[1]) <= 180
+}
+
+function isNonNegativeFinite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+}
+
+function isOptionalWorkerTravel(value: unknown): boolean {
+  if (value === undefined || value === null) return true
+  if (!isRecord(value)) return false
+  return isNonEmptyBoundedString(value.updatedAt, 200) &&
+    Array.isArray(value.route) && value.route.length >= 2 && value.route.length <= MAX_TRAVEL_ROUTE_POINTS &&
+    value.route.every(isCoordinatePair) &&
+    isCoordinatePair(value.position) &&
+    isNonNegativeFinite(value.totalMeters) &&
+    isNonNegativeFinite(value.remainingMeters) &&
+    value.remainingMeters <= value.totalMeters &&
+    isNonNegativeFinite(value.remainingSeconds)
+}
+
+const NUDGE_REASONS = ['COOLDOWN', 'INVALID_STATUS', 'JOB_NOT_FOUND', 'LIMIT_REACHED', 'TOO_EARLY', 'WORK_PAUSED']
+
+function isOptionalCompletionNudge(value: unknown): boolean {
+  if (value === undefined || value === null) return true
+  if (!isRecord(value)) return false
+  return typeof value.canNudge === 'boolean' &&
+    (value.reason === null || (typeof value.reason === 'string' && NUDGE_REASONS.includes(value.reason))) &&
+    typeof value.used === 'number' && Number.isSafeInteger(value.used) && value.used >= 0 &&
+    typeof value.maxAllowed === 'number' && Number.isSafeInteger(value.maxAllowed) && value.maxAllowed >= 0 &&
+    isNullableString(value.lastNudgedAt) &&
+    isNullableString(value.nextAvailableAt)
+}
+
 function isOptionalWorkerProfile(value: unknown): boolean {
   if (value === undefined || value === null) return true
   if (!isRecord(value)) return false
@@ -284,7 +324,15 @@ function isOptionalWorkerProfile(value: unknown): boolean {
     )) &&
     typeof value.totalJobs === 'number' &&
     Number.isSafeInteger(value.totalJobs) &&
-    value.totalJobs >= 0
+    value.totalJobs >= 0 &&
+    (value.birthYear === undefined || value.birthYear === null || (
+      typeof value.birthYear === 'number' && Number.isSafeInteger(value.birthYear) && value.birthYear >= 1900
+    )) &&
+    (value.gender === undefined || value.gender === null ||
+      value.gender === 'male' || value.gender === 'female' || value.gender === 'other') &&
+    (value.yearsExperience === undefined || value.yearsExperience === null || (
+      typeof value.yearsExperience === 'number' && Number.isSafeInteger(value.yearsExperience) && value.yearsExperience >= 0
+    ))
 }
 
 function isOptionalMatchingState(value: unknown): boolean {
@@ -368,14 +416,22 @@ export function isValidRemoteJobSnapshot(value: unknown): value is LocalRemoteJo
     (job.paymentRailAvailable === undefined || typeof job.paymentRailAvailable === 'boolean') &&
     isOptionalPaymentRailProvider(job.paymentRailProvider) &&
     isOptionalWorkerProfile(job.workerProfile) &&
+    isOptionalWorkerTravel(job.workerTravel) &&
+    isOptionalCompletionNudge(job.completionNudge) &&
     isOptionalStringArray(job.customerEvidencePhotoUrls) &&
     isOptionalStringArray(job.fieldEvidencePhotoUrls) &&
     isOptionalStringArray(job.completionPhotoUrls) &&
     isOptionalNullableString(job.completionNotes) &&
+    isOptionalNullableString(job.kaelProblem) &&
     isOptionalSafeMoney(job.finalPrice) &&
     isOptionalNullableString(job.scheduledAt) &&
     isOptionalNullableString(job.createdAt) &&
     isOptionalNullableString(job.matchedAt) &&
+    isOptionalNullableString(job.arrivedAt) &&
+    isOptionalNullableString(job.workStartedAt) &&
+    isOptionalNullableString(job.workPausedAt) &&
+    (job.workPausedMs === undefined || isNonNegativeFinite(job.workPausedMs)) &&
+    isOptionalNullableString(job.workerWorkNote) &&
     isOptionalNullableString(job.completedAt) &&
     isOptionalNullableString(job.confirmedAt) &&
     isOptionalNullableString(job.paidAt) &&

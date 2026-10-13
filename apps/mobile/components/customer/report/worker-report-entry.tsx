@@ -1,6 +1,6 @@
 import type { LocalDealStatus } from '@nestscout/shared'
 import { useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native'
 import Svg, { Path } from 'react-native-svg'
 
 import { KaelButton } from '@/components/ui/kael-primitives'
@@ -29,7 +29,7 @@ export function isWorkerAtWorkStatus(status: LocalDealStatus | null | undefined)
   return Boolean(status && WORKER_AT_WORK_STATUSES.has(status))
 }
 
-export function WorkerReportButton({ jobId, language, testID }: { jobId: string; language: AppLanguage; testID: string }) {
+export function WorkerReportButton({ jobId, language, style, testID }: { jobId: string; language: AppLanguage; style?: StyleProp<ViewStyle>; testID: string }) {
   const [open, setOpen] = useState(false)
   return (
     <>
@@ -37,6 +37,7 @@ export function WorkerReportButton({ jobId, language, testID }: { jobId: string;
         label={language === 'vi' ? 'Báo cáo thợ' : 'Report the worker'}
         onPress={() => setOpen(true)}
         size="small"
+        style={style}
         testID={testID}
         variant="ghost"
       />
