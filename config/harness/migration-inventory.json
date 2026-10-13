@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "3a2c844ab5239fdc68228a883bc3c66a3bd858918a56ca8325fe811e84c234c7",
+  "migrationsSha256": "103e08ca013d66f26079997e84e386da0e7bdb0fdfac25247dc9bd3a363691a2",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "3437b9bce74171997903835275454e478b4f379484f065e3b2317d1c97c94538"
@@ -3283,8 +3283,8 @@
       "version": "20261013091000",
       "name": "ambassador_program_draft_commission_12000",
       "file": "supabase/migrations/20261013091000_ambassador_program_draft_commission_12000.sql",
-      "sha256": "0c128de89421d9a4deebe14cbec5569979967a7448bc442c33ea75aea19ec84b",
-      "bytes": 2346
+      "sha256": "1173ec8e853b6f40ec0cab90936bd3477d7ffd9fcada868e474258cd8063d681",
+      "bytes": 2479
     }
   ]
 }

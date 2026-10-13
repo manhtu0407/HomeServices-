@@ -15,10 +15,10 @@ begin
   if not found or v_current.commission_vnd_per_point >= 12000 then
     return;
   end if;
-  -- An open draft is an admin's unfinished work; leave it for them to finish or replace.
+  -- An open draft is an admin's unfinished work, so refuse rather than overwrite it or skip silently:
+  -- a skipped migration is recorded as applied and would never create the 12,000 VND draft.
   if exists (select 1 from public.ambassador_program_versions where status = 'draft') then
-    raise notice 'ambassador program draft left untouched: an admin draft is already open';
-    return;
+    raise exception 'AMBASSADOR_DRAFT_OPEN: approve or supersede the open ambassador program draft, then re-apply this migration';
   end if;
 
   insert into public.ambassador_program_versions (
