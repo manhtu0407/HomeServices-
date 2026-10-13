@@ -62,6 +62,21 @@ function makeActions(calls: string[]): Actions {
 }
 
 describe('Worker Production Stage 5', () => {
+  it('shows the customer reminder banner only when the host reports one', () => {
+    const view = render(<StageFiveWork actions={makeActions([])} model={model} nowMs={Date.parse('2026-09-14T03:02:00.000Z')} reduceMotion />)
+    expect(screen.queryByTestId('stage5-customer-nudge')).toBeNull()
+    view.rerender(
+      <StageFiveWork
+        actions={makeActions([])}
+        model={{ ...model, customerNudge: { title: 'Khách đang chờ bạn báo hoàn tất', detail: 'Khách đã nhắc bạn lúc 10:00 (1/3). Nếu đã xong, hãy báo hoàn tất kèm ảnh.' } }}
+        nowMs={Date.parse('2026-09-14T03:02:00.000Z')}
+        reduceMotion
+      />,
+    )
+    expect(screen.getByTestId('stage5-customer-nudge')).toBeOnTheScreen()
+    expect(screen.getByText('Khách đang chờ bạn báo hoàn tất')).toBeOnTheScreen()
+  })
+
   it('keeps the approved visual hierarchy and routes actions through the supplied real-state callbacks', async () => {
     const calls: string[] = []
 

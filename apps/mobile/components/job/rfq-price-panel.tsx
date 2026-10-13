@@ -4,6 +4,7 @@ import type { CustomerThemeTokens } from '@/components/customer/customer-theme'
 import type { AppLanguage } from '@/lib/app-language'
 import { useAuth } from '@/lib/auth-provider'
 import { useRfqPrice } from '@/lib/frontend-workflow/use-rfq-price'
+import { CustomerRfqPriceSurface } from '@/components/customer/kael-chat/customer-rfq-price-surface'
 import { withoutInputLineHeight } from '@/components/ui/input-text-style'
 
 const copy = {
@@ -49,6 +50,7 @@ export function RfqPricePanelView({ actorRole, language, tokens, state }: {
   const proposal = state.proposal
   const disabled = state.busy || state.pending || !state.loaded
   if (state.loaded && !['rfq', 'inspection_only'].includes(state.snapshot?.quote_mode ?? '')) return null
+  if (actorRole === 'customer') return <CustomerRfqPriceSurface language={language} state={state} tokens={tokens} />
   const textStyle = [styles.text, { color: tokens.text }]
   const button = (label: string, action: () => unknown, testID: string, blocked = disabled) => (
     <Pressable accessibilityRole="button" accessibilityLabel={label}
@@ -83,10 +85,6 @@ export function RfqPricePanelView({ actorRole, language, tokens, state }: {
           editable={!disabled} multiline maxLength={2000} textAlignVertical="top"
           style={withoutInputLineHeight([styles.input, styles.scope, { color: tokens.text, borderColor: tokens.borderStrong }])} />
         {button(c.send, () => state.propose(/^[1-9][0-9]*$/.test(price) ? Number(price) : NaN, scope), 'rfq-price-send')}
-      </> : null}
-      {actorRole === 'customer' && proposal?.status === 'pending' ? <>
-        {button(c.approve, () => state.decide(true), 'rfq-price-approve')}
-        {button(c.reject, () => state.decide(false), 'rfq-price-reject')}
       </> : null}
       {state.error ? <Text accessibilityRole="alert" style={textStyle}>{state.error}</Text> : null}
       {state.busy ? <Text accessibilityLiveRegion="polite" style={textStyle}>{c.busy}</Text> : null}

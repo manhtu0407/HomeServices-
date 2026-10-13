@@ -5,7 +5,7 @@ import { getCustomerThemeTokens } from '../customer-theme'
 import { CaseWorkResponse } from '../kael-chat/case-work-response'
 
 describe('CaseWorkResponse', () => {
-  it('matches the accepted content-first anatomy without card, avatar, or badge chrome', () => {
+  it('puts Kael in a one-line header card above the note rail', () => {
     render(
       <CaseWorkResponse
         model={{
@@ -26,8 +26,12 @@ describe('CaseWorkResponse', () => {
     expect(screen.getByTestId('customer-v21-case-work-response-status')).toHaveTextContent('Đã tiếp nhận')
     expect(screen.getByTestId('customer-v21-case-work-response-note')).toHaveStyle({ borderLeftWidth: 2 })
     expect(screen.getByText('Kiểm tra trước khi khoan')).toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-work-response-avatar')).not.toBeOnTheScreen()
-    expect(screen.queryByTestId('customer-v21-case-work-response-card')).not.toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-work-response-header')).toContainElement(screen.getByTestId('customer-v21-case-work-response-avatar'))
+    expect(screen.getByTestId('customer-v21-case-work-response-header')).toContainElement(screen.getByTestId('customer-v21-case-work-response-title'))
+    expect(screen.getByTestId('customer-v21-case-work-response-avatar-bow')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-work-response-avatar-blink')).toBeOnTheScreen()
+    expect(screen.getByTestId('customer-v21-case-work-response-title').props.numberOfLines).toBe(1)
+    expect(screen.getByTestId('customer-v21-case-work-response-title').props.adjustsFontSizeToFit).toBe(true)
     expect(screen.queryByTestId('customer-v21-case-work-response-badge')).not.toBeOnTheScreen()
   })
 
@@ -41,7 +45,7 @@ describe('CaseWorkResponse', () => {
           noteTitle: 'Quyền quyết định của bạn',
           phase: 'ticket_review',
           status: 'Cần xác nhận',
-          title: 'Phương án đang chờ bạn quyết định',
+          title: 'Chờ bạn chốt phương án',
         }}
         reduceMotion
         tokens={getCustomerThemeTokens('light')}

@@ -841,6 +841,64 @@ export type JobsTables = {
           },
         ]
       }
+      job_worker_positions: {
+        Row: {
+          job_id: string
+          latitude: number
+          longitude: number
+          remaining_meters: number
+          remaining_seconds: number
+          reported_at: string
+          route_polyline: string
+          total_meters: number
+          worker_id: string
+        }
+        Insert: {
+          job_id: string
+          latitude: number
+          longitude: number
+          remaining_meters: number
+          remaining_seconds: number
+          reported_at?: string
+          route_polyline: string
+          total_meters: number
+          worker_id: string
+        }
+        Update: {
+          job_id?: string
+          latitude?: number
+          longitude?: number
+          remaining_meters?: number
+          remaining_seconds?: number
+          reported_at?: string
+          route_polyline?: string
+          total_meters?: number
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_worker_positions_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_worker_positions_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_overview"
+            referencedColumns: ["worker_id"]
+          },
+          {
+            foreignKeyName: "job_worker_positions_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "worker_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           address_building: string | null

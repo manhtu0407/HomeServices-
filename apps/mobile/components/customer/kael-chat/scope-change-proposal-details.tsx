@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import type { PropsWithChildren } from 'react'
 import type { LocalDeal } from '@nestscout/shared'
 
+import { typography } from '@/design/theme'
 import type { AppLanguage } from '@/lib/app-language'
 import type { CustomerThemeTokens } from '../customer-theme'
 import {
@@ -74,10 +75,7 @@ export function ScopeChangeProposalDetails({
     : null
 
   return (
-    <View
-      style={[styles.container, { backgroundColor: tokens.base, borderColor: tokens.border }]}
-      testID="customer-v21-case-work-scope-proposal-receipt"
-    >
+    <View style={styles.container} testID="customer-v21-case-work-scope-proposal-receipt">
       <Section label={language === 'vi' ? '1. Thợ đã báo cáo' : '1. Worker report'} tokens={tokens}>
         <Fact
           label={language === 'vi' ? 'Phần việc đề nghị' : 'Requested work'}
@@ -129,7 +127,8 @@ export function ScopeChangeProposalDetails({
 
       <Section label={language === 'vi' ? '3. Căn cứ giá cho công việc này' : '3. Case pricing basis'} tokens={tokens}>
         <Fact
-          label={language === 'vi' ? 'Khoảng nguồn đã xác minh' : 'Verified source band'}
+          inline
+          label={language === 'vi' ? 'Khoảng giá nguồn' : 'Source price band'}
           tokens={tokens}
           value={sourceBand || (language === 'vi' ? 'Chưa có nguồn hợp lệ.' : 'No valid source.')}
         />
@@ -162,11 +161,13 @@ export function ScopeChangeProposalDetails({
 
       <Section label={language === 'vi' ? '4. Cân bằng quyền lợi hai bên' : '4. Two-sided balance'} tokens={tokens}>
         <Fact
+          inline
           label={language === 'vi' ? 'Khách thanh toán' : 'Customer total'}
           tokens={tokens}
           value={customerTotal ? formatVnd(customerTotal, language) : (language === 'vi' ? 'Chưa khóa.' : 'Not locked.')}
         />
         <Fact
+          inline
           label={language === 'vi' ? 'Phí nền tảng' : 'Platform fee'}
           tokens={tokens}
           value={platformFee !== null && commissionRateBps !== null
@@ -174,6 +175,7 @@ export function ScopeChangeProposalDetails({
             : (language === 'vi' ? 'Chưa khóa.' : 'Not locked.')}
         />
         <Fact
+          inline
           label={language === 'vi' ? 'Thu nhập dự kiến của thợ' : 'Projected worker earnings'}
           tokens={tokens}
           value={workerNet ? formatVnd(workerNet, language) : (language === 'vi' ? 'Chưa khóa.' : 'Not locked.')}
@@ -192,14 +194,23 @@ export function ScopeChangeProposalDetails({
 
 function Section({ children, label, tokens }: PropsWithChildren<{ label: string; tokens: CustomerThemeTokens }>) {
   return (
-    <View style={styles.section}>
+    <View style={[styles.section, { borderTopColor: tokens.border }]}>
       <Text style={[styles.sectionLabel, { color: tokens.text }]}>{label}</Text>
-      <View style={[styles.sectionBody, { borderLeftColor: tokens.primary }]}>{children}</View>
+      <View style={styles.sectionBody}>{children}</View>
     </View>
   )
 }
 
-function Fact({ label, tokens, value }: { label: string; tokens: CustomerThemeTokens; value: string }) {
+// A short figure reads as one receipt line, label left and number right; prose keeps the stacked form.
+function Fact({ inline = false, label, tokens, value }: { inline?: boolean; label: string; tokens: CustomerThemeTokens; value: string }) {
+  if (inline) {
+    return (
+      <View style={styles.factInline}>
+        <Text numberOfLines={1} style={[styles.factInlineLabel, { color: tokens.muted }]}>{label}</Text>
+        <Text numberOfLines={1} style={[styles.factInlineValue, { color: tokens.text }]}>{value}</Text>
+      </View>
+    )
+  }
   return (
     <View style={styles.fact}>
       <Text style={[styles.factLabel, { color: tokens.text }]}>{label}</Text>
@@ -233,11 +244,14 @@ function readString(record: Record<string, unknown> | null, key: string) {
 }
 
 const styles = StyleSheet.create({
-  container: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, gap: 16, padding: 14 },
+  container: { gap: 18 },
   fact: { gap: 3 },
-  factLabel: { fontSize: 12, fontWeight: '700', lineHeight: 17 },
-  factValue: { fontSize: 13, lineHeight: 19 },
-  section: { gap: 7 },
-  sectionBody: { borderLeftWidth: 2, gap: 10, paddingLeft: 12 },
-  sectionLabel: { fontSize: 14, fontWeight: '700', lineHeight: 19 },
+  factInline: { alignItems: 'baseline', columnGap: 12, flexDirection: 'row', justifyContent: 'space-between' },
+  factInlineLabel: { ...typography.footnote, flexShrink: 1 },
+  factInlineValue: { ...typography.subheadline, flexShrink: 0, fontVariant: ['tabular-nums'], fontWeight: '600', textAlign: 'right' },
+  factLabel: { ...typography.footnote, fontWeight: '600' },
+  factValue: { ...typography.footnote },
+  section: { borderTopWidth: StyleSheet.hairlineWidth, gap: 10, paddingTop: 16 },
+  sectionBody: { gap: 12 },
+  sectionLabel: { ...typography.subheadline, fontWeight: '600' },
 })

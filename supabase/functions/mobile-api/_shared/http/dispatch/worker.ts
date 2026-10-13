@@ -223,6 +223,12 @@ export async function dispatchWorkerRoute(
         route.jobId,
         requiredWorkerRouteOrigin(new URL(request.url)),
       );
+    case "workers.travelPosition":
+      return services.reportWorkerTravelPosition(
+        ctx,
+        route.jobId,
+        requiredWorkerRouteOrigin(new URL(request.url)),
+      );
     case "workers.routeMap":
       return services.getWorkerRouteMap(
         ctx,

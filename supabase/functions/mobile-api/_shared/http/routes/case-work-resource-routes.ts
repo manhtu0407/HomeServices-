@@ -16,6 +16,7 @@ export type CaseWorkResourceRoute =
   | { kind: "me.favoriteWorkerSave"; method: "POST"; workerId: string; roles: UserRole[] }
   | { kind: "me.favoriteWorkerRemove"; method: "DELETE"; workerId: string; roles: UserRole[] }
   | { kind: "workers.routePreview"; method: "GET"; jobId: string; roles: ["worker"] }
+  | { kind: "workers.travelPosition"; method: "POST"; jobId: string; roles: ["worker"] }
   | { kind: "workers.routeMap"; method: "GET"; jobId: string; roles: ["worker"] };
 
 export function matchCaseWorkResourceRoute(
@@ -86,6 +87,12 @@ export function matchCaseWorkResourceRoute(
       jobId,
       roles: ["worker"],
     };
+  }
+
+  const travelPosition = path.match(/^\/workers\/me\/jobs\/([^/]+)\/travel-position$/);
+  if (method === "POST" && travelPosition) {
+    const jobId = decodePathSegment(travelPosition[1] ?? "");
+    return jobId ? { kind: "workers.travelPosition", method: "POST", jobId, roles: ["worker"] } : null;
   }
 
   const candidate = path.match(/^\/jobs\/([^/]+)\/candidate$/);

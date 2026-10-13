@@ -3,6 +3,8 @@ import type { KaelChatProgress } from './kael'
 import type { AddressAccessView } from './shared'
 
 export type {
+  CompletionNudgeResponse,
+  CompletionNudgeState,
   DirectWorkerPaymentResponse,
   DirectWorkerPaymentResponseInput,
   DirectWorkerPaymentSelectInput,
@@ -83,7 +85,14 @@ export type JobDetailResponse = {
     rating: number
     review_count?: number | null
     total_jobs: number
+    birth_year?: number | null
+    gender?: 'male' | 'female' | 'other' | null
+    years_experience?: number | null
   } | null
+  // Present only while the worker is repairing: whether the customer may remind the worker to report done.
+  completion_nudge?: import('@nestscout/shared').CompletionNudgeState | null
+  // Present only while the worker is on the way and has reported a position the customer may follow.
+  worker_travel?: import('@nestscout/shared').JobWorkerTravel | null
   broadcast_state: {
     active_count: number
     seconds_remaining: number | null

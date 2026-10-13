@@ -5,6 +5,32 @@ import type { EdgeKaelMatchingContracts } from "../../../../_shared/contracts.ts
 
 type MatchingState = EdgeKaelMatchingContracts["matchingState"];
 
+export type CompletionNudgeReason =
+  | "COOLDOWN"
+  | "INVALID_STATUS"
+  | "JOB_NOT_FOUND"
+  | "LIMIT_REACHED"
+  | "TOO_EARLY"
+  | "WORK_PAUSED";
+
+export type EdgeCompletionNudgeState = {
+  can_nudge: boolean;
+  reason: CompletionNudgeReason | null;
+  used: number;
+  max_allowed: number;
+  last_nudged_at: string | null;
+  next_available_at: string | null;
+};
+
+export type EdgeJobWorkerTravel = {
+  updated_at: string;
+  route: [number, number][];
+  position: [number, number];
+  total_meters: number;
+  remaining_meters: number;
+  remaining_seconds: number;
+};
+
 export type EdgeJobDetailResponse = {
   job: {
     id: string;
@@ -106,7 +132,12 @@ export type EdgeJobDetailResponse = {
     rating: number;
     review_count?: number | null;
     total_jobs: number;
+    birth_year?: number | null;
+    gender?: "male" | "female" | "other" | null;
+    years_experience?: number | null;
   } | null;
+  completion_nudge?: EdgeCompletionNudgeState | null;
+  worker_travel?: EdgeJobWorkerTravel | null;
   broadcast_state: {
     active_count: number;
     seconds_remaining: number | null;

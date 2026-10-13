@@ -14,6 +14,7 @@ const programNotificationEnglish: Record<string, { title: string; body: string }
   compensation_declined: { title: 'No compensation agreement', body: 'The other side declined. The case can be taken to the authorities.' },
   compensation_paid: { title: 'Compensation transferred', body: 'The agreed compensation has been transferred.' },
   worker_reply_nudge: { title: 'A customer is waiting', body: 'The customer messaged in the job room. Reply soon.' },
+  customer_completion_nudge: { title: 'The customer is waiting for your report', body: 'If the work is done, report it complete with photos so the customer can review. If not, keep going.' },
 }
 
 /** RFQ workflow notifications are localized from the event, never from arbitrary server text. */

@@ -178,6 +178,8 @@ export async function dispatchJobRoute(
     }
     case "jobs.confirmCompletion":
       return services.confirmCompletion(ctx, route.jobId);
+    case "jobs.nudgeCompletion":
+      return services.nudgeWorkerCompletion(ctx, route.jobId);
     case "jobs.paymentOrder":
       return services.createManualBankPaymentOrder(ctx, route.jobId);
     case "jobs.paymentOrderClaim": {

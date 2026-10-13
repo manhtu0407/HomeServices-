@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 454,
-    "migrationDigest": "d021654c3623cab6f3f9322e252608fec099398d73f759f75fc4cbfbb12321cd"
+    "migrationCount": 456,
+    "migrationDigest": "89d8a16e88e4199eb64f418304a8b3b536f9f5fe7e68da47089806305586c759"
   },
   "actors": [
     "anonymous",
@@ -1209,6 +1209,22 @@
         "authenticated": [
           "select"
         ]
+      },
+      "serviceRole": [
+        "select",
+        "insert",
+        "update",
+        "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "job_worker_positions",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
       },
       "serviceRole": [
         "select",
@@ -4990,6 +5006,14 @@
       ]
     },
     {
+      "signature": "completion_nudge_state(uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "configure_stage1_release_canary(text, text, text, text, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -5398,6 +5422,14 @@
       ]
     },
     {
+      "signature": "get_job_worker_travel(uuid, uuid)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "get_kael_confirmation_operation(uuid, uuid)",
       "securityDefiner": false,
       "fixedSearchPath": true,
@@ -5646,6 +5678,14 @@
     {
       "signature": "notify_worker_account_approved()",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "nudge_worker_completion_atomic(uuid, uuid)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"
@@ -6046,6 +6086,14 @@
     {
       "signature": "record_worker_matching_heartbeat(uuid, timestamp with time zone)",
       "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "record_worker_travel_position_atomic(uuid, uuid, numeric, numeric, text, integer, integer)",
+      "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [
         "service_role"

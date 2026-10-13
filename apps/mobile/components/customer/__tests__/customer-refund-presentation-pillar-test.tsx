@@ -87,10 +87,10 @@ describe('Customer refund obligation presentation', () => {
   })
 
   it.each([
-    ['vi', 'paid', REFUND_REVIEW, 'Yêu cầu hoàn tiền cần rà soát', 'Chờ rà soát'],
-    ['en', 'cancelled', REFUND_REVIEW, 'Refund request needs review', 'Awaiting review'],
-    ['vi', 'cancelled', REFUND_REQUIRED, 'Đã ghi nhận khoản cần hoàn tiền', 'Chờ hoàn tiền'],
-    ['en', 'paid', REFUND_REQUIRED, 'Refund obligation recorded', 'Refund pending'],
+    ['vi', 'paid', REFUND_REVIEW, 'Cần rà soát hoàn tiền', 'Chờ rà soát'],
+    ['en', 'cancelled', REFUND_REVIEW, 'Refund needs review', 'Awaiting review'],
+    ['vi', 'cancelled', REFUND_REQUIRED, 'Đã ghi nhận hoàn tiền', 'Chờ hoàn tiền'],
+    ['en', 'paid', REFUND_REQUIRED, 'Refund recorded', 'Refund pending'],
   ] as const)('shows an honest readonly %s/%s refund state', (language, status, refund, title, stateLabel) => {
     const deal = hydrate(jobDetail(refund, status))
     const { onClaim, onCreate, onRefresh } = mount(deal, language)
@@ -121,7 +121,7 @@ describe('Customer refund obligation presentation', () => {
     const deal = hydrate(jobDetail(invalid))
     mount(deal)
     expect(deal.payment).toMatchObject({ refund: null, refundDataUnavailable: true })
-    expect(screen.getByText('Thông tin hoàn tiền cần đối soát')).toBeOnTheScreen()
+    expect(screen.getByText('Cần đối soát hoàn tiền')).toBeOnTheScreen()
     assertNoFinancialAction()
     expect(buildCaseWorkResponseModel({ deal, language: 'vi', phase: 'paid', subject: 'Ổ cắm', workerName: null }).actionKind).toBe('none')
   })

@@ -89,6 +89,8 @@ import type {
 } from "../domains/contracts/worker.ts";
 import type { EdgeAccountDeletionResponse } from "../domains/contracts/account.ts";
 import type { EdgeMatchingRetryRequest, EdgeMatchingRetryReceipt, EdgeMatchingOperationSnapshot, EdgeMatchingSelectionReceipt } from "../../../_shared/contracts/stage1-reliability.ts";
+import type { EdgeCompletionNudgeResponse } from "../domains/job/completion-nudge.ts";
+import type { EdgeWorkerTravelReportResponse } from "../domains/worker/travel-position.ts";
 import type {
   EdgeCompletionPaymentResponse,
   EdgeManualBankClaimResponse,
@@ -546,6 +548,10 @@ export type MobileApiServices = AdminControlServices & ProgramServices & LegacyC
     ctx: MobileApiContext,
     jobId: string,
   ): Promise<EdgeCompletionPaymentResponse>;
+  nudgeWorkerCompletion(
+    ctx: MobileApiContext,
+    jobId: string,
+  ): Promise<EdgeCompletionNudgeResponse>;
   createManualBankPaymentOrder(
     ctx: MobileApiContext,
     jobId: string,
@@ -672,6 +678,11 @@ export type MobileApiServices = AdminControlServices & ProgramServices & LegacyC
     jobId: string,
     origin: WorkerRouteOrigin,
   ): Promise<EdgeWorkerRoutePreviewResponse>;
+  reportWorkerTravelPosition(
+    ctx: MobileApiContext,
+    jobId: string,
+    origin: WorkerRouteOrigin,
+  ): Promise<EdgeWorkerTravelReportResponse>;
   getWorkerRouteMap(
     ctx: MobileApiContext,
     jobId: string,

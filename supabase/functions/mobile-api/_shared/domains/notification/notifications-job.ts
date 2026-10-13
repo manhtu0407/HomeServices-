@@ -186,6 +186,25 @@ export async function notifyCustomerWorkerCheckedIn(
   });
 }
 
+// The inbox entry is written with the nudge itself, in one transaction; this only sends the push.
+export async function pushWorkerCompletionNudge(
+  client: DbClient,
+  jobId: string,
+  workerId: string,
+) {
+  await sendPushToUser(client, workerId, {
+    title: "Khách đang chờ bạn báo hoàn tất",
+    body:
+      "Nếu đã làm xong, hãy báo hoàn tất kèm ảnh để khách kiểm tra. Nếu chưa xong, bạn cứ tiếp tục làm.",
+    data: {
+      event_type: "customer_completion_nudge",
+      job_id: jobId,
+      deep_link: `/(worker)/jobs?job_id=${jobId}`,
+    },
+    sound: "default",
+  });
+}
+
 export async function notifyCustomerJobStatus(
   client: DbClient,
   jobId: string,

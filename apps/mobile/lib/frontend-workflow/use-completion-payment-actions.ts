@@ -26,6 +26,14 @@ export function useCompletionPaymentActions({
     return true
   }, [refreshCurrentJob, setRemoteError, stateRef])
 
+  const customerNudgeCompletion = useCallback(async () => {
+    const jobId = getRemoteJobId(stateRef.current)
+    if (!jobId) return setRemoteError('Không có yêu cầu để nhắc thợ')
+    const nudged = await jobService.nudgeWorkerCompletion(jobId)
+    await refreshCurrentJob()
+    return nudged.success ? true : setRemoteError(nudged)
+  }, [refreshCurrentJob, setRemoteError, stateRef])
+
   const createManualBankPaymentOrder = useCallback(async () => {
     const jobId = getRemoteJobId(stateRef.current)
     if (!jobId) return setRemoteError('Không có yêu cầu để tạo lệnh thanh toán')
@@ -61,6 +69,7 @@ export function useCompletionPaymentActions({
     claimManualBankPayment,
     createManualBankPaymentOrder,
     customerConfirmCompletion,
+    customerNudgeCompletion,
     submitReview,
   }
 }

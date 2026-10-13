@@ -74,6 +74,7 @@ export type EdgeAddressAccessView = {
   worker_checked_in: boolean;
   authorization_context?: EdgeApartmentAccessAuthorizationInput | null;
   authorization_receipt?: EdgeApartmentAccessAuthorizationReceipt | null;
+  check_in_photo_refs?: string[];
   check_in_required: boolean;
   identity_check_required: boolean;
   customer_handoff_required: boolean;

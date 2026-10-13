@@ -2213,6 +2213,17 @@ export type DatabaseFunctions = {
           stale: boolean
         }[]
       }
+      completion_nudge_state: {
+        Args: { p_job_id: string }
+        Returns: {
+          can_nudge: boolean
+          last_nudged_at: string
+          max_allowed: number
+          next_available_at: string
+          reason: string
+          used: number
+        }[]
+      }
       configure_stage1_release_canary: {
         Args: {
           p_cohort_id: string
@@ -3024,6 +3035,18 @@ export type DatabaseFunctions = {
         }
         Returns: Json
       }
+      get_job_worker_travel: {
+        Args: { p_customer_id: string; p_job_id: string }
+        Returns: {
+          latitude: number
+          longitude: number
+          remaining_meters: number
+          remaining_seconds: number
+          reported_at: string
+          route_polyline: string
+          total_meters: number
+        }[]
+      }
       get_kael_confirmation_operation: {
         Args: { p_customer_id: string; p_session_id: string }
         Returns: {
@@ -3305,6 +3328,18 @@ export type DatabaseFunctions = {
       normalize_hcmc_district_code: {
         Args: { p_input: string }
         Returns: string
+      }
+      nudge_worker_completion_atomic: {
+        Args: { p_customer_id: string; p_job_id: string }
+        Returns: {
+          last_nudged_at: string
+          max_allowed: number
+          next_available_at: string
+          ok: boolean
+          reason: string
+          used: number
+          worker_id: string
+        }[]
       }
       open_compensation_claim: {
         Args: {
@@ -3921,6 +3956,23 @@ export type DatabaseFunctions = {
         Returns: {
           active_until: string
           server_time: string
+        }[]
+      }
+      record_worker_travel_position_atomic: {
+        Args: {
+          p_job_id: string
+          p_latitude: number
+          p_longitude: number
+          p_remaining_meters: number
+          p_remaining_seconds: number
+          p_route_polyline: string
+          p_worker_id: string
+        }
+        Returns: {
+          reason: string
+          recorded: boolean
+          reported_at: string
+          total_meters: number
         }[]
       }
       recover_legacy_kael_confirmation_atomic: {
