@@ -306,7 +306,7 @@ function LiquidTabButton({
     >
       <Animated.View style={iconStyle}>
         <LiquidNavFilledIcon
-          color={color}
+          color={tinted ? tokens.primary : tokens.subtleText}
           name={icon}
           style={[styles.dockIcon, tinted ? styles.dockIconActive : null]}
           testID={`${testID}-icon`}
