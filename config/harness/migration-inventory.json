@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 452,
+  "migrationCount": 454,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "3cd115d9f5e44a0115bafb8fe72f789de5429b5f914ba12313a3318ea4b9c001",
+  "migrationsSha256": "3a2c844ab5239fdc68228a883bc3c66a3bd858918a56ca8325fe811e84c234c7",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "3437b9bce74171997903835275454e478b4f379484f065e3b2317d1c97c94538"
@@ -3271,6 +3271,20 @@
       "file": "supabase/migrations/20261012120000_kael_evidence_gap_rfq_fallback.sql",
       "sha256": "b5d33cb9887c3aacb3d9e5881e6ef738e0acab2a39513263d5e4daae2c0819e9",
       "bytes": 13540
+    },
+    {
+      "version": "20261013090000",
+      "name": "ambassador_no_points_on_own_orders",
+      "file": "supabase/migrations/20261013090000_ambassador_no_points_on_own_orders.sql",
+      "sha256": "d3df8995005c6e10bcea567f19cdfd807110816f545e7f2056a485787048d061",
+      "bytes": 7782
+    },
+    {
+      "version": "20261013091000",
+      "name": "ambassador_program_draft_commission_12000",
+      "file": "supabase/migrations/20261013091000_ambassador_program_draft_commission_12000.sql",
+      "sha256": "0c128de89421d9a4deebe14cbec5569979967a7448bc442c33ea75aea19ec84b",
+      "bytes": 2346
     }
   ]
 }

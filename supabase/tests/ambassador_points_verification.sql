@@ -1,10 +1,10 @@
 -- @pillar id: P260-ambassador-accrual-sql
--- @pillar invariant: Ambassador points accrue only from orders paid in the app and only to the worker the customer is linked to — by invite code, or by a second paid in-app order with the same worker — even when another worker did the job; direct payments, unlinked orders and orders after a link expires earn nothing, a rerun of the sweep adds nothing, and a reversed payment takes back exactly what it earned
--- @pillar authority: governance/RULES.md #7, #8 | Tu 2026-09-25: worker ambassador program, 1 point = 10,000 VND commission
--- @pillar target: supabase/migrations/20260928114000_ambassador_accrual_sweep.sql
+-- @pillar invariant: Ambassador points accrue only from orders paid in the app and only to the worker the customer is linked to — by invite code, or by a second paid in-app order with the same worker — and only when a different worker did the job, since the referrer is already paid the job itself; direct payments, unlinked orders, orders the linked worker did themself and orders after a link expires earn nothing, a rerun of the sweep adds nothing, and a reversed payment takes back exactly what it earned
+-- @pillar authority: governance/RULES.md #7, #8 | Tu 2026-09-25: worker ambassador program, 1 point = 10,000 VND commission | Tu 2026-10-13: no points on orders the linked worker performs
+-- @pillar target: supabase/migrations/20261013090000_ambassador_no_points_on_own_orders.sql
 -- @pillar layer: sql
 -- @pillar siblings: P261-milestone-cap-sql, P262-redemption-idempotent-balance-sql, P263-referral-claim-window-sql
--- @pillar mutation: Drop both the ledger payment_provider and the payment-order payment_method conditions from the sweep; the direct-payment order accrues and P260 raises P260_WRONG_PROCESSED_COUNT
+-- @pillar mutation: Remove the v_row.worker_id is distinct from v_link.worker_id condition from the sweep; the inviting worker's own order accrues and P260 raises P260_SELF_SERVED_INVITE_EARNED
 
 begin;
 set local statement_timeout = '60s';
@@ -97,8 +97,11 @@ begin
     now() - interval '2 years', now() - interval '1 year');
   perform pg_temp.paid_job('c2110000-0000-4000-8000-000000000104', v_expired, v_worker_b, 400000, 60000, 'platform_bank_manual');
 
+  -- Invited customer's order done by the inviting worker A herself earns A nothing extra.
+  perform pg_temp.paid_job('c2110000-0000-4000-8000-000000000106', v_invited, v_worker_a, 400000, 60000, 'platform_bank_manual');
+
   v_result := private.accrue_program_points(100);
-  if (v_result->>'processed')::integer <> 3 then
+  if (v_result->>'processed')::integer <> 4 then
     raise exception 'P260_WRONG_PROCESSED_COUNT: %', v_result;
   end if;
 
@@ -107,6 +110,9 @@ begin
   end if;
   if pg_temp.points(v_worker_b) <> 0 then
     raise exception 'P260_UNLINKED_ORDER_EARNED: %', pg_temp.points(v_worker_b);
+  end if;
+  if exists (select 1 from public.worker_ambassador_point_entries where job_id = 'c2110000-0000-4000-8000-000000000106') then
+    raise exception 'P260_SELF_SERVED_INVITE_EARNED';
   end if;
   if exists (select 1 from public.worker_ambassador_point_entries where job_id = 'c2110000-0000-4000-8000-000000000103') then
     raise exception 'P260_DIRECT_PAYMENT_EARNED';
@@ -125,8 +131,15 @@ begin
   ) then
     raise exception 'P260_REBOOK_LINK_NOT_FORMED: %', v_result;
   end if;
+  -- The second order that formed the rebook link was done by B herself, so it earns B nothing.
+  if pg_temp.points(v_worker_b) <> 0 then
+    raise exception 'P260_SELF_SERVED_REBOOK_EARNED: %', pg_temp.points(v_worker_b);
+  end if;
+  -- Once linked, an order another worker does for that customer earns B 30,000 / 10,000 = 3 points.
+  perform pg_temp.paid_job('c2110000-0000-4000-8000-000000000107', v_self, v_worker_a, 200000, 30000, 'platform_bank_manual');
+  v_result := private.accrue_program_points(100);
   if pg_temp.points(v_worker_b) <> 3000 then
-    raise exception 'P260_REBOOK_ORDER_NOT_CREDITED: %', pg_temp.points(v_worker_b);
+    raise exception 'P260_LINKED_ORDER_BY_OTHER_NOT_CREDITED: %', pg_temp.points(v_worker_b);
   end if;
 
   v_before := (select count(*) from public.worker_ambassador_point_entries);
