@@ -151,11 +151,17 @@ describe('useWorkerV5RoutePreview while the worker is on the way', () => {
     expect(mockGetPreview).toHaveBeenCalledTimes(1)
   })
 
-  it('does not spend a second lookup when the server says the last report was too recent', async () => {
+  it('draws the plain preview and counts the trip as shared when the last report was too recent', async () => {
     mockReportPosition.mockResolvedValue({ success: false, status: 429, code: 'TRAVEL_REPORT_TOO_SOON' })
-    renderHook(() => useWorkerV5RoutePreview(onTheWay('job-a'), true))
-    await waitFor(() => expect(mockReportPosition).toHaveBeenCalledTimes(1))
-    expect(mockGetPreview).not.toHaveBeenCalled()
+    const { result } = renderHook(() => useWorkerV5RoutePreview(onTheWay('job-a'), true))
+    await waitFor(() => expect(result.current.route?.distanceMeters).toBe(1_200))
+    expect(result.current.tripShared).toBe(true)
+  })
+
+  it('reports the trip as not shared when the server stored no position', async () => {
+    mockReportPosition.mockResolvedValue({ success: false, status: 500, code: 'DB_ERROR' })
+    const { result } = renderHook(() => useWorkerV5RoutePreview(onTheWay('job-a'), true))
+    await waitFor(() => expect(result.current.tripShared).toBe(false))
   })
 
   it('never shares a position outside the trip', async () => {

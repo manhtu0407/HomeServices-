@@ -20,6 +20,8 @@ export type WorkerV5RoutePreviewState = {
   origin: { latitude: number; longitude: number } | null
   route: WorkerV5RoutePreview | null
   locationStatus: 'loading' | 'ready' | 'denied' | 'unavailable'
+  // The server's receipt for the trip share: null until it has answered, so GPS alone never claims sharing.
+  tripShared: boolean | null
 }
 
 const ROUTE_REFRESH_DISTANCE_METERS = 80
@@ -28,12 +30,13 @@ const ROUTE_REFRESH_DISTANCE_METERS = 80
 const TRAVEL_HEARTBEAT_MS = 45_000
 const REPORT_TOO_SOON = 429
 
-// The worker's own map must never depend on sharing the trip: when the report is refused for any reason
-// but "too soon", the plain preview answers instead.
+// The worker's own map must never depend on sharing the trip: when the report is refused, the plain preview
+// answers instead. "Too soon" still means a position was stored a moment ago, so it counts as shared.
 async function requestRoute(jobId: string, origin: { latitude: number; longitude: number }, sharing: boolean) {
-  if (!sharing) return workerRouteService.getPreview(jobId, origin)
+  if (!sharing) return { result: await workerRouteService.getPreview(jobId, origin), shared: null }
   const reported = await workerRouteService.reportTravelPosition(jobId, origin)
-  return reported.success || reported.status === REPORT_TOO_SOON ? reported : workerRouteService.getPreview(jobId, origin)
+  if (reported.success) return { result: reported, shared: reported.data.shared_with_customer === true }
+  return { result: await workerRouteService.getPreview(jobId, origin), shared: reported.status === REPORT_TOO_SOON }
 }
 
 type LocationSnapshot = {
@@ -56,6 +59,7 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
   const lifecycleKey = useRouteLifecycleKey(enabled && hasRouteDestination ? jobId : null)
   const [locationSnapshot, setLocationSnapshot] = useState<LocationSnapshot | null>(null)
   const [routeSnapshot, setRouteSnapshot] = useState<RouteSnapshot | null>(null)
+  const [sharedReceipt, setSharedReceipt] = useState<{ jobId: string; shared: boolean } | null>(null)
   const previousOriginRef = useRef<WorkerV5RoutePreviewState['origin']>(null)
   const origin = lifecycleKey && locationSnapshot?.key === lifecycleKey
     ? locationSnapshot.origin
@@ -121,8 +125,10 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
     if (!jobId || !origin || !routeKey) return
     let cancelled = false
     void requestRoute(jobId, origin, sharing)
-      .then((result) => {
-        if (cancelled || !result.success) return
+      .then(({ result, shared }) => {
+        if (cancelled) return
+        if (shared !== null) setSharedReceipt({ jobId, shared })
+        if (!result.success) return
         setRouteSnapshot({
           key: routeKey,
           route: {
@@ -143,7 +149,11 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
   useEffect(() => {
     if (!sharing || !jobId || !origin) return
     const timer = setInterval(() => {
-      void workerRouteService.reportTravelPosition(jobId, origin).catch(() => undefined)
+      void workerRouteService.reportTravelPosition(jobId, origin)
+        .then((result) => {
+          if (result.success) setSharedReceipt({ jobId, shared: result.data.shared_with_customer === true })
+        })
+        .catch(() => undefined)
     }, TRAVEL_HEARTBEAT_MS)
     return () => clearInterval(timer)
   }, [jobId, origin, sharing])
@@ -154,7 +164,9 @@ export function useWorkerV5RoutePreview(deal: LocalDeal | null, enabled: boolean
     return mobileApiUrl(`/workers/me/jobs/${encodeURIComponent(jobId)}/route-map${query}`)
   }, [enabled, hasRouteDestination, jobId, origin])
 
-  return { hasRouteDestination, locationStatus, mapUri, origin, route }
+  const tripShared = sharing && sharedReceipt?.jobId === jobId ? sharedReceipt.shared : null
+
+  return { hasRouteDestination, locationStatus, mapUri, origin, route, tripShared }
 }
 
 function useRouteLifecycleKey(descriptor: string | null) {

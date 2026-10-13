@@ -457,6 +457,8 @@ export type WorkerRoutePreviewResponse = {
     kind: 'building'
   }
   fetched_at: string
+  // Only the travel-position report carries the receipt: true once a position is stored for the customer.
+  shared_with_customer?: boolean
 }
 
 export type EarningsResponse = {

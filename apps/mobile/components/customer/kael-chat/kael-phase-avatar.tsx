@@ -16,13 +16,16 @@ const avatarArtwork = require('@/assets/kael/kael-phase-avatar.png')
 const wingArtwork = require('@/assets/kael/kael-phase-avatar-wing.png')
 
 const WING_OPACITY = 0.3
+const GREETING_REPEATS = 3
+const AMBIENT_REPEATS = 2
 // Fractions of the 412px artwork: the box that holds the head and neck, and the eye inside it.
 const HEAD_BOX = { height: 0.38, left: 0.42, top: 0.16, width: 0.46 }
 const EYE = { height: 0.07, left: 0.652, top: 0.345, width: 0.07 }
 
 // Kael's round avatar for a phase header. It keeps the original greeting: the head bows toward the customer
 // and the eye blinks, as on the chat mascot. The wing highlight (a separate alpha sprite) and the halo move
-// gently too, and everything stops under Reduce Motion.
+// gently too. Every loop runs a few times and then rests, so nothing decorative repeats forever, and all of it
+// stops under Reduce Motion.
 export function KaelPhaseAvatar({
   reduceMotion = false,
   size,
@@ -68,7 +71,7 @@ export function KaelPhaseAvatar({
         withTiming(0, { duration: 150, easing: Easing.inOut(Easing.quad) }),
         withDelay(2425, withTiming(0, { duration: 0 })),
       ),
-      -1,
+      GREETING_REPEATS,
       false,
     )
     bow.value = withRepeat(
@@ -81,7 +84,7 @@ export function KaelPhaseAvatar({
         withTiming(0, { duration: 150 }),
         withDelay(3550, withTiming(0, { duration: 0 })),
       ),
-      -1,
+      GREETING_REPEATS,
       false,
     )
     flutter.value = withRepeat(
@@ -90,7 +93,7 @@ export function KaelPhaseAvatar({
         withTiming(0, { duration: 1100, easing: Easing.inOut(Easing.quad) }),
         withDelay(450, withTiming(0, { duration: 0 })),
       ),
-      -1,
+      GREETING_REPEATS,
       false,
     )
     breath.value = withRepeat(
@@ -98,7 +101,7 @@ export function KaelPhaseAvatar({
         withTiming(1, { duration: 1750, easing: Easing.inOut(Easing.sin) }),
         withTiming(0, { duration: 1750, easing: Easing.inOut(Easing.sin) }),
       ),
-      -1,
+      AMBIENT_REPEATS,
       false,
     )
 

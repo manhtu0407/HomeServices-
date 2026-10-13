@@ -48,7 +48,7 @@ export function ApartmentAccessDetails({ checkedInAt, language, photoRefs = [], 
     ) : null}
     {clock ? (
       <Text style={[styles.checkIn, { color: tokens.muted }]} testID="customer-v21-case-apartment-access-checkin">
-        {language === 'vi' ? `Check-in ảnh tại sảnh lúc ${clock}` : `Lobby photo check-in at ${clock}`}
+        {language === 'vi' ? `Ảnh xác nhận có mặt tại sảnh lúc ${clock}` : `Lobby photo check-in at ${clock}`}
       </Text>
     ) : null}
     </>
