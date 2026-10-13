@@ -16,7 +16,7 @@ export const PILLAR = {
   target: 'supabase/functions/system-monitor/index.ts; supabase/functions/system-monitor/handler.ts; supabase/functions/system-monitor/collector.ts; supabase/functions/_shared/system-monitor/worker-heartbeat.ts',
   layer: 'security-negative',
   siblings: ['P351-system-health-monitor-contract', 'P352-system-health-monitor-sql'],
-  mutation: 'permit an inference or deferred-provider URL, coerce malformed aggregate or schedule evidence to zero, or let a collector/worker heartbeat exceed its deadline and these assertions fail',
+  mutation: 'permit an inference or deferred-provider URL, coerce malformed aggregate or schedule evidence to zero, skip two-sample Auth/DB availability state, or let a collector/worker heartbeat exceed its deadline and these assertions fail',
 } as const satisfies PillarManifest
 
 const now = new Date('2026-10-11T12:30:00.000Z')
@@ -150,6 +150,53 @@ describe('System health monitor runtime pillar', () => {
     expect(fixture.fetchPaths.some((path) => /(?:chat\/completions|\/messages|\/embeddings|\/responses)/u.test(path))).toBe(false)
     expect(fixture.heartbeat?.completionStatus).toBe('succeeded')
     expect(fixture.heartbeat?.releaseId).toBe('harness-aaaaaaaaaaaa-bbbbbbbbbbbb')
+  })
+
+  it('requires two Auth and database failures and two successful samples for availability transitions', async () => {
+    const fixture = createFixture()
+    fixture.authStatus = 503
+    fixture.databaseHealthy = false
+
+    const firstFailure = await fixture.handler(monitorRequest(now))
+    expect(firstFailure.status, await firstFailure.clone().text()).toBe(200)
+    expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'backend-core')).toMatchObject({
+      status: 'yellow',
+      metrics: {
+        auth_status: 1,
+        auth_fails: 1,
+        db_status: 1,
+        db_fails: 1,
+      },
+    })
+
+    fixture.previousSnapshot = fixture.savedSnapshot
+    fixture.now = new Date(now.getTime() + 60_000)
+    const secondFailure = await fixture.handler(monitorRequest(new Date(now.getTime() + 60_000)))
+    expect(secondFailure.status).toBe(200)
+    expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'backend-core')).toMatchObject({
+      status: 'red',
+      metrics: { auth_status: 2, auth_fails: 2, db_status: 2, db_fails: 2 },
+    })
+
+    fixture.previousSnapshot = fixture.savedSnapshot
+    fixture.authStatus = 200
+    fixture.databaseHealthy = true
+    fixture.now = new Date(now.getTime() + 120_000)
+    const firstRecovery = await fixture.handler(monitorRequest(new Date(now.getTime() + 120_000)))
+    expect(firstRecovery.status).toBe(200)
+    expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'backend-core')).toMatchObject({
+      status: 'red',
+      metrics: { auth_status: 2, auth_successes: 1, db_status: 2, db_successes: 1 },
+    })
+
+    fixture.previousSnapshot = fixture.savedSnapshot
+    fixture.now = new Date(now.getTime() + 180_000)
+    const secondRecovery = await fixture.handler(monitorRequest(new Date(now.getTime() + 180_000)))
+    expect(secondRecovery.status).toBe(200)
+    expect(fixture.savedSnapshot?.checks.find((check) => check.check_id === 'backend-core')).toMatchObject({
+      status: 'green',
+      metrics: { auth_status: 0, db_status: 0 },
+    })
   })
 
   it('keeps Storage gray when its health payload is malformed', async () => {
@@ -487,6 +534,8 @@ function createFixture() {
   let claimed = false
   const fetchPaths: string[] = []
   let mobileEvidence: Record<string, unknown> = { active_session_count: 1, api_failure_count: 0, platform_count: 1 }
+  let authStatus = 200
+  let databaseHealthy = true
   let realtimeStatus = 200
   let workers = [
     'kael-matching-maintainer',
@@ -522,7 +571,7 @@ function createFixture() {
   let storagePayload: unknown = { healthy: true }
   const store: MonitorStore = {
     async claimRun() { claimed = true; return true },
-    async databaseProbe() { return true },
+    async databaseProbe() { return databaseHealthy },
     async readPreviousSnapshot() { return previousSnapshot },
     async readWorkerEvidence() { return workers },
     async readKaelEvidence() { return kaelEvidence },
@@ -564,7 +613,7 @@ function createFixture() {
       }
       if (url.pathname === '/storage/v1/health') return Response.json(storagePayload)
       if (url.pathname === '/realtime/v1/healthcheck') return new Response('ok', { status: realtimeStatus })
-      if (url.pathname === '/auth/v1/health') return new Response('{}', { status: 200 })
+      if (url.pathname === '/auth/v1/health') return new Response('{}', { status: authStatus })
       throw new Error('Unexpected outbound request')
     },
   })
@@ -581,6 +630,8 @@ function createFixture() {
     get kaelEvidence() { return kaelEvidence },
     set kaelEvidence(value: Record<string, unknown>) { kaelEvidence = value },
     set mobileEvidence(value: Record<string, unknown>) { mobileEvidence = value },
+    set authStatus(value: number) { authStatus = value },
+    set databaseHealthy(value: boolean) { databaseHealthy = value },
     set previousSnapshot(value: Awaited<ReturnType<MonitorStore['readPreviousSnapshot']>>) { previousSnapshot = value },
     set storagePayload(value: unknown) { storagePayload = value },
     set realtimeStatus(value: number) { realtimeStatus = value },

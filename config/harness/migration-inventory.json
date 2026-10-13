@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 459,
+  "migrationCount": 460,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "301d819c903af16c491601f6babc355d67e43c58797dc9d4067884e3cfae6c2c",
+  "migrationsSha256": "a3d9abdb66bedd66e7144753a67a269a3202ffc5f0f8390eeb002da936e6541d",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "97e4af9ab4c40b17adffbbe26c8455f999ff58732310aadc5e2e0fc0f3975444"
@@ -3320,6 +3320,13 @@
       "file": "supabase/migrations/20261013122000_system_health_monitor_secret_bootstrap.sql",
       "sha256": "7cf5c6a3834124b2c7c3fb27ac67c80aa523bd471ada89ff021fed398d82a8d2",
       "bytes": 2009
+    },
+    {
+      "version": "20261014100000",
+      "name": "system_health_availability_debounce",
+      "file": "supabase/migrations/20261014100000_system_health_availability_debounce.sql",
+      "sha256": "f5535669204c7a82c9b264acde57ef8a4901bc71e0f044a9b7dbd06a1aed163a",
+      "bytes": 3803
     }
   ]
 }

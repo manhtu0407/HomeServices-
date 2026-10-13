@@ -78,8 +78,7 @@ export function buildSystemHealthSnapshot(input: SnapshotInput): SystemHealthSna
     component: "backend",
     outcome: authStatus === null ? "unknown" : authSucceeded ? "success" : "failure",
     reasonCode: authStatus === null ? "AUTH_EVIDENCE_MISSING" : authSucceeded ? "AUTH_HEALTH_REACHABLE" : "AUTH_UNAVAILABLE",
-    previous: undefined,
-    threshold: 1,
+    previous: priorAvailability(previousBackend, "auth"),
     observedAt: authStatus === null ? null : observedAt,
     window,
   });
@@ -89,8 +88,7 @@ export function buildSystemHealthSnapshot(input: SnapshotInput): SystemHealthSna
     component: "backend",
     outcome: input.evidence.database === null ? "unknown" : input.evidence.database ? "success" : "failure",
     reasonCode: input.evidence.database === null ? "DATABASE_EVIDENCE_MISSING" : input.evidence.database ? "DATABASE_READ_SUCCEEDED" : "DATABASE_UNAVAILABLE",
-    previous: undefined,
-    threshold: 1,
+    previous: priorAvailability(previousBackend, "db"),
     observedAt: input.evidence.database === null ? null : observedAt,
     window,
   });
@@ -193,6 +191,8 @@ function combineBackendChecks(checks: readonly SystemHealthCheck[], observedAt: 
   const status = worstStatus(checks.map((item) => item.status));
   const selected = checks.find((item) => item.status === status);
   const edge = checks.find((item) => item.check_id === "backend-edge-availability");
+  const auth = checks.find((item) => item.check_id === "backend-auth-availability");
+  const database = checks.find((item) => item.check_id === "backend-database-availability");
   return check({
     check_id: "backend-core",
     component: "backend",
@@ -205,7 +205,13 @@ function combineBackendChecks(checks: readonly SystemHealthCheck[], observedAt: 
       edge_status: statusCode(edge?.status),
       edge_fails: metricNumber(edge?.metrics.fails),
       edge_successes: metricNumber(edge?.metrics.successes),
+      auth_status: statusCode(auth?.status),
+      auth_fails: metricNumber(auth?.metrics.fails),
+      auth_successes: metricNumber(auth?.metrics.successes),
       auth_ok: metricStatus(checks, "backend-auth-availability"),
+      db_status: statusCode(database?.status),
+      db_fails: metricNumber(database?.metrics.fails),
+      db_successes: metricNumber(database?.metrics.successes),
       db_ok: metricStatus(checks, "backend-database-availability"),
       release_ok: checks.find((item) => item.check_id === "backend-release-identity")?.status === "green"
         ? true

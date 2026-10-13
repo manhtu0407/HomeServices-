@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-14** Cloudflare health debounce and release review — 65/65 mapped, 445/445 bound assertions; two-sample failure/recovery and mutation evidence pass locally; Production RPCs and deployment evidence remain blocked.
 - **2026-10-13** Cloudflare-only System Health and scope-change implementation — 65/65 transaction entries and 445 bound assertions, local suites pass; Production remains gated, native/hosted soak unverified; Supabase CLI workdir mistake replaced default local DB data, with no backup found.
 - **2026-10-13** Design agent assets — pinned Emil skills + Expo Dynamic Notifications snapshots, 15 Emil skills and one Kael adapter, routing and sandbox gates pass; native and fresh-session smoke checks UNVERIFIED.
 - **2026-10-12** Kael flexible harness §60 — intent router + next-step chips (Work/Chat/Worker) + rfq exit from price gap, P362–P375; Preview mock `kael-flex-mock` found the missing rfq confirm button (D10: button in existing review card); NOT deployed.
