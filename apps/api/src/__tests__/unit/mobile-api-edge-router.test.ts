@@ -409,6 +409,8 @@ function makeServices(overrides: Partial<MobileApiServices> = {}): MobileApiServ
     registerDevicePushToken: vi.fn(),
     unregisterDevicePushToken: vi.fn(),
     acknowledgeMatchingPushDelivery: vi.fn(),
+    nudgeWorkerCompletion: vi.fn(),
+    reportWorkerTravelPosition: vi.fn(),
     createAdminPayoutMethodSensitiveAccess: vi.fn(),
     createAdminWithdrawalSensitiveAccess: vi.fn(),
     releaseAdminWithdrawalRequest: vi.fn(),
