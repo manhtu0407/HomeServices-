@@ -47,33 +47,6 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     cardContent: {
       padding: m(stageLayout.innerPadding),
     },
-    chip: {
-      alignItems: 'center',
-      backgroundColor: tokens.base,
-      borderRadius: s(22),
-      boxShadow: '0 7px 24px rgba(29, 63, 67, 0.12)',
-      flexDirection: 'row',
-      gap: s(12),
-      left: s(72),
-      minHeight: Math.max(54, s(62)),
-      paddingHorizontal: s(16),
-      position: 'absolute',
-      top: s(82),
-      width: s(266),
-      zIndex: 4,
-    },
-    chipCopy: {
-      flex: 1,
-      minWidth: 0,
-    },
-    chipIcon: {
-      alignItems: 'center',
-      backgroundColor: tokens.water,
-      borderRadius: s(21),
-      height: s(42),
-      justifyContent: 'center',
-      width: s(42),
-    },
     contentStack: {
       gap: m(stageLayout.componentGap),
       paddingHorizontal: stageLayout.gutter,
@@ -108,11 +81,11 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       borderColor: palette.placeholderBorder,
       borderRadius: s(14),
       borderWidth: 1,
-      gap: s(6),
+      gap: s(8),
       justifyContent: 'center',
-      margin: s(8),
+      margin: s(10),
       marginLeft: 0,
-      width: s(100),
+      width: s(132),
     },
     destinationCard: {
       flexDirection: 'row',
@@ -160,31 +133,35 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     },
     hero: {
       backgroundColor: tokens.canvas,
-      height: s(442),
+      height: s(560),
       justifyContent: 'flex-end',
       overflow: 'hidden',
       position: 'relative',
     },
-    mapControlColumn: {
-      gap: s(9),
+    // Bottom-right corner of the map frame.
+    mapControlGroup: {
+      alignItems: 'center',
+      borderRadius: s(26),
+      bottom: s(14),
+      paddingVertical: s(4),
       position: 'absolute',
-      right: s(12),
-      top: s(134),
+      right: s(14),
+      width: s(52),
       zIndex: 4,
     },
-    mapControl: {
+    mapControlButton: {
       alignItems: 'center',
-      backgroundColor: tokens.base,
-      borderRadius: s(22),
-      boxShadow: '0 3px 12px rgba(32, 68, 86, 0.06)',
       height: controlSize,
       justifyContent: 'center',
-      width: controlSize,
+      width: s(52),
+    },
+    mapControlDivider: {
+      backgroundColor: palette.hairline,
+      height: 1,
+      width: s(26),
     },
     // The live or empty map fills the whole hero above the ETA sheet, in flow so a taller sheet can never overlap it.
     mapCanvas: {
-      borderBottomLeftRadius: s(24),
-      borderBottomRightRadius: s(24),
       flex: 1,
       marginBottom: etaSheetGap,
       overflow: 'hidden',
@@ -199,8 +176,8 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
     metric: {
       alignItems: 'center',
       flex: 1,
-      flexDirection: 'row',
-      gap: s(7),
+      flexDirection: 'column',
+      gap: s(4),
       minWidth: 0,
       paddingHorizontal: s(1),
     },
@@ -248,6 +225,12 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       justifyContent: 'center',
       paddingHorizontal: s(16),
     },
+    routeStatusRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: s(12),
+      minHeight: Math.max(54, s(54)),
+    },
     screen: {
       backgroundColor: tokens.canvas,
       paddingBottom: s(10),
@@ -260,6 +243,10 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       alignItems: 'center',
       flexDirection: 'row',
       gap: s(9),
+    },
+    sheetDivider: {
+      backgroundColor: palette.hairline,
+      height: 1,
     },
     smallAction: {
       alignItems: 'center',
@@ -295,8 +282,8 @@ export function createStageFourStyles(scale: number, tokens: WorkerThemeTokens) 
       gap: s(3),
       justifyContent: 'center',
       minHeight: Math.max(50, s(50)),
-      paddingHorizontal: s(4),
-      width: s(58),
+      minWidth: s(66),
+      paddingHorizontal: s(8),
     },
   })
 }

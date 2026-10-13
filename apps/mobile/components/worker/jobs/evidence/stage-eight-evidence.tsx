@@ -235,7 +235,9 @@ export function StageEightEvidenceScreen({
         style={[styles.upload, { marginTop: px(14, scale), height: px(96, scale), borderRadius: px(16, scale), paddingHorizontal: px(15, scale), gap: px(12, scale) }]}
         testID="worker-v5-stage-eight-fidelity-upload"
       >
-        <Image resizeMode="contain" source={stageEightAssets.upload} style={{ width: px(56, scale), height: px(56, scale), flexShrink: 0 }} />
+        <View style={{ width: px(56, scale), height: px(56, scale), flexShrink: 0, alignItems: 'center', justifyContent: 'center' }}>
+          <StageEightIcon color={C.mint} name="image" size={px(40, scale)} />
+        </View>
         <View style={{ flex: 1, minWidth: 0, paddingRight: px(118, scale) }}>
           <Text style={[stageTypography('footnote', width), styles.uploadTitle]}>
             {hasPhoto ? copy.completionPhotoCount(photoCount) : copy.noCompletionPhoto}
@@ -339,7 +341,7 @@ export function StageEightEvidenceScreen({
 
 const stylesLight = StyleSheet.create({
   root: { backgroundColor: '#FFFFFF', alignItems: 'center' },
-  embeddedRoot: { width: '100%' },
+  embeddedRoot: { width: '100%', backgroundColor: 'transparent' },
   scrollRoot: { flex: 1, backgroundColor: '#FFFFFF' },
   topRow: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
   back: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
@@ -389,8 +391,8 @@ const stylesLight = StyleSheet.create({
   } as unknown as TextStyle,
   counter: { position: 'absolute', color: '#6D7F87' },
   notice: { alignSelf: 'stretch', color: '#B34A46', fontWeight: '600', marginTop: 8, paddingHorizontal: 4 },
-  submit: { backgroundColor: C.disabledBg, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  submit: { backgroundColor: C.disabledBg, borderWidth: 1, borderColor: '#C9D6DA', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   submitEnabled: { backgroundColor: '#24B3A1', overflow: 'hidden', ...primaryCtaFrame },
-  submitText: { color: C.disabled, fontWeight: '700' },
+  submitText: { color: '#6F858B', fontWeight: '700' },
   submitTextEnabled: { color: '#FFFFFF', position: 'relative', zIndex: 1 },
 })

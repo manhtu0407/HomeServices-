@@ -11,13 +11,13 @@ export const waitingTokens = {
   ring: { diameter: 348, radius: 168, stroke: 12, x: 106, y: 20 },
   layout: { bodyOffset: 72 },
   type: {
-    heading: { role: 'title1', weight: '700' },
-    body: { role: 'callout', weight: '400' },
-    timerLabel: { role: 'body', weight: '400' },
-    button: { role: 'body', weight: '600' },
+    heading: { role: 'title2', weight: '600' },
+    body: { role: 'subheadline', weight: '400' },
+    timerLabel: { role: 'subheadline', weight: '400' },
+    button: { role: 'callout', weight: '600' },
   },
   /** The countdown numeral sits above every real Dynamic Type role, so it scales off
    *  `largeTitle` instead of inventing a bespoke size; the two factors reproduce the
    *  screen's existing long-text/short-text sizes (43pt / 53pt at largeTitle's 34pt). */
-  timerScale: { long: 43 / 34, short: 53 / 34 },
+  timerScale: { long: 28 / 34, short: 34 / 34 },
 } as const

@@ -1,8 +1,9 @@
 import { RfqPricePanel } from '@/components/job/rfq-price-panel'
+import { workerStageTwoOfferWorkartSource } from './worker-jobs-stage-two-workart'
 import { typography } from '@/design/theme'
 import { getWorkerThemeTokens, useWorkerThemeMode } from '../worker-theme'
 import { type SetStateAction, useLayoutEffect, useRef, useState } from 'react'
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, Text as RNText, TextInput, View, type TextProps } from 'react-native'
+import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, Text as RNText, TextInput, View, type TextProps, type TextStyle } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { localizedServiceLabel, type AppLanguage } from '@/lib/app-language'
@@ -129,7 +130,6 @@ export function WorkerV5InProgressBody({
   }>({ busy: false, notice: null })
   const setPhaseActionBusy = (busy: boolean) => setPhaseActionState((current) => ({ ...current, busy }))
   const setPhaseActionNotice = (notice: string | null) => setPhaseActionState((current) => ({ ...current, notice }))
-  const [stageFiveDetailsOpen, setStageFiveDetailsOpen] = useState(false)
   const [stageFiveNoteOpen, setStageFiveNoteOpen] = useState(false)
   const [stageFiveNoteDraft, setStageFiveNoteDraft] = useState('')
   const fieldEvidenceSessionRef = useRef<WorkerV5PrivateKaelSession | null>(null)
@@ -526,16 +526,11 @@ export function WorkerV5InProgressBody({
   }
 
   if (stageFive) {
-    // An unpriced inspection needs the worker's post-inspection quote, which lives in the details sheet.
-    const stageFivePrimary = stageFiveStatus === 'inspecting' && deal?.finalPrice == null
-      ? {
-          enabled: Boolean(currentJobId),
-          label: textByLanguage(language, 'Báo giá sau khảo sát', 'Post-inspection quote'),
-          onPress: () => setStageFiveDetailsOpen(true),
-        }
-      : phaseAction
-        ? { enabled: !phaseAction.disabled, label: phaseAction.label, onPress: phaseAction.onPress }
-        : null
+    // An unpriced inspection needs the worker's post-inspection quote; the quote panel renders under the screen.
+    const needsInspectionQuote = Boolean(currentJobId) && stageFiveStatus === 'inspecting' && deal?.finalPrice == null
+    const stageFivePrimary = phaseAction
+      ? { enabled: !phaseAction.disabled, label: phaseAction.label, onPress: phaseAction.onPress }
+      : null
     const stageFiveActions: StageFiveActions = {
       back: {
         enabled: true,
@@ -543,9 +538,6 @@ export function WorkerV5InProgressBody({
       },
       chat: { enabled: Boolean(currentJobId), onPress: navigateJobChat },
       call: { enabled: false, onPress: () => undefined, disabledReason: textByLanguage(language, 'Số điện thoại chỉ hiện khi quy trình cấp quyền liên hệ.', 'The phone number appears only when the workflow grants contact access.') },
-      details: { enabled: Boolean(currentJobId), onPress: () => setStageFiveDetailsOpen(true) },
-      guide: { enabled: Boolean(currentJobId), onPress: () => setStageFiveDetailsOpen(true) },
-      progress: { enabled: Boolean(currentJobId), onPress: () => setStageFiveDetailsOpen(true) },
       photo: {
         enabled: Boolean(currentJobId && !fieldEvidenceBusy && evidenceCount < 3),
         onPress: () => chooseFieldEvidenceSource(Math.min(2, Math.max(0, visibleEvidenceUrls.findIndex((url) => !url)))),
@@ -558,12 +550,6 @@ export function WorkerV5InProgressBody({
           : '/(worker)/jobs?ns_worker_screen=2.8-scope-change') as never),
       },
       support: { enabled: Boolean(currentJobId), onPress: navigateJobChat },
-      editArrival: {
-        enabled: Boolean(currentJobId && stageFiveStatus && ['arrived', 'inspecting', 'repairing'].includes(stageFiveStatus)),
-        onPress: () => router.replace((currentJobId
-          ? `/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_arrival_gate=1&job_id=${encodeURIComponent(currentJobId)}`
-          : '/(worker)/jobs?ns_worker_screen=2.7-in-progress&ns_arrival_gate=1') as never),
-      },
       pause: {
         enabled: Boolean(currentJobId && stageFiveStatus === 'repairing' && !phaseActionBusy),
         onPress: async () => {
@@ -592,6 +578,7 @@ export function WorkerV5InProgressBody({
       serviceCategory: deal ? localizedServiceLabel(deal.broadcast?.serviceType ?? deal.draft.serviceType, language) : null,
       addressLine: stageFiveAddressReleased ? workerV5ArrivalDestinationLabel(deal, language) : null,
       photo: deal?.customerEvidencePhotoUrls?.[0] ? { uri: deal.customerEvidencePhotoUrls[0] } : undefined,
+      workart: deal?.draft.serviceType ? workerStageTwoOfferWorkartSource(deal, null) : undefined,
       arrivedLabel: formatStageFiveTime(deal?.arrivedAt),
       startedLabel: formatStageFiveTime(deal?.workStartedAt),
       startedAtMs: parseStageFiveMillis(deal?.workStartedAt),
@@ -605,7 +592,7 @@ export function WorkerV5InProgressBody({
       primaryEnabled: Boolean(stageFivePrimary?.enabled),
       customerNudge: customerNudgeNotice(deal?.completionNudge, stageFiveStatus, formatStageFiveTime(deal?.completionNudge?.lastNudgedAt), language),
       // Once checked in, the notice is the success receipt and the waiting label already says it.
-      notice: phaseAction?.testID === 'worker-v5-arrival-check-in-action' ? visiblePhaseActionNotice : null,
+      notice: (phaseAction?.testID === 'worker-v5-arrival-check-in-action' ? visiblePhaseActionNotice : null) ?? fieldEvidenceState.confirmation,
     }
     return (
       <>
@@ -616,27 +603,12 @@ export function WorkerV5InProgressBody({
           model={stageFiveModel}
           reduceMotion={reduceMotion}
         />
-        <Modal visible={stageFiveDetailsOpen} animationType={reduceMotion ? 'none' : 'slide'} onRequestClose={() => setStageFiveDetailsOpen(false)}>
-          <View style={{ flex: 1, backgroundColor: '#FFFFFF', paddingTop: 48 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12 }}>
-              <Text style={{ ...typography.title3, fontWeight: '700', color: '#081D36' }}>{textByLanguage(language, 'Hồ sơ công việc', 'Work details')}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel={textByLanguage(language, 'Đóng hồ sơ công việc', 'Close work details')} onPress={() => setStageFiveDetailsOpen(false)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 }}>
-                <Text style={{ ...typography.footnote, color: '#008D7B', fontWeight: '600' }}>{textByLanguage(language, 'Đóng', 'Close')}</Text>
-              </Pressable>
-            </View>
-            <View style={{ flex: 1 }}>
-              <WorkerV5InProgressBody
-                actionBusy={actionBusy}
-                language={language}
-                navigateJobChat={navigateJobChat}
-                onTravelAction={onTravelAction}
-                reduceMotion={reduceMotion}
-                reduceTransparency={reduceTransparency}
-                runtime={runtime}
-              />
-            </View>
+        {needsInspectionQuote ? (
+          <View style={{ paddingBottom: 24, paddingHorizontal: 20 }}>
+            <RfqPricePanel jobId={currentJobId!} actorRole="worker" language={language} tokens={rfqTokens}
+              onChanged={runtime.actions.refreshCurrentJob} />
           </View>
-        </Modal>
+        ) : null}
         <Modal visible={stageFiveNoteOpen} animationType={reduceMotion ? 'none' : 'slide'} transparent onRequestClose={() => setStageFiveNoteOpen(false)}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(8,29,54,0.22)' }}>
             <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, gap: 12 }}>
@@ -647,7 +619,7 @@ export function WorkerV5InProgressBody({
                 multiline
                 onChangeText={setStageFiveNoteDraft}
                 placeholder={textByLanguage(language, 'Thêm ghi chú về tình trạng thực tế, vật tư sử dụng…', 'Add a note about the actual condition or materials used…')}
-                style={withoutInputLineHeight({ minHeight: 120, borderColor: '#E4EFF0', borderRadius: 16, borderWidth: 1, color: '#081D36', padding: 14, textAlignVertical: 'top' })}
+                style={withoutInputLineHeight({ minHeight: 120, borderColor: '#E4EFF0', borderRadius: 16, borderWidth: 1, color: '#081D36', padding: 14, textAlignVertical: 'top', ...({ outlineStyle: 'none', outlineWidth: 0 } as unknown as TextStyle) })}
                 testID="stage5-note-input"
                 value={stageFiveNoteDraft}
               />

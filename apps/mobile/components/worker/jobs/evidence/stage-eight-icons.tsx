@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg'
 
-export type StageEightIconName = 'camera' | 'checklist' | 'note'
+export type StageEightIconName = 'camera' | 'checklist' | 'image' | 'note'
 
 export function StageEightIcon({ color, name, size }: { color: string; name: StageEightIconName; size: number }) {
   let shape: ReactNode
@@ -22,6 +22,15 @@ export function StageEightIcon({ color, name, size }: { color: string; name: Sta
         <>
           <Rect height={16} rx={3.5} width={16} x={4} y={4} />
           <Path d="m8.3 12.2 2.6 2.6 4.9-5.4" />
+        </>
+      )
+      break
+    case 'image':
+      shape = (
+        <>
+          <Rect height={15} rx={2.6} width={17} x={3.5} y={4.5} />
+          <Circle cx={9} cy={9.6} r={1.6} />
+          <Path d="m4 17.2 4.6-4.4a1.3 1.3 0 0 1 1.8 0l3.4 3.3m-1.6-1.6 2.1-2a1.3 1.3 0 0 1 1.8 0l3.9 3.7" />
         </>
       )
       break

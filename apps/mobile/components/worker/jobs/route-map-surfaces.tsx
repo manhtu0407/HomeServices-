@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Platform, Text as RNText, View, type TextProps } from 'react-native'
 import { type LocalDeal } from '@nestscout/shared'
 import { Image } from 'expo-image'
@@ -82,22 +82,26 @@ export function WorkerV5RouteMapStage({
 export function WorkerV5AuthenticatedRouteMapPreview({
   label,
   language,
+  overlay,
   uri,
 }: {
   label: string
   language: AppLanguage
+  overlay?: ReactNode
   uri: string
 }) {
-  return <WorkerV5AuthenticatedRouteMapImage key={uri} label={label} language={language} uri={uri} />
+  return <WorkerV5AuthenticatedRouteMapImage key={uri} label={label} language={language} overlay={overlay} uri={uri} />
 }
 
 function WorkerV5AuthenticatedRouteMapImage({
   label,
   language,
+  overlay,
   uri,
 }: {
   label: string
   language: AppLanguage
+  overlay?: ReactNode
   uri: string
 }) {
   const styles = useWorkerThemedStyles(stylesLight)
@@ -157,14 +161,17 @@ function WorkerV5AuthenticatedRouteMapImage({
   }
 
   return (
-    <Image
-      accessibilityLabel={textByLanguage(language, `Bản đồ tuyến đường đến ${label}`, `Route map to ${label}`)}
-      onError={() => setFailed(true)}
-      contentFit="cover"
-      source={Platform.OS === 'web' ? { uri: webUri! } : { headers, uri }}
-      style={styles.mapStaticImage}
-      testID="worker-v5-route-map-live-image"
-    />
+    <>
+      <Image
+        accessibilityLabel={textByLanguage(language, `Bản đồ tuyến đường đến ${label}`, `Route map to ${label}`)}
+        onError={() => setFailed(true)}
+        contentFit="cover"
+        source={Platform.OS === 'web' ? { uri: webUri! } : { headers, uri }}
+        style={styles.mapStaticImage}
+        testID="worker-v5-route-map-live-image"
+      />
+      {overlay}
+    </>
   )
 }
 

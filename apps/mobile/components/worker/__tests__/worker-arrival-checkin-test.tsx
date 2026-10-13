@@ -298,10 +298,6 @@ function buildWorkflow(deal: LocalDeal) {
   }
 }
 
-function openStageFiveDetails() {
-  fireEvent.press(screen.getByLabelText('Chi tiết công việc'))
-  expect(screen.getByText('Hồ sơ công việc')).toBeOnTheScreen()
-}
 describe('Worker V5 arrival check-in', () => {
   beforeEach(() => {
     mockPathname = '/(worker)/jobs'
@@ -573,20 +569,6 @@ it('records arrival before continuing to the in-progress screen', async () => {
     expect(screen.queryByTestId('worker-v5-stage-five-prototype')).toBeNull()
   })
 
-  it('opens case-bound Kael from the active job details instead of generic chat', async () => {
-    mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
-    buildWorkflow(buildInProgressDeal())
-
-    render(<WorkerJobsSurface />)
-    await act(async () => {
-      fireEvent.press(screen.getByLabelText('Chi tiết công việc'))
-      await Promise.resolve()
-    })
-    fireEvent.press(screen.getByTestId('worker-v5-in-progress-kael-action'))
-
-    expect(mockReplace).toHaveBeenCalledWith('/(worker)/chat?ns_worker_screen=3.2-kael-job-intake')
-  })
-
   it('attaches lobby evidence before marking the worker as checked in', async () => {
     const deal = buildInProgressDeal()
     deal.broadcast!.addressAccess = {
@@ -610,8 +592,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
 
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
-    fireEvent.press(screen.getByTestId('worker-v5-arrival-check-in-action'))
+    fireEvent.press(screen.getByTestId('stage5-primary'))
 
     await waitFor(() => {
       expect(mediaUpload.uploadJobMediaDrafts).toHaveBeenCalledWith(
@@ -647,14 +628,13 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     try {
       render(<WorkerJobsSurface />)
-      openStageFiveDetails()
-      fireEvent.press(screen.getByTestId('worker-v5-arrival-check-in-action'))
+      fireEvent.press(screen.getByTestId('stage5-primary'))
 
       await act(async () => {
         await jest.advanceTimersByTimeAsync(45_000)
       })
 
-      expect(screen.getByTestId('worker-v5-arrival-check-in-action')).not.toBeDisabled()
+      expect(screen.getByTestId('stage5-primary')).not.toBeDisabled()
       expect(screen.getByText(/Chưa thể hoàn tất check-in/i)).toBeOnTheScreen()
       expect(mediaUpload.uploadJobMediaDrafts).not.toHaveBeenCalled()
     } finally {
@@ -677,8 +657,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     buildWorkflow(deal)
 
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
-    fireEvent.press(screen.getByTestId('worker-v5-phase-advance-action'))
+    fireEvent.press(screen.getByTestId('stage5-primary'))
 
     await waitFor(() => {
       expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('inspecting')
@@ -694,7 +673,6 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
 
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
 
     expect(screen.getByText('Bắt đầu công việc')).toBeOnTheScreen()
     expect(screen.queryByText('Bắt đầu sửa chữa')).toBeNull()
@@ -703,9 +681,8 @@ it('records arrival before continuing to the in-progress screen', async () => {
   it('blocks starting unpriced work until the Customer agrees to the exact price', () => {
     buildWorkflow({ ...buildInProgressDeal(), backendStatus: 'inspecting', status: 'inspecting', finalPrice: null })
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
     expect(screen.getByText('Chờ khách xác nhận giá')).toBeOnTheScreen()
-    fireEvent.press(screen.getByTestId('worker-v5-phase-advance-action'))
+    fireEvent.press(screen.getByTestId('stage5-primary'))
     expect(mockWorkflowValue.actions.workerUpdateStatus).not.toHaveBeenCalled()
   })
 
@@ -732,25 +709,6 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
   })
 
-  it('shows customer photos and worker field photos as separate post-confirmation galleries', () => {
-    const deal = buildInProgressDeal()
-    deal.customerEvidencePhotoUrls = [
-      'file:///customer-condition-1.jpg',
-      'file:///customer-condition-2.jpg',
-    ]
-    deal.fieldEvidencePhotoUrls = Array.from({ length: 4 }, (_, index) => `file:///worker-field-${index + 1}.jpg`)
-    buildWorkflow(deal)
-
-    render(<WorkerJobsSurface />)
-    openStageFiveDetails()
-
-    expect(screen.getByTestId('worker-v5-customer-evidence-gallery-tile-0')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-customer-evidence-gallery-image-1').props.contentFit).toBe('contain')
-    expect(screen.getByTestId('worker-v5-evidence-tray-tile-0')).toBeOnTheScreen()
-    expect(screen.getByTestId('worker-v5-evidence-tray-image-0').props.contentFit).toBe('contain')
-    expect(screen.getByTestId('worker-v5-evidence-tray-tile-3')).toBeOnTheScreen()
-  })
-
   it('adds on-site evidence from the photo library and sends it to Kael for field confirmation', async () => {
     mockRouteParams = { ns_worker_screen: '2.7-in-progress' }
     buildWorkflow(buildInProgressDeal())
@@ -775,9 +733,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
-    expect(screen.getAllByTestId(/worker-v5-evidence-tray-add-mark-/)).toHaveLength(3)
-    fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
+    fireEvent.press(screen.getByTestId('stage5-photo'))
 
     const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const selectLibrary = actions?.find((action) => action.text === 'Kho ảnh')
@@ -811,8 +767,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
 
     try {
       render(<WorkerJobsSurface />)
-      openStageFiveDetails()
-      fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
+      fireEvent.press(screen.getByTestId('stage5-photo'))
 
       await waitFor(() => {
         expect(imagePicker.requestMediaLibraryPermissionsAsync).not.toHaveBeenCalled()
@@ -833,9 +788,8 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     try {
       render(<WorkerJobsSurface />)
-      openStageFiveDetails()
 
-      fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
+      fireEvent.press(screen.getByTestId('stage5-photo'))
       const firstActions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
       const firstLibraryAction = firstActions?.find((action) => action.text === 'Kho ảnh')
       act(() => {
@@ -852,7 +806,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
         expect(screen.getByText('Chưa thể mở hoặc gửi ảnh hiện trường lúc này.')).toBeOnTheScreen()
       })
 
-      fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-1'))
+      fireEvent.press(screen.getByTestId('stage5-photo'))
       const retryActions = alertSpy.mock.calls[1]?.[2] as { onPress?: () => void; text?: string }[] | undefined
       const retryLibraryAction = retryActions?.find((action) => action.text === 'Kho ảnh')
       await act(async () => {
@@ -885,10 +839,9 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      fireEvent.press(screen.getByTestId(`worker-v5-evidence-tray-add-${attempt}`))
+      fireEvent.press(screen.getByTestId(`stage5-photo`))
       const actions = alertSpy.mock.calls[attempt]?.[2] as { onPress?: () => void; text?: string }[] | undefined
       const selectLibrary = actions?.[1]
       act(() => selectLibrary?.onPress?.())
@@ -924,10 +877,9 @@ it('records arrival before continuing to the in-progress screen', async () => {
     })
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
 
     for (let attempt = 0; attempt < 2; attempt += 1) {
-      fireEvent.press(screen.getByTestId(`worker-v5-evidence-tray-add-${attempt}`))
+      fireEvent.press(screen.getByTestId(`stage5-photo`))
       const actions = alertSpy.mock.calls[attempt]?.[2] as { onPress?: () => void; text?: string }[] | undefined
       const selectLibrary = actions?.[1]
       act(() => selectLibrary?.onPress?.())
@@ -957,9 +909,8 @@ it('records arrival before continuing to the in-progress screen', async () => {
     }))
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
     const { rerender } = render(<WorkerJobsSurface />)
-    openStageFiveDetails()
 
-    fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
+    fireEvent.press(screen.getByTestId('stage5-photo'))
     const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const selectLibrary = actions?.find((action) => action.text === 'Kho ảnh')
     await act(async () => {
@@ -991,8 +942,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
-    fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-1'))
+    fireEvent.press(screen.getByTestId('stage5-photo'))
     const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const takePhoto = actions?.find((action) => action.text === 'Chụp ảnh')
     await act(async () => {
@@ -1014,8 +964,7 @@ it('records arrival before continuing to the in-progress screen', async () => {
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined)
 
     render(<WorkerJobsSurface />)
-    openStageFiveDetails()
-    fireEvent.press(screen.getByTestId('worker-v5-evidence-tray-add-0'))
+    fireEvent.press(screen.getByTestId('stage5-photo'))
     const actions = alertSpy.mock.calls[0]?.[2] as { onPress?: () => void; text?: string }[] | undefined
     const selectLibrary = actions?.find((action) => action.text === 'Kho ảnh')
     await act(async () => {
