@@ -113,7 +113,7 @@ function LoadingValue({ style }: { style?: StyleProp<ViewStyle> }) {
 }
 
 function DashboardBackground({ reduceMotion, reduceTransparency }: { reduceMotion: boolean; reduceTransparency: boolean }) {
-  const { assets, colors, styles } = useIncomeDashboardTheme()
+  const { colors, styles } = useIncomeDashboardTheme()
   const ambient = useSharedValue(0)
   const ambientStyle = useAnimatedStyle(() => ({
     opacity: interpolate(ambient.value, [0, 1], [0.08, 0.18]),
@@ -141,8 +141,6 @@ function DashboardBackground({ reduceMotion, reduceTransparency }: { reduceMotio
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <View style={[styles.whiteBase, reduceTransparency ? styles.opaqueBase : null]} />
-      <Image contentFit="fill" source={assets.background} style={styles.backgroundImage} testID="worker-v5-income-dashboard-background" />
       {!reduceTransparency ? (
         <Animated.View style={[styles.ambientAura, ambientStyle]} testID="worker-v5-income-dashboard-ambient">
           <Svg height="100%" viewBox="0 0 210 180" width="100%">
@@ -725,9 +723,6 @@ function createIncomeDashboardStyles(colors: WorkerIncomeDashboardColors) {
     backgroundBleed: { left: 0, overflow: 'hidden', position: 'absolute' },
     stage: { position: 'relative', zIndex: 1 },
     dashboardCard: { backgroundColor: colors.transparent, overflow: 'hidden', width: '100%' },
-    whiteBase: { ...absoluteFill, backgroundColor: colors.page },
-    opaqueBase: { backgroundColor: colors.opaqueTint },
-    backgroundImage: { ...absoluteFill },
     ambientAura: { height: 220, position: 'absolute', right: -28, top: 154, width: 260 },
     dynamicContent: { ...absoluteFill },
     hero: { alignItems: 'center', left: 0, position: 'absolute', top: 44, width: '100%', zIndex: 4 },

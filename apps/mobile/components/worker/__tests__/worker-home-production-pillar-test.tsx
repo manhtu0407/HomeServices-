@@ -411,7 +411,7 @@ describe('Production Worker Home absorption', () => {
     expect(productionSource).not.toMatch(/surface: \{[^}]*backgroundColor/)
     expect(productionSource).not.toMatch(/surface: \{[^}]*borderRadius/)
     expect(productionSource).toMatch(/header: \{[^}]*height: 55[^}]*paddingLeft: 8[^}]*paddingRight: 11/)
-    expect(productionSource).toMatch(/heroActions: \{[^}]*height: 29/)
+    expect(productionSource).toMatch(/heroActions: \{[^}]*height: 32/)
     expect(productionSource).toMatch(/stats: \{[^}]*height: 72[^}]*marginTop: 7/)
     expect(productionSource).toMatch(/quickActions: \{[^}]*height: 62[^}]*marginTop: 7/)
     expect(productionSource).toMatch(/opportunityList: \{[^}]*flexDirection: 'row'[^}]*height: 80[^}]*marginHorizontal: 11/)

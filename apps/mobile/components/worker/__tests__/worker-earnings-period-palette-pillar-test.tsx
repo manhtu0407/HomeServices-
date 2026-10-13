@@ -298,6 +298,7 @@ describe('Worker Earnings period palette contract', () => {
     expect(screen.queryByTestId('worker-v5-income-dashboard-ambient')).toBeNull()
     expect(StyleSheet.flatten(screen.getByTestId('worker-v5-income-dashboard-card').props.style).backgroundColor).toBe('transparent')
     expect(screen.getByTestId('worker-v5-income-dashboard-background-bleed')).toBeOnTheScreen()
+    expect(screen.queryByTestId('worker-v5-income-dashboard-background')).toBeNull()
   })
 
   it('uses a frameless responsive canvas aligned with the Production content below', () => {

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useRef, useState } from 'react'
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { CustomerServiceId, ServiceType, WorkerKaelChatMode } from '@nestscout/shared'
 
@@ -9,6 +9,7 @@ import { customerV21BookingWorkartAssets } from '@/components/customer/ui/assets
 import { ProfileSettingsGlyph } from '@/components/customer/profile/profile-settings-icons'
 import { useGlassAccessibility } from '@/components/ui/accessibility-motion'
 import { useDockScrollHandler } from '@/components/ui/dock-scroll-state'
+import { LiquidPopUpButton } from '@/components/ui/liquid-pop-up-button'
 import type { AppLanguage } from '@/lib/app-language'
 import { isWorkerOperationalJobStatus } from '@/lib/frontend-workflow/helpers'
 import { stagePendingWorkerKaelDraft, type PendingWorkerKaelDraftScope } from '@/lib/pending-worker-kael-draft'
@@ -18,6 +19,7 @@ import type { WorkerV5ScreenDefinition } from '../dock/types'
 import { textByLanguage } from '../ui/format'
 import { workerV5JobsDestinationScreenId } from '../ui/screen-navigation'
 import { workerV5CapturedIconAssets } from '../ui/worker-v5-icon-assets'
+import { getWorkerThemeTokens } from '../worker-theme'
 import { WorkerV5AvailabilityCard } from './availability-surfaces'
 import { WorkerHomeProductionEarningsCard } from './worker-home-production-earnings-card'
 import { WorkerHomeProductionIcon, type WorkerHomeProductionIconName } from './worker-home-production-icon'
@@ -113,7 +115,6 @@ function Hero({
   setSearchMode: (mode: WorkerKaelChatMode) => void
 }) {
   const inputRef = useRef<TextInput>(null)
-  const [filterOpen, setFilterOpen] = useState(false)
   const [query, setQuery] = useState('')
   const title = mode === 'execution'
     ? textByLanguage(language, 'Tiếp tục đúng bước công việc', 'Continue the current work step')
@@ -165,44 +166,22 @@ function Hero({
             value={query}
           />
         </View>
-        <Pressable accessibilityLabel={textByLanguage(language, 'Chọn luồng Kael', 'Choose Kael flow')} accessibilityRole="button" accessibilityState={{ expanded: filterOpen }} onPress={() => setFilterOpen(true)} style={({ pressed }) => [styles.heroFilter, pressed && !reduceMotion && styles.pressed]} testID="worker-home-production-kael-filter">
-          <WorkerHomeProductionIcon color="#29495F" name="options" size={15} />
-          <Text style={styles.heroFilterLabel}>{searchMode === 'intake' ? 'Kael' : textByLanguage(language, 'Chat', 'Chat')}</Text>
-        </Pressable>
+        <LiquidPopUpButton
+          accessibilityHint={textByLanguage(language, 'Mở hai cách Kael hỗ trợ', 'Open the two ways Kael helps')}
+          accessibilityLabel={textByLanguage(language, `Luồng Kael: ${searchMode === 'intake' ? 'Kael nhận việc' : 'Chat thường'}`, `Kael flow: ${searchMode === 'intake' ? 'Kael job intake' : 'Normal chat'}`)}
+          menuAccessibilityLabel={textByLanguage(language, 'Chọn cách Kael hỗ trợ', 'Choose how Kael helps')}
+          onChange={setSearchMode}
+          options={[
+            { label: textByLanguage(language, 'Kael nhận việc', 'Kael job intake'), value: 'intake' },
+            { label: textByLanguage(language, 'Chat thường', 'Normal chat'), value: 'normal' },
+          ]}
+          testID="worker-home-production-kael-filter"
+          tokens={getWorkerThemeTokens('light')}
+          triggerLabel={searchMode === 'intake' ? 'Kael' : 'Chat'}
+          value={searchMode}
+        />
       </View>
       {searchError ? <Text accessibilityLiveRegion="polite" style={styles.heroSearchError}>{searchError}</Text> : null}
-      <Modal animationType={reduceMotion ? 'none' : 'fade'} onRequestClose={() => setFilterOpen(false)} transparent visible={filterOpen}>
-        <Pressable accessibilityLabel={textByLanguage(language, 'Đóng bộ chọn luồng Kael', 'Close Kael flow selector')} accessibilityRole="button" onPress={() => setFilterOpen(false)} style={styles.modeSheetBackdrop} testID="worker-home-production-kael-mode-backdrop">
-          <Pressable accessibilityRole="none" onPress={(event) => event.stopPropagation()} style={styles.modeSheet} testID="worker-home-production-kael-mode-sheet">
-            <Text style={styles.modeSheetTitle}>{textByLanguage(language, 'Chọn cách Kael hỗ trợ', 'Choose how Kael helps')}</Text>
-            {([
-              ['intake', textByLanguage(language, 'Kael nhận việc', 'Kael job intake'), textByLanguage(language, 'Tìm và giải thích cơ hội; bạn vẫn tự quyết định.', 'Find and explain opportunities; you still decide.')],
-              ['normal', textByLanguage(language, 'Chat thường', 'Normal chat'), textByLanguage(language, 'Hỏi đáp và hỗ trợ nhanh.', 'Quick questions and support.')],
-            ] as const).map(([value, label, description]) => {
-              const selected = searchMode === value
-              return (
-                <Pressable
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  key={value}
-                  onPress={() => {
-                    setSearchMode(value)
-                    setFilterOpen(false)
-                  }}
-                  style={[styles.modeOption, selected && styles.modeOptionSelected]}
-                  testID={`worker-home-production-kael-mode-${value}`}
-                >
-                  <View style={styles.modeOptionCopy}>
-                    <Text style={styles.modeOptionLabel}>{label}</Text>
-                    <Text style={styles.modeOptionDescription}>{description}</Text>
-                  </View>
-                  <View style={[styles.modeRadio, selected && styles.modeRadioSelected]} />
-                </Pressable>
-              )
-            })}
-          </Pressable>
-        </Pressable>
-      </Modal>
     </LinearGradient>
   )
 }
@@ -505,12 +484,10 @@ const styles = StyleSheet.create({
   headerMeta: { color: '#526177', fontSize: 9.8, lineHeight: 12, marginTop: 5 },
   headerTitle: { color: '#102437', fontSize: 13.4, fontWeight: '600', letterSpacing: -0.22, lineHeight: 16 },
   hero: { borderCurve: 'continuous', borderRadius: 16, height: 133, marginHorizontal: 11, overflow: 'hidden' },
-  heroActions: { bottom: 14, flexDirection: 'row', gap: 6, height: 29, left: 18, position: 'absolute', right: 9 },
+  heroActions: { bottom: 14, flexDirection: 'row', gap: 6, height: 32, left: 18, position: 'absolute', right: 9 },
   heroArtwork: { height: 90, position: 'absolute', right: 0, top: 0, width: 164 },
   heroCopy: { paddingLeft: 18, paddingTop: 22 },
   heroDetail: { color: '#28565A', fontSize: 9, lineHeight: 11, marginTop: 7 },
-  heroFilter: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.98)', borderRadius: 999, boxShadow: '0 4px 13px rgba(18, 97, 87, 0.11)', flexDirection: 'row', gap: 6, justifyContent: 'center', paddingHorizontal: 10, width: 64 },
-  heroFilterLabel: { color: '#102437', fontSize: 10.1, lineHeight: 12 },
   heroSearch: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.98)', borderRadius: 999, boxShadow: '0 4px 13px rgba(18, 97, 87, 0.11)', flex: 1, flexDirection: 'row', gap: 7, minWidth: 0, paddingHorizontal: 12 },
   heroSearchError: { bottom: 1, color: '#9C2D2D', fontSize: 8, left: 25, lineHeight: 10, position: 'absolute' },
   heroSearchInput: { color: '#526177', flex: 1, fontSize: 8.5, height: '100%', lineHeight: 11, minWidth: 0, paddingHorizontal: 0, paddingVertical: 0 },
@@ -525,16 +502,6 @@ const styles = StyleSheet.create({
   jobStatusPillDark: { backgroundColor: '#21463F' },
   jobTitle: { color: '#102437', fontSize: 9, fontWeight: '600', lineHeight: 11 },
   mutedDark: { color: customerTheme.darkLayer.muted },
-  modeOption: { alignItems: 'center', borderColor: '#DCE8E5', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 14, paddingVertical: 10 },
-  modeOptionCopy: { flex: 1, minWidth: 0 },
-  modeOptionDescription: { color: '#617084', fontSize: 12, lineHeight: 17, marginTop: 3 },
-  modeOptionLabel: { color: '#102437', fontSize: 15, fontWeight: '600', lineHeight: 20 },
-  modeOptionSelected: { backgroundColor: '#EFFAF7', borderColor: '#85D8C9' },
-  modeRadio: { borderColor: '#8BA09B', borderRadius: 8, borderWidth: 1.5, height: 16, width: 16 },
-  modeRadioSelected: { backgroundColor: '#09A88B', borderColor: '#09A88B', borderWidth: 4 },
-  modeSheet: { alignSelf: 'center', backgroundColor: '#FFFEFF', borderRadius: 24, gap: 10, maxWidth: 420, padding: 18, width: '90%' },
-  modeSheetBackdrop: { backgroundColor: 'rgba(9, 25, 22, 0.42)', flex: 1, justifyContent: 'flex-end', paddingBottom: 28 },
-  modeSheetTitle: { color: '#102437', fontSize: 18, fontWeight: '600', lineHeight: 24, marginBottom: 2 },
   opportunityList: { flexDirection: 'row', gap: 6, height: 80, marginHorizontal: 11 },
   opportunityEarning: { color: '#039A80', fontSize: 8.9, fontVariant: ['tabular-nums'], fontWeight: '600', lineHeight: 10, position: 'absolute', right: 7, top: 34 },
   opportunitySection: { marginTop: 10 },

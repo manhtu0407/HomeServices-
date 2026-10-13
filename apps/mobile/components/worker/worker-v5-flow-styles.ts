@@ -904,13 +904,6 @@ export const styles = StyleSheet.create({
   opportunityList: {
     gap: 8,
   },
-  opportunityInboxPageZipAura: {
-    height: 340,
-    opacity: 0.24,
-    right: -92,
-    top: 118,
-    width: 390,
-  },
   offerDetailPageZipAura: {
     height: 340,
     opacity: 0.24,
@@ -1817,6 +1810,10 @@ export const styles = StyleSheet.create({
   },
   kaelOrbCustomerChatFrameIntake: {
     gap: 9,
+  },
+  kaelOrbModeBodyFade: {
+    flex: 1,
+    minHeight: 0,
   },
   kaelOrbCustomerModeMenu: {
     alignSelf: 'flex-end',

@@ -1,8 +1,8 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, Text as RNText, View, TextInput, type StyleProp, type TextProps, type ViewStyle , KeyboardAvoidingView, Platform } from 'react-native'
-import { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, withDelay } from 'react-native-reanimated'
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming, withDelay } from 'react-native-reanimated'
 import { type LocalDeal } from '@nestscout/shared'
-import { useFocusEffect } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { useKaelComposerInputSizing } from '@/components/ui/kael-composer-input-height'
 import { KaelButton, KaelTextField } from '@/components/ui/kael-primitives'
 import { GlassSurface } from '@/components/ui/glass-surface'
@@ -45,6 +45,11 @@ import { useWorkerThemedStyles } from '../ui/worker-dark-styles'
 import { workerKaelNextActionHandler } from './kael-orb-next-actions'
 
 type WorkerV5Runtime = ReturnType<typeof useFrontendWorkflow>
+
+// A mode switch is an in-place cross-fade rather than a screen transition, so the header and composer stay put.
+const MODE_MENU_CLOSE_MS = 120
+const MODE_BODY_FADE_OUT_MS = 110
+const MODE_BODY_FADE_IN_MS = 220
 
 // The bottom edge is padded by useKaelComposerBottomInset so the composer can sit near the device edge.
 const KAEL_ORB_SAFE_AREA_EDGES: Edge[] = ['top', 'left', 'right']
@@ -118,6 +123,29 @@ export function WorkerV5KaelOrbScreenSurface({
   const modeMenuContentTranslateY = useSharedValue(reduceMotion ? 0 : 8)
   const modeMenuTranslateY = useSharedValue(reduceMotion ? 0 : -4)
   const modeMenuTriggerScale = useSharedValue(1)
+  const modeBodyOpacity = useSharedValue(1)
+  const router = useRouter()
+  const modeMenuCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const modeSwitchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (modeMenuCloseTimer.current) clearTimeout(modeMenuCloseTimer.current)
+    if (modeSwitchTimer.current) clearTimeout(modeSwitchTimer.current)
+  }, [])
+
+  const closeModeMenu = () => {
+    if (modeMenuCloseTimer.current) clearTimeout(modeMenuCloseTimer.current)
+    if (reduceMotion) {
+      setModeMenuOpen(false)
+      return
+    }
+    const duration = motionDuration(MODE_MENU_CLOSE_MS, reduceMotion)
+    modeMenuOpacity.value = withTiming(0, { duration })
+    modeMenuContentOpacity.value = withTiming(0, { duration })
+    modeMenuScaleY.value = withTiming(0.92, { duration })
+    modeMenuTranslateY.value = withTiming(-4, { duration })
+    modeMenuCloseTimer.current = setTimeout(() => setModeMenuOpen(false), duration)
+  }
 
   const toggleModeMenu = () => {
     setSessionMenuOpen(false)
@@ -128,6 +156,11 @@ export function WorkerV5KaelOrbScreenSurface({
       )
     }
     const nextOpen = !modeMenuOpen
+    if (!nextOpen) {
+      closeModeMenu()
+      return
+    }
+    if (modeMenuCloseTimer.current) clearTimeout(modeMenuCloseTimer.current)
     if (nextOpen) {
       modeMenuOpacity.value = reduceMotion ? 1 : 0
       modeMenuScaleX.value = reduceMotion ? 1 : 0.92
@@ -167,6 +200,9 @@ export function WorkerV5KaelOrbScreenSurface({
   }))
   const animatedModeTriggerStyle = useAnimatedStyle(() => ({
     opacity: modeMenuTriggerScale.value,
+  }))
+  const animatedModeBodyStyle = useAnimatedStyle(() => ({
+    opacity: modeBodyOpacity.value,
   }))
   const orbChat = useWorkerV5KaelOrbChat(deal, language, mode)
   const lastWorkerChatTurn = orbChat.liveTurns[orbChat.liveTurns.length - 1]
@@ -210,9 +246,21 @@ export function WorkerV5KaelOrbScreenSurface({
     resetToNewSession()
   }, [resetToNewSession])
   useFocusEffect(prepareKaelSurfaceFocus)
-  const switchMode = (nextMode: WorkerV5KaelOrbMode) => {
+  const commitModeSwitch = (nextMode: WorkerV5KaelOrbMode) => {
     resetKaelSurface()
-    navigateToScreen(nextMode === 'normal' ? '3.1-kael-chat-normal' : '3.2-kael-job-intake')
+    router.setParams({ ns_worker_screen: nextMode === 'normal' ? '3.1-kael-chat-normal' : '3.2-kael-job-intake' })
+    modeBodyOpacity.value = reduceMotion ? 1 : withTiming(1, { duration: MODE_BODY_FADE_IN_MS })
+  }
+  const switchMode = (nextMode: WorkerV5KaelOrbMode) => {
+    closeModeMenu()
+    if (nextMode === mode) return
+    if (reduceMotion) {
+      commitModeSwitch(nextMode)
+      return
+    }
+    modeBodyOpacity.value = withTiming(0, { duration: MODE_BODY_FADE_OUT_MS })
+    if (modeSwitchTimer.current) clearTimeout(modeSwitchTimer.current)
+    modeSwitchTimer.current = setTimeout(() => commitModeSwitch(nextMode), MODE_BODY_FADE_OUT_MS)
   }
   const toggleSessionMenu = () => {
     setModeMenuOpen(false)
@@ -311,29 +359,31 @@ export function WorkerV5KaelOrbScreenSurface({
             sessionMenuOpen={sessionMenuOpen}
           />
 
-          <WorkerV5KaelOrbBody
-            activeSessionId={orbChat.activeSessionId}
-            composer={composer}
-            composerActive={composerActive}
-            deal={deal}
-            fallbackJobIcon={workerV5Icons.jobs}
-            keepIntakeContextAccessible={!hasPrivateIntakeChat}
-            language={language}
-            liveError={orbChat.error}
-            liveStatus={orbChat.reasoningReceipt.status !== 'idle' ? null : orbChat.busyLabel}
-            liveTurns={orbChat.liveTurns}
-            mode={mode}
-            modeMenuOpen={modeMenuOpen || sessionMenuOpen}
-            onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
-            onNextAction={workerKaelNextActionHandler({ send: orbChat.send, pickMedia: orbChat.pickMedia, navigateToScreen })}
-            onStreamingReplySettled={orbChat.settleStreamingReply}
-            onToggleReasoningReceipt={orbChat.toggleReasoningReceipt}
-            reduceMotion={reduceMotion}
-            reduceTransparency={reduceTransparency}
-            reasoningReceipt={orbChat.reasoningReceipt}
-            serviceIcons={workerV5OpportunityServiceIcons}
-            streamingReply={orbChat.streamingReply}
-          />
+          <Animated.View style={[styles.kaelOrbModeBodyFade, animatedModeBodyStyle]} testID="worker-v5-kael-mode-body">
+            <WorkerV5KaelOrbBody
+              activeSessionId={orbChat.activeSessionId}
+              composer={composer}
+              composerActive={composerActive}
+              deal={deal}
+              fallbackJobIcon={workerV5Icons.jobs}
+              keepIntakeContextAccessible={!hasPrivateIntakeChat}
+              language={language}
+              liveError={orbChat.error}
+              liveStatus={orbChat.reasoningReceipt.status !== 'idle' ? null : orbChat.busyLabel}
+              liveTurns={orbChat.liveTurns}
+              mode={mode}
+              modeMenuOpen={modeMenuOpen || sessionMenuOpen}
+              onOpenOpportunity={() => navigateToScreen(workerV5JobsDestinationScreenId(deal))}
+              onNextAction={workerKaelNextActionHandler({ send: orbChat.send, pickMedia: orbChat.pickMedia, navigateToScreen })}
+              onStreamingReplySettled={orbChat.settleStreamingReply}
+              onToggleReasoningReceipt={orbChat.toggleReasoningReceipt}
+              reduceMotion={reduceMotion}
+              reduceTransparency={reduceTransparency}
+              reasoningReceipt={orbChat.reasoningReceipt}
+              serviceIcons={workerV5OpportunityServiceIcons}
+              streamingReply={orbChat.streamingReply}
+            />
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
