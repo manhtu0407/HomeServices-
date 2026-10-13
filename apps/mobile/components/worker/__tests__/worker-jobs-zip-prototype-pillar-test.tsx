@@ -174,7 +174,6 @@ describe('Worker Jobs ZIP Prototype', () => {
   it('keeps Stage 4 on the approved V3 hierarchy and the real backend boundary', () => {
     expect(source).toContain('WorkerJobsProductionStageFour')
     expect(source).toContain('stage4-map-hero')
-    expect(source).toContain('stage4-destination-chip')
     expect(source).toContain('stage4-eta-sheet')
     expect(source).toContain('stage4-destination-card')
     expect(source).toContain('stage4-metrics')

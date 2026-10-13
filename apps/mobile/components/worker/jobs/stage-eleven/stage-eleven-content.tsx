@@ -229,7 +229,7 @@ function Button({ label, icon, onPress, primary, disabled, testID, windowWidth }
 const s = workerThemedStylesProxy(StyleSheet.create({
   page: { flex: 1, backgroundColor: tLight.canvas },
   scrollContent: { paddingHorizontal: 20, paddingTop: 8 },
-  content: { gap: 12, width: '100%', maxWidth: 520, alignSelf: 'center', backgroundColor: tLight.canvas },
+  content: { gap: 12, width: '100%', maxWidth: 520, alignSelf: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: 8 },
   back: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F9FCFB', boxShadow: tLight.shadow },
   hero: { alignItems: 'center', paddingTop: 0, paddingBottom: 5 },

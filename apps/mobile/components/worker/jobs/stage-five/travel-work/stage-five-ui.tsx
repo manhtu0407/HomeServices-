@@ -34,7 +34,7 @@ export function Tap({children,s=1,onPress,label,disabled=false,style={},testID}:
 }
 /** Holds the work cards at their approved vertical offset; the heading is exposed to screen readers only. */
 export function Header({s,language='vi'}:{s:number;language?:StageFiveLanguage}) {
- return <View accessible accessibilityRole="header" accessibilityLabel={stageFiveText(language,'Đang thực hiện công việc','Work in progress')} style={{height:96*s}}/>
+ return <View accessible accessibilityRole="header" accessibilityLabel={stageFiveText(language,'Đang thực hiện công việc','Work in progress')} style={{height:0}}/>
 }
 export function Primary({label,s,windowWidth,onPress,busy,disabled,testID,language='vi'}:{label:string;s:number;windowWidth:number;onPress?:()=>void;busy?:boolean;disabled?:boolean;testID?:string;language?:StageFiveLanguage}) {
  return <Tap s={s} label={label} onPress={onPress} disabled={disabled||busy} testID={testID} style={{height:56*s,minHeight:48,borderRadius:32*s,overflow:'hidden',borderWidth:1,borderColor:component.button.primary.border,boxShadow:component.button.primary.boxShadow,backgroundColor:TW.color.teal}}><PrimaryCtaFill radius={0}/><View style={{flexDirection:'row',alignItems:'center',justifyContent:'center'}}><Copy role="headline" weight="600" color="#FFF" windowWidth={windowWidth}>{busy?stageFiveText(language,'Đang xử lý…','Working…'):label}</Copy></View></Tap>

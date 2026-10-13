@@ -12,10 +12,13 @@ export type StageFourIconName =
   | 'image'
   | 'layers'
   | 'locate'
+  | 'minus'
+  | 'locationOff'
   | 'note'
   | 'person'
   | 'phone'
   | 'pin'
+  | 'plus'
   | 'route'
   | 'send'
   | 'share'
@@ -85,6 +88,13 @@ export function StageFourIcon({ color, name, size }: { color: string; name: Stag
           <Circle cx="17.5" cy="5.5" r="2" {...strokeProps} />
           <Circle cx="17.5" cy="18.5" r="2" {...strokeProps} />
           <Path d="m7.7 11 7.9-4.5M7.7 13l7.9 4.5" {...strokeProps} />
+        </>
+        : name === 'plus' ? <Path d="M12 5v14M5 12h14" {...strokeProps} />
+        : name === 'minus' ? <Path d="M5 12h14" {...strokeProps} />
+        : name === 'locationOff' ? <>
+          <Path d="M12 21s6-6.1 6-11.2A6 6 0 0 0 6 9.8C6 14.9 12 21 12 21Z" {...strokeProps} />
+          <Circle cx="12" cy="9.5" r="2" {...strokeProps} />
+          <Path d="M4 3.5 20 20.5" {...strokeProps} />
         </>
         : <Path d="M5 19V13M10 19V9M15 19V5M20 19v-8" {...strokeProps} />}
     </Svg>

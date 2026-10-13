@@ -39,7 +39,8 @@ export function buildWorkerStageTenRuntime(runtime: WorkerStageTenRuntime, langu
     jobId,
     ledger: runtime.workerEarnings?.recent_transactions ?? [],
     performanceScore: runtime.workerPerformanceInsights?.performance_score ?? null,
-    photoRef: deal?.completionPhotoUrls?.[0] ?? listedJob?.completion_photo_urls?.[0] ?? null,
+    photoRef: deal?.customerEvidencePhotoUrls?.[0] ?? deal?.completionPhotoUrls?.[0]
+      ?? listedJob?.customer_evidence_photo_urls?.[0] ?? listedJob?.completion_photo_urls?.[0] ?? null,
     reviewCount: runtime.workerPerformanceInsights?.review_count ?? null,
     serviceType: deal?.broadcast?.serviceType ?? deal?.draft.serviceType ?? listedJob?.service_type ?? null,
     status: deal?.status ?? listedJob?.status ?? null,

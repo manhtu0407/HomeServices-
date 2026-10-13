@@ -123,7 +123,7 @@ export const stageTwoCardTokens = {
    *  (design/theme.ts) instead of a bespoke per-card size — section header now matches row
    *  title weight (body/600) per Tu's request, both read lighter than the old title3/700. */
   type: {
-    action: { role: 'body', weight: '700' },
+    action: { role: 'callout', weight: '700' },
     pill: { role: 'footnote', weight: '600' },
     rowSub: { role: 'subheadline', weight: '500' },
     rowTitle: { role: 'body', weight: '600' },

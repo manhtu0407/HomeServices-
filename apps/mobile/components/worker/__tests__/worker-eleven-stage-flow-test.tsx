@@ -506,18 +506,19 @@ describe('Worker 11-stage flow: expected order from first sight of a job to paym
       await waitFor(() => expect(mockWorkflowValue.actions.workerUpdateStatus).toHaveBeenCalledWith('inspecting'))
     })
 
-    it('S5: without an agreed price the main button opens the post-inspection quote', async () => {
+    it('S5: without an agreed price work cannot start and no details sheet opens', async () => {
       buildWorkflow(buildDealAt('inspecting', { finalPrice: null }, UNIT_RELEASED))
       openAt('2.7-in-progress')
-      const primary = screen.getByTestId('stage5-primary')
-      expect(primary).toHaveTextContent(/Báo giá sau khảo sát/)
+
+      expect(screen.queryByText('Hồ sơ công việc')).toBeNull()
+      expect(screen.queryByLabelText('Chi tiết công việc')).toBeNull()
+      expect(screen.getByTestId('stage5-primary')).toBeDisabled()
 
       await act(async () => {
-        fireEvent.press(primary)
+        fireEvent.press(screen.getByTestId('stage5-primary'))
         await Promise.resolve()
       })
 
-      expect(screen.getByText('Hồ sơ công việc')).toBeOnTheScreen()
       expect(mockWorkflowValue.actions.workerUpdateStatus).not.toHaveBeenCalled()
     })
 

@@ -55,11 +55,10 @@ describe('P323 Worker theme resolved at render time', () => {
     mockMode = 'dark'
     // First load of the module, while the phone is dark: its stylesheet is built now.
     const StageElevenContent: React.ComponentType<Record<string, unknown>> = require('../jobs/stage-eleven/stage-eleven-content').StageElevenContent
-    const tokens: { canvas: string } = require('../jobs/stage-eleven/stage-eleven.tokens').stageElevenTokens
     mockMode = 'light'
     render(<StageElevenContent actions={{ onEarnings: jest.fn(), onHistory: jest.fn() }} language="vi" model={stageElevenModel()} />)
     withPillarContext(PILLAR, () => {
-      expect(StyleSheet.flatten(screen.getByTestId('worker-v5-stage-eleven-payment-confirmed').props.style)).toMatchObject({ backgroundColor: tokens.canvas })
+      expect(StyleSheet.flatten(screen.getByTestId('worker-v5-stage-eleven-payment-confirmed').props.style)).not.toHaveProperty('backgroundColor')
     })
   })
 })

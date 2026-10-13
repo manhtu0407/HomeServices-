@@ -1,4 +1,4 @@
-import { Pressable, Text as RNText, View, useWindowDimensions, type StyleProp, type TextProps, type ViewStyle } from 'react-native'
+import { Linking, Platform, Pressable, Share, Text as RNText, View, useWindowDimensions, type StyleProp, type TextProps, type ViewStyle } from 'react-native'
 import type { ReactNode } from 'react'
 import type { LocalDeal } from '@nestscout/shared'
 
@@ -23,6 +23,10 @@ import {
 import { WorkerV5AuthenticatedRouteMapPreview } from './route-map-surfaces'
 import type { WorkerV5RoutePreviewState } from './use-worker-route-preview'
 import type { WorkerJobsLegacyPrototypeRuntime } from './worker-jobs-zip-prototype-shared'
+import { GlassSurface } from '@/components/ui/glass-surface'
+import { buildDirectionsUrl, buildLocationShareMessage } from '@/lib/route-navigation'
+import { StageFourRouteOverlay } from './stage-four-route-overlay'
+import { useStageFourMapViewport, type StageFourMapViewport } from './use-stage-four-map-viewport'
 import { StageFourGradientFill, StageFourIcon, type StageFourIconName } from './worker-jobs-zip-prototype-stage-four-icons'
 import { createStageFourStyles, getStageFourPalette } from './worker-jobs-zip-prototype-stage-four-styles'
 
@@ -46,7 +50,6 @@ export function WorkerJobsProductionStageFour({
   actionBusy,
   language,
   navigateActiveJobChat,
-  navigateToScreen,
   prototypeMode,
   reduceMotion,
   reduceTransparency,
@@ -69,14 +72,6 @@ export function WorkerJobsProductionStageFour({
   const destinationDetail = hasRouteDestination && deal
     ? destinationDetailLine(deal, destinationLabel)
     : textByLanguage(language, 'Thông tin được bảo vệ cho đến khi backend cấp quyền.', 'Details remain protected until the backend releases them.')
-  // The floating chip exists only for a released destination with a real area name; it never shows placeholder copy.
-  const chipHeadline = hasRouteDestination && deal
-    ? deal.broadcast?.generalArea?.trim() || deal.draft.districtLabel?.trim() || null
-    : null
-  const chipNote = [deal?.broadcast?.addressAccess?.access_profile.building_note, deal?.draft.districtLabel]
-    .map((value) => value?.trim() ?? '')
-    .find((value) => value.length > 0 && value !== chipHeadline)
-    ?? textByLanguage(language, 'Điểm đến đã được mở', 'Destination released')
   const etaSignal = routePreview.route
     ? workerV5LiveEtaSignal(routePreview.route, language)
     : buildWorkerV5AcceptEtaSignal(deal, language)
@@ -99,9 +94,69 @@ export function WorkerJobsProductionStageFour({
     : textByLanguage(language, 'Bắt đầu di chuyển', 'Start travel')
   const primaryDisabled = !primaryReady || actionBusy
   const canChat = Boolean(deal?.broadcast?.jobId ?? deal?.id)
-  const openDetails = deal ? () => navigateToScreen('2.2-offer-detail') : undefined
   const openChat = canChat ? navigateActiveJobChat : undefined
+  const routeStatus = routeStatusCopy(routePreview, deal, language)
+  const viewport = useStageFourMapViewport()
+  const routeDestination = routePreview.route?.destination ?? null
+  const openDirections = routeDestination
+    ? () => { void Linking.openURL(buildDirectionsUrl(Platform.OS, routeDestination)).catch(() => undefined) }
+    : undefined
+  const shareLocation = routePreview.origin
+    ? () => { void Share.share({ message: buildLocationShareMessage(routePreview.origin!, language) }).catch(() => undefined) }
+    : undefined
 
+  const mapGlassInk = getWorkerThemeTokens('light').text
+  const mapControls = routePreview.mapUri ? (
+          <GlassSurface material="liquid" mode="light" nativeUntinted style={styles.mapControlGroup} testID="stage4-map-controls" variant="control">
+            <StageFourButton
+              accessibilityLabel={textByLanguage(language, 'Mở chỉ đường', 'Open directions')}
+              label={textByLanguage(language, 'Mở chỉ đường', 'Open directions')}
+              onPress={openDirections}
+              reduceMotion={reduceMotion}
+              style={styles.mapControlButton}
+              testID="stage4-map-directions"
+              tokens={tokens}
+            >
+              <StageFourIcon color={mapGlassInk} name="send" size={21 * scale} />
+            </StageFourButton>
+            <View style={styles.mapControlDivider} />
+            <StageFourButton
+              accessibilityLabel={textByLanguage(language, 'Phóng to', 'Zoom in')}
+              label={textByLanguage(language, 'Phóng to', 'Zoom in')}
+              onPress={viewport.canZoomIn ? viewport.zoomIn : undefined}
+              reduceMotion={reduceMotion}
+              style={styles.mapControlButton}
+              testID="stage4-map-zoom-in"
+              tokens={tokens}
+            >
+              <StageFourIcon color={mapGlassInk} name="plus" size={21 * scale} />
+            </StageFourButton>
+            <View style={styles.mapControlDivider} />
+            <StageFourButton
+              accessibilityLabel={textByLanguage(language, 'Thu nhỏ', 'Zoom out')}
+              label={textByLanguage(language, 'Thu nhỏ', 'Zoom out')}
+              onPress={viewport.canZoomOut ? viewport.zoomOut : undefined}
+              reduceMotion={reduceMotion}
+              style={styles.mapControlButton}
+              testID="stage4-map-zoom-out"
+              tokens={tokens}
+            >
+              <StageFourIcon color={mapGlassInk} name="minus" size={21 * scale} />
+            </StageFourButton>
+            <View style={styles.mapControlDivider} />
+            <StageFourButton
+              accessibilityLabel={textByLanguage(language, 'Xem toàn tuyến', 'Fit the whole route')}
+              label={textByLanguage(language, 'Xem toàn tuyến', 'Fit the whole route')}
+              onPress={viewport.isMoved ? viewport.reset : undefined}
+              reduceMotion={reduceMotion}
+              style={styles.mapControlButton}
+              testID="stage4-map-fit"
+              tokens={tokens}
+            >
+              <StageFourIcon color={mapGlassInk} name="locate" size={21 * scale} />
+            </StageFourButton>
+          </GlassSurface>
+        ) : null
   return (
     <View
       style={[
@@ -110,98 +165,55 @@ export function WorkerJobsProductionStageFour({
       ]}
       testID="worker-v5-route-eta-handoff"
     >
-      <View style={styles.hero} testID="stage4-map-hero">
+      <View style={[styles.hero, !routePreview.mapUri ? { height: Math.round(470 * scale) } : null]} testID="stage4-map-hero">
         <StageFourRouteMap
           deal={deal}
           destinationLabel={destinationLabel}
           language={language}
           routePreview={routePreview}
+          routeStatus={routeStatus}
           scale={scale}
           styles={styles}
+          controls={mapControls}
           tokens={tokens}
+          viewport={viewport}
           windowWidth={width}
         />
 
-        {chipHeadline ? (
-          <StageFourButton
-            accessibilityLabel={textByLanguage(language, 'Xem điểm đến', 'View destination')}
-            label={textByLanguage(language, 'Xem điểm đến', 'View destination')}
-            onPress={openDetails}
-            reduceMotion={reduceMotion}
-            style={styles.chip}
-            testID="stage4-destination-chip"
-            tokens={tokens}
-          >
-            <View style={styles.chipIcon}>
-              <StageFourIcon color={tokens.primary} name="home" size={23 * scale} />
-            </View>
-            <View style={styles.chipCopy}>
-              <Copy numberOfLines={1} textRole="subheadline" tokens={tokens} weight="700" windowWidth={width}>{chipHeadline}</Copy>
-              <Copy numberOfLines={1} color={tokens.muted} textRole="caption1" tokens={tokens} windowWidth={width}>{chipNote}</Copy>
-            </View>
-            <StageFourIcon color={tokens.text} name="chevron" size={17 * scale} />
-          </StageFourButton>
-        ) : null}
-
-        {routePreview.mapUri ? (
-          <View style={styles.mapControlColumn} testID="stage4-map-controls">
-            <StageFourButton
-              accessibilityLabel={textByLanguage(language, 'Mở chỉ đường', 'Open directions')}
-              disabled
-              label={textByLanguage(language, 'Mở chỉ đường', 'Open directions')}
-              reduceMotion={reduceMotion}
-              style={styles.mapControl}
-              testID="stage4-map-directions"
-              tokens={tokens}
-            >
-              <StageFourIcon color={tokens.text} name="send" size={21 * scale} />
-            </StageFourButton>
-            <StageFourButton
-              accessibilityLabel={textByLanguage(language, 'Lớp bản đồ', 'Map layers')}
-              disabled
-              label={textByLanguage(language, 'Lớp bản đồ', 'Map layers')}
-              reduceMotion={reduceMotion}
-              style={styles.mapControl}
-              testID="stage4-map-layers"
-              tokens={tokens}
-            >
-              <StageFourIcon color={tokens.text} name="layers" size={21 * scale} />
-            </StageFourButton>
-            <StageFourButton
-              accessibilityLabel={textByLanguage(language, 'Về vị trí hiện tại', 'Center on current location')}
-              disabled
-              label={textByLanguage(language, 'Về vị trí hiện tại', 'Center on current location')}
-              reduceMotion={reduceMotion}
-              style={styles.mapControl}
-              testID="stage4-map-locate"
-              tokens={tokens}
-            >
-              <StageFourIcon color={tokens.text} name="locate" size={21 * scale} />
-            </StageFourButton>
-          </View>
-        ) : null}
 
         <View style={styles.etaSheet} testID="stage4-eta-sheet">
           <View style={styles.etaSheetRow}>
             <StageFourIcon color={tokens.primary} name="car" size={24 * scale} />
             <View style={{ flex: 1, minWidth: 0 }}>
               {etaValue ? (
-                <Copy textRole="body" tokens={tokens} weight="700" windowWidth={width}>
+                <Copy textRole="body" tokens={tokens} weight="600" windowWidth={width}>
                   {textByLanguage(language, 'Bạn sẽ đến trong ', 'Arrival in ')}
-                  <Copy color={tokens.primary} textRole="body" tokens={tokens} weight="700" windowWidth={width}>{etaValue}</Copy>
+                  <Copy color={tokens.primary} textRole="body" tokens={tokens} weight="600" windowWidth={width}>{etaValue}</Copy>
                 </Copy>
               ) : (
-                <Copy textRole="body" tokens={tokens} weight="700" windowWidth={width}>
+                <Copy textRole="body" tokens={tokens} weight="600" windowWidth={width}>
                   {textByLanguage(language, 'Thời gian đến đang cập nhật', 'Arrival time is updating')}
                 </Copy>
               )}
-              <Copy color={tokens.muted} textRole="caption1" tokens={tokens} windowWidth={width}>
+              <Copy color={tokens.muted} textRole="subheadline" tokens={tokens} weight="500" windowWidth={width}>
                 {primaryMode === 'arrival'
                   ? textByLanguage(language, 'Đang di chuyển đến địa điểm khách hàng', 'Travelling to the customer destination')
                   : textByLanguage(language, 'Sẵn sàng đến địa điểm khách hàng', 'Ready to travel to the customer destination')}
               </Copy>
             </View>
           </View>
+          {routePreview.hasRouteDestination && !routePreview.mapUri ? (
+            <>
+              <View style={styles.sheetDivider} />
+              <View style={styles.routeStatusRow} testID="stage4-route-status">
+                <StageFourIcon color={tokens.primary} name="locationOff" size={24 * scale} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Copy textRole="body" tokens={tokens} weight="600" windowWidth={width}>{routeStatus.title}</Copy>
+                  <Copy color={tokens.muted} textRole="subheadline" tokens={tokens} weight="500" windowWidth={width}>{routeStatus.detail}</Copy>
+                </View>
+              </View>
+            </>
+          ) : null}
         </View>
       </View>
 
@@ -210,20 +222,20 @@ export function WorkerJobsProductionStageFour({
           <View style={styles.destinationMain}>
             <View style={styles.sectionTitleRow}>
               <StageFourIconDisc name="pin" primary scale={scale} size={32} tokens={tokens} />
-              <Copy textRole="footnote" style={styles.sectionTitle} tokens={tokens} weight="600" windowWidth={width}>{textByLanguage(language, 'Điểm đến', 'Destination')}</Copy>
+              <Copy textRole="body" style={styles.sectionTitle} tokens={tokens} weight="600" windowWidth={width}>{textByLanguage(language, 'Điểm đến', 'Destination')}</Copy>
             </View>
             <View style={styles.destinationCopy}>
-              <Copy numberOfLines={2} textRole="subheadline" tokens={tokens} weight="700" windowWidth={width}>{destinationLabel}</Copy>
+              <Copy numberOfLines={2} textRole="body" tokens={tokens} weight="600" windowWidth={width}>{destinationLabel}</Copy>
               {destinationDetail ? (
-                <Copy numberOfLines={2} color={tokens.muted} textRole="caption1" style={{ marginTop: 2 * scale }} tokens={tokens} windowWidth={width}>
+                <Copy numberOfLines={2} color={tokens.muted} textRole="subheadline" weight="500" style={{ marginTop: 2 * scale }} tokens={tokens} windowWidth={width}>
                   {destinationDetail}
                 </Copy>
               ) : null}
             </View>
           </View>
           <View style={styles.destinationArt} testID="stage4-destination-art">
-            <StageFourIcon color={palette.placeholderInk} name="image" size={26 * scale} />
-            <Copy color={palette.placeholderInk} textRole="caption1" tokens={tokens} weight="500" windowWidth={width}>{textByLanguage(language, 'Chưa có ảnh', 'No photo')}</Copy>
+            <StageFourIcon color={palette.placeholderInk} name="image" size={34 * scale} />
+            <Copy color={palette.placeholderInk} textRole="footnote" tokens={tokens} weight="400" windowWidth={width}>{textByLanguage(language, 'Chưa có ảnh', 'No photo')}</Copy>
           </View>
         </View>
 
@@ -240,7 +252,16 @@ export function WorkerJobsProductionStageFour({
         <View style={[styles.card, styles.cardContent, { minHeight: Math.round(88 * scale) }]} testID="stage4-customer-card">
           <View style={styles.sectionTitleRow}>
             <StageFourIconDisc name="person" primary scale={scale} size={32} tokens={tokens} />
-            <Copy textRole="footnote" style={styles.sectionTitle} tokens={tokens} weight="600" windowWidth={width}>{textByLanguage(language, 'Thông tin khách hàng', 'Customer information')}</Copy>
+            <Copy textRole="body" style={styles.sectionTitle} tokens={tokens} weight="600" windowWidth={width}>{textByLanguage(language, 'Thông tin khách hàng', 'Customer information')}</Copy>
+          </View>
+          <View style={styles.customerBody}>
+            <View style={styles.customerInitial}>
+              <StageFourIcon color={tokens.primary} name="person" size={21 * scale} />
+            </View>
+            <View style={styles.customerCopy}>
+              <Copy numberOfLines={1} textRole="body" tokens={tokens} weight="600" windowWidth={width}>{textByLanguage(language, 'Khách hàng', 'Customer')}</Copy>
+              <Copy color={tokens.muted} textRole="subheadline" tokens={tokens} weight="500" windowWidth={width}>{textByLanguage(language, 'Lịch hẹn: ', 'Appointment: ')}{appointment}</Copy>
+            </View>
             <View style={styles.customerActions}>
               <StageFourSmallAction
                 disabled
@@ -265,33 +286,24 @@ export function WorkerJobsProductionStageFour({
               />
             </View>
           </View>
-          <View style={styles.customerBody}>
-            <View style={styles.customerInitial}>
-              <StageFourIcon color={tokens.primary} name="person" size={21 * scale} />
-            </View>
-            <View style={styles.customerCopy}>
-              <Copy numberOfLines={1} textRole="subheadline" tokens={tokens} weight="700" windowWidth={width}>{textByLanguage(language, 'Khách hàng', 'Customer')}</Copy>
-              <Copy color={tokens.muted} textRole="caption1" tokens={tokens} windowWidth={width}>{textByLanguage(language, 'Lịch hẹn: ', 'Appointment: ')}{appointment}</Copy>
-            </View>
-          </View>
         </View>
 
         <View style={[styles.card, styles.cardContent, styles.noteCard]} testID="stage4-customer-note">
           <View style={styles.sectionTitleRow}>
             <StageFourIconDisc name="note" primary scale={scale} size={32} tokens={tokens} />
-            <Copy textRole="footnote" tokens={tokens} weight="600" windowWidth={width}>{textByLanguage(language, 'Ghi chú từ khách hàng', 'Customer note')}</Copy>
+            <Copy textRole="body" tokens={tokens} weight="600" windowWidth={width}>{textByLanguage(language, 'Ghi chú từ khách hàng', 'Customer note')}</Copy>
           </View>
           <View style={styles.noteSurface}>
             <StageFourIcon color={tokens.primary} name="building" size={18.5 * scale} />
-            <Copy color={tokens.text} textRole="caption1" style={{ flex: 1 }} tokens={tokens} windowWidth={width}>{customerNote}</Copy>
+            <Copy color={tokens.muted} textRole="subheadline" weight="400" style={{ flex: 1 }} tokens={tokens} windowWidth={width}>{customerNote}</Copy>
           </View>
         </View>
 
         <View style={styles.smallActionRow} testID="stage4-utility-actions">
           <StageFourUtilityAction
-            disabled
             icon="send"
             label={textByLanguage(language, 'Mở chỉ đường', 'Directions')}
+            onPress={openDirections}
             reduceMotion={reduceMotion}
             scale={scale}
             testID="stage4-directions"
@@ -299,9 +311,9 @@ export function WorkerJobsProductionStageFour({
             windowWidth={width}
           />
           <StageFourUtilityAction
-            disabled
             icon="share"
             label={textByLanguage(language, 'Chia sẻ vị trí', 'Share location')}
+            onPress={shareLocation}
             reduceMotion={reduceMotion}
             scale={scale}
             testID="stage4-share"
@@ -311,7 +323,7 @@ export function WorkerJobsProductionStageFour({
         </View>
 
         {runtime.state.lastError?.trim() ? (
-          <Copy color={tokens.danger} textRole="caption1" style={styles.error} testID="stage4-error" tokens={tokens} windowWidth={width}>
+          <Copy color={tokens.danger} textRole="footnote" style={styles.error} testID="stage4-error" tokens={tokens} windowWidth={width}>
             {runtime.state.lastError.trim()}
           </Copy>
         ) : null}
@@ -345,8 +357,14 @@ function StageFourRouteMap({
   scale,
   styles,
   tokens,
+  viewport,
   windowWidth,
+  routeStatus,
+  controls,
 }: {
+  controls: ReactNode
+  viewport: StageFourMapViewport
+  routeStatus: { detail: string; title: string }
   deal: LocalDeal | null
   destinationLabel: string
   language: 'vi' | 'en'
@@ -358,14 +376,41 @@ function StageFourRouteMap({
 }) {
   if (routePreview.mapUri) {
     return (
-      <View style={styles.mapCanvas} testID="stage4-real-route-map">
-        <View style={styles.mapImage}>
-          <WorkerV5AuthenticatedRouteMapPreview label={destinationLabel} language={language} uri={routePreview.mapUri} />
+      <View onLayout={viewport.onLayout} style={styles.mapCanvas} testID="stage4-real-route-map" {...viewport.panHandlers}>
+        <View
+          style={[styles.mapImage, { transform: [{ translateX: viewport.offset.x }, { translateY: viewport.offset.y }, { scale: viewport.scale }] }]}
+          testID="stage4-map-viewport"
+        >
+          <WorkerV5AuthenticatedRouteMapPreview
+            label={destinationLabel}
+            language={language}
+            overlay={routePreview.origin && routePreview.route?.destination
+              ? <StageFourRouteOverlay destination={routePreview.route.destination} geometry={routePreview.route.geometry} origin={routePreview.origin} tokens={tokens} zoom={viewport.scale} />
+              : undefined}
+            uri={routePreview.mapUri}
+          />
         </View>
+        {controls}
       </View>
     )
   }
 
+  return (
+    <View style={[styles.mapCanvas, styles.emptyMap, { gap: Math.round(8 * scale) }]} testID="stage4-route-map-empty">
+      <StageFourIconDisc name="pin" scale={scale} size={48} tokens={tokens} />
+      {routePreview.hasRouteDestination ? (
+        <Copy textRole="body" tokens={tokens} weight="600" windowWidth={windowWidth}>{textByLanguage(language, 'Chưa có bản đồ', 'Map unavailable')}</Copy>
+      ) : (
+        <>
+          <Copy textRole="body" tokens={tokens} weight="600" windowWidth={windowWidth}>{routeStatus.title}</Copy>
+          <Copy color={tokens.muted} textRole="subheadline" weight="500" style={{ maxWidth: 292 * scale, textAlign: 'center' }} tokens={tokens} windowWidth={windowWidth}>{routeStatus.detail}</Copy>
+        </>
+      )}
+    </View>
+  )
+}
+
+function routeStatusCopy(routePreview: WorkerV5RoutePreviewState, deal: LocalDeal | null, language: 'vi' | 'en') {
   const title = !routePreview.hasRouteDestination
     ? textByLanguage(language, 'Địa chỉ chưa được mở', 'Destination not released')
     : routePreview.locationStatus === 'loading'
@@ -376,14 +421,7 @@ function StageFourRouteMap({
   const detail = !deal || !routePreview.hasRouteDestination
     ? textByLanguage(language, 'Bản đồ và thời gian chỉ hiển thị khi backend đã cấp điểm đến hợp lệ.', 'The map and ETA appear after the backend releases a valid destination.')
     : textByLanguage(language, 'Không thể tính tuyến đường từ vị trí hiện tại.', 'A route cannot be calculated from the current location.')
-
-  return (
-    <View style={[styles.mapCanvas, styles.emptyMap, { gap: Math.round(8 * scale) }]} testID="stage4-route-map-empty">
-      <StageFourIconDisc name="pin" scale={scale} size={48} tokens={tokens} />
-      <Copy textRole="body" tokens={tokens} weight="700" windowWidth={windowWidth}>{title}</Copy>
-      <Copy color={tokens.muted} textRole="caption1" style={{ maxWidth: 292 * scale, textAlign: 'center' }} tokens={tokens} windowWidth={windowWidth}>{detail}</Copy>
-    </View>
-  )
+  return { detail, title }
 }
 
 function StageFourMetric({
@@ -406,10 +444,10 @@ function StageFourMetric({
   const styles = createStageFourStyles(scale, tokens)
   return (
     <View style={styles.metric}>
-      <StageFourIcon color={tokens.primary} name={icon} size={20 * scale} />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Copy color={compact ? tokens.primary : tokens.text} numberOfLines={compact ? 2 : 1} textRole={compact ? 'caption1' : 'subheadline'} tokens={tokens} weight="700" windowWidth={windowWidth}>{value}</Copy>
-        <Copy color={tokens.muted} textRole="caption2" tokens={tokens} windowWidth={windowWidth}>{label}</Copy>
+      <StageFourIcon color={tokens.primary} name={icon} size={22 * scale} />
+      <View style={{ alignItems: 'center', alignSelf: 'stretch' }}>
+        <Copy color={compact ? tokens.primary : tokens.text} numberOfLines={1} style={{ textAlign: 'center' }} textRole={compact ? 'footnote' : 'subheadline'} tokens={tokens} weight="600" windowWidth={windowWidth}>{value}</Copy>
+        <Copy color={tokens.muted} numberOfLines={1} style={{ textAlign: 'center' }} textRole="caption1" tokens={tokens} windowWidth={windowWidth}>{label}</Copy>
       </View>
     </View>
   )
@@ -448,7 +486,7 @@ function StageFourSmallAction({
       tokens={tokens}
     >
       <StageFourIcon color={tokens.primary} name={icon} size={19 * scale} />
-      <Copy textRole="caption1" tokens={tokens} weight="500" windowWidth={windowWidth}>{label}</Copy>
+      <Copy numberOfLines={1} textRole="footnote" tokens={tokens} weight="600" windowWidth={windowWidth}>{label}</Copy>
     </StageFourButton>
   )
 }
@@ -486,7 +524,7 @@ function StageFourUtilityAction({
       tokens={tokens}
     >
       <StageFourIcon color={tokens.primary} name={icon} size={19 * scale} />
-      <Copy numberOfLines={2} textRole="caption1" style={{ textAlign: 'center' }} tokens={tokens} weight="500" windowWidth={windowWidth}>{label}</Copy>
+      <Copy numberOfLines={2} textRole="footnote" style={{ textAlign: 'center' }} tokens={tokens} weight="600" windowWidth={windowWidth}>{label}</Copy>
     </StageFourButton>
   )
 }
@@ -532,8 +570,8 @@ function StageFourPrimaryButton({
       <StageFourGradientFill testID="stage4-primary-gradient" />
       <View style={styles.primaryRow}>
         <View style={styles.primaryCopy}>
-          <Copy color={component.button.primary.text} numberOfLines={1} textRole="body" tokens={tokens} weight="700" windowWidth={windowWidth}>{displayLabel}</Copy>
-          <Copy color={palette.ctaSubtitle} numberOfLines={2} textRole="caption1" style={{ marginTop: -1 * scale }} tokens={tokens} windowWidth={windowWidth}>{subtitle}</Copy>
+          <Copy color={component.button.primary.text} numberOfLines={1} textRole="callout" tokens={tokens} weight="700" windowWidth={windowWidth}>{displayLabel}</Copy>
+          <Copy color={palette.ctaSubtitle} numberOfLines={2} textRole="footnote" style={{ marginTop: -1 * scale }} tokens={tokens} windowWidth={windowWidth}>{subtitle}</Copy>
         </View>
       </View>
     </Pressable>
@@ -570,7 +608,7 @@ function StageFourButton({
       disabled={isDisabled}
       hitSlop={6}
       onPress={onPress}
-      style={({ pressed }) => [{ minHeight: 44, justifyContent: 'center', opacity: isDisabled ? 0.44 : pressed && !reduceMotion ? 0.76 : 1, transform: [{ scale: pressed && !reduceMotion ? 0.98 : 1 }] }, style]}
+      style={({ pressed }) => [{ minHeight: 44, justifyContent: 'center', opacity: isDisabled ? 0.62 : pressed && !reduceMotion ? 0.76 : 1, transform: [{ scale: pressed && !reduceMotion ? 0.98 : 1 }] }, style]}
       testID={testID}
     >
       {children}

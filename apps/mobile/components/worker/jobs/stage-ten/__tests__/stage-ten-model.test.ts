@@ -103,6 +103,31 @@ describe('Stage 10 Concept B model', () => {
     expect(projection.photoRef).toBe('private://completion-photo')
   })
 
+  it('shows the customer problem photo on the job card before the worker completion photo', () => {
+    const runtime = (deal: Record<string, unknown>) => ({
+      state: { deal },
+      workerEarnings: null,
+      workerJobs: [],
+      workerPerformanceInsights: null,
+      workerProfile: null,
+    }) as never
+    const base = { id: 'job-1', status: 'completed_by_worker', draft: { districtLabel: 'Quận 1' }, completedAt: '2026-09-14T08:32:00.000Z' }
+
+    expect(buildWorkerStageTenRuntime(runtime({
+      ...base,
+      customerEvidencePhotoUrls: ['private://customer-problem'],
+      completionPhotoUrls: ['private://completion-photo'],
+    }), 'vi').photoRef).toBe('private://customer-problem')
+
+    expect(buildWorkerStageTenRuntime(runtime({
+      ...base,
+      customerEvidencePhotoUrls: [],
+      completionPhotoUrls: ['private://completion-photo'],
+    }), 'vi').photoRef).toBe('private://completion-photo')
+
+    expect(buildWorkerStageTenRuntime(runtime({ ...base, customerEvidencePhotoUrls: [], completionPhotoUrls: [] }), 'vi').photoRef).toBeNull()
+  })
+
   it('formats VND and HCMC completion time like the supplied Concept B', () => {
     expect(money10(180000, 'vi')).toBe('180.000đ')
     expect(money10(null, 'vi')).toBe('Chưa ghi nhận')

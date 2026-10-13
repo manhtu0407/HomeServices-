@@ -1,5 +1,5 @@
 import { Image } from 'expo-image'
-import { Pressable, StyleSheet, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
+import { Platform, Pressable, StyleSheet, type ImageSourcePropType, type StyleProp, type ViewStyle } from 'react-native'
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated'
 
 import { KAEL_CORE_V9_SIZE } from './kael-core-v9-contract'
@@ -64,7 +64,7 @@ export function KaelNavigationAccessory({
     >
       <Animated.View style={artworkMotionStyle} testID={testID ? `${testID}-motion` : undefined}>
         <Image
-          accessible={false}
+          accessible={Platform.OS === 'web' ? undefined : false}
           contentFit="contain"
           source={kaelNavigationSources[visualRole]}
           style={{ height: artworkSize, width: artworkSize }}

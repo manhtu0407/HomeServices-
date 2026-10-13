@@ -94,6 +94,14 @@
         "scripts/preview/kael-flex/run.mjs"
       ],
       "port": 8087
+    },
+    {
+      "name": "kael-worker-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "scripts/preview/kael-worker/run.mjs"
+      ],
+      "port": 8087
     }
   ]
 }

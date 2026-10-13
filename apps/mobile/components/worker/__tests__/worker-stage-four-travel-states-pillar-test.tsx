@@ -151,7 +151,7 @@ function backgroundsUnder(root: RenderedNode): string[] {
 }
 
 describe('Worker Stage 4 travel states', () => {
-  it('keeps the pre-agentic screen honest: disabled start CTA, unknown metrics, no destination chip', () => {
+  it('keeps the pre-agentic screen honest: disabled start CTA, unknown metrics, no destination link', () => {
     const { runRouteAction } = renderStageFour()
     const primary = screen.getByTestId('stage4-primary')
 
@@ -165,7 +165,6 @@ describe('Worker Stage 4 travel states', () => {
     }, 'no job: the CTA must render the approved start step but stay disabled')
 
     withPillarContext(PILLAR, () => {
-      expect(screen.queryByTestId('stage4-destination-chip')).toBeNull()
       expect(screen.getAllByText('—')).toHaveLength(2)
       expect(screen.getByText('Chưa có dữ liệu')).toBeOnTheScreen()
       expect(screen.queryByText('Đang cập nhật')).toBeNull()
@@ -212,21 +211,17 @@ describe('Worker Stage 4 travel states', () => {
       expect(screen.getByText('Bạn sẽ đến trong 12 phút')).toBeOnTheScreen()
       expect(screen.getAllByText('12 phút')).toHaveLength(2)
       expect(screen.getByText(/^4[.,]2 km$/)).toBeOnTheScreen()
-      expect(screen.getByTestId('stage4-destination-chip')).toBeOnTheScreen()
-      expect(within(screen.getByTestId('stage4-destination-chip')).getByText('Vinhomes Grand Park')).toBeOnTheScreen()
-      expect(within(screen.getByTestId('stage4-destination-chip')).getByText('Tòa BE6, The Beverly')).toBeOnTheScreen()
       expect(screen.getAllByText('Tòa BE6, Vinhomes Grand Park')).toHaveLength(1)
       expect(screen.getByText('Thành phố Thủ Đức')).toBeOnTheScreen()
     }, 'live route: ETA and distance come from the route, and the address is not repeated as its own detail line')
   })
 
-  it('hides the destination chip while the backend has not released the destination', () => {
+  it('hides the destination link while the backend has not released the destination', () => {
     renderStageFour({ deal: releasedDeal('worker_matched'), routePreview: { ...liveRoute, hasRouteDestination: false, route: null } })
 
     withPillarContext(PILLAR, () => {
-      expect(screen.queryByTestId('stage4-destination-chip')).toBeNull()
       expect(screen.getByText('Chưa mở điểm đến')).toBeOnTheScreen()
-    }, 'a job alone is not a released destination; the chip waits for the backend release')
+    }, 'a job alone is not a released destination; the destination link waits for the backend release')
   })
 
   it('switches to the arrival step once the worker is on the way', () => {

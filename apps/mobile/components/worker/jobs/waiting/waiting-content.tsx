@@ -67,6 +67,9 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
     const { reading } = this.state, s = this.state.width / t.width
     const copy = waitingCopy(model, reading, language), assets = (getWorkerThemeModeNow() === 'dark' ? waitingDarkAssets : waitingAssets)[model.kind]
     const closed = model.state !== 'waiting'
+    // The scene is drawn on the 560 reference canvas; it is shown at 78% so the ring, art and numerals stop dominating the screen.
+    const sc = s * 0.78
+    const place = (x: number) => 280 * s + (x - 280) * sc
     // Text resolves against the real window width, not the measured/capped card width `s`
     // uses for layout, so the app's Apple type scale never shrinks relative to other screens.
     const windowWidth = Dimensions.get('window').width
@@ -75,34 +78,33 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
     // The design floor alone leaves the near-white atmosphere short of a tall device's actual
     // bottom edge; the same 620/0.92 floor worker-v5-flow.tsx gives its own ScrollView keeps this
     // screen's own background reaching that edge instead of handing off to a mismatched parent fill.
-    const viewportMinHeight = Math.max(620, Math.round(Dimensions.get('window').height * 0.92))
-    const minHeight = Math.max((t.contentHeight + t.layout.bodyOffset) * s, viewportMinHeight)
+    const minHeight = 0
     return <View onLayout={this.layout} style={[styles.root, { minHeight }]} testID={`waiting-${model.kind}`}>
       <WaitingAtmosphere id={this.id} />
-      <View testID={`waiting-body-${model.kind}`} style={{ paddingTop: t.layout.bodyOffset * s }}>
-        <View style={{ height: 410 * s }} testID={`waiting-scene-${model.kind}`}>
-          <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ position: 'absolute', left: 0, top: -6 * s, opacity: this.drift.interpolate({ inputRange: [0, 1], outputRange: [1, 0.76] }), transform: [{ translateY: this.drift.interpolate({ inputRange: [0, 1], outputRange: [0, -2 * s] }) }] }}>
-            <WaitingParticles scale={s} id={this.id}/>
+      <View testID={`waiting-body-${model.kind}`} style={{ paddingTop: 20 * s }}>
+        <View style={{ height: 410 * sc }} testID={`waiting-scene-${model.kind}`}>
+          <Animated.View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ position: 'absolute', left: 280 * (s - sc), top: -6 * sc, opacity: this.drift.interpolate({ inputRange: [0, 1], outputRange: [1, 0.76] }), transform: [{ translateY: this.drift.interpolate({ inputRange: [0, 1], outputRange: [0, -2 * s] }) }] }}>
+            <WaitingParticles scale={sc} id={this.id}/>
           </Animated.View>
-          <View pointerEvents="none" style={{ position: 'absolute', top: 14 * s, left: 106 * s }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            <WaitingRing scale={s} id={this.id}/>
+          <View pointerEvents="none" style={{ position: 'absolute', top: 14 * sc, left: place(106) }} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <WaitingRing scale={sc} id={this.id}/>
           </View>
-          <Animated.View pointerEvents="none" style={{ position: 'absolute', top: (model.kind === 'customer-confirmation' ? 72 : 67) * s, left: (model.kind === 'customer-confirmation' ? 182 : 194) * s, width: (model.kind === 'customer-confirmation' ? 225 : 207) * s, height: 166 * s, transform: [{ translateY: this.drift.interpolate({ inputRange: [0, 1], outputRange: [0, -2 * s] }) }] }}>
+          <Animated.View pointerEvents="none" style={{ position: 'absolute', top: (model.kind === 'customer-confirmation' ? 72 : 67) * sc, left: place(model.kind === 'customer-confirmation' ? 182 : 194), width: (model.kind === 'customer-confirmation' ? 225 : 207) * sc, height: 166 * sc, transform: [{ translateY: this.drift.interpolate({ inputRange: [0, 1], outputRange: [0, -2 * s] }) }] }}>
             <Image source={assets.hero} resizeMode="contain" style={{ width: '100%', height: '100%' }} accessible={false} />
           </Animated.View>
-          <View style={{ position: 'absolute', top: 231 * s, left: 26 * s, right: 26 * s, alignItems: 'center' }} accessible accessibilityLabel={`${copy.timer}: ${closed ? '--:--' : reading.text}`}>
+          <View style={{ position: 'absolute', top: 212 * sc, left: 26 * s, right: 26 * s, alignItems: 'center' }} accessible accessibilityLabel={`${copy.timer}: ${closed ? '--:--' : reading.text}`}>
             <Text selectable testID={`waiting-time-${model.kind}`} style={{ ...timerStyle, color: t.colors.text, fontWeight: '600', fontVariant: ['tabular-nums'], textAlign: 'center' }} maxFontSizeMultiplier={1.15}>{closed ? '--:--' : reading.text}</Text>
-            <View style={{ marginTop: 36 * s, flexDirection: 'row', alignItems: 'center', gap: 5 * s }}>
-              <WaitingClockIcon size={21 * s} color="#00C79A"/><Text style={{ ...stageTypography(t.type.timerLabel.role, windowWidth), fontWeight: t.type.timerLabel.weight, color: color.brand.primary }} maxFontSizeMultiplier={1.3}>{copy.timer}</Text>
+            <View style={{ marginTop: Math.max(8 * s, 160 * sc - timerStyle.lineHeight!), flexDirection: 'row', alignItems: 'center', gap: 5 * s }}>
+              <WaitingClockIcon size={18 * s} color="#00C79A"/><Text style={{ ...stageTypography(t.type.timerLabel.role, windowWidth), fontWeight: t.type.timerLabel.weight, color: color.brand.primary }} maxFontSizeMultiplier={1.3}>{copy.timer}</Text>
             </View>
           </View>
         </View>
-        <View style={{ marginTop: 14 * s, alignItems: 'center' }}>
+        <View style={{ marginTop: 18 * s, alignItems: 'center' }}>
           <Text accessibilityRole="header" style={{ ...stageTypography(t.type.heading.role, windowWidth), fontWeight: t.type.heading.weight, color: t.colors.text, textAlign: 'center' }}>{copy.title}</Text>
           <Text style={{ ...stageTypography(t.type.body.role, windowWidth), fontWeight: t.type.body.weight, color: t.colors.secondary, textAlign: 'center', marginTop: 6 * s }}>{copy.body}</Text>
         </View>
-        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ marginTop: 12 * s, height: 110 * s }}>
-          <Image source={assets.footer} resizeMode="stretch" style={{ width: '100%', height: '100%' }}/>
+        <View pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ marginTop: 6 * s, height: 96 * s }}>
+          <Image source={assets.footer} resizeMode="contain" style={{ width: '100%', height: '100%' }}/>
         </View>
         <View style={{ marginTop: 2 * s, paddingBottom: stageMetric(stageLayout.sectionGap, windowWidth) }}>
           <Pressable onPress={onOpenDetails} accessibilityRole="button" accessibilityLabel={copy.action} testID={`waiting-details-${model.kind}`}
@@ -115,4 +117,4 @@ export class WaitingContent extends React.PureComponent<WaitingContentProps, Loc
     </View>
   }
 }
-const styles = workerThemedStylesProxy(StyleSheet.create({ root: { width: '100%', maxWidth: 560, alignSelf: 'center', position: 'relative', backgroundColor: '#FCFFFE' } }))
+const styles = workerThemedStylesProxy(StyleSheet.create({ root: { width: '100%', maxWidth: 560, alignSelf: 'center', position: 'relative' } }))
