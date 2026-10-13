@@ -9,7 +9,7 @@ import createExpoConfig from '../../app.config'
 export const PILLAR = {
   id: 'P37-ios-release-readiness',
   invariant:
-    'the store-bound iOS release uses one version 0.2.2 Build 54 identity and aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
+    'the store-bound iOS release uses one version 0.3.2 Build 56 identity and aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
   authority: [
     'apps/mobile/eas.json production profile with appVersionSource local',
     'governance/RULES.md #8 (no fake or silently degraded runtime state)',
@@ -78,7 +78,7 @@ describe('iOS release readiness', () => {
     const easConfig = readJson<EasConfig>('eas.json')
     const packageConfig = readJson<{ version: string }>('package.json')
 
-    expect(evaluated.version).toBe('0.2.2')
+    expect(evaluated.version).toBe('0.3.2')
     expect(staticConfig.version).toBe(evaluated.version)
     expect(packageConfig.version).toBe(evaluated.version)
     expect(evaluated.extra?.runtimeBuildInfo?.runtimeVersion).toBe(evaluated.version)
@@ -86,7 +86,7 @@ describe('iOS release readiness', () => {
     expect(staticConfig.owner).toBe(evaluated.owner)
     expect(evaluated.extra?.eas?.projectId).toBe('c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b')
     expect(staticConfig.extra?.eas?.projectId).toBe(evaluated.extra?.eas?.projectId)
-    expect(evaluated.ios?.buildNumber).toBe('55')
+    expect(evaluated.ios?.buildNumber).toBe('56')
     expect(evaluated.android?.versionCode).toBe(5)
     expect(staticConfig.ios.buildNumber).toBe(evaluated.ios?.buildNumber)
     expect(storeConfig.version).toBe(evaluated.version)
