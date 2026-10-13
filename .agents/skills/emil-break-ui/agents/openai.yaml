@@ -1,0 +1,4 @@
+interface:
+  display_name: "Emil Break Ui"
+  short_description: "Stress-test UI with edge-case fixtures, without fake product…"
+  default_prompt: "Use $emil-break-ui when the user asks to stress-test UI edge cases with sandbox or test fixtures."

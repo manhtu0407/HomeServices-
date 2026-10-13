@@ -21,6 +21,8 @@ NestScout adaptation:
 Ignored rules:
 Design Wheel class:
 Wheel skills and protocols:
+Upstream skills:
+Explicit-only skills (not auto-selected):
 Material / motion / token decision:
 States and verification gates:
 Acceptance gate:

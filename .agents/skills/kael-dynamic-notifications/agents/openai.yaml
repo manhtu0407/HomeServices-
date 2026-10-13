@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Dynamic Notifications"
+  short_description: "Adapt and review in-app notification assets"
+  default_prompt: "Use $kael-dynamic-notifications for an Expo in-app notification task."

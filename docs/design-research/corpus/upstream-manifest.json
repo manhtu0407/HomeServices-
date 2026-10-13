@@ -1,0 +1,1477 @@
+{
+  "version": 1,
+  "authority": "NestScout governance and the existing Design Wheel take precedence over upstream guidance.",
+  "readmeMapping": "Upstream root README.md files are stored as UPSTREAM-README.md; sourcePath preserves the original name.",
+  "sources": [
+    {
+      "id": "emilkowalski-skills",
+      "repository": "https://github.com/emilkowalski/skills",
+      "commit": "2d228630ba1446365f614a108cb8252f1feda202",
+      "license": "MIT",
+      "archivePath": "docs/design-research/corpus/upstream/emilkowalski-skills/upstream-2d228630ba1446365f614a108cb8252f1feda202.zip",
+      "archiveSha256": "e73ca0e374a08dc7e2c3d58984bfb9ec57325a35c6a4addf076c636b7e27225f",
+      "fileCount": 29,
+      "files": [
+        {
+          "sourcePath": ".gitattributes",
+          "vendoredPath": ".gitattributes",
+          "bytes": 68,
+          "sha256": "c7b91a8020b8144953c7e7096631324706c9b85a6bb04ba7aede9431f8105916",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": ".gitignore",
+          "vendoredPath": ".gitignore",
+          "bytes": 10,
+          "sha256": "cf237c7aff44efbe6e502e645c3e06da03a69d7bdeb43392108ef3348143417e",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": ".pl",
+          "vendoredPath": ".pl",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "LICENSE",
+          "vendoredPath": "LICENSE",
+          "bytes": 1070,
+          "sha256": "4ff5bdb7887ec1435c9cab0e8d1a7caee704d894d65c2a008ccc68b1cc2f260b",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "performance-cheatsheet.md",
+          "vendoredPath": "performance-cheatsheet.md",
+          "bytes": 932,
+          "sha256": "016c7294ddd5fa17fd97b7125ffb799ffb94e27a9b465a6fbaedfd92685d4583",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "README.md",
+          "vendoredPath": "UPSTREAM-README.md",
+          "bytes": 4590,
+          "sha256": "ea3361e7b4b0cd0862a557fa69e059749c9b6c56707cb783bb3c7fd6cf41e0af",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/animate/RECIPES.md",
+          "vendoredPath": "skills/animate/RECIPES.md",
+          "bytes": 7957,
+          "sha256": "21ff63d84391db8d96ecdf9170095f55a42c836ccc36fd3269c4772bab031ba2",
+          "coverage": {
+            "status": "direct-reference",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/animate/SKILL.md",
+          "vendoredPath": "skills/animate/SKILL.md",
+          "bytes": 11860,
+          "sha256": "b8ede161270458e6ae2e45e8a1985373515d4c63de5568ddb0f9012d7634356c",
+          "coverage": {
+            "status": "web-only",
+            "notes": [
+              "Web guidance only; do not apply to apps/mobile."
+            ]
+          }
+        },
+        {
+          "sourcePath": "skills/animate-expo/RECIPES.md",
+          "vendoredPath": "skills/animate-expo/RECIPES.md",
+          "bytes": 16808,
+          "sha256": "1193cb71334da2e2341778dd92bec9ac79d989cb07fd55d661f324ed5871e718",
+          "coverage": {
+            "status": "direct-reference",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/animate-expo/SKILL.md",
+          "vendoredPath": "skills/animate-expo/SKILL.md",
+          "bytes": 17891,
+          "sha256": "9a01a91701e6563c67677dde6b66ab30f066a5341d42c21a90ba51d99679274a",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/animation-performance/SKILL.md",
+          "vendoredPath": "skills/animation-performance/SKILL.md",
+          "bytes": 13966,
+          "sha256": "ceb9dd3fe912615830f725a0120ccf8d012d15a6218001a5cd6c15d38e39a957",
+          "coverage": {
+            "status": "web-only",
+            "notes": [
+              "Web guidance only; do not apply to apps/mobile."
+            ]
+          }
+        },
+        {
+          "sourcePath": "skills/animation-vocabulary/SKILL.md",
+          "vendoredPath": "skills/animation-vocabulary/SKILL.md",
+          "bytes": 13425,
+          "sha256": "40d2b27adfdfeb0570a9f20e7d0255109d9233c50603878bcd0dcd04c923fd94",
+          "coverage": {
+            "status": "runtime-neutral",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/apple-design/SKILL.md",
+          "vendoredPath": "skills/apple-design/SKILL.md",
+          "bytes": 23036,
+          "sha256": "77bb63b7043bb93aca2ff4ab040c249484eef35682bb6ff7163433c31d30adc7",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/ask-sonner/API.md",
+          "vendoredPath": "skills/ask-sonner/API.md",
+          "bytes": 4545,
+          "sha256": "4bb06f482c5757529e3d7a672a30fbeed42d24919a63e2571384a9ce1549aa7f",
+          "coverage": {
+            "status": "direct-reference",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/ask-sonner/SKILL.md",
+          "vendoredPath": "skills/ask-sonner/SKILL.md",
+          "bytes": 7233,
+          "sha256": "39f3ee185b3aa2cf70a689052ff078953ce7ba5915ed7a9391d232e9d4dcf57f",
+          "coverage": {
+            "status": "web-only",
+            "notes": [
+              "Web guidance only; do not apply to apps/mobile."
+            ]
+          }
+        },
+        {
+          "sourcePath": "skills/break-ui/CATALOG.md",
+          "vendoredPath": "skills/break-ui/CATALOG.md",
+          "bytes": 8268,
+          "sha256": "7358efcc6bb48e35187be1c064cf60022dcb18c72c18fab58b606dfc5f421f15",
+          "coverage": {
+            "status": "direct-reference",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/break-ui/SKILL.md",
+          "vendoredPath": "skills/break-ui/SKILL.md",
+          "bytes": 14380,
+          "sha256": "e7eec1d70ac56a04255e9c0dbe98084ea3d544cc04aaad34f32c95d6fa9dff5e",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": [
+              "Use test or sandbox fixtures; never add fake product rows."
+            ]
+          }
+        },
+        {
+          "sourcePath": "skills/emil-design-eng/SKILL.md",
+          "vendoredPath": "skills/emil-design-eng/SKILL.md",
+          "bytes": 27123,
+          "sha256": "ffbe68e6007fb42cb8149f089b400a1ca007d59ba23e8948e2be4476f3175939",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/find-animation-opportunities/SKILL.md",
+          "vendoredPath": "skills/find-animation-opportunities/SKILL.md",
+          "bytes": 9808,
+          "sha256": "d52a377819b84a71930f0c822cfe2849f40301605a2d5c7eccbfa3b257700df2",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/improve-animations/AUDIT.md",
+          "vendoredPath": "skills/improve-animations/AUDIT.md",
+          "bytes": 7387,
+          "sha256": "551c8473e20e5f4774680bc24d45e1c68e50992582720905c6b077756b7b5a55",
+          "coverage": {
+            "status": "direct-reference",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/improve-animations/PLAN-TEMPLATE.md",
+          "vendoredPath": "skills/improve-animations/PLAN-TEMPLATE.md",
+          "bytes": 3100,
+          "sha256": "0a08ac8e23fd2082d7ffb86aeed7b789de77328c3cf874b16f1a755f2ef0a6ad",
+          "coverage": {
+            "status": "direct-reference",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/improve-animations/SKILL.md",
+          "vendoredPath": "skills/improve-animations/SKILL.md",
+          "bytes": 8208,
+          "sha256": "73962447464433476343e2c12cd08ab39cc99a9e5f3c118c5fb54ed897574ef6",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/mobile-native/SKILL.md",
+          "vendoredPath": "skills/mobile-native/SKILL.md",
+          "bytes": 16838,
+          "sha256": "888b7651d66d66dbac4e72b7c554638eb19bd971d686d6cbdf030a5ef3788f55",
+          "coverage": {
+            "status": "web-only",
+            "notes": [
+              "Web guidance only; do not apply to apps/mobile."
+            ]
+          }
+        },
+        {
+          "sourcePath": "skills/pick-ui-library/SKILL.md",
+          "vendoredPath": "skills/pick-ui-library/SKILL.md",
+          "bytes": 4790,
+          "sha256": "675fdce308683256ed617351a9b74d23457a5fbd0a562d9831b9c764b8c5e682",
+          "coverage": {
+            "status": "explicit-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/prototype/PICKER.md",
+          "vendoredPath": "skills/prototype/PICKER.md",
+          "bytes": 7548,
+          "sha256": "31a55eec94715cc79942e91e172e539e3031dcd5e2e5ee7c1446cf2caee960a6",
+          "coverage": {
+            "status": "direct-reference",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/prototype/SKILL.md",
+          "vendoredPath": "skills/prototype/SKILL.md",
+          "bytes": 7830,
+          "sha256": "bba39c955eb1871c5a02733976ceec5d0324198e0812e667604756489c89f7b9",
+          "coverage": {
+            "status": "explicit-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/review-animations/SKILL.md",
+          "vendoredPath": "skills/review-animations/SKILL.md",
+          "bytes": 8407,
+          "sha256": "6ff590d29e436766135aa3d137be1fac2a867165c7257fc315b189361f1873af",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/review-animations/STANDARDS.md",
+          "vendoredPath": "skills/review-animations/STANDARDS.md",
+          "bytes": 9801,
+          "sha256": "e7d3605034acda54ca13e43aec9e64d65b53de20f75b11b8d694e373012fbe07",
+          "coverage": {
+            "status": "direct-reference",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "skills/write-swift/SKILL.md",
+          "vendoredPath": "skills/write-swift/SKILL.md",
+          "bytes": 42445,
+          "sha256": "16a4b6adb74e338e55e704ce5753ad54d825438b8a63930eeaede9f3c04c9447",
+          "coverage": {
+            "status": "swift-only",
+            "notes": []
+          }
+        }
+      ]
+    },
+    {
+      "id": "expo-dynamic-notifications",
+      "repository": "https://github.com/rit3zh/expo-dynamic-notifications",
+      "commit": "5de059a5cbefbe28c14efbe785166665a7c70bc5",
+      "license": "MIT",
+      "archivePath": "docs/design-research/corpus/upstream/expo-dynamic-notifications/upstream-5de059a5cbefbe28c14efbe785166665a7c70bc5.zip",
+      "archiveSha256": "20d866ab4320e648900eb87a0da45f2a1be6b5d155a27944d31e9a5490d7de06",
+      "fileCount": 103,
+      "files": [
+        {
+          "sourcePath": ".gitignore",
+          "vendoredPath": ".gitignore",
+          "bytes": 449,
+          "sha256": "1044ca3cb6bbe9ef040cdad2c9314bf75d93129778690378f2f9e710e1fe23d2",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "app.json",
+          "vendoredPath": "app.json",
+          "bytes": 1408,
+          "sha256": "6785d400b2c428734e78f26b24aa041d4308d1541fc8e18c92430f2db5d639bc",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "bun.lock",
+          "vendoredPath": "bun.lock",
+          "bytes": 179522,
+          "sha256": "af3a8d99d0e6e021facf3b169ef8b670031e06e5eaec339765114b6166830f92",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "LICENSE",
+          "vendoredPath": "LICENSE",
+          "bytes": 1106,
+          "sha256": "fb3ca4a837f5779e83cef89b78253a8949cfb9429c340309f62d0465ec6610b4",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "module.d.ts",
+          "vendoredPath": "module.d.ts",
+          "bytes": 272,
+          "sha256": "53302989de13fa548d3b8707f107d400778ca92a993bd53cc0b8b1734d469343",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "package.json",
+          "vendoredPath": "package.json",
+          "bytes": 1399,
+          "sha256": "c187268a5dc20d6416a3d0d3b032eeb6eb967e7495ac1ad4e1445d08386a5fd6",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "README.md",
+          "vendoredPath": "UPSTREAM-README.md",
+          "bytes": 10237,
+          "sha256": "d7fe3e57a95d77390baea60885d322c6cb7bd96c42b86fd1b034599c3314514b",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "tsconfig.json",
+          "vendoredPath": "tsconfig.json",
+          "bytes": 407,
+          "sha256": "3199625e3f1de3f10e923d782e7884d7517912109e199607ffe9e723e19ba3ee",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": ".vscode/extensions.json",
+          "vendoredPath": ".vscode/extensions.json",
+          "bytes": 50,
+          "sha256": "f54cd822dce0af53953015f71ce04f91d4fcec4ac02ecb28658d636004c4bbce",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": ".vscode/settings.json",
+          "vendoredPath": ".vscode/settings.json",
+          "bytes": 152,
+          "sha256": "c9d2a3300e5453b399d9a092a29aabb67adfc59623abd5b03b1143557386c39c",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "assets/expo.icon/icon.json",
+          "vendoredPath": "assets/expo.icon/icon.json",
+          "bytes": 780,
+          "sha256": "747c56e178222a6255c6dd61c5de011b286cdc935febe89f04d1b191c3d076fe",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/expo.icon/Assets/expo-symbol 2.svg",
+          "vendoredPath": "assets/expo.icon/Assets/expo-symbol 2.svg",
+          "bytes": 608,
+          "sha256": "ad117d20fd819f4ec71876ce09c0e8b9275b1f20c5ec3c9d7d1914977ceffec6",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/expo.icon/Assets/grid.png",
+          "vendoredPath": "assets/expo.icon/Assets/grid.png",
+          "bytes": 53681,
+          "sha256": "8247d79a2b31328fe4e330a973e6fae16924ed9aebd72c64d464d6856ab18c72",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/fonts/instrument-serif/InstrumentSerif-Italic.ttf",
+          "vendoredPath": "assets/fonts/instrument-serif/InstrumentSerif-Italic.ttf",
+          "bytes": 70868,
+          "sha256": "9c86e4d5a47b50224a2463a9eca8535835257c8e85c470c2c6b454b1af6f046e",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/fonts/instrument-serif/InstrumentSerif-Regular.ttf",
+          "vendoredPath": "assets/fonts/instrument-serif/InstrumentSerif-Regular.ttf",
+          "bytes": 69312,
+          "sha256": "56ac3be03ac3ba283196b3e77850ab2ffcf56cfb6fd3212c5620109a972f8c99",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/android-icon-background.png",
+          "vendoredPath": "assets/images/android-icon-background.png",
+          "bytes": 17549,
+          "sha256": "fb139c2dee362ebf2070e23b96da6fc0d43f8492de38b8af1fd7223e19b5861d",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/android-icon-foreground.png",
+          "vendoredPath": "assets/images/android-icon-foreground.png",
+          "bytes": 78796,
+          "sha256": "9e3d0315a33c6799de601dd34cd8bf8cc3a8d16f3bf75592baec2ceb7240b391",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/android-icon-monochrome.png",
+          "vendoredPath": "assets/images/android-icon-monochrome.png",
+          "bytes": 4140,
+          "sha256": "6371fc2c12e33ad2215a86c281db3d682a81bebe7c957a842c13b8bf00cceb83",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/expo-badge-white.png",
+          "vendoredPath": "assets/images/expo-badge-white.png",
+          "bytes": 4129,
+          "sha256": "d9ba28c5e93aea3c2dabd901ee96fea3bb296ad8e648f6f64706dae11a1a62bd",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/expo-badge.png",
+          "vendoredPath": "assets/images/expo-badge.png",
+          "bytes": 4137,
+          "sha256": "ff353c7efadbd379903923cb604fca11c908cba0d4658cc2bd1f147d98317249",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/expo-logo.png",
+          "vendoredPath": "assets/images/expo-logo.png",
+          "bytes": 3317,
+          "sha256": "27b060a757a29038c9618586baa0ba3894dbe60d084c6059df497ff429c2d92f",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/favicon.png",
+          "vendoredPath": "assets/images/favicon.png",
+          "bytes": 1129,
+          "sha256": "a4e030697a7571b3e95d31860e4da55d2f98e5e861e2b55e414f45a8556828ba",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/icon.png",
+          "vendoredPath": "assets/images/icon.png",
+          "bytes": 799005,
+          "sha256": "7a667804bb80a6a424a5daf18a2599c4f32237cf06fe78fc0de45dbb09e0eccf",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/logo-glow.png",
+          "vendoredPath": "assets/images/logo-glow.png",
+          "bytes": 331624,
+          "sha256": "bbd98a3f3c12d090f4df6065b7462fcdf6bc266209d002b4ef5fe554c245f66c",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/react-logo.png",
+          "vendoredPath": "assets/images/react-logo.png",
+          "bytes": 6341,
+          "sha256": "224b7636b15e672801579b5b418077cbc2ca42f0146389062364356b0ecb5c5c",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/react-logo@2x.png",
+          "vendoredPath": "assets/images/react-logo@2x.png",
+          "bytes": 14225,
+          "sha256": "fa600be9ad2f869c7a8dbaffc78bb15af741123e1319c948f0be51753a153cde",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/react-logo@3x.png",
+          "vendoredPath": "assets/images/react-logo@3x.png",
+          "bytes": 21252,
+          "sha256": "cd84e02a5d542a3e71b7fa10a685c1b9fb51db4aff92aca6c0da6461ce17be16",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/splash-icon.png",
+          "vendoredPath": "assets/images/splash-icon.png",
+          "bytes": 3317,
+          "sha256": "27b060a757a29038c9618586baa0ba3894dbe60d084c6059df497ff429c2d92f",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/tutorial-web.png",
+          "vendoredPath": "assets/images/tutorial-web.png",
+          "bytes": 58959,
+          "sha256": "e372ec23ad6262e2e0dc2799ce416b495a631a565bcd24f0615d4afc04dac3bd",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/tabIcons/explore.png",
+          "vendoredPath": "assets/images/tabIcons/explore.png",
+          "bytes": 215,
+          "sha256": "e2dea1c2d20929d83e8eebd74818e808b1b72e376d3a1f3a03679fff0255d073",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/tabIcons/explore@2x.png",
+          "vendoredPath": "assets/images/tabIcons/explore@2x.png",
+          "bytes": 347,
+          "sha256": "1b54913b3a0acc3e1fb72d3b9b79ad04814304b35bbb9d03a533e6130ad6c26a",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/tabIcons/explore@3x.png",
+          "vendoredPath": "assets/images/tabIcons/explore@3x.png",
+          "bytes": 468,
+          "sha256": "2f3e43801df70ebe83273b90a7d170bacf5ca74a8a8dc5c154a020c2c8b06609",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/tabIcons/home.png",
+          "vendoredPath": "assets/images/tabIcons/home.png",
+          "bytes": 253,
+          "sha256": "3829632ec7d495225395f5da3d0942935d7d055979b174613d1ade82fe420e76",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/tabIcons/home@2x.png",
+          "vendoredPath": "assets/images/tabIcons/home@2x.png",
+          "bytes": 343,
+          "sha256": "21c5a07df9017d97464a0a8256e265288f2fca0741ca651de05e12b32f32f5ab",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "assets/images/tabIcons/home@3x.png",
+          "vendoredPath": "assets/images/tabIcons/home@3x.png",
+          "bytes": 479,
+          "sha256": "fe5b397975e7cb70ae7a122472d174ed12ec2ae106f7b49c968225ad37f8b3b8",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/app/_layout.tsx",
+          "vendoredPath": "src/app/_layout.tsx",
+          "bytes": 1217,
+          "sha256": "cbcc3d1e1256b79b231dcf577d9ed4138da45ede8ab67cf6f25c251e6573b545",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/app/index.tsx",
+          "vendoredPath": "src/app/index.tsx",
+          "bytes": 127,
+          "sha256": "d9fa22a17d9092ed606cf142baacd0defff6ae84a2b1743781d21d8969c1709f",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/index.ts",
+          "vendoredPath": "src/components/index.ts",
+          "bytes": 432,
+          "sha256": "8b1e0b240b28af0c5076e955f025061531a1e83b3265890ce169efd12c3e946a",
+          "coverage": {
+            "status": "reference-only",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/components/dynamic-notifications/content.tsx",
+          "vendoredPath": "src/components/dynamic-notifications/content.tsx",
+          "bytes": 2789,
+          "sha256": "3a6e1f2c9bae73add21da7bb426c0ddba3ab65b1c3669fd70bb7c72c9fbe2b54",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/components/dynamic-notifications/gooey.tsx",
+          "vendoredPath": "src/components/dynamic-notifications/gooey.tsx",
+          "bytes": 3870,
+          "sha256": "22401a316e92c39f28e84353832a3394a0f07ab05b123b587da86472576ed706",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/components/dynamic-notifications/overlay.tsx",
+          "vendoredPath": "src/components/dynamic-notifications/overlay.tsx",
+          "bytes": 968,
+          "sha256": "db6a8df59f5fa1fd6e3c01889641511c421d54fdfdf8c19879c6a4c0dca7e537",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/components/dynamic-notifications/root.tsx",
+          "vendoredPath": "src/components/dynamic-notifications/root.tsx",
+          "bytes": 3368,
+          "sha256": "2e2f4d0838dc11cef5d3595b2c04c99e1d8704fca0d4dbfcf53da29f0ee0ec87",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/app-header.tsx",
+          "vendoredPath": "src/components/mock/app-header.tsx",
+          "bytes": 2122,
+          "sha256": "2818494b2a229ddb2fad02700f6fd82643a4b7a9e639c5b1cf9440cfabfaa343",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/avatar-stack.tsx",
+          "vendoredPath": "src/components/mock/avatar-stack.tsx",
+          "bytes": 1342,
+          "sha256": "b9ddc4c0e09a562467523ac28cb905d0d359ffbae73c4ea51c3eebf21b021498",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/bell-icon.tsx",
+          "vendoredPath": "src/components/mock/bell-icon.tsx",
+          "bytes": 1148,
+          "sha256": "643ceaa16d050c04b4f1971a3bef9668619cd791d1b56fc9470c532c8abe0760",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/comment-icon.tsx",
+          "vendoredPath": "src/components/mock/comment-icon.tsx",
+          "bytes": 993,
+          "sha256": "9885ad52feba096e9134dd6f4120153a72618da1c772f91df197932789fa0547",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/cutout-surface.tsx",
+          "vendoredPath": "src/components/mock/cutout-surface.tsx",
+          "bytes": 3081,
+          "sha256": "2431926f16b4237cfcb73c65e392803bbe746ab0c4cbfd735b41b4f63517cbed",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/data.ts",
+          "vendoredPath": "src/components/mock/data.ts",
+          "bytes": 2948,
+          "sha256": "d46b3ba4c5c9ad67e8418a56180ca654eaf6e0ff204ed7685dd4806940d22a3f",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/discover-feed.tsx",
+          "vendoredPath": "src/components/mock/discover-feed.tsx",
+          "bytes": 4968,
+          "sha256": "c47c1cb06e481e6dd1899e9b89d48806980ffa902be638766cf9a9643020ecda",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/edge-fade.tsx",
+          "vendoredPath": "src/components/mock/edge-fade.tsx",
+          "bytes": 1711,
+          "sha256": "b7bb3ec37f97e7e12702f363e69e30a914e982b0c998eb7aa8b73756e8076efb",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/feed-mark.tsx",
+          "vendoredPath": "src/components/mock/feed-mark.tsx",
+          "bytes": 1192,
+          "sha256": "a39fd3178fa4ae33b33d9bd9fa93c5e3813643993ecc2ae094e7fef4e3fdbb88",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/floating-dock.tsx",
+          "vendoredPath": "src/components/mock/floating-dock.tsx",
+          "bytes": 3403,
+          "sha256": "0763a585e86c0327025579648b8fad323be0f199c7f903380e07da92a6c9469a",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/fonts.ts",
+          "vendoredPath": "src/components/mock/fonts.ts",
+          "bytes": 810,
+          "sha256": "fa6131e12e8c24ba6397295bd75da2f01830ee679391c6badf9c60b491c5b5dd",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/glass-button.tsx",
+          "vendoredPath": "src/components/mock/glass-button.tsx",
+          "bytes": 2287,
+          "sha256": "23d7e9469a74a644c35b7a90fe0d321c18d7b147bc6f61843c4e14f9cea9067c",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/glass-surface.tsx",
+          "vendoredPath": "src/components/mock/glass-surface.tsx",
+          "bytes": 1840,
+          "sha256": "d7ee7dfefd248d1ec5c2e9e90242cfe5e53e533172cbc502fd576e9ff1a5dfbe",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/glow-star.tsx",
+          "vendoredPath": "src/components/mock/glow-star.tsx",
+          "bytes": 2384,
+          "sha256": "b4b4811d6fc5e32af29760b51a145936943f6babf3b0aac7fc834c23a4f7a0d9",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/glyph.tsx",
+          "vendoredPath": "src/components/mock/glyph.tsx",
+          "bytes": 668,
+          "sha256": "d99b4878034173c9fd03e52abb16d270249b9b0837bf1a6210b3e758b1fdd0a9",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/header-gradient.tsx",
+          "vendoredPath": "src/components/mock/header-gradient.tsx",
+          "bytes": 1063,
+          "sha256": "6cc3e4f521c6fc11d14396da4f004d1efbbc8e8d1a11604388dd42e97fbb39e2",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/liquid-button.tsx",
+          "vendoredPath": "src/components/mock/liquid-button.tsx",
+          "bytes": 2429,
+          "sha256": "91e6928ce1b6d93a47daf1e82c5aafcd7128403b070d924526ae6d339d3c1beb",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/live-card.tsx",
+          "vendoredPath": "src/components/mock/live-card.tsx",
+          "bytes": 3593,
+          "sha256": "768dbedd6d8a804393f2a91c148a060bbb52b02f61c8966d697d1b3bee5acafe",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/live-rail.tsx",
+          "vendoredPath": "src/components/mock/live-rail.tsx",
+          "bytes": 1125,
+          "sha256": "c1b4a98ed4f43300d7822eb758534f3cd4bffce2edb9a6d1bb8614ff0105a4aa",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/notify.ts",
+          "vendoredPath": "src/components/mock/notify.ts",
+          "bytes": 5428,
+          "sha256": "127e7e17fa98fe2773e473299f603aa22d5c439be33909a8a7be7cb30c319215",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/photo-scrim.tsx",
+          "vendoredPath": "src/components/mock/photo-scrim.tsx",
+          "bytes": 1246,
+          "sha256": "3afd3320c9dbbd07c64ccccc14d5fbf41f126f563a3ab9618da3920b5a587728",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/placeholder-screen.tsx",
+          "vendoredPath": "src/components/mock/placeholder-screen.tsx",
+          "bytes": 1408,
+          "sha256": "031d91207128900f8ea6e460a9d5421687f38c17a60b7d3937b05bf4dbb041bd",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/post-card.tsx",
+          "vendoredPath": "src/components/mock/post-card.tsx",
+          "bytes": 8975,
+          "sha256": "3fb8b4675ef9d92577ea7f70b9134f9324c00dd38c2c1a956ab11f5f9679e77d",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/section-title.tsx",
+          "vendoredPath": "src/components/mock/section-title.tsx",
+          "bytes": 1828,
+          "sha256": "a0380cebb450f4020e0362050c04566552218a40b5a1d760a53fc7ae3701be72",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/soft-photo.tsx",
+          "vendoredPath": "src/components/mock/soft-photo.tsx",
+          "bytes": 1508,
+          "sha256": "2f52ff313cb1218013799ae74bbfcb93fd94f095a1732e74eb0bd2cd50ce4b37",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/spark-mark.tsx",
+          "vendoredPath": "src/components/mock/spark-mark.tsx",
+          "bytes": 2834,
+          "sha256": "0d7d89daabf0ac82e35b6548d4edde96e8d01de40cf594d6237e36fbaa547d22",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/story-rail.tsx",
+          "vendoredPath": "src/components/mock/story-rail.tsx",
+          "bytes": 2052,
+          "sha256": "92404cbb62a1708352daaaa2a0cedac6a44f2e9ad011ddb68ec40bcd1bdd3437",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/theme.ts",
+          "vendoredPath": "src/components/mock/theme.ts",
+          "bytes": 1765,
+          "sha256": "6b3b0aeb08edac17f648882bc1f475e544e26e15fbcb77cdda31e4cbf3cf6534",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/mock/types.ts",
+          "vendoredPath": "src/components/mock/types.ts",
+          "bytes": 862,
+          "sha256": "d0ea38af5a833e60e3dd1d8159ab7f2f4313ac2cdf8834b3d14bf07bc83a6a48",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/ui/animated-blur-view.tsx",
+          "vendoredPath": "src/components/ui/animated-blur-view.tsx",
+          "bytes": 186,
+          "sha256": "855427b26cd4caae4c0c6a14e973fe93e5f3fa92a895dd079faf8e09b9ead43e",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": [
+              "Upstream animates BlurView intensity; adapted recipe uses fixed blur and opacity."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/components/ui/notification-body.tsx",
+          "vendoredPath": "src/components/ui/notification-body.tsx",
+          "bytes": 2261,
+          "sha256": "80e1a765b814d84ff69a1b673a0afe6847a98ae63b8860993bbdca786630583b",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/conf/palette.ts",
+          "vendoredPath": "src/conf/palette.ts",
+          "bytes": 191,
+          "sha256": "e58c8ca5d332a419609364ef31babb7eca311cd7f1d835efb2021bdda85ea0f3",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/conf/springs.ts",
+          "vendoredPath": "src/conf/springs.ts",
+          "bytes": 991,
+          "sha256": "d35980cf275e51df20574f39ffcb9b9ebe390b8d80c018f48b2125db81bb3475",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/constants/notification.consts.ts",
+          "vendoredPath": "src/constants/notification.consts.ts",
+          "bytes": 2414,
+          "sha256": "3a4d3c7f64bab54343225a01b8ffa24b316e9315e8289ff6e20965555b1ff49f",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/context/index.ts",
+          "vendoredPath": "src/context/index.ts",
+          "bytes": 283,
+          "sha256": "219e0c493257e4d30fd78add906ad5e685c9244a094f26a1347ee7c70f3b606f",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/core/build-goo-matrix.ts",
+          "vendoredPath": "src/core/build-goo-matrix.ts",
+          "bytes": 298,
+          "sha256": "e5190c6fa33447895bdffc339da72c86f0c47ba1eb7e96ea476cc49dff00296d",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/core/build-notification-geometry.ts",
+          "vendoredPath": "src/core/build-notification-geometry.ts",
+          "bytes": 1894,
+          "sha256": "1199e1d5489101969117c009226438cbd98363bd3b6b9726972098d454bcc316",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/data/notifications.ts",
+          "vendoredPath": "src/data/notifications.ts",
+          "bytes": 1246,
+          "sha256": "c717064f8ec54d8a5099343a7bda6da58db9802ac931e43652d3cf23a1bea1ee",
+          "coverage": {
+            "status": "sandbox-only",
+            "notes": [
+              "Review third-party asset rights before product use; demo content is not product content."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/helpers/get-notification-layout.ts",
+          "vendoredPath": "src/helpers/get-notification-layout.ts",
+          "bytes": 1800,
+          "sha256": "a72e86617658195f14d3d70d9f66a918235eb1534fb97457be303e8e5e1498cb",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/helpers/index.ts",
+          "vendoredPath": "src/helpers/index.ts",
+          "bytes": 43,
+          "sha256": "3c3631f74688f4552b98319f4aee06a6babfe35b4c7a86dad71f0573906a2846",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/hooks/index.ts",
+          "vendoredPath": "src/hooks/index.ts",
+          "bytes": 260,
+          "sha256": "9f52859bc4dcbc9cf1551f68cad558096cf2e5c1f4396873d6a1aabf7d048865",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/hooks/use-content-blur.ts",
+          "vendoredPath": "src/hooks/use-content-blur.ts",
+          "bytes": 754,
+          "sha256": "ffe86ec25460e7069a19b3af514cd89cd7626dad02c5ac0461b1c5b9be9f4676",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": [
+              "Upstream animates BlurView intensity; adapted recipe uses fixed blur and opacity."
+            ]
+          }
+        },
+        {
+          "sourcePath": "src/hooks/use-dismiss-gesture.ts",
+          "vendoredPath": "src/hooks/use-dismiss-gesture.ts",
+          "bytes": 1434,
+          "sha256": "be5cb80625e5001cf6b57fc32b87d47392402200fc4dbc4411386899036f7694",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/hooks/use-dynamic-notifications.ts",
+          "vendoredPath": "src/hooks/use-dynamic-notifications.ts",
+          "bytes": 525,
+          "sha256": "609fc6efbd6ebdcf48b299a03f7a405542d3d458a2f0546824cd89099d59dfea",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/hooks/use-notification-content-style.ts",
+          "vendoredPath": "src/hooks/use-notification-content-style.ts",
+          "bytes": 1337,
+          "sha256": "380fdbca179e9c269ffd2091df1384ec12a6dbf2fe97e54e2f84b6e1edf78482",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/hooks/use-notification-geometry.ts",
+          "vendoredPath": "src/hooks/use-notification-geometry.ts",
+          "bytes": 1613,
+          "sha256": "2279c676ac0a2e9a73f763f1cad14f6ac4c4c05becada189d136811f5d317a94",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/hooks/use-notification-timeline.ts",
+          "vendoredPath": "src/hooks/use-notification-timeline.ts",
+          "bytes": 4739,
+          "sha256": "40714cdb04b1f6a225ee2e308bdede9f9930a346ea6d1a9c7ab8ff7ce4d24581",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/dynamic-notification.interface.ts",
+          "vendoredPath": "src/interfaces/dynamic-notification.interface.ts",
+          "bytes": 408,
+          "sha256": "75986e96e98ffdb66e68d45381f2d9e95192734273235eb3c617f8f40eb9a075",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/dynamic-notifications-context.interface.ts",
+          "vendoredPath": "src/interfaces/dynamic-notifications-context.interface.ts",
+          "bytes": 876,
+          "sha256": "116ef81f108aa472e3ad99eb3b3390c741ee75f400f98cb1cfac7fdf03cbb382",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/dynamic-notifications.interface.ts",
+          "vendoredPath": "src/interfaces/dynamic-notifications.interface.ts",
+          "bytes": 722,
+          "sha256": "1e5f2ae91ca77e7c8d2fd480ce4bd018d3c6c512386fcc7a2bd4c31b0f356645",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/notification-content.interface.ts",
+          "vendoredPath": "src/interfaces/notification-content.interface.ts",
+          "bytes": 333,
+          "sha256": "e6c12ffa8d3c6c4cc6334b27d2d30f8f87fdcf6a3cba794c0a1ecbe9818c12d7",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/notification-geometry.interface.ts",
+          "vendoredPath": "src/interfaces/notification-geometry.interface.ts",
+          "bytes": 906,
+          "sha256": "00ed4789af8ab161010d44ff54d3d5e6ae67594748dcd5b1fd374cb504f9bf22",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/notification-gooey.interface.ts",
+          "vendoredPath": "src/interfaces/notification-gooey.interface.ts",
+          "bytes": 281,
+          "sha256": "f39d71d5233d248d014f9126873e713dbf312430db99605cd45c62a017dfcb3e",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/notification-layout.interface.ts",
+          "vendoredPath": "src/interfaces/notification-layout.interface.ts",
+          "bytes": 441,
+          "sha256": "99e2161d09824c5eb39ece2e6b627bf1287a5c2271270d738ef6e2a96f2c981d",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/notification-overlay.interface.ts",
+          "vendoredPath": "src/interfaces/notification-overlay.interface.ts",
+          "bytes": 165,
+          "sha256": "9cc18901edbc695d5b11be8913fb8db70e047e84957e61f058ef09c30000b111",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/interfaces/notification-timeline.interface.ts",
+          "vendoredPath": "src/interfaces/notification-timeline.interface.ts",
+          "bytes": 674,
+          "sha256": "2741284b99a3ad2d09a37f28491629fd3f90184c92ba2b723743a6f1db48e5e1",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/logic/clamp.default.ts",
+          "vendoredPath": "src/logic/clamp.default.ts",
+          "bytes": 150,
+          "sha256": "58719e4a977d4a21b1a0617fc548d1fc7742ef7eb56ba8ef1d01ed6983805aa6",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/logic/ease-power-out.ts",
+          "vendoredPath": "src/logic/ease-power-out.ts",
+          "bytes": 209,
+          "sha256": "3bc3eb5b0a229d12465603d4ee6c7f78df897baaa14f40177547b9a1e0ee0c0b",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/logic/index.ts",
+          "vendoredPath": "src/logic/index.ts",
+          "bytes": 130,
+          "sha256": "5e32911601a1748fd934b86ebcc545b88e365b7c46fd085c021fea8128a47520",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/logic/mix.default.ts",
+          "vendoredPath": "src/logic/mix.default.ts",
+          "bytes": 147,
+          "sha256": "5f76a0867708610ebebfd6ae8f022f91231a83c4b2122940367b19769485a475",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        },
+        {
+          "sourcePath": "src/logic/neck-profile.ts",
+          "vendoredPath": "src/logic/neck-profile.ts",
+          "bytes": 404,
+          "sha256": "0a22612af438c2769ff2b36f4303307b82b9df2f8822bb4e1a3fc8d4bce3dc29",
+          "coverage": {
+            "status": "adapt-rn",
+            "notes": []
+          }
+        }
+      ]
+    }
+  ]
+}
