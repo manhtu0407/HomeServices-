@@ -59,6 +59,30 @@ describe('Worker server-draft command public contract', () => {
     expect(client.calls.some((call) => call.table === 'worker_profiles')).toBe(false)
   })
 
+  it('reconciles a historical submission receipt after the Worker is ready without another mutation', async () => {
+    const { client, response } = request({ method: 'GET', data: [receipt] })
+    const result = await response
+    expect(result.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await result.json()).toEqual({ state: 'resolved', receipt })
+    expect(client.calls.find((call) => call.table === 'rpc:get_worker_registration_command')?.operations)
+      .toEqual([['rpc', 'get_worker_registration_command', { p_actor_id: WORKER, p_client_request_id: KEY }]])
+    expect(client.calls.some((call) => call.table === 'rpc:submit_worker_registration_draft_atomic')).toBe(false)
+  })
+
+  it('keeps a Customer from reading a Worker receipt after readiness', async () => {
+    const { client, response } = request({ method: 'GET', role: 'customer' })
+    const result = await response
+    expect(result.status, pillarWhy(PILLAR)).toBe(403)
+    expect(client.calls.some((call) => call.table === 'rpc:get_worker_registration_command')).toBe(false)
+  })
+
+  it('preserves an absent historical Worker receipt as unknown rather than failure', async () => {
+    const { client, response } = request({ method: 'GET', data: [] })
+    const result = await response
+    expect(result.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await result.json()).toEqual({ state: 'unknown', client_request_id: KEY })
+    expect(client.calls.some((call) => call.table === 'rpc:submit_worker_registration_draft_atomic')).toBe(false)
+  })
   it('reconciles without another mutation or copying unexpected private fields', async () => {
     const { client, response } = request({ method: 'GET', data: [{ ...receipt, bank_account: 'PRIVATE_FIELD' }] })
     const result = await response

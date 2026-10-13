@@ -36,6 +36,7 @@ const existingReceipt = {
 function setup(options: {
   result?: QueryResult; existing?: QueryResult; existingAfterConflict?: QueryResult;
   jobStatus?: string; role?: 'customer' | 'worker' | 'admin';
+  scheduledAt?: string;
   workerId?: string;
   actorId?: string; ownerId?: string; route?: 'customer-cancellation' | 'cancel';
 } = {}) {
@@ -47,7 +48,7 @@ function setup(options: {
     }], error: null }],
   }, {
     jobs: [{ data: { id: JOB, customer_id: options.ownerId ?? actorId, worker_id: options.workerId ?? null,
-      status: options.jobStatus ?? 'broadcasting' }, error: null }],
+      status: options.jobStatus ?? 'broadcasting', scheduled_at: options.scheduledAt ?? null }, error: null }],
     customer_cancellation_records: [options.existing ?? { data: null, error: null },
       options.existingAfterConflict ?? { data: null, error: null }],
   })
@@ -88,9 +89,41 @@ describe('Customer cancellation HTTP receipt integrity', () => {
       }])
   })
 
+  it('maps each accepted Customer cancellation phase to its authoritative receipt', async () => {
+    const workerId = 'c116abcd-0000-4000-8000-abcdef000004'
+    const cases = [
+      { label: 'confirmation pending', jobStatus: 'awaiting_customer_confirm', subCase: 'before_a7' },
+      { label: 'broadcasting', jobStatus: 'broadcasting', subCase: 'after_a7_before_worker_accept' },
+      { label: 'official match', jobStatus: 'worker_matched', subCase: 'after_worker_accept', workerId },
+      { label: 'on way', jobStatus: 'worker_on_way', subCase: 'after_worker_accept', workerId },
+      { label: 'arrived', jobStatus: 'arrived', subCase: 'after_worker_accept', workerId },
+      { label: 'inspecting', jobStatus: 'inspecting', subCase: 'after_worker_accept', workerId },
+      { label: 'working', jobStatus: 'repairing', subCase: 'after_worker_accept', workerId },
+      { label: 'scope change pending', jobStatus: 'scope_change_pending', subCase: 'after_worker_accept', workerId },
+      {
+        label: 'scheduled', jobStatus: 'worker_matched', subCase: 'scheduled_job', workerId,
+        scheduledAt: '2099-01-01T00:00:00.000Z',
+      },
+    ]
+
+    for (const scenario of cases) {
+      const { client, run } = setup({
+        jobStatus: scenario.jobStatus,
+        workerId: scenario.workerId,
+        scheduledAt: scenario.scheduledAt,
+        result: { data: [{ ...receipt, sub_case: scenario.subCase, worker_id_out: scenario.workerId ?? null }], error: null },
+      })
+      const response = await run()
+      expect(response.status, pillarWhy(PILLAR, scenario.label)).toBe(201)
+      expect(await response.json()).toMatchObject({ job_status: 'cancelled', sub_case: scenario.subCase })
+      expect(client.calls.filter(call => call.table === 'rpc:request_customer_cancellation_atomic')).toHaveLength(1)
+    }
+  })
+
   it.each(['after_worker_accept', 'scheduled_job'])('uses the committed Worker notice contract for %s', async subCase => {
     const workerId = 'c116abcd-0000-4000-8000-abcdef000004'
     const { client, run } = setup({ workerId, jobStatus: 'worker_matched',
+      scheduledAt: subCase === 'scheduled_job' ? '2099-01-01T00:00:00.000Z' : undefined,
       result: { data: [{ ...receipt, sub_case: subCase, worker_id_out: workerId }], error: null } })
     const response = await run()
     expect(response.status, pillarWhy(PILLAR, JSON.stringify(await response.clone().json()))).toBe(201)

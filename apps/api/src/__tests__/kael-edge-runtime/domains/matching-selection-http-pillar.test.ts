@@ -73,13 +73,26 @@ describe('Customer durable matching selection',()=>{
     expect((await run()).status).toBe(403)
     expect(client.calls.filter(call=>/request_job_matching_preference|get_job_matching_preference/.test(call.table))).toEqual([])
   })
-  it('recovers the exact selection receipt through GET after restart without another command',async()=>{
-    const {client,run}=setup({data:{...receipt,state:'official_match',broadcast_sent:true}})
-    const response=await run('GET')
-    expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({selection:{...receipt,state:'official_match',broadcast_sent:true}})
-    expect(client.calls.some(call=>call.table==='rpc:request_job_matching_preference_atomic')).toBe(false)
-  })
+  it.each([
+    ['matching_queued', 'queued', 'awaiting_customer_confirm', false],
+    ['broadcasting', 'broadcasting', 'broadcasting', true],
+    ['official_match', 'official_match', 'worker_matched', true],
+    ['recovery_required', 'recovery_required', 'awaiting_customer_confirm', false],
+  ] as const)(
+    'recovers the %s selection receipt through GET after restart without another command',
+    async (_transactionState, state, job_status, broadcast_sent) => {
+      const selection = { ...receipt, state, job_status, broadcast_sent }
+      const {client,run}=setup({data:selection})
+      const response=await run('GET')
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({selection})
+      expect(client.calls.find(call=>call.table==='rpc:get_job_matching_preference_receipt')?.operations)
+        .toContainEqual(['rpc','get_job_matching_preference_receipt',{
+          p_job_id:JOB,p_customer_id:CUSTOMER,p_client_request_id:REQUEST,
+        }])
+      expect(client.calls.some(call=>call.table==='rpc:request_job_matching_preference_atomic')).toBe(false)
+    },
+  )
   it.each(['admin','worker'] as const)('denies %s selection receipt reads',async role=>{
     const {client,run}=setup({role})
     expect((await run('GET')).status).toBe(403)

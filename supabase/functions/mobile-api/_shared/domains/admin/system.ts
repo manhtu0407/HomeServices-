@@ -101,9 +101,9 @@ export async function getAdminSystemModelHealthDetail(ctx: MobileApiContext, det
   return getSystemModelHealthDetail(ctx, detailKey);
 }
 
-export async function getAdminSystemHealth(ctx: MobileApiContext) {
+export async function getAdminSystemHealth(ctx: MobileApiContext, schemaVersion: 1 | 2) {
   await requireAdminCapability(ctx, "system.read");
-  return getSystemHealth(ctx);
+  return getSystemHealth(ctx, schemaVersion);
 }
 
 export async function refreshAdminSystemHealth(ctx: MobileApiContext) {

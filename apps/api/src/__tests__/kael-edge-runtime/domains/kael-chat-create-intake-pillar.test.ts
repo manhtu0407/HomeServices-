@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
+import { createMobileApiHandler } from '../../../../../../supabase/functions/mobile-api/_shared/http'
 import type { MobileApiContext } from '../../../../../../supabase/functions/mobile-api/_shared/http'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
@@ -55,6 +56,120 @@ function session(overrides: Record<string, unknown> = {}) {
     ...overrides,
   }
 }
+
+  it('customer Kael intake create public HTTP route persists the owner-bound session and first customer turn', async () => {
+    const createdTurn = {
+      id: TURN_ID,
+      session_id: SESSION_ID,
+      turn_index: 1,
+      role: 'customer',
+      content_type: 'text',
+      text_content: 'Vòi nước nhà tôi bị rò rỉ',
+      media_refs: [],
+      safe_metadata: {},
+      created_at: '2026-10-08T00:00:00.000Z',
+    }
+    const client = makeSequenceClient([], {
+      check_kael_chat_rate: [{ data: [{ allowed: true }], error: null }],
+    }, {
+      kael_chat_sessions: [
+        { data: null, error: null },
+        { data: session({ total_turns: 0 }), error: null },
+        { data: { id: SESSION_ID }, error: null },
+        { data: session(), error: null },
+      ],
+      kael_customer_conversations: [{ data: { id: SESSION_ID }, error: null }],
+      kael_chat_turns: [
+        { data: { id: TURN_ID }, error: null },
+        { data: [createdTurn], error: null },
+      ],
+    })
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: CUSTOMER_ID },
+        role: 'customer',
+        supabase: client,
+        privilegedSupabase: client,
+        userSupabase: client,
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request('https://edge.test/mobile-api/kael/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        service_type: 'plumbing',
+        message: 'Vòi nước nhà tôi bị rò rỉ',
+        problem_chips: [],
+        photo_urls: [],
+        client_request_id: REQUEST_ID,
+        defer_analysis: true,
+        language: 'vi',
+      }),
+    }))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(201)
+    const payload = await response.json()
+    expect(payload).toMatchObject({
+      session: { id: SESSION_ID, customer_id: CUSTOMER_ID },
+      turns: [{
+        id: TURN_ID,
+        session_id: SESSION_ID,
+        role: 'customer',
+        text_content: 'Vòi nước nhà tôi bị rò rỉ',
+      }],
+    })
+    const sessionInsert = client.calls.find((call) =>
+      call.table === 'kael_chat_sessions' &&
+      call.operations.some((operation) => operation[0] === 'insert'),
+    )
+    expect(sessionInsert?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({ customer_id: CUSTOMER_ID, client_request_id: REQUEST_ID }),
+    ])
+    const turnInsert = client.calls.find((call) =>
+      call.table === 'kael_chat_turns' &&
+      call.operations.some((operation) => operation[0] === 'insert'),
+    )
+    expect(turnInsert?.operations).toContainEqual([
+      'insert',
+      expect.objectContaining({ session_id: SESSION_ID, role: 'customer', turn_index: 1 }),
+    ])
+  })
+
+  it('customer Kael intake create public HTTP route rejects a non-customer actor before data access', async () => {
+    const client = makeSequenceClient([])
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: CUSTOMER_ID },
+        role: 'worker',
+        supabase: client,
+        privilegedSupabase: client,
+        userSupabase: client,
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request('https://edge.test/mobile-api/kael/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        service_type: 'plumbing',
+        message: 'Vòi nước nhà tôi bị rò rỉ',
+        problem_chips: [],
+        photo_urls: [],
+        client_request_id: REQUEST_ID,
+        defer_analysis: true,
+        language: 'vi',
+      }),
+    }))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(403)
+    expect(client.calls).toHaveLength(0)
+  })
 
 describe('customer Kael intake create', () => {
   it('creates an owner-bound intake session and persists the initial customer turn', async () => {

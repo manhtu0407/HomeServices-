@@ -27,14 +27,21 @@ const receipt = {
   broadcast_sent: false,
 }
 
-function setup(options: { role?: 'customer' | 'worker' | 'admin'; error?: { code: string; message: string }; data?: unknown; owner?: string } = {}) {
+function setup(options: {
+  role?: 'customer' | 'worker' | 'admin'
+  error?: { code: string; message: string }
+  data?: unknown
+  owner?: string
+  jobStatus?: string
+  parentState?: string
+} = {}) {
   const result = { data: options.error ? null : options.data ?? receipt, error: options.error ?? null }
   const client = makeSequenceClient([], {
     request_job_matching_retry_atomic: [result],
     get_job_matching_retry_operation: [result],
   }, {
-    jobs: [{ data: { id: JOB, status: 'broadcasting', customer_id: options.owner ?? CUSTOMER, worker_id: null }, error: null }],
-    matching_operations: [{ data: { id: PARENT, state: 'no_reachable_worker', updated_at: receipt.updated_at }, error: null }],
+    jobs: [{ data: { id: JOB, status: options.jobStatus ?? 'broadcasting', customer_id: options.owner ?? CUSTOMER, worker_id: null }, error: null }],
+    matching_operations: [{ data: { id: PARENT, state: options.parentState ?? 'no_reachable_worker', updated_at: receipt.updated_at }, error: null }],
   })
   const handler = createMobileApiHandler({
     authenticate: async () => ({ success: true, user: { id: CUSTOMER }, role: options.role ?? 'customer',
@@ -105,6 +112,21 @@ describe('durable Customer matching retry HTTP contract', () => {
     expect(client.calls.filter((call) => call.table.includes('request_job_matching_retry'))).toEqual([])
   })
 
+  it.each(['queued', 'broadcasting', 'recovery_required'] as const)(
+    'returns the persisted %s operation after restart without issuing a new command',
+    async (state) => {
+      const { client, run } = setup({ data: {
+        ...receipt,
+        state,
+        broadcast_sent: state === 'broadcasting',
+      } })
+      const response = await run('GET', `matching-retries/${REQUEST}`)
+      expect(response.status).toBe(200)
+      expect(await response.json()).toMatchObject({ operation: { operation_id: OPERATION, state } })
+      expect(client.calls.filter((call) => call.table.includes('request_job_matching_retry'))).toEqual([])
+    },
+  )
+
   it('returns the owned latest operation for the expected-parent fence, not a Worker list or supply claim', async () => {
     const { run } = setup()
     const response = await run('GET', 'matching-operation')
@@ -112,6 +134,17 @@ describe('durable Customer matching retry HTTP contract', () => {
     expect(await response.json()).toMatchObject({ job_id: JOB, operation: {
       operation_id: PARENT, state: 'no_reachable_worker', updated_at: receipt.updated_at,
     } })
+  })
+
+  it('returns an owned recovery operation without changing its state', async () => {
+    const { client, run } = setup({ parentState: 'recovery_required' })
+    const response = await run('GET', 'matching-operation')
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ job_id: JOB, operation: {
+      operation_id: PARENT, state: 'recovery_required', updated_at: receipt.updated_at,
+    } })
+    expect(client.calls.some((call) => call.table === 'jobs'
+      && call.operations.some((operation) => operation[0] === 'update'))).toBe(false)
   })
 
   it.each(['worker', 'admin'] as const)('denies %s receipt reads as well as commands', async (role) => {

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { installEdgeRuntimeTestHooks, makeSequenceClient } from '../harness'
 import type { MobileApiContext } from '../../../../../../supabase/functions/mobile-api/_shared/http'
+import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
+import { createMobileApiHandler } from '../../../../../../supabase/functions/mobile-api/_shared/http'
 import { markWorkerBroadcastSeen } from '../../../../../../supabase/functions/mobile-api/_shared/domains/worker/broadcasts'
 
 export const PILLAR = {
@@ -70,6 +72,81 @@ describe('worker offer lifecycle', () => {
       'mark_matching_delivery_seen',
       { p_broadcast_id: BROADCAST_ID, p_worker_id: WORKER_ID },
     ])
+  })
+
+  it('routes authenticated Worker seen actions through the public HTTP handler to the exact RPC receipt', async () => {
+    const client = makeSequenceClient([], {
+      mark_matching_delivery_seen: [{
+        data: [{
+          id: DELIVERY_ID,
+          broadcast_id: BROADCAST_ID,
+          job_id: JOB_ID,
+          operation_id: '18600000-0000-4000-8000-000000000006',
+          status: 'seen',
+          expires_at: '2099-01-01T00:00:00.000Z',
+          delivered_at: '2026-09-15T08:00:00.000Z',
+          seen_at: '2026-09-15T08:01:00.000Z',
+          accepted_at: null,
+        }],
+        error: null,
+      }],
+    })
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: WORKER_ID },
+        role: 'worker',
+        supabase: client,
+        privilegedSupabase: client,
+        userSupabase: client,
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request(
+      'https://edge.test/workers/me/broadcasts/' + BROADCAST_ID + '/seen',
+      { method: 'POST' },
+    ))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(200)
+    expect(await response.json()).toMatchObject({
+      delivery_receipt: {
+        delivery_id: DELIVERY_ID,
+        broadcast_id: BROADCAST_ID,
+        job_id: JOB_ID,
+        operation_id: '18600000-0000-4000-8000-000000000006',
+        state: 'seen',
+      },
+    })
+    expect(client.calls.find((call) => call.table === 'rpc:mark_matching_delivery_seen')?.operations)
+      .toContainEqual([
+        'rpc',
+        'mark_matching_delivery_seen',
+        { p_broadcast_id: BROADCAST_ID, p_worker_id: WORKER_ID },
+      ])
+  })
+
+  it('rejects a Customer at the public HTTP route before the seen RPC', async () => {
+    const client = makeSequenceClient([])
+    const handler = createMobileApiHandler({
+      authenticate: async () => ({
+        success: true,
+        user: { id: '18600000-0000-4000-8000-000000000005' },
+        role: 'customer',
+        supabase: client,
+        privilegedSupabase: client,
+        userSupabase: client,
+      }),
+      services: createEdgeServices({}),
+    })
+
+    const response = await handler(new Request(
+      'https://edge.test/workers/me/broadcasts/' + BROADCAST_ID + '/seen',
+      { method: 'POST' },
+    ))
+
+    expect(response.status, pillarWhy(PILLAR)).toBe(403)
+    expect(client.calls.some((call) => call.table === 'rpc:mark_matching_delivery_seen')).toBe(false)
   })
 
   it('refuses an absent seen receipt without claiming visibility', async () => {

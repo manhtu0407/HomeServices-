@@ -26,13 +26,13 @@ const receipt = {
   terminal: false, retry_after_ms: null, trace_finalized: true,
 }
 
-function setup(role: 'customer' | 'worker' | 'admin' = 'customer', pending = true) {
+function setup(role: 'customer' | 'worker' | 'admin' = 'customer', pending = true, confirmationReceipt = receipt) {
   const client = makeSequenceClient([], {
     begin_harness_authorized_request: [{ data: true, error: null }],
-    confirm_kael_chat_durable_atomic_v3: [{ data: [receipt], error: null }],
-    confirm_kael_chat_durable_atomic_v4: [{ data: [receipt], error: null }],
-    confirm_kael_chat_durable_authorized_v5: [{ data: [receipt], error: null }],
-    confirm_kael_chat_durable_authorized_v6: [{ data: [receipt], error: null }],
+    confirm_kael_chat_durable_atomic_v3: [{ data: [confirmationReceipt], error: null }],
+    confirm_kael_chat_durable_atomic_v4: [{ data: [confirmationReceipt], error: null }],
+    confirm_kael_chat_durable_authorized_v5: [{ data: [confirmationReceipt], error: null }],
+    confirm_kael_chat_durable_authorized_v6: [{ data: [confirmationReceipt], error: null }],
   }, {
     job_matching_preferences: [{ data: { strategy: pending ? 'pending' : 'general', auto_general: false, fallback_at: null }, error: null }],
     job_broadcasts: [{ data: [], error: null }],
@@ -77,6 +77,19 @@ describe('Customer confirmation matching intent', () => {
     expect((await run({ confirmation_kind: 'rfq_request' })).status).toBe(202)
     expect(client.calls.find((call) => call.table.includes('confirm_kael_chat'))?.operations[0]?.[2])
       .toMatchObject({ p_matching_mode: null })
+  })
+
+  it('returns a recovery-required operation state from the confirmation HTTP receipt', async () => {
+    const recoveryReceipt = { ...receipt, operation_state: 'recovery_required', already_applied: true }
+    const { client, run } = setup('customer', true, recoveryReceipt)
+    const response = await run()
+    expect(response.status, pillarWhy(PILLAR)).toBe(202)
+    expect(await response.json()).toMatchObject({
+      job_id: JOB, broadcast_sent: false, worker: null,
+      operation: { state: 'recovery_required', job_id: JOB, terminal: false },
+    })
+    expect(client.calls.filter((call) => call.table.includes('confirm_kael_chat'))).toHaveLength(1)
+    expect(client.calls.some((call) => /broadcast_atomic|claim_job_broadcast|create_job_matching/.test(call.table))).toBe(false)
   })
 
   it.each(['worker', 'admin'] as const)('denies %s before privileged confirmation', async (role) => {

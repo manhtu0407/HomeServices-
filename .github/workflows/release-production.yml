@@ -1,10 +1,8 @@
 name: release-production
 
 on:
-  # A push to main releases only once the repository variable NESTSCOUT_STRICT_RELEASE_ENABLED is
-  # 'true'. While the strict gates cannot pass (unmapped transaction entries), leaving it unset
-  # skips every job for free instead of billing a quality job that must fail; the dispatch lane
-  # generated from this file is the release path meanwhile.
+  # A push to main releases only once the Production release configuration and strict readiness
+  # evidence are complete. Leaving the switch unset keeps this expensive Production lane paused.
   push:
     branches: [main]
   schedule:
@@ -91,6 +89,7 @@ jobs:
           mkdir -p artifacts/transactions
           pnpm test:api --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
           pnpm test:shared
+          pnpm test:system-monitor-worker
           pnpm test:mobile --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
           pnpm test:sandbox
           pnpm build
@@ -207,6 +206,9 @@ jobs:
           PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
           VIETMAP_API_KEY: ${{ secrets.VIETMAP_API_KEY }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SYSTEM_HEALTH_MONITOR_SECRET: ${{ secrets.SYSTEM_HEALTH_MONITOR_SECRET }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
           NESTSCOUT_ANDROID_FCM_V1_READY: ${{ vars.NESTSCOUT_ANDROID_FCM_V1_READY }}
           NESTSCOUT_IOS_APNS_READY: ${{ vars.NESTSCOUT_IOS_APNS_READY }}
           NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY: ${{ vars.NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY }}
@@ -223,6 +225,9 @@ jobs:
           test -n "$PERPLEXITY_API_KEY"
           test -n "$VIETMAP_API_KEY"
           test -n "$EXPO_TOKEN"
+          test -n "$CLOUDFLARE_API_TOKEN"
+          [[ "$SYSTEM_HEALTH_MONITOR_SECRET" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$SYSTEM_HEALTH_OBSERVER_SECRET" =~ ^[0-9a-f]{64}$ ]]
           test "$NESTSCOUT_ANDROID_FCM_V1_READY" = "true"
           test "$NESTSCOUT_IOS_APNS_READY" = "true"
           test "$NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY" = "true"
@@ -277,6 +282,32 @@ jobs:
           cohort_id="synthetic-stage1-${release_id#harness-}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           echo "RELEASE_ID=$release_id" >> "$GITHUB_ENV"
           echo "COHORT_ID=$cohort_id" >> "$GITHUB_ENV"
+      - name: Verify Cloudflare target and capture independent rollback state
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          account_id=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.systemHealthObserver.cloudflareAccountId)")
+          worker_name=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.systemHealthObserver.workerName)")
+          whoami_file=$(mktemp)
+          d1_list_file=$(mktemp)
+          trap 'rm -f "$whoami_file" "$d1_list_file"' EXIT
+          pnpm exec wrangler whoami --json --account "$account_id" > "$whoami_file"
+          pnpm exec wrangler d1 list --json --config scripts/system-monitor/wrangler.jsonc > "$d1_list_file"
+          node scripts/system-monitor/verify-cloudflare-target.mjs \
+            --whoami "$whoami_file" --d1-list "$d1_list_file" \
+            --release artifacts/release/release.json \
+            --output artifacts/release/cloudflare-target.json
+          CLOUDFLARE_ACCOUNT_ID="$account_id" \
+            SYSTEM_HEALTH_CLOUDFLARE_WORKER_NAME="$worker_name" \
+            CLOUDFLARE_WORKER_STATE_OUTPUT=artifacts/release/cloudflare-worker-before.json \
+            node scripts/system-monitor/cloudflare-worker-state.mjs
+          PRODUCTION_PROJECT_REF="$PRODUCTION_PROJECT_REF" \
+            SYSTEM_MONITOR_EDGE_STATE_OUTPUT=artifacts/release/system-monitor-edge-before.json \
+            node scripts/system-monitor/edge-deployment.mjs capture \
+              --project-ref "$PRODUCTION_PROJECT_REF" \
+              --output artifacts/release/system-monitor-edge-before.json
       # eas-cli resolves the Apple Developer Portal team even for App Store Connect API key auth
       # (packages/eas-cli/src/credentials/ios/appstore/authenticate.ts authenticateWithApiKeyAsync
       # -> resolveAppleTeamAsync), and without these two env vars it falls back to an interactive
@@ -462,6 +493,37 @@ jobs:
             --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
             --release-id "$expected_active" \
             --output artifacts/release/previous-active-release.json
+      - name: Verify the registered system monitor baseline before changing schedules
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          if node -e "const r=require('./artifacts/release/previous-active-release.json');process.exit(r?.systemHealthObserver?0:1)"; then
+            mkdir -p artifacts/rollback-system-monitor/supabase/functions/system-monitor
+            cp supabase/config.toml artifacts/rollback-system-monitor/supabase/config.toml
+            ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback-system-monitor \
+              functions download system-monitor --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+            node scripts/system-monitor/edge-deployment.mjs previous \
+              --release artifacts/release/previous-active-release.json \
+              --edge-state artifacts/release/system-monitor-edge-before.json \
+              --worker-state artifacts/release/cloudflare-worker-before.json \
+              --source-root artifacts/rollback-system-monitor \
+              --output artifacts/release/system-monitor-before-proof.json
+          else
+            node scripts/system-monitor/edge-deployment.mjs previous \
+              --release artifacts/release/previous-active-release.json \
+              --edge-state artifacts/release/system-monitor-edge-before.json \
+              --worker-state artifacts/release/cloudflare-worker-before.json \
+              --output artifacts/release/system-monitor-before-proof.json
+          fi
+      - name: Apply pinned Cloudflare D1 migrations without deleting evidence
+        id: apply-system-health-d1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          pnpm exec wrangler d1 migrations apply nestscout-system-health-observer \
+            --remote --config scripts/system-monitor/wrangler.jsonc \
+            > artifacts/release/cloudflare-d1-migrations.txt
       - name: Configure exact synthetic cohort canary
         id: configure
         env:
@@ -489,6 +551,110 @@ jobs:
           ./apps/api/node_modules/.bin/supabase secrets set "${release_bindings[@]}" --project-ref "$PRODUCTION_PROJECT_REF"
           ./apps/api/node_modules/.bin/supabase functions deploy mobile-api --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
           ./apps/api/node_modules/.bin/supabase functions deploy kael-matching-maintainer --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+      - name: Deploy and attest the system health collector before its observer
+        id: system-health-edge
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          SYSTEM_HEALTH_MONITOR_SECRET: ${{ secrets.SYSTEM_HEALTH_MONITOR_SECRET }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
+        run: |
+          set -euo pipefail
+          echo "SYSTEM_HEALTH_EDGE_DEPLOYMENT_ATTEMPTED=true" >> "$GITHUB_ENV"
+          secret_env_file=$(mktemp)
+          trap 'rm -f "$secret_env_file"' EXIT
+          umask 077
+          printf '%s\n' \
+            "SYSTEM_HEALTH_MONITOR_SECRET=$SYSTEM_HEALTH_MONITOR_SECRET" \
+            "SYSTEM_HEALTH_OBSERVER_SECRET=$SYSTEM_HEALTH_OBSERVER_SECRET" \
+            "SYSTEM_HEALTH_ENVIRONMENT=production" \
+            "SYSTEM_HEALTH_EXPECTED_PROJECT_REF=$PRODUCTION_PROJECT_REF" \
+            "SYSTEM_HEALTH_PROFILE_ID=cloudflare-admin-v1" > "$secret_env_file"
+          ./apps/api/node_modules/.bin/supabase secrets set --env-file "$secret_env_file" \
+            --project-ref "$PRODUCTION_PROJECT_REF"
+          ./apps/api/node_modules/.bin/supabase functions deploy system-monitor \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+          candidate_root=$(mktemp -d)
+          trap 'rm -f "$secret_env_file"; rm -rf "$candidate_root"' EXIT
+          verified=false
+          for attempt in $(seq 1 12); do
+            candidate_dir="$candidate_root/$attempt"
+            mkdir -p "$candidate_dir/supabase/functions/system-monitor"
+            cp supabase/config.toml "$candidate_dir/supabase/config.toml"
+            ./apps/api/node_modules/.bin/supabase --workdir "$candidate_dir" \
+              functions download system-monitor --project-ref "$PRODUCTION_PROJECT_REF" --use-api || true
+            edge_state_file="$candidate_root/edge-state-$attempt.json"
+            if node scripts/system-monitor/edge-deployment.mjs capture \
+                --project-ref "$PRODUCTION_PROJECT_REF" --output "$edge_state_file" && \
+                node scripts/system-monitor/edge-deployment.mjs candidate \
+                  --release artifacts/release/release.json \
+                  --before artifacts/release/system-monitor-edge-before.json \
+                  --after "$edge_state_file" \
+                  --source-root "$candidate_dir" \
+                  --output artifacts/release/system-monitor-edge-deployment-proof.json; then
+              cp "$edge_state_file" artifacts/release/system-monitor-edge-after.json
+              verified=true
+              break
+            fi
+            sleep 10
+          done
+          test "$verified" = true
+          echo "SYSTEM_HEALTH_SCHEDULE_CHANGE_ATTEMPTED=true" >> "$GITHUB_ENV"
+          node scripts/system-monitor/configure-vault-secret.mjs \
+            > artifacts/release/system-monitor-vault-configured.txt
+          SYSTEM_HEALTH_OBSERVER_SECRET="$SYSTEM_HEALTH_OBSERVER_SECRET" \
+          SYSTEM_HEALTH_ENVIRONMENT=production \
+          SYSTEM_HEALTH_EXPECTED_PROJECT_REF="$PRODUCTION_PROJECT_REF" \
+          SYSTEM_HEALTH_PROFILE_ID=cloudflare-admin-v1 \
+          SYSTEM_HEALTH_SNAPSHOT_EVIDENCE_PATH=artifacts/release/system-health-first-snapshot.json \
+          node scripts/system-monitor/wait-for-snapshot.mjs
+      - name: Deploy Cloudflare observer and verify its live D1 tick
+        id: system-health-worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
+        run: |
+          set -euo pipefail
+          echo "SYSTEM_HEALTH_WORKER_DEPLOYMENT_ATTEMPTED=true" >> "$GITHUB_ENV"
+          secret_file=$(mktemp)
+          trap 'rm -f "$secret_file"' EXIT
+          umask 077
+          node -e "const fs=require('node:fs');fs.writeFileSync(process.argv[1],JSON.stringify({SYSTEM_HEALTH_OBSERVER_SECRET:process.env.SYSTEM_HEALTH_OBSERVER_SECRET}),{flag:'wx',mode:0o600})" "$secret_file"
+          pnpm exec wrangler deploy --config scripts/system-monitor/wrangler.jsonc \
+            --secrets-file "$secret_file" --tag "$RELEASE_ID" --message "$GITHUB_SHA" --strict \
+            > artifacts/release/cloudflare-worker-deploy.txt
+          pnpm exec wrangler deployments list --name nestscout-system-health-observer \
+            --config scripts/system-monitor/wrangler.jsonc --json \
+            > artifacts/release/cloudflare-deployments-after.json
+          d1_query=$(cat <<'SQL'
+          SELECT json_object(
+            'migrations', (SELECT json_group_array(name) FROM d1_migrations),
+            'latestTick', (SELECT json_object('scheduled_at', scheduled_at, 'completed_at', completed_at, 'outcome', outcome)
+              FROM monitor_ticks ORDER BY scheduled_at DESC LIMIT 1),
+            'state', (SELECT json_object('last_snapshot_at', last_snapshot_at, 'last_error_code', last_error_code)
+              FROM monitor_state WHERE singleton_id = 1)
+          ) AS evidence;
+          SQL
+          )
+          verified=false
+          for attempt in $(seq 1 42); do
+            if pnpm exec wrangler d1 execute nestscout-system-health-observer \
+                --remote --json --config scripts/system-monitor/wrangler.jsonc \
+                --command "$d1_query" > artifacts/release/cloudflare-observer-runtime-raw.json && \
+                pnpm exec wrangler deployments list --name nestscout-system-health-observer \
+                --config scripts/system-monitor/wrangler.jsonc --json \
+                > artifacts/release/cloudflare-deployments-after.json && \
+                node scripts/system-monitor/verify-cloudflare-runtime.mjs \
+                  --release artifacts/release/release.json \
+                  --deployments artifacts/release/cloudflare-deployments-after.json \
+                  --d1-evidence artifacts/release/cloudflare-observer-runtime-raw.json \
+                  --output artifacts/release/cloudflare-observer-runtime.json; then
+              verified=true
+              break
+            fi
+            sleep 30
+          done
+          test "$verified" = true
       - name: Verify hosted candidate identity and bundle state
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -660,6 +826,91 @@ jobs:
             --hosted artifacts/release/hosted-after-promotion.json \
             --promotion-packet artifacts/release/promotion-packet.json \
             --output artifacts/release/production-acceptance-note.json
+      - name: Roll back system monitor schedules while preserving D1 evidence
+        if: always() && (failure() || cancelled()) && steps.configure.outcome != 'skipped'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          SYSTEM_HEALTH_MONITOR_SECRET: ${{ secrets.SYSTEM_HEALTH_MONITOR_SECRET }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '45dec251ed1c9627256f9b6ba24bcdff'
+          SYSTEM_HEALTH_CLOUDFLARE_WORKER_NAME: nestscout-system-health-observer
+        run: |
+          set -uo pipefail
+          rollback_status=0
+          previous_worker_exists=$(node -e "const s=require('./artifacts/release/cloudflare-worker-before.json');process.stdout.write(s.exists?'true':'false')")
+          previous_monitor=$(node -e "const p=require('./artifacts/release/system-monitor-before-proof.json');process.stdout.write(p.status==='previous_monitor_verified'?'true':'false')")
+          disable_worker_cron() {
+            local current_state="$RUNNER_TEMP/cloudflare-worker-current-${GITHUB_RUN_ID}-${RANDOM}.json"
+            local secret_file rollback_config
+            CLOUDFLARE_WORKER_STATE_OUTPUT="$current_state" node scripts/system-monitor/cloudflare-worker-state.mjs || return 1
+            if node -e "const fs=require('node:fs');process.exit(JSON.parse(fs.readFileSync(process.argv[1],'utf8')).exists?0:1)" "$current_state"; then
+              secret_file=$(mktemp) || return 1
+              rollback_config="scripts/system-monitor/wrangler.rollback-${GITHUB_RUN_ID}.jsonc"
+              trap 'rm -f "$secret_file" "$rollback_config"' RETURN
+              umask 077
+              node -e "const fs=require('node:fs');fs.writeFileSync(process.argv[1],JSON.stringify({SYSTEM_HEALTH_OBSERVER_SECRET:process.env.SYSTEM_HEALTH_OBSERVER_SECRET}),{flag:'wx',mode:0o600})" "$secret_file" || return 1
+              node scripts/system-monitor/create-rollback-config.mjs --output "$rollback_config" || return 1
+              pnpm exec wrangler deploy --config "$rollback_config" --secrets-file "$secret_file" \
+                --tag "rollback-disabled-${GITHUB_RUN_ID}" --message "disable monitor cron after failed release ${GITHUB_SHA}" --strict \
+                > artifacts/release/cloudflare-worker-schedule-disabled.txt || return 1
+            fi
+            return 0
+          }
+          if [ "${SYSTEM_HEALTH_WORKER_DEPLOYMENT_ATTEMPTED:-false}" = true ]; then
+            if [ "$previous_worker_exists" = true ]; then
+              previous_worker_version=$(node -e "process.stdout.write(require('./artifacts/release/cloudflare-worker-before.json').versionId)")
+              if pnpm exec wrangler rollback "$previous_worker_version" --name nestscout-system-health-observer \
+                  --config scripts/system-monitor/wrangler.jsonc --yes \
+                  --message "restore system monitor after failed release ${GITHUB_SHA}" \
+                  > artifacts/release/cloudflare-worker-rollback.txt; then
+                CLOUDFLARE_WORKER_STATE_OUTPUT=artifacts/release/cloudflare-worker-worker-rollback.json \
+                  node scripts/system-monitor/cloudflare-worker-state.mjs || rollback_status=1
+                if ! node -e "const b=require('./artifacts/release/cloudflare-worker-before.json');const a=require('./artifacts/release/cloudflare-worker-worker-rollback.json');if(!a.exists||a.versionId!==b.versionId||a.releaseTag!==b.releaseTag)process.exit(1)"; then
+                  rollback_status=1
+                  disable_worker_cron || rollback_status=1
+                fi
+              else
+                rollback_status=1
+                disable_worker_cron || rollback_status=1
+              fi
+            else
+              disable_worker_cron || rollback_status=1
+            fi
+          fi
+          if [ "${SYSTEM_HEALTH_EDGE_DEPLOYMENT_ATTEMPTED:-false}" = true ]; then
+            if [ "$previous_monitor" = true ]; then
+              if ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback-system-monitor \
+                  functions deploy system-monitor --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt \
+                  > artifacts/release/system-monitor-edge-rollback.txt; then
+                SYSTEM_MONITOR_EDGE_STATE_OUTPUT=artifacts/release/system-monitor-edge-after-rollback.json \
+                  node scripts/system-monitor/edge-deployment.mjs capture \
+                    --project-ref "$PRODUCTION_PROJECT_REF" \
+                    --output artifacts/release/system-monitor-edge-after-rollback.json || rollback_status=1
+                CLOUDFLARE_WORKER_STATE_OUTPUT=artifacts/release/cloudflare-worker-after-rollback.json \
+                  node scripts/system-monitor/cloudflare-worker-state.mjs || rollback_status=1
+                node scripts/system-monitor/edge-deployment.mjs previous \
+                  --release artifacts/release/previous-active-release.json \
+                  --edge-state artifacts/release/system-monitor-edge-after-rollback.json \
+                  --worker-state artifacts/release/cloudflare-worker-after-rollback.json \
+                  --source-root artifacts/rollback-system-monitor \
+                  --output artifacts/release/system-monitor-rollback-proof.json || rollback_status=1
+              else
+                rollback_status=1
+                node scripts/system-monitor/disable-schedule.mjs || rollback_status=1
+                disable_worker_cron || rollback_status=1
+              fi
+            else
+              node scripts/system-monitor/disable-schedule.mjs \
+                > artifacts/release/system-monitor-schedule-disabled.txt || rollback_status=1
+            fi
+          fi
+          if [ "$rollback_status" -ne 0 ]; then
+            echo "::error::System monitor rollback did not reach its verified safe state"
+            exit 1
+          fi
+          echo "System monitor schedules rolled back; D1 evidence retained"
       - name: Abort canary, restore identity, and redeploy downloaded rollback
         if: always() && (failure() || cancelled()) && steps.configure.outcome != 'skipped'
         env:

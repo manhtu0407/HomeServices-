@@ -47,6 +47,7 @@ export async function requestScopeChange(
   secrets: EdgeAiSecrets,
   incidentProposal?: IncidentScopeChangeProposal,
   workerAcceptedQuote?: {
+    analysis: import("../../../kael/index.ts").ScopeChangeKaelAnalysis;
     confirmedAt: string;
     quoteId: string;
     storedQuote: unknown;
@@ -109,6 +110,7 @@ export async function requestScopeChange(
     originalPriceMax,
     evidencePhotoRefs,
     directClaimId: claimId,
+    analysisOverride: workerAcceptedQuote?.analysis,
   });
   const confirmedEstimate = workerAcceptedQuote
     ? bindAcceptedScopeChangeWorkerQuote({

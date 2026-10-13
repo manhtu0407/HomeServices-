@@ -1,3 +1,10 @@
+-- @pillar id: P371-customer-completion-atomic-sql
+-- @pillar invariant: Customer completion atomically records the confirmation event and commits the job only in payment_pending with one durable manual-bank operation.
+-- @pillar authority: governance/RULES.md #7 | governance/RULES.md #8
+-- @pillar target: supabase/migrations/20260904231000_canonical_completion_payment_authority.sql
+-- @pillar layer: sql
+-- @pillar siblings: P68-completion-payment-authority,P86-customer-completion-http
+-- @pillar mutation: Remove either completion transition or commit a different final status; the local SQL event-chain and durable-receipt assertions fail.
 -- P68: rollback-only proof for atomic Customer completion and manual-bank ordering.
 
 begin;
@@ -136,8 +143,28 @@ begin
     or (select count(*) from public.job_events
       where job_id = 'd6800000-0000-4000-8000-000000000101'
         and event_type = 'customer_started_payment') <> 1
+    or not exists (
+      select 1 from public.jobs
+      where id = 'd6800000-0000-4000-8000-000000000101'
+        and status = 'payment_pending'::public.job_status
+        and confirmed_at is not null
+    )
+    or (select count(*) from public.job_events
+      where job_id = 'd6800000-0000-4000-8000-000000000101'
+        and actor_id = 'd6800000-0000-4000-8000-000000000001'
+        and actor_role = 'customer'::public.user_role
+        and event_type = 'customer_confirmed_completion'
+        and from_status = 'completed_by_worker'::public.job_status
+        and to_status = 'confirmed_by_customer'::public.job_status) <> 1
+    or (select count(*) from public.job_events
+      where job_id = 'd6800000-0000-4000-8000-000000000101'
+        and actor_id = 'd6800000-0000-4000-8000-000000000001'
+        and actor_role = 'customer'::public.user_role
+        and event_type = 'customer_started_payment'
+        and from_status = 'confirmed_by_customer'::public.job_status
+        and to_status = 'payment_pending'::public.job_status) <> 1
   then
-    raise exception 'atomic completion left duplicate or partial records';
+    raise exception 'atomic completion left duplicate, partial, or invalid transition records';
   end if;
 
   select * into strict v_review

@@ -26,13 +26,21 @@ const CLAIM = 'f8700000-0000-4000-8000-000000000007'
 const NOW = '2026-08-14T08:00:00.000Z'
 const evidence = `supabase://job-media/${JOB}/scope_change_evidence/photo.jpg`
 
-function setup(input: { role?: 'customer' | 'worker' | 'admin'; actorId?: string; claimError?: string; decisionError?: string } = {}) {
+function setup(input: {
+  role?: 'customer' | 'worker' | 'admin'
+  actorId?: string
+  claimError?: string
+  decisionError?: string
+  jobStatus?: string
+  resumeJobStatus?: string
+  requestTiming?: 'pre_arrival' | 'on_site'
+} = {}) {
   let role = input.role ?? 'worker'
   let actorId = input.actorId ?? (role === 'worker' ? WORKER : CUSTOMER)
   let claimed = false
   let decided = false
   const job = {
-    id: JOB, status: 'inspecting', customer_id: CUSTOMER, worker_id: WORKER,
+    id: JOB, status: input.jobStatus ?? 'inspecting', customer_id: CUSTOMER, worker_id: WORKER,
     service_type: 'handyman', address_district: 'q7', description: 'Căn chỉnh một cánh tủ có hai bản lề.',
     kael_problem_identified: 'Căn chỉnh hai bản lề tủ', kael_complexity: 'small',
     kael_price_min: 150000, kael_price_max: 350000,
@@ -45,8 +53,10 @@ function setup(input: { role?: 'customer' | 'worker' | 'admin'; actorId?: string
   }
   const scope: Record<string, unknown> = {
     id: SCOPE, job_id: JOB, status: 'waiting_customer_decision', created_at: NOW,
-    request_timing: 'on_site', resume_job_status: 'inspecting', kael_review: {},
+    request_timing: input.requestTiming ?? 'on_site',
+    resume_job_status: input.resumeJobStatus ?? 'inspecting', kael_review: {},
   }
+  let quoteAnalysis: unknown = null
   const repeated = (data: unknown): QueryResult[] => Array.from({ length: 24 }, () => ({ data, error: null }))
   const rpcResults: Record<string, QueryResult[]> = {
     validate_scope_change_evidence_refs: repeated([{ ok: true, validated_refs: [evidence] }]),
@@ -64,12 +74,26 @@ function setup(input: { role?: 'customer' | 'worker' | 'admin'; actorId?: string
   })
   const rpc = client.rpc.bind(client)
   client.rpc = (name, args) => {
-    if (name === 'save_job_incident_scope_price_quote_atomic') {
+    if (name === 'save_job_incident_scope_quote_with_basis_atomic') {
       incident.scope_price_quote = args?.p_quote
+      incident.scope_price_quote_id = args?.p_quote_id
+      incident.scope_price_quote_revision = incident.revision
+      incident.scope_price_quote_expires_at = args?.p_quote_expires_at
+      quoteAnalysis = args?.p_analysis
       rpcResults[name] = [{ data: [{ ok: true, incident }], error: null }]
+    }
+    if (name === 'load_job_incident_scope_quote_basis') {
+      rpcResults[name] = quoteAnalysis ? [{ data: [{
+        incident_id: INCIDENT, incident_revision: 4,
+        expires_at: incident.scope_price_quote_expires_at, analysis: quoteAnalysis,
+      }], error: null }] : [{ data: [], error: null }]
     }
     if (name === 'claim_job_incident_scope_proposal_atomic') {
       incident.scope_price_quote_confirmed_at = NOW
+      if (!claimed) {
+        incident.revision = Number(incident.revision) + 1
+        incident.scope_price_quote_revision = incident.revision
+      }
       rpcResults[name] = [{ data: [{
         ok: !input.claimError, claimed: !claimed, idempotent: claimed,
         error_code: input.claimError ?? null, incident,
@@ -103,6 +127,12 @@ function setup(input: { role?: 'customer' | 'worker' | 'admin'; actorId?: string
     client,
     preview: () => post(`/jobs/${JOB}/kael-incident/preview-scope`, { client_request_id: QUOTE }),
     propose: (body: unknown = { client_request_id: CLAIM, quote_id: QUOTE }) => post(`/jobs/${JOB}/kael-incident/propose-scope`, body),
+    proposeOnDirectRoute: () => post(`/jobs/${JOB}/scope-change`, {
+      client_request_id: CLAIM, quote_id: QUOTE,
+      new_description: 'Thay hai bản lề tủ đã nứt.',
+      reason: 'Phát hiện hư hỏng sau khi kiểm tra tại nhà.',
+      photo_urls: [evidence],
+    }),
     decide: (decision = 'reject') => post(`/scope-changes/${SCOPE}/decide`, { decision }),
     asCustomer: () => { role = 'customer'; actorId = CUSTOMER },
   }
@@ -155,7 +185,7 @@ describe('Scope change at the public HTTP boundary', () => {
     expect(decision.status, pillarWhy(PILLAR, JSON.stringify(decisionBody))).toBe(200)
     expect(decisionBody).toMatchObject({ scope_change_id: SCOPE, job_id: JOB, status: 'approved_by_customer' })
     expect(calls(fixture.client, 'decide_scope_change_atomic')[0].operations[0][2]).toEqual({ p_scope_change_id: SCOPE, p_customer_id: CUSTOMER, p_decision: 'approve' })
-    expect(provider).toHaveBeenCalledTimes(2)
+    expect(provider).toHaveBeenCalledTimes(1)
     expect(fixture.client.calls.some((call) => call.table === 'jobs' && call.operations.some((op) => op[0] === 'update' && JSON.stringify(op[1]).includes('final_price')))).toBe(false)
   })
 
@@ -168,7 +198,25 @@ describe('Scope change at the public HTTP boundary', () => {
     expect(response.status, pillarWhy(PILLAR)).toBe(200)
     expect(await response.json()).toMatchObject({ scope_change: { scope_change_id: SCOPE, status: 'waiting_customer_decision' } })
     expect(calls(fixture.client, 'request_job_incident_scope_change_atomic')).toHaveLength(1)
-    expect(provider).toHaveBeenCalledTimes(2)
+    expect(provider).toHaveBeenCalledTimes(1)
+  })
+
+  it('accepts a saved worker-confirmed quote from every resumable Worker status without new inference', async () => {
+    const provider = scriptedProvider()
+    const resumableStatuses = ['worker_matched', 'worker_on_way', 'arrived', 'inspecting', 'repairing']
+
+    for (const jobStatus of resumableStatuses) {
+      const fixture = setup({ jobStatus })
+      expect((await fixture.preview()).status, `${jobStatus} quote preview`).toBe(200)
+      const response = await fixture.proposeOnDirectRoute()
+      expect(response.status, pillarWhy(PILLAR, `${jobStatus}: ${JSON.stringify({
+        body: await response.clone().json(), calls: fixture.client.calls,
+      })}`)).toBe(201)
+      expect(await response.json()).toMatchObject({ scope_change_id: SCOPE, status: 'waiting_customer_decision' })
+      expect(calls(fixture.client, 'request_job_incident_scope_change_atomic')).toHaveLength(1)
+    }
+
+    expect(provider).toHaveBeenCalledTimes(resumableStatuses.length)
   })
 
   it.each(['customer', 'admin'] as const)('refuses proposal by the %s actor before the claim RPC', async (role) => {
@@ -222,6 +270,37 @@ describe('Scope change at the public HTTP boundary', () => {
     expect(response.status, pillarWhy(PILLAR, 'already-decided is not a fabricated fresh success')).toBe(409)
     expect(await response.json()).toMatchObject({ code: 'ALREADY_DECIDED' })
     expect(calls(fixture.client, 'insert_notification_atomic')).toHaveLength(1)
+  })
+
+  it('maps Customer rejection to each saved resume status without cancelling the job', async () => {
+    const resumeCases = [
+      { resumeJobStatus: 'worker_matched', requestTiming: 'pre_arrival' },
+      { resumeJobStatus: 'worker_on_way', requestTiming: 'pre_arrival' },
+      { resumeJobStatus: 'arrived', requestTiming: 'on_site' },
+      { resumeJobStatus: 'inspecting', requestTiming: 'on_site' },
+      { resumeJobStatus: 'repairing', requestTiming: 'on_site' },
+    ] as const
+
+    for (const resumeCase of resumeCases) {
+      const fixture = setup({ role: 'customer', ...resumeCase })
+      const response = await fixture.decide('reject')
+      expect(response.status, `${resumeCase.resumeJobStatus} rejection`).toBe(200)
+      expect(await response.json()).toMatchObject({ status: 'rejected_by_customer' })
+      expect(calls(fixture.client, 'decide_scope_change_atomic')[0].operations[0][2]).toEqual({
+        p_scope_change_id: SCOPE, p_customer_id: CUSTOMER, p_decision: 'reject',
+      })
+
+      const eventCall = fixture.client.calls.find((call) => call.table === 'job_events')
+      const eventInsert = eventCall?.operations.find((operation) => operation[0] === 'insert')?.[1]
+      expect(eventInsert).toMatchObject({
+        event_type: 'customer_rejected_scope_change',
+        from_status: 'scope_change_pending',
+        to_status: resumeCase.resumeJobStatus,
+      })
+      expect(fixture.client.calls.some((call) =>
+        call.table === 'jobs' && call.operations.some((operation) => operation[0] === 'update'),
+      )).toBe(false)
+    }
   })
 
   it('rejects malformed proposal identity at the HTTP schema gate', async () => {

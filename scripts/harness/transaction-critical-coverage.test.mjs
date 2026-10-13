@@ -51,15 +51,23 @@ test('one unrelated route-preview pillar cannot stand in for the entire transact
   assert.ok(problems.some((problem) => problem.includes('P82-review-submission-runtime')))
 })
 
-test('partial bindings cannot be relabelled mapped while their route or state coverage is missing', () => {
-  const changed = clone(manifest)
-  for (const coverage of Object.values(changed.behavioral_contract.bindings)) {
-    coverage.status = 'MAPPED'
-    coverage.gaps = []
-  }
-  const problems = validateTransactionCoverage(changed, capabilities, referencedPillars)
-  assert.ok(problems.some((problem) => problem.includes('MAPPED has no behavioral origin scheduled')))
-  assert.ok(problems.some((problem) => problem.includes('MAPPED public route needs an HTTP behavioral case')))
+test('a mapped binding cannot omit a newly required state or its public HTTP seam', () => {
+  const missingOrigin = clone(manifest)
+  const entry = missingOrigin.entries.find((item) => item.id === 'worker.fulfillment.advance')
+  entry.from.push('newly_required_origin')
+  const stateProblems = validateTransactionCoverage(missingOrigin, capabilities, referencedPillars)
+  assert.ok(stateProblems.includes(
+    'worker.fulfillment.advance: MAPPED has no behavioral origin newly_required_origin',
+  ))
+
+  const missingHttp = clone(manifest)
+  const workerDispute = missingHttp.behavioral_contract.bindings['worker.dispute.open']
+  workerDispute.status = 'MAPPED'
+  workerDispute.gaps = []
+  workerDispute.cases = workerDispute.cases.filter((binding) => binding.seam !== 'http')
+  const routeProblems = validateTransactionCoverage(missingHttp, capabilities, referencedPillars)
+  assert.ok(routeProblems.some((problem) => problem ===
+    'worker.dispute.open: MAPPED public route needs an HTTP behavioral case'))
 })
 
 test('catalog metadata alone leaves every transaction entry unproven', () => {
@@ -102,25 +110,25 @@ test('the release quality job fails on an unmapped transaction before it spends 
   assert.ok(mapped < release.indexOf('  release-config-gate:'))
 })
 
-function completeFixture() {
+function completeFixture(entryId = 'worker.fulfillment.advance') {
   const value = clone(manifest)
-  const entry = value.entries.find((item) => item.id === 'worker.fulfillment.advance')
+  const entry = value.entries.find((item) => item.id === entryId)
   const coverage = value.behavioral_contract.bindings[entry.id]
-  const binding = coverage.cases[0]
+  const bindings = coverage.cases
   value.entries = [entry]
-  entry.from = [...binding.from]
-  entry.to = [...binding.to]
+  entry.from = [...new Set(bindings.flatMap((binding) => binding.from))]
+  entry.to = [...new Set(bindings.flatMap((binding) => binding.to))]
   coverage.status = 'MAPPED'
   coverage.gaps = []
   value.behavioral_contract.bindings = { [entry.id]: coverage }
   const report = {
     success: true,
-    testResults: [{
+    testResults: bindings.map((binding) => ({
       name: `/ci/workspace/${binding.file}`,
       status: 'passed',
       assertionResults: [...binding.success_tests, ...binding.denial_tests, ...binding.recovery_tests]
         .map((fullName) => ({ fullName, status: 'passed' })),
-    }],
+    })),
   }
   return { value, report }
 }
@@ -150,11 +158,14 @@ test('a red runner report cannot prove selected green assertions', () => {
 })
 
 test('passing bound cases do not erase explicitly remaining transaction gaps', () => {
-  const { report } = completeFixture()
-  const evidence = evaluateBehavioralEvidence(manifest, [report])
-  const worker = evidence.entries.find((entry) => entry.id === 'worker.fulfillment.advance')
-  assert.equal(worker.passedTests, worker.requiredTests)
-  assert.ok(worker.problems.some((problem) => problem.startsWith('PARTIAL:')))
+  const { value, report } = completeFixture()
+  const binding = value.behavioral_contract.bindings['worker.fulfillment.advance']
+  binding.status = 'PARTIAL'
+  binding.gaps = ['Hosted transaction proof remains open.']
+  const evidence = evaluateBehavioralEvidence(value, [report])
+  const fulfillment = evidence.entries.find((entry) => entry.id === 'worker.fulfillment.advance')
+  assert.equal(fulfillment.passedTests, fulfillment.requiredTests)
+  assert.ok(fulfillment.problems.some((problem) => problem === 'PARTIAL: Hosted transaction proof remains open.'))
 })
 
 test('PR assertion verification preserves completion debt without treating it as a failed test', () => {

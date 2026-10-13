@@ -45,6 +45,55 @@ test('builds a deterministic immutable release bundle', () => {
   assert.deepEqual(checkHarnessRelease(first), [])
 })
 
+test('Production release pins the Cloudflare observer identity while other environments omit it', () => {
+  const release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: '1'.repeat(40),
+    providerReadiness: readyProviders,
+    requireCleanWorktree: false,
+  })
+  const observer = release.systemHealthObserver
+  assert.equal(observer.profileId, 'cloudflare-admin-v1')
+  assert.equal(observer.workerName, 'nestscout-system-health-observer')
+  assert.equal(observer.d1Database.id, '33d39ec6-73a4-44e6-b030-fb9ee3e4f281')
+  assert.match(observer.workerBundleSha256, /^[0-9a-f]{64}$/u)
+  assert.match(observer.d1MigrationsSha256, /^[0-9a-f]{64}$/u)
+  assert.match(observer.edgeFunction.sha256, /^[0-9a-f]{64}$/u)
+  assert.deepEqual(checkHarnessRelease(release), [])
+
+  const tampered = {
+    ...release,
+    systemHealthObserver: { ...observer, profileId: 'other-profile' },
+  }
+  assert.ok(checkHarnessRelease(tampered).includes('system health observer release identity does not match repository sources'))
+
+  const preview = buildHarnessRelease({ environment: 'preview', gitSha: '2'.repeat(40) })
+  assert.equal(Object.hasOwn(preview, 'systemHealthObserver'), false)
+  assert.deepEqual(checkHarnessRelease(preview), [])
+})
+
+test('legacy Production manifests without observer identity remain readable', () => {
+  const release = buildHarnessRelease({
+    environment: 'production',
+    gitSha: '3'.repeat(40),
+    providerReadiness: readyProviders,
+    requireCleanWorktree: false,
+  })
+  const legacy = { ...release, schemaVersion: '1.0.0' }
+  delete legacy.systemHealthObserver
+  const behaviorHash = createHash('sha256').update(canonicalJson({
+    ...legacy,
+    releaseId: undefined,
+    bundleSha256: undefined,
+  })).digest('hex')
+  legacy.releaseId = `harness-${legacy.gitSha.slice(0, 12)}-${behaviorHash.slice(0, 12)}`
+  legacy.bundleSha256 = createHash('sha256').update(canonicalJson({
+    ...legacy,
+    bundleSha256: undefined,
+  })).digest('hex')
+  assert.deepEqual(checkHarnessRelease(legacy), [])
+})
+
 test('detects release bundle tampering', () => {
   const release = buildHarnessRelease({ environment: 'staging', gitSha: 'b'.repeat(40) })
   release.policyBundleSha256 = '0'.repeat(64)
@@ -365,4 +414,16 @@ function write(root, path, content) {
 
 function runGit(root, args) {
   execFileSync('git', args, { cwd: root, stdio: 'ignore' })
+}
+
+function canonicalJson(value) {
+  return JSON.stringify(canonicalize(value))
+}
+
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize)
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]))
+  }
+  return value
 }

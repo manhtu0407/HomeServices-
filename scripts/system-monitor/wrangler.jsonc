@@ -1,17 +1,24 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
   "name": "nestscout-system-health-observer",
+  "account_id": "45dec251ed1c9627256f9b6ba24bcdff",
   "main": "./index.ts",
   "compatibility_date": "2026-10-11",
   "workers_dev": false,
   "preview_urls": false,
   "observability": { "logs": { "enabled": false } },
+  "vars": {
+    "SUPABASE_HEALTH_URL": "https://iwevizmsedyqozxlawwl.supabase.co",
+    "SYSTEM_HEALTH_ENVIRONMENT": "production",
+    "SYSTEM_HEALTH_EXPECTED_PROJECT_REF": "iwevizmsedyqozxlawwl",
+    "SYSTEM_HEALTH_PROFILE_ID": "cloudflare-admin-v1"
+  },
   "triggers": { "crons": ["* * * * *"] },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "nestscout-system-health-observer",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "33d39ec6-73a4-44e6-b030-fb9ee3e4f281",
       "migrations_dir": "./migrations"
     }
   ]

@@ -421,8 +421,14 @@ async function dispatchAdminControlRoute(
       if (!detailKey || !/^[0-9a-f]{64}$/.test(detailKey)) apiFailure("VALIDATION", "Khóa chi tiết mô hình không hợp lệ", 400);
       return services.getAdminSystemModelHealthDetail(ctx, detailKey);
     }
-    case "admin.system.health.get":
-      return services.getAdminSystemHealth(ctx);
+    case "admin.system.health.get": {
+      const search = new URL(request.url).searchParams;
+      const version = search.get("schema_version");
+      if ([...search.keys()].some((key) => key !== "schema_version") || (version !== null && version !== "1" && version !== "2")) {
+        apiFailure("VALIDATION", "Phiên bản bằng chứng sức khỏe không hợp lệ", 400);
+      }
+      return services.getAdminSystemHealth(ctx, version === "2" ? 2 : 1);
+    }
     case "admin.system.health.refresh":
       return services.refreshAdminSystemHealth(ctx);
     case "admin.system.incidents.list": {

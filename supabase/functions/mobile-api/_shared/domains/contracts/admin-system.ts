@@ -1,4 +1,8 @@
 import type { ServiceType } from "../../../../_shared/domain.ts";
+import type {
+  EdgeSystemHealthSnapshot,
+  EdgeSystemIncidentPacket,
+} from "../../../../_shared/contracts/system-health.ts";
 
 type AdminSystemListInput = {
   query: string;
@@ -69,11 +73,11 @@ type AdminSystemObserverStatus = {
 
 type AdminSystemHealthResponse = {
   generated_at: string;
-  snapshot: import("../../../../_shared/contracts/system-health.ts").SystemHealthSnapshot | null;
+  snapshot: EdgeSystemHealthSnapshot | null;
   observer: AdminSystemObserverStatus | null;
 };
 
-type AdminSystemIncidentPacket = import("../../../../_shared/contracts/system-health.ts").SystemIncidentPacket;
+type AdminSystemIncidentPacket = EdgeSystemIncidentPacket;
 
 type AdminSystemIncidentListResponse = {
   generated_at: string;

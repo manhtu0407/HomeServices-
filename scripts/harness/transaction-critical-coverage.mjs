@@ -15,6 +15,7 @@ const REQUIRED_STATES = [
   'authenticated',
   'worker_application_draft',
   'worker_application_pending',
+  'worker_application_rejected',
   'worker_access_approved',
   'worker_kyc_pending',
   'worker_ready',
@@ -34,13 +35,22 @@ const REQUIRED_STATES = [
   'scope_change_pending',
   'completion_proposed',
   'customer_confirmed',
+  'repairing',
   'payment_pending',
   'paid',
   'reviewed',
   'closed',
   'cancelled',
   'recovery_required',
+  'recovery_case_open',
+  'recovery_case_acknowledged',
+  'recovery_case_action_required',
+  'recovery_case_resolved',
   'refund_required',
+  'dispute_open',
+  'dispute_awaiting_counter_party',
+  'dispute_admin_review',
+  'dispute_admin_decided',
 ]
 
 const REQUIRED_ROUTE_KINDS = [
@@ -239,6 +249,10 @@ function validateBehavioralBindings(manifest, pillars) {
       (coverage.status === 'MAPPED' && coverage.gaps.length !== 0)) {
       problems.push(`${id}: PARTIAL needs named gaps and MAPPED must have none`)
     }
+    if (coverage.release_gaps !== undefined && (!Array.isArray(coverage.release_gaps) ||
+      coverage.release_gaps.some((gap) => typeof gap !== 'string' || !gap.trim()))) {
+      problems.push(`${id}: release_gaps must contain only nonempty evidence limitations`)
+    }
     if (!Array.isArray(coverage.cases) || coverage.cases.length === 0) problems.push(`${id}: behavioral cases are required`)
     const origins = new Set()
     const destinations = new Set()
@@ -298,6 +312,7 @@ export function evaluateBehavioralEvidence(manifest, reports = []) {
     const coverage = manifest.behavioral_contract?.bindings?.[entry.id]
     const status = coverage?.status ?? 'UNVERIFIED'
     const gaps = coverage?.gaps ?? ['No reviewed behavioral case binding exists.']
+    const releaseGaps = coverage?.release_gaps ?? []
     const problems = []
     let passedTests = 0
     let requiredTests = 0
@@ -319,7 +334,7 @@ export function evaluateBehavioralEvidence(manifest, reports = []) {
     }
     const executionProblems = [...problems]
     if (status !== 'MAPPED') problems.push(`${status}: ${gaps.join(' ')}`)
-    return { id: entry.id, status, passedTests, requiredTests, gaps, problems, executionProblems }
+    return { id: entry.id, status, passedTests, requiredTests, gaps, releaseGaps, problems, executionProblems }
   })
   if (entries.every((entry) => entry.requiredTests === 0)) {
     reportProblems.push('at least one reviewed assertion binding is required')
@@ -388,6 +403,12 @@ function main() {
   const requiredTests = evidence.entries.reduce((sum, entry) => sum + entry.requiredTests, 0)
   console.log(`behavioral verification: ${missing.length} UNVERIFIED, ${partial.length} PARTIAL; ${passedTests}/${requiredTests} bound assertions passed`)
   for (const entry of [...missing, ...partial]) console.log(`  ${entry.status} ${entry.id}: ${entry.gaps.join(' ')}`)
+  const releaseGapEntries = evidence.entries.filter((entry) => entry.releaseGaps.length > 0)
+  const releaseGapCount = releaseGapEntries.reduce((sum, entry) => sum + entry.releaseGaps.length, 0)
+  if (releaseGapCount > 0) {
+    console.log(`release evidence outside behavioral mapping: ${releaseGapCount} item(s) across ${releaseGapEntries.length} entry/entries`)
+    for (const entry of releaseGapEntries) console.log(`  RELEASE GAP ${entry.id}: ${entry.releaseGaps.join(' ')}`)
+  }
   if (requireBehavioral && evidence.problems.length > 0) {
     console.error('required behavioral proof failed (collected tests only; no hosted/native proof is implied):')
     for (const problem of evidence.problems) console.error(`  - ${problem}`)

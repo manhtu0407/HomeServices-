@@ -2239,6 +2239,10 @@ export type DatabaseFunctions = {
           revision: number
         }[]
       }
+      configure_system_health_monitor_secret: {
+        Args: { p_secret: string }
+        Returns: boolean
+      }
       confirm_completion_manual_bank_atomic: {
         Args: {
           p_customer_id: string
@@ -2781,6 +2785,7 @@ export type DatabaseFunctions = {
           scope_status: Database["public"]["Enums"]["scope_change_status"]
         }[]
       }
+      disable_system_health_monitor: { Args: never; Returns: boolean }
       detect_workflow_recovery_cases: {
         Args: { p_observed_at?: string }
         Returns: {
@@ -3263,6 +3268,15 @@ export type DatabaseFunctions = {
         Args: { p_worker_ids: string[] }
         Returns: {
           worker_id: string
+        }[]
+      }
+      load_job_incident_scope_quote_basis: {
+        Args: { p_job_id: string; p_quote_id: string; p_worker_id: string }
+        Returns: {
+          analysis: Json
+          expires_at: string
+          incident_id: string
+          incident_revision: number
         }[]
       }
       maintain_manual_bank_payment_holds: {
@@ -3854,6 +3868,10 @@ export type DatabaseFunctions = {
         Returns: string
       }
       record_system_health_snapshot: {
+        Args: { p_snapshot: Json }
+        Returns: boolean
+      }
+      record_system_health_snapshot_v1_internal: {
         Args: { p_snapshot: Json }
         Returns: boolean
       }
@@ -4503,6 +4521,23 @@ export type DatabaseFunctions = {
       }
       save_job_incident_scope_price_quote_atomic: {
         Args: {
+          p_expected_revision: number
+          p_incident_id: string
+          p_job_id: string
+          p_quote: Json
+          p_quote_expires_at: string
+          p_quote_id: string
+          p_worker_id: string
+        }
+        Returns: {
+          error_code: string
+          incident: Json
+          ok: boolean
+        }[]
+      }
+      save_job_incident_scope_quote_with_basis_atomic: {
+        Args: {
+          p_analysis: Json
           p_expected_revision: number
           p_incident_id: string
           p_job_id: string

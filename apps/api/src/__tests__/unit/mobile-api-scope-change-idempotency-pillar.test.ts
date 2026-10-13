@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { MobileApiContext } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import { createEdgeServices } from '../../../../../supabase/functions/mobile-api/_shared/domains'
+import { createMobileApiHandler } from '../../../../../supabase/functions/mobile-api/_shared/http'
 import type { PillarManifest } from '../pillar-manifest'
+import { installEdgeRuntimeTestHooks, makeSequenceClient as makeHttpSequenceClient } from '../kael-edge-runtime/harness'
 
 export const PILLAR = {
   id: 'P191-worker-scope-change-request',
@@ -13,6 +15,8 @@ export const PILLAR = {
   siblings: ['P12-workflow-transition-composition', 'P87-scope-change-http-authority'],
   mutation: 'run provider work before the idempotency claim or repeat provider work after a replay, allowing duplicate Worker requests to create divergent scope changes',
 } as const satisfies PillarManifest
+
+const HTTP_JOB = 'f9100000-0000-4000-8000-000000000001'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -198,6 +202,113 @@ describe('direct scope-change idempotency', () => {
   })
 })
 
+describe('direct scope-change public HTTP route', () => {
+  installEdgeRuntimeTestHooks()
+
+  it('replays the committed receipt over HTTP without calling a provider', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const client = makeHttpSequenceClient([], {
+      claim_scope_change_request_atomic: [{
+        data: [{
+          ok: true,
+          error_code: null,
+          claimed: false,
+          replayed: true,
+          response_payload: completedResponse(HTTP_JOB),
+          side_effects_state: completedEffects(),
+        }],
+        error: null,
+      }],
+    }, {
+      jobs: [{ data: jobRow('scope_change_pending', HTTP_JOB), error: null }],
+    })
+
+    const response = await postWorkerScopeChange(client)
+
+    expect(response.status).toBe(201)
+    expect(await response.json()).toMatchObject({ scope_change_id: 'scope-1', status: 'waiting_customer_decision' })
+    expect(client.calls.map((call) => call.table)).toContain('rpc:claim_scope_change_request_atomic')
+    expect(client.calls.map((call) => call.table)).not.toContain('rpc:request_scope_change_atomic')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('refuses a fresh Worker request before provider work or persistence without a confirmed quote', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const client = makeHttpSequenceClient([], {
+      claim_scope_change_request_atomic: [{
+        data: [{ ok: true, error_code: null, claimed: true, replayed: false }],
+        error: null,
+      }],
+      release_scope_change_request_claim_atomic: [{ data: [{ released: true }], error: null }],
+    }, {
+      jobs: [{ data: jobRow('repairing', HTTP_JOB), error: null }],
+    })
+
+    const response = await postWorkerScopeChange(client)
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({ code: 'WORKER_QUOTE_CONFIRMATION_REQUIRED' })
+    expect(client.calls.map((call) => call.table)).toContain('rpc:release_scope_change_request_claim_atomic')
+    expect(client.calls.map((call) => call.table)).not.toContain('rpc:request_scope_change_atomic')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('drains missing durable effects over HTTP on replay without rerunning the provider', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const client = makeHttpSequenceClient([], {
+      claim_scope_change_request_atomic: [{
+        data: [{
+          ok: true,
+          error_code: null,
+          claimed: false,
+          replayed: true,
+          response_payload: completedResponse(HTTP_JOB),
+          side_effects_state: pendingEffects(),
+        }],
+        error: null,
+      }],
+      apply_scope_change_database_effect_atomic: [{ data: [{ ok: true, completed: true }], error: null }],
+      apply_scope_change_learning_effect_atomic: [{ data: [{ ok: true, completed: true }], error: null }],
+      claim_scope_change_push_effect_atomic: [{ data: [{ ok: false, error_code: 'EFFECT_IN_PROGRESS', claimed: false }], error: null }],
+    }, {
+      jobs: [{ data: jobRow('scope_change_pending', HTTP_JOB), error: null }],
+    })
+
+    const response = await postWorkerScopeChange(client)
+
+    expect(response.status).toBe(201)
+    expect(client.calls.map((call) => call.table)).toEqual(expect.arrayContaining([
+      'rpc:apply_scope_change_database_effect_atomic',
+      'rpc:apply_scope_change_learning_effect_atomic',
+      'rpc:claim_scope_change_push_effect_atomic',
+    ]))
+    expect(client.calls.map((call) => call.table)).not.toContain('rpc:request_scope_change_atomic')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+function postWorkerScopeChange(client: ReturnType<typeof makeHttpSequenceClient>) {
+  const handler = createMobileApiHandler({
+    authenticate: async () => ({
+      success: true,
+      user: { id: 'worker-1' },
+      role: 'worker',
+      supabase: client,
+      privilegedSupabase: client,
+      userSupabase: client,
+    }),
+    services: createEdgeServices({}),
+  })
+  return handler(new Request(`https://edge.test/jobs/${HTTP_JOB}/scope-change`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input()),
+  }))
+}
+
 function input() {
   return {
     client_request_id: '11111111-1111-4111-8111-111111111111',
@@ -207,9 +318,9 @@ function input() {
   }
 }
 
-function jobRow(status: string) {
+function jobRow(status: string, id = 'job-1') {
   return {
-    id: 'job-1',
+    id,
     status,
     customer_id: 'customer-1',
     worker_id: 'worker-1',
@@ -223,10 +334,10 @@ function jobRow(status: string) {
   }
 }
 
-function completedResponse() {
+function completedResponse(jobId = 'job-1') {
   return {
     scope_change_id: 'scope-1',
-    job_id: 'job-1',
+    job_id: jobId,
     status: 'waiting_customer_decision',
     created_at: '2026-07-15T00:00:00.000Z',
     kael_estimate: {
