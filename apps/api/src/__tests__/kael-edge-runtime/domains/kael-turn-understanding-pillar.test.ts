@@ -87,6 +87,8 @@ describe(`${PILLAR.id}: the reply answers the question that was asked`, () => {
       expect(resolveKaelChatAddressDistrict(text), pillarWhy(PILLAR, text)).toBe(slug)
     }
     expect(resolveKaelChatAddressDistrict('mình ở Biên Hòa')).toBeNull()
+    expect(resolveKaelChatAddressDistrict('mình cần giờ để kiểm tra lại cái kệ'), pillarWhy(PILLAR, 'an ordinary phrase is not Cần Giờ')).toBeNull()
+    expect(resolveKaelChatAddressDistrict('mình ở Cần Giờ')).toBe('can_gio')
   })
 
   it('does not ask the district again once the customer named it', async () => {
@@ -124,6 +126,16 @@ describe(`${PILLAR.id}: the reply answers the question that was asked`, () => {
     expect(stored.facts[second]).toBe('tường gạch')
     expect(stored.missing_facts).not.toContain(first)
     expect(stored.missing_facts).not.toContain(second)
+  })
+
+  it('keeps a volunteered detail even when the asked one is "I do not know"', async () => {
+    const [first, second] = fresh().missing_facts
+    const db = seed(asking([first, second], 'Bề mặt cần khoan là gì?'), { slot_ask_counts: { [first]: 1 }, address_district: 'q1' })
+    await prepare(db, 'Mình không biết tường gì, nhưng kệ nặng 2kg', {
+      address_district: 'q1',
+      slotUnderstanding: { kind: 'unknown', slot: first, value: null, answeredSlots: [{ slot: second, value: 'nặng 2kg' }] },
+    })
+    expect(storedArtifact(db).facts[second], pillarWhy(PILLAR, 'the weight was said once and must not be asked again')).toBe('nặng 2kg')
   })
 
   it('fills nothing when the model read the reply as another topic', async () => {

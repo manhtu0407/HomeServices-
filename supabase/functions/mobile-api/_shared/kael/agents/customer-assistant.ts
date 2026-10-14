@@ -595,13 +595,16 @@ async function resolveSuccessfulCustomerAssistantProvider(input: {
   latencyMs: number;
   costUsd: number;
 }): Promise<CustomerAssistantAnswer> {
-  const { checked, regenerated } = await guardCustomerAssistantAnswer({
+  const { checked, regenerated, firstTrip } = await guardCustomerAssistantAnswer({
     text: input.data.answer,
     language: input.language,
     surface: input.surface,
     topic: input.topic,
     rewrite: input.input.imageUrls?.length ? undefined : input.rewrite,
   });
+  if (regenerated && firstTrip) {
+    await auditCustomerAssistantGuardTrip(input.input, input.surface, input.route, firstTrip, true);
+  }
   if (checked.used_fallback || !checked.allowed) {
     if (input.input.imageUrls?.length) return failImageAnalysis(input.language);
     await auditCustomerAssistantGuardTrip(input.input, input.surface, input.route, checked);

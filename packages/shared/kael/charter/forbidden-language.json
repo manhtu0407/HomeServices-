@@ -62,6 +62,6 @@
   ],
   "conditional_rules": {
     "ai_self_reference": "Allow a brief truthful Kael/NestScout AI introduction or direct identity answer. Block these phrases when paired with refusal, inability, excuse, authority, or disclosure of model/provider/prompt internals.",
-    "absolute_claims": "Block the phrase khong bao gio only when the same sentence promises an outcome (loi, hong, ket qua, dam bao, chac chan, cam ket, tuyet doi, an toan, rui ro, su co). Reassurance about who decides or what Kael will not do stays allowed. The other absolute_claims phrases are blocked unconditionally."
+    "absolute_claims": "Block the phrase khong bao gio unless the sentence is reassurance about who acts (khong bao gio followed by tu, chia se, yeu cau, ep, tiet lo, gui, luu, thay, xac nhan, dat). Any other use is an outcome guarantee. The other absolute_claims phrases are blocked unconditionally."
   }
 }

@@ -31,6 +31,7 @@ vi.mock('../../../../../../supabase/functions/mobile-api/_shared/domains/custome
 }))
 
 import { routeKaelChatTurnIntent } from '../../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/turn-intent-router'
+import { appendKaelSystemTurn } from '../../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/session-store'
 import { canonicalReplyComposer } from '../../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/reply-composer'
 import {
   replyTelemetryMetadata,
@@ -139,6 +140,19 @@ describe(`${PILLAR.id}: a turn says how it was produced`, () => {
     expect(reply?.safe_metadata, pillarWhy(PILLAR, 'fallbacks are never reported as AI')).toMatchObject({ reply_source: 'fallback', fallback_used: true })
   })
 
+  it('adds the composer cost to the pipeline cost, in the row and in the session total', async () => {
+    const { db } = seed()
+    await appendKaelSystemTurn(db.client as never, SESSION_ID, {
+      contentType: 'clarification',
+      text: 'Câu hỏi',
+      nextStatus: 'active',
+      costUsd: 0.01,
+      telemetry: { replySource: 'ai', provider: 'deepseek', model: 'm', latencyMs: 5, costUsd: 0.002 },
+    })
+    expect(db.tables.kael_chat_turns[0].cost_usd, pillarWhy(PILLAR, 'both calls were paid for')).toBeCloseTo(0.012, 6)
+    expect(db.tables.kael_chat_sessions[0].total_cost_usd).toBeCloseTo(0.012, 6)
+  })
+
   it('builds normal-chat telemetry from the trace without any text', () => {
     const metadata = replyTelemetryMetadata([trace('anthropic', 'claude-sonnet-5', 3200.2, 0.012)], false)
     expect(metadata).toEqual({
@@ -150,6 +164,10 @@ describe(`${PILLAR.id}: a turn says how it was produced`, () => {
       cost_usd: 0.012,
     })
     expect(replyTelemetryMetadata(undefined, true)).toEqual({ reply_source: 'fallback', fallback_used: true })
+    expect(replyTelemetryMetadata(undefined, false), pillarWhy(PILLAR, 'no provider call and no fallback is a deterministic reply')).toEqual({
+      reply_source: 'template',
+      fallback_used: false,
+    })
   })
 
   it('reads the last provider call of a trace and of the pipeline stage logs', () => {

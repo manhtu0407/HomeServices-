@@ -42,7 +42,13 @@ const DISTRICT_NAME_PATTERNS = Object.entries(HCMC_DISTRICTS)
   .map(([slug, label]) => ({ slug, name: stripVietnamese(label) }))
   .sort((a, b) => b.name.length - a.name.length);
 
+// Accent-stripped names collide with ordinary phrases ("cần giờ" is Cần Giờ), so a long message only
+// counts when it reads as an address.
+const ADDRESS_CONTEXT = /(?:^|\s)(?:quan|huyen|o|tai|khu vuc|phuong|dia chi|chung cu|can ho|nha)(?:\s|$)/;
+
 function districtNamedInText(text: string) {
+  const plain = stripVietnamese(text).replace(/[^a-z0-9]+/g, " ").trim();
+  if (plain.split(" ").length > 4 && !ADDRESS_CONTEXT.test(` ${plain} `)) return null;
   const haystack = ` ${stripVietnamese(text).replace(/[^a-z0-9]+/g, " ")} `;
   const match = DISTRICT_NAME_PATTERNS.find(({ name }) => haystack.includes(` ${name} `));
   return match ? normalizeServiceAreaDistrict(match.slug) : null;
