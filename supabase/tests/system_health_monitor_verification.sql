@@ -1,10 +1,10 @@
 -- @pillar id: P352-system-health-monitor-sql
--- @pillar invariant: Monitor writes are service-only, mobile observations are limited across caller-chosen sessions for one hashed actor, manual refreshes are limited to once per minute, observer availability changes require two consecutive samples, stale heartbeats cannot replace newer state, Cron guards its request until required secrets exist, rollback can stop the minute schedule without deleting evidence, Cloudflare snapshots require complete evidence, and retention only prunes monitor-owned rows.
+-- @pillar invariant: Monitor writes and Vault configuration are service-only, Vault bootstrap accepts a defaulted create_secret signature without exposing credentials, mobile observations are limited across caller-chosen sessions for one hashed actor, manual refreshes are limited to once per minute, observer availability changes require two consecutive samples, stale heartbeats cannot replace newer state, Cron guards its request until required secrets exist, rollback can stop the minute schedule without deleting evidence, Cloudflare snapshots require complete evidence, and retention only prunes monitor-owned rows.
 -- @pillar authority: user-approved System Health Monitoring implementation plan | governance/RULES.md #8 (retain diagnostic failure evidence and never expose private data)
--- @pillar target: supabase/migrations/20261011100000_system_health_monitor.sql; supabase/migrations/20261013121000_system_health_profile_v2.sql; supabase/migrations/20261014100000_system_health_availability_debounce.sql
+-- @pillar target: supabase/migrations/20261011100000_system_health_monitor.sql; supabase/migrations/20261013121000_system_health_profile_v2.sql; supabase/migrations/20261013122000_system_health_monitor_secret_bootstrap.sql; supabase/migrations/20261014100000_system_health_availability_debounce.sql; supabase/migrations/20261015100000_system_health_monitor_vault_compatibility.sql
 -- @pillar layer: sql
 -- @pillar siblings: P351-system-health-monitor-contract, P18-capability-registry-parity
--- @pillar mutation: Remove the Cron request secret guard, rollback-only schedule stop, lease conflict predicate, manual refresh cooldown, actor-level mobile observation limit, required-check gray normalization, seven-day actor limiter cleanup, two-sample observer availability threshold, or stale-heartbeat fence; permit client table reads or resolve incidents on gray evidence; the assertions below raise.
+-- @pillar mutation: Reject Vault create_secret signatures callable with three arguments through defaulted parameters; remove the Cron request secret guard, rollback-only schedule stop, lease conflict predicate, manual refresh cooldown, actor-level mobile observation limit, required-check gray normalization, seven-day actor limiter cleanup, two-sample observer availability threshold, or stale-heartbeat fence; permit client table reads or resolve incidents on gray evidence; the assertions below raise.
 
 begin;
 set local statement_timeout = '60s';
@@ -61,6 +61,23 @@ begin
       in v_schedule_command
     ) = 0 then
     raise exception 'P352: the scheduled request must wait until its required secrets exist';
+  end if;
+
+  if has_function_privilege('anon', 'public.configure_system_health_monitor_secret(text)', 'execute')
+    or has_function_privilege('authenticated', 'public.configure_system_health_monitor_secret(text)', 'execute')
+    or not has_function_privilege('service_role', 'public.configure_system_health_monitor_secret(text)', 'execute') then
+    raise exception 'P352: Vault configuration must remain service-role-only';
+  end if;
+  v_schedule_registered := public.configure_system_health_monitor_secret(repeat('a', 64));
+  if v_schedule_registered is not true
+    or not exists (
+      select 1 from vault.decrypted_secrets where name = 'system_health_monitor_secret'
+    )
+    or not exists (
+      select 1 from cron.job
+      where jobname = 'system-health-monitor' and schedule = '* * * * *'
+    ) then
+    raise exception 'P352: a Vault create_secret function callable with three arguments must configure the monitor';
   end if;
 
   if has_table_privilege('anon', 'public.system_health_snapshots', 'select')

@@ -48,7 +48,7 @@ export async function disableSystemHealthMonitorSchedule(input) {
 async function main() {
   const result = await disableSystemHealthMonitorSchedule({
     supabaseUrl: process.env.PRODUCTION_PROJECT_URL,
-    serviceRoleKey: process.env.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   })
   if (result.disabled) process.stdout.write('system health collector schedule disabled\n')
 }
