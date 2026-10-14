@@ -44,13 +44,15 @@ const BINDINGS = Object.freeze([
   ['HARNESS_PROVIDER_READINESS_FINGERPRINT_SHA256', 'providerReadinessFingerprintSha256'],
 ])
 const CLIENT_BINDINGS = Object.freeze([
-  ['NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH', () => '3'],
+  ['NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH', (receipt) => String(receipt.contractEpoch)],
   ['NESTSCOUT_STAGE1_IOS_APPLICATION_ID', (receipt) => receipt.platforms.ios.applicationId],
   ['NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER', (receipt) => String(receipt.platforms.ios.buildNumber)],
+  ['NESTSCOUT_STAGE1_IOS_LEGACY_MINIMUM_BUILD_NUMBER', (receipt) => String(receipt.platforms.ios.legacyMinimumBuildNumber ?? receipt.platforms.ios.buildNumber)],
   ['NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID', (receipt) => receipt.platforms.ios.easBuildId],
   ['NESTSCOUT_STAGE1_IOS_RUNTIME_VERSION', (receipt) => receipt.platforms.ios.runtimeVersion],
   ['NESTSCOUT_STAGE1_ANDROID_APPLICATION_ID', (receipt) => receipt.platforms.android.applicationId],
   ['NESTSCOUT_STAGE1_ANDROID_MINIMUM_BUILD_NUMBER', (receipt) => String(receipt.platforms.android.buildNumber)],
+  ['NESTSCOUT_STAGE1_ANDROID_LEGACY_MINIMUM_BUILD_NUMBER', (receipt) => String(receipt.platforms.android.legacyMinimumBuildNumber ?? receipt.platforms.android.buildNumber)],
   ['NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID', (receipt) => receipt.platforms.android.easBuildId],
   ['NESTSCOUT_STAGE1_ANDROID_RUNTIME_VERSION', (receipt) => receipt.platforms.android.runtimeVersion],
 ])
@@ -68,19 +70,25 @@ function pushReadinessBindings(readiness) {
 
 export function runtimeReleaseBindingsFromRelease(release, mobileBinaryAttestation) {
   const problems = checkHarnessRelease(release)
-  const attestationProblems = verifyMobileBinaryAttestation(mobileBinaryAttestation, release)
+  const backendLane = release.releaseLane === 'backend-system-health'
+  const attestationProblems = mobileBinaryAttestation
+    ? verifyMobileBinaryAttestation(mobileBinaryAttestation, release)
+    : backendLane ? [] : ['mobile binary attestation is required']
   if (problems.length || release.environment !== 'production' || attestationProblems.length > 0) {
     throw new Error(`runtime bindings require a valid production release: ${[...problems, ...attestationProblems].join('; ')}`)
   }
+  const clientCompatibilityBindings = backendLane
+    ? backendClientCompatibilityBindings(release)
+    : Object.fromEntries(CLIENT_BINDINGS.map(([name, read]) => [name, read(mobileBinaryAttestation)]))
   return Object.freeze({
     NESTSCOUT_ENVIRONMENT: 'production',
     ...(release.releaseLane ? { HARNESS_RELEASE_LANE: release.releaseLane } : {}),
-    ...(release.releaseLane === 'plan55-production-only'
+    ...(['plan55-production-only', 'backend-system-health'].includes(release.releaseLane)
       ? plan55ClientCompatibilityBindings(release.activeClientCompatibility)
       : {}),
     ...pushReadinessBindings(release.providerReadiness),
     ...Object.fromEntries(BINDINGS.map(([name, field]) => [name, release[field]])),
-    ...Object.fromEntries(CLIENT_BINDINGS.map(([name, read]) => [name, read(mobileBinaryAttestation)])),
+    ...clientCompatibilityBindings,
   })
 }
 
@@ -95,9 +103,11 @@ export function runtimeReleaseBindingsFromStagingRelease(release, compatibilityE
     ].join('; ')}`)
   }
   const receipt = {
+    contractEpoch: compatibilityEvidence.contractEpoch,
     platforms: Object.fromEntries(Object.entries(compatibilityEvidence.platforms).map(([platform, value]) => [
       platform,
-      { ...value, buildNumber: value.minimumBuildNumber },
+      { ...value, buildNumber: value.minimumBuildNumber,
+        legacyMinimumBuildNumber: value.minimumBuildNumber },
     ])),
   }
   return Object.freeze({
@@ -123,7 +133,7 @@ export function runtimeReleaseBindingsFromHostedState(hosted) {
   for (const [, field] of BINDINGS.slice(2)) {
     values[field] = valid(hosted[field], DIGEST) ? hosted[field] : 'unknown'
   }
-  const activeClientCompatibility = releaseLane === 'plan55-production-only' &&
+  const activeClientCompatibility = ['plan55-production-only', 'backend-system-health'].includes(releaseLane) &&
     hosted.clientCompatibility?.gitSha && hosted.clientCompatibility?.releaseId
     ? plan55ClientCompatibilityBindings({
       gitSha: hosted.clientCompatibility.gitSha,
@@ -139,11 +149,13 @@ export function runtimeReleaseBindingsFromHostedState(hosted) {
     NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH: String(hosted.clientCompatibility?.contractEpoch ?? 1),
     NESTSCOUT_STAGE1_IOS_APPLICATION_ID: hosted.clientCompatibility?.ios?.applicationId ?? 'legacy-unavailable',
     NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER: String(hosted.clientCompatibility?.ios?.minimumBuildNumber ?? 1),
-    NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID: hosted.clientCompatibility?.ios?.easBuildId ?? 'legacy-unavailable',
+    NESTSCOUT_STAGE1_IOS_LEGACY_MINIMUM_BUILD_NUMBER: String(hosted.clientCompatibility?.ios?.legacyMinimumBuildNumber ?? hosted.clientCompatibility?.ios?.minimumBuildNumber ?? 1),
+    NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID: hostedPlatformEasBinding(hosted.clientCompatibility?.ios, releaseLane),
     NESTSCOUT_STAGE1_IOS_RUNTIME_VERSION: hosted.clientCompatibility?.ios?.runtimeVersion ?? 'legacy-unavailable',
     NESTSCOUT_STAGE1_ANDROID_APPLICATION_ID: hosted.clientCompatibility?.android?.applicationId ?? 'legacy-unavailable',
     NESTSCOUT_STAGE1_ANDROID_MINIMUM_BUILD_NUMBER: String(hosted.clientCompatibility?.android?.minimumBuildNumber ?? 1),
-    NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID: hosted.clientCompatibility?.android?.easBuildId ?? 'legacy-unavailable',
+    NESTSCOUT_STAGE1_ANDROID_LEGACY_MINIMUM_BUILD_NUMBER: String(hosted.clientCompatibility?.android?.legacyMinimumBuildNumber ?? hosted.clientCompatibility?.android?.minimumBuildNumber ?? 1),
+    NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID: hostedPlatformEasBinding(hosted.clientCompatibility?.android, releaseLane),
     NESTSCOUT_STAGE1_ANDROID_RUNTIME_VERSION: hosted.clientCompatibility?.android?.runtimeVersion ?? 'legacy-unavailable',
   })
 }
@@ -157,6 +169,10 @@ export function assertHostedRuntimeBindingsRestorable(hosted) {
     if (!valid(hosted[field], DIGEST)) {
       throw new Error(`rollback preflight is missing exact hosted release metadata: ${field}`)
     }
+  }
+  const releaseLane = hosted.releaseLane == null ? null : validReleaseLane(hosted.releaseLane)
+  if (hosted.releaseLane != null && !releaseLane) {
+    throw new Error('rollback preflight contains an invalid hosted release lane')
   }
   const readiness = hosted.providerReadiness
   const readinessKeys = ['android_fcm_v1', 'anthropic', 'deepseek', 'durable_guards', 'global_ai_enabled',
@@ -174,25 +190,74 @@ export function assertHostedRuntimeBindingsRestorable(hosted) {
         return value && typeof value === 'object' &&
           typeof value.applicationId === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{1,159}$/u.test(value.applicationId) &&
           Number.isSafeInteger(value.minimumBuildNumber) && value.minimumBuildNumber > 0 &&
-          typeof value.easBuildId === 'string' && UUID.test(value.easBuildId) &&
+          (value.legacyMinimumBuildNumber == null ||
+            (Number.isSafeInteger(value.legacyMinimumBuildNumber) && value.legacyMinimumBuildNumber > 0 &&
+              value.legacyMinimumBuildNumber <= value.minimumBuildNumber)) &&
+          validHostedEasIdentity(value, releaseLane) &&
           typeof value.runtimeVersion === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/u.test(value.runtimeVersion)
       })) {
     throw new Error('rollback preflight requires complete hosted client compatibility')
   }
-  if (hosted.releaseLane != null && !validReleaseLane(hosted.releaseLane)) {
-    throw new Error('rollback preflight contains an invalid hosted release lane')
-  }
   const bindings = runtimeReleaseBindingsFromHostedState(hosted)
   const args = bindingArguments(bindings)
   if (args.some((argument) => /(?:=unknown|=unreleased|=legacy-unavailable)$/u.test(argument)) ||
-      args.length !== (hosted.releaseLane === 'plan55-production-only' ? 28 : hosted.releaseLane ? 26 : 25)) {
+      args.length !== (['plan55-production-only', 'backend-system-health'].includes(hosted.releaseLane) ? 30 : hosted.releaseLane ? 28 : 27)) {
     throw new Error('rollback preflight cannot reconstruct the exact hosted binding set')
   }
   return Object.freeze({ bindingCount: args.length, bindings })
 }
 
 function validReleaseLane(value) {
-  return value === 'verification' || value === 'plan55-production-only' ? value : null
+  return value === 'verification' || value === 'plan55-production-only' || value === 'backend-system-health' ? value : null
+}
+
+function validHostedEasIdentity(value, releaseLane) {
+  const mode = value.easBuildIdMode ?? 'exact'
+  if (mode === 'exact') return typeof value.easBuildId === 'string' && UUID.test(value.easBuildId)
+  return mode === 'release-bound' && releaseLane === 'backend-system-health' && value.easBuildId === null
+}
+
+function hostedPlatformEasBinding(value, releaseLane) {
+  if (value?.easBuildIdMode === 'release-bound' && releaseLane === 'backend-system-health' && value.easBuildId === null) {
+    return 'release-bound'
+  }
+  return value?.easBuildId ?? 'legacy-unavailable'
+}
+
+function backendClientCompatibilityBindings(release) {
+  const policyPath = resolve(ROOT, 'apps/mobile/config/release-client-policy.json')
+  const policy = JSON.parse(readFileSync(policyPath, 'utf8'))
+  const activeClient = release.activeClientCompatibility
+  if (!activeClient || typeof policy.appVersion !== 'string' ||
+      !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/u.test(policy.appVersion) || !policy.platforms ||
+      !['ios', 'android'].every((platform) => {
+        const value = policy.platforms[platform]
+        return value && typeof value.applicationId === 'string' &&
+          /^[A-Za-z0-9][A-Za-z0-9._:-]{1,159}$/u.test(value.applicationId) &&
+          Number.isSafeInteger(value.buildNumber) && value.buildNumber > 0
+      })) {
+    throw new Error('Backend compatibility requires the checked-in mobile release client policy')
+  }
+  const bindings = {
+    NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH: '3',
+    HARNESS_CLIENT_COMPAT_GIT_SHA: release.gitSha,
+    HARNESS_CLIENT_COMPAT_RELEASE_ID: release.releaseId,
+  }
+  for (const platform of ['ios', 'android']) {
+    const upper = platform.toUpperCase()
+    const current = policy.platforms[platform]
+    const previous = activeClient[platform]
+    if (!previous || !Number.isSafeInteger(previous.minimumBuildNumber) || previous.minimumBuildNumber < 1 ||
+        previous.minimumBuildNumber > current.buildNumber) {
+      throw new Error(`Backend compatibility has no valid legacy build floor for ${platform}`)
+    }
+    bindings[`NESTSCOUT_STAGE1_${upper}_APPLICATION_ID`] = current.applicationId
+    bindings[`NESTSCOUT_STAGE1_${upper}_MINIMUM_BUILD_NUMBER`] = String(current.buildNumber)
+    bindings[`NESTSCOUT_STAGE1_${upper}_LEGACY_MINIMUM_BUILD_NUMBER`] = String(previous.minimumBuildNumber)
+    bindings[`NESTSCOUT_STAGE1_${upper}_EAS_BUILD_ID`] = 'release-bound'
+    bindings[`NESTSCOUT_STAGE1_${upper}_RUNTIME_VERSION`] = policy.appVersion
+  }
+  return bindings
 }
 
 export function bindingArguments(bindings) {
@@ -208,7 +273,7 @@ export function bindingArguments(bindings) {
   if (!bindings || names.some((name) => !allowed.has(name)) ||
       [...required].some((name) => !Object.hasOwn(bindings, name)) ||
       (activeClientFields.some(Boolean) && !activeClientFields.every(Boolean)) ||
-      (activeClientFields.some(Boolean) && bindings.HARNESS_RELEASE_LANE !== 'plan55-production-only') ||
+      (activeClientFields.some(Boolean) && !['plan55-production-only', 'backend-system-health'].includes(bindings.HARNESS_RELEASE_LANE)) ||
       (Object.hasOwn(bindings, 'HARNESS_RELEASE_LANE') && !validReleaseLane(bindings.HARNESS_RELEASE_LANE))) {
     throw new Error('runtime release binding set is incomplete')
   }
@@ -312,6 +377,9 @@ function checkNativeStagingArtifact(platform, value, evidence) {
 }
 
 function parseArgs(args) {
+  if (args[0] === '--release' && args.length === 2) {
+    return { mode: 'release', path: args[1], mobileAttestationPath: null }
+  }
   if (args[0] === '--release' && args.length === 4 && args[2] === '--mobile-attestation') {
     return { mode: 'release', path: args[1], mobileAttestationPath: args[3] }
   }
@@ -319,7 +387,7 @@ function parseArgs(args) {
     return { mode: 'staging-release', path: args[1], compatibilityEvidencePath: args[3] }
   }
   if (args[0] === '--hosted' && args.length === 2) return { mode: 'hosted', path: args[1] }
-  throw new Error('runtime-release-bindings requires --release with --mobile-attestation, --release with --staging-client-compatibility, or one --hosted path')
+  throw new Error('runtime-release-bindings requires --release with optional --mobile-attestation, --release with --staging-client-compatibility, or one --hosted path')
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -329,7 +397,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const bindings = options.mode === 'release'
       ? runtimeReleaseBindingsFromRelease(
         value,
-        JSON.parse(readFileSync(resolveReleaseArtifactPath(ROOT, options.mobileAttestationPath), 'utf8')),
+        options.mobileAttestationPath
+          ? JSON.parse(readFileSync(resolveReleaseArtifactPath(ROOT, options.mobileAttestationPath), 'utf8'))
+          : null,
       )
       : options.mode === 'staging-release'
         ? runtimeReleaseBindingsFromStagingRelease(

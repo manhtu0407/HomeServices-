@@ -656,6 +656,20 @@ begin
   if v_quote_two.ok is not true then
     raise exception 'revised worker-confirmed scope quote was not saved';
   end if;
+  if exists (
+    select 1
+    from private.kael_scope_change_quote_basis
+    where incident_id = v_incident_id and quote_id = v_quote_one_id
+  ) or exists (
+    select 1
+    from public.load_job_incident_scope_quote_basis(
+      v_quote_one_id,
+      'a7200000-0000-4000-8000-000000000001',
+      'a7100000-0000-4000-8000-000000000002'
+    )
+  ) then
+    raise exception 'a superseded worker quote basis must not be retained or loadable';
+  end if;
   select * into v_claim_two
   from public.claim_job_incident_scope_proposal_atomic(
     'a7200000-0000-4000-8000-000000000001',

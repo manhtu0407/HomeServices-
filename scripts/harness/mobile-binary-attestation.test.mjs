@@ -267,3 +267,17 @@ function productionProviderReadiness() {
     push_receipt_reconciler: true, vietmap: true,
   }
 }
+
+test('backend lane attests only exact active clients without raising their epoch', () => {
+  const { release, builds, clientCompatibility } = plan55ReleaseAndBuilds()
+  const backend = buildHarnessRelease({ environment: 'production', lane: 'backend-system-health',
+    gitSha: release.gitSha, requireCleanWorktree: false, providerReadiness: productionProviderReadiness(),
+    hostedBeforeBytes: Buffer.from(JSON.stringify({ environment: 'production', projectRef: 'iwevizmsedyqozxlawwl',
+      gitSha: clientCompatibility.gitSha, releaseId: clientCompatibility.releaseId, registered: true,
+      controlActiveReleaseId: clientCompatibility.releaseId, revision: 7, clientCompatibility })) })
+  const receipt = buildMobileBinaryAttestation({ release: backend, builds, relation: 'active_production', artifactBytes: { ios: Buffer.from('ios'), android: Buffer.from('android') }, now })
+  assert.equal(receipt.contractEpoch, clientCompatibility.contractEpoch)
+  assert.deepEqual(verifyMobileBinaryAttestation(receipt, backend), [])
+  assert.ok(verifyMobileBinaryAttestation(receipt, { ...backend, releaseLane: 'verification' }).length > 0)
+  assert.throws(() => buildMobileBinaryAttestation({ release: backend, builds, relation: 'exact', artifactBytes: { ios: Buffer.from('ios'), android: Buffer.from('android') }, now }))
+})

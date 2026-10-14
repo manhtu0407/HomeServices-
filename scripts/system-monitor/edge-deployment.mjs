@@ -71,14 +71,15 @@ export function verifySystemMonitorPreviousState(input) {
   const release = input?.release
   const edgeState = input?.edgeState
   const workerState = input?.workerState
-  if (release === null) {
-    if (edgeState?.exists || workerState?.exists) throw new Error('SYSTEM_MONITOR_UNREGISTERED_RUNTIME_FOUND')
+  if (!edgeState?.exists && !workerState?.exists) {
     return Object.freeze({ status: 'no_previous_monitor', edgeExists: false, workerExists: false })
+  }
+  if (release === null) {
+    throw new Error('SYSTEM_MONITOR_UNREGISTERED_RUNTIME_FOUND')
   }
   const observer = release?.systemHealthObserver
   if (!observer) {
-    if (edgeState?.exists || workerState?.exists) throw new Error('SYSTEM_MONITOR_UNREGISTERED_RUNTIME_FOUND')
-    return Object.freeze({ status: 'no_previous_monitor', edgeExists: false, workerExists: false })
+    throw new Error('SYSTEM_MONITOR_UNREGISTERED_RUNTIME_FOUND')
   }
   if (!edgeState?.exists || !workerState?.exists || workerState.releaseTag !== release.releaseId ||
       !SAFE_STATUS.has(edgeState.status) || edgeState.verifyJwt !== false) {

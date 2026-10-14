@@ -14,7 +14,7 @@ export type HarnessRuntimeRelease = {
   readonly serviceIntakePolicyBundleSha256: string;
   readonly priceEvidenceBundleSha256: string;
   readonly providerReadinessFingerprintSha256: string;
-  readonly releaseLane?: 'verification' | 'plan55-production-only';
+  readonly releaseLane?: 'verification' | 'plan55-production-only' | 'backend-system-health';
   readonly providerReadiness?: RuntimeProviderReadiness;
   readonly clientCompatibility?: {
     readonly gitSha: string;
@@ -29,7 +29,9 @@ export type HarnessRuntimeRelease = {
 type RuntimeClientPlatformIdentity = {
   readonly applicationId: string | null;
   readonly minimumBuildNumber: number | null;
+  readonly legacyMinimumBuildNumber: number | null;
   readonly easBuildId: string | null;
+  readonly easBuildIdMode: "exact" | "release-bound";
   readonly runtimeVersion: string | null;
 };
 
@@ -65,19 +67,20 @@ export function readHarnessRuntimeRelease(
   const providerReadinessFingerprintSha256 = readDigest(getEnv("HARNESS_PROVIDER_READINESS_FINGERPRINT_SHA256"), 64) ?? "unknown";
   const rawReleaseLane = getEnv("HARNESS_RELEASE_LANE")?.trim();
   const environmentName = getEnv("NESTSCOUT_ENVIRONMENT")?.trim();
-  const releaseLane = rawReleaseLane === "verification" || rawReleaseLane === "plan55-production-only"
+  const releaseLane = rawReleaseLane === "verification" || rawReleaseLane === "plan55-production-only" || rawReleaseLane === "backend-system-health"
     ? rawReleaseLane
     : undefined;
   const releaseLaneValid = !rawReleaseLane || (environmentName === "production" && releaseLane !== undefined);
   const activeClientGitSha = readDigest(getEnv("HARNESS_CLIENT_COMPAT_GIT_SHA"), 40);
   const activeClientReleaseId = readValue(getEnv("HARNESS_CLIENT_COMPAT_RELEASE_ID"), 128);
-  const plan55ClientIdentityValid = rawReleaseLane !== "plan55-production-only" ||
+  const preservesActiveClients = rawReleaseLane === "plan55-production-only";
+  const plan55ClientIdentityValid = !preservesActiveClients ||
     (activeClientGitSha !== null && activeClientReleaseId !== null &&
       new RegExp(`^harness-${activeClientGitSha.slice(0, 12)}-[0-9a-f]{12}$`, "i").test(activeClientReleaseId));
   const providerReadiness = readRuntimeProviderReadiness(getEnv);
   const clientCompatibility = {
-    gitSha: rawReleaseLane === "plan55-production-only" ? activeClientGitSha ?? "unknown" : gitSha,
-    releaseId: rawReleaseLane === "plan55-production-only" ? activeClientReleaseId ?? "unreleased" : releaseId,
+    gitSha: preservesActiveClients ? activeClientGitSha ?? "unknown" : gitSha,
+    releaseId: preservesActiveClients ? activeClientReleaseId ?? "unreleased" : releaseId,
     contractEpoch: readPositiveInteger(getEnv("NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH")),
     ios: readRuntimeClientPlatform(getEnv, "IOS"),
     android: readRuntimeClientPlatform(getEnv, "ANDROID"),
@@ -113,7 +116,7 @@ export function readHarnessRuntimeRelease(
     providerReadiness,
     clientCompatibility,
     registered: releaseId !== "unreleased" && requiredDigests.every((value) => value !== "unknown") &&
-      runtimeClientCompatibilityComplete(clientCompatibility) && providerRuntimeReady(providerReadiness) &&
+      runtimeClientCompatibilityComplete(clientCompatibility, releaseLane) && providerRuntimeReady(providerReadiness) &&
       releaseLaneValid && plan55ClientIdentityValid,
   });
 }
@@ -165,19 +168,35 @@ function readRuntimeClientPlatform(
   getEnv: (name: string) => string | undefined,
   platform: "IOS" | "ANDROID",
 ): RuntimeClientPlatformIdentity {
+  const easBuildIdBinding = getEnv(`NESTSCOUT_STAGE1_${platform}_EAS_BUILD_ID`);
+  const releaseBoundEasId = getEnv("NESTSCOUT_ENVIRONMENT") === "production" &&
+    getEnv("HARNESS_RELEASE_LANE") === "backend-system-health" &&
+    easBuildIdBinding?.trim().toLowerCase() === "release-bound";
   return {
     applicationId: readValue(getEnv(`NESTSCOUT_STAGE1_${platform}_APPLICATION_ID`), 160),
     minimumBuildNumber: readPositiveInteger(getEnv(`NESTSCOUT_STAGE1_${platform}_MINIMUM_BUILD_NUMBER`)),
-    easBuildId: readUuid(getEnv(`NESTSCOUT_STAGE1_${platform}_EAS_BUILD_ID`)),
+    legacyMinimumBuildNumber: readPositiveInteger(
+      getEnv(`NESTSCOUT_STAGE1_${platform}_LEGACY_MINIMUM_BUILD_NUMBER`),
+    ),
+    easBuildId: releaseBoundEasId ? null : readUuid(easBuildIdBinding),
+    easBuildIdMode: releaseBoundEasId ? "release-bound" : "exact",
     runtimeVersion: readValue(getEnv(`NESTSCOUT_STAGE1_${platform}_RUNTIME_VERSION`), 80),
   };
 }
 
-function runtimeClientCompatibilityComplete(value: NonNullable<HarnessRuntimeRelease["clientCompatibility"]>): boolean {
+function runtimeClientCompatibilityComplete(
+  value: NonNullable<HarnessRuntimeRelease["clientCompatibility"]>,
+  releaseLane: HarnessRuntimeRelease["releaseLane"],
+): boolean {
   return /^[0-9a-f]{40}$/i.test(value.gitSha) &&
     /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/i.test(value.releaseId) &&
     value.contractEpoch === 3 && [value.ios, value.android].every((platform) =>
-    Boolean(platform.applicationId && platform.minimumBuildNumber && platform.easBuildId && platform.runtimeVersion)
+    Boolean(platform.applicationId && platform.minimumBuildNumber &&
+      ((platform.easBuildIdMode === "exact" && platform.easBuildId !== null) ||
+        (platform.easBuildIdMode === "release-bound" && releaseLane === "backend-system-health" && platform.easBuildId === null)) &&
+      platform.runtimeVersion &&
+      (platform.legacyMinimumBuildNumber === null ||
+        (platform.legacyMinimumBuildNumber > 0 && platform.legacyMinimumBuildNumber <= platform.minimumBuildNumber)))
   );
 }
 

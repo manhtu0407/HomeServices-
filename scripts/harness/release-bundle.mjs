@@ -6,6 +6,7 @@ import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { auditProductionUiCopy } from '../check-production-ui-copy.mjs'
+import { evaluateBehavioralEvidence } from './transaction-critical-coverage.mjs'
 import { buildPlan55AppliedMigrationInventory } from './plan55-applied-migration-inventory.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
@@ -39,7 +40,7 @@ export const PRODUCTION_REQUIRED_PROVIDERS = Object.freeze([
   'android_fcm_v1', 'anthropic', 'durable_guards', 'global_ai_enabled',
   'ios_apns', 'perplexity', 'push_receipt_reconciler', 'vietmap',
 ])
-export const RELEASE_LANES = Object.freeze(['verification', 'plan55-production-only'])
+export const RELEASE_LANES = Object.freeze(['verification', 'plan55-production-only', 'backend-system-health'])
 const STANDARD_VERIFICATION_REQUIREMENTS = Object.freeze([
   'repository-controls',
   'empty-database-reset',
@@ -69,7 +70,9 @@ const PLAN55_PRODUCTION_ONLY_REQUIREMENTS = Object.freeze([
   'plan55-rollback-preflight',
 ])
 function verificationRequirementsForLane(lane, releaseAuthorityRequirement) {
-  const requirements = lane === 'plan55-production-only'
+  const requirements = lane === 'backend-system-health'
+    ? [...STANDARD_VERIFICATION_REQUIREMENTS.filter((name) => name !== 'staging-migration-match' && name !== 'live-provider-evaluation-if-affected'), 'strict-transaction-mapping', 'bound-behavioral-assertions', 'backend-hosted-client-baseline', 'backend-rollback-preflight']
+    : lane === 'plan55-production-only'
     ? PLAN55_PRODUCTION_ONLY_REQUIREMENTS
     : STANDARD_VERIFICATION_REQUIREMENTS
   const authorityRequirements = lane === 'plan55-production-only'
@@ -97,7 +100,7 @@ export function buildHarnessRelease(options = {}) {
     ? readFileSync(resolve(root, PLAN55_POLICY_PATH))
     : null
   const plan55Policy = plan55PolicyBytes ? JSON.parse(plan55PolicyBytes.toString('utf8')) : null
-  const hostedBeforeBytes = lane === 'plan55-production-only' ? options.hostedBeforeBytes : undefined
+  const hostedBeforeBytes = ['plan55-production-only', 'backend-system-health'].includes(lane) ? options.hostedBeforeBytes : undefined
   let hostedState
   if (lane === 'plan55-production-only') {
     if (!Buffer.isBuffer(hostedBeforeBytes) || hostedBeforeBytes.length === 0) {
@@ -116,9 +119,19 @@ export function buildHarnessRelease(options = {}) {
     }
   }
   if (options.activeClientCompatibility !== undefined) {
-    throw new Error('Plan 55 active client identity is derived from hosted-before')
+    throw new Error('active client identity is derived from hosted-before')
   }
-  const activeClientCompatibility = lane === 'plan55-production-only'
+  if (lane === 'backend-system-health') {
+    try {
+      hostedState = JSON.parse(hostedBeforeBytes?.toString('utf8') ?? 'null')
+    } catch {
+      throw new Error('Backend system-health hosted-before snapshot is invalid')
+    }
+    requireBackendHostedBaseline(hostedState)
+  }
+  const activeClientCompatibility = lane === 'backend-system-health'
+    ? deriveBackendActiveClientCompatibility(hostedState)
+    : lane === 'plan55-production-only'
     ? validatePlan55ActiveClientCompatibility(hostedState.clientCompatibility, plan55Policy)
     : null
   const sourceMigrationInventoryBytes = readFileSync(resolve(root, 'config/harness/migration-inventory.json'))
@@ -146,7 +159,7 @@ export function buildHarnessRelease(options = {}) {
       appliedMigrationCount: migrationInventory.migrationCount,
       appliedMigrationInventorySha256: sha256(migrationInventoryBytes),
     }
-  } else if (options.hostedBeforeBytes !== undefined) {
+  } else if (lane !== 'backend-system-health' && options.hostedBeforeBytes !== undefined) {
     throw new Error('hosted-before snapshots are reserved for the Plan 55 Production lane')
   }
   const evaluationSuiteBytes = readFileSync(resolve(root, 'config/harness/evaluation.json'))
@@ -175,6 +188,17 @@ export function buildHarnessRelease(options = {}) {
     environmentBinding,
     gitSha,
     ...(activeClientCompatibility ? { activeClientCompatibility } : {}),
+    ...(lane === 'backend-system-health' ? { transactionCoverage: backendTransactionCoverage(root) } : {}),
+    ...(lane === 'backend-system-health' ? { backendHostedBaseline: {
+      environment: hostedState.environment,
+      projectRef: hostedState.projectRef,
+      registered: hostedState.registered,
+      gitSha: hostedState.gitSha,
+      releaseId: hostedState.releaseId,
+      controlActiveReleaseId: hostedState.controlActiveReleaseId ?? null,
+      revision: hostedState.revision,
+      clientCompatibility: activeClientCompatibility,
+    }, backendHostedStateSha256: sha256(hostedBeforeBytes) } : {}),
     ...(plan55AppliedMigrationSnapshot ? { plan55AppliedMigrationSnapshot } : {}),
     sourceBundleSha256: digestRepoPaths(root, releaseSourcePaths),
     mobileBuildFingerprintSha256: digestRepoPaths(root, releaseSourcePaths.filter((path) =>
@@ -276,6 +300,34 @@ export function checkHarnessRelease(release, options = {}) {
       problems.push('Plan 55 release does not preserve the exact active Production client identity')
     }
     problems.push(...checkPlan55AppliedMigrationSnapshot(release, options.hostedBeforeBytes))
+  } else if (release.releaseLane === 'backend-system-health') {
+    try {
+      const baseline = release.backendHostedBaseline
+      requireBackendHostedBaseline(baseline)
+      const expected = deriveBackendActiveClientCompatibility(baseline)
+      if (canonicalJson(release.transactionCoverage) !== canonicalJson(backendTransactionCoverage(ROOT))) throw new Error('strict coverage identity mismatch')
+      if (canonicalJson(expected) !== canonicalJson(release.activeClientCompatibility)) throw new Error('client identity mismatch')
+      if (!/^[0-9a-f]{64}$/u.test(release.backendHostedStateSha256 ?? '')) throw new Error('missing hosted digest')
+      if (options.hostedBeforeBytes !== undefined) {
+        const hosted = JSON.parse(options.hostedBeforeBytes.toString('utf8'))
+        requireBackendHostedBaseline(hosted)
+        const expectedBaseline = {
+          environment: hosted.environment,
+          projectRef: hosted.projectRef,
+          registered: hosted.registered,
+          gitSha: hosted.gitSha,
+          releaseId: hosted.releaseId,
+          controlActiveReleaseId: hosted.controlActiveReleaseId ?? null,
+          revision: hosted.revision,
+          clientCompatibility: deriveBackendActiveClientCompatibility(hosted),
+        }
+        if (sha256(options.hostedBeforeBytes) !== release.backendHostedStateSha256 ||
+            canonicalJson(expectedBaseline) !== canonicalJson(baseline)) throw new Error('hosted snapshot mismatch')
+      }
+      if (release.plan55AppliedMigrationSnapshot !== undefined) throw new Error('backend lane requires source migration inventory')
+      const source = JSON.parse(readFileSync(resolve(ROOT, 'config/harness/migration-inventory.json'), 'utf8'))
+      if (canonicalJson(source) !== canonicalJson(release.migrationInventory)) throw new Error('backend lane requires full source migrations')
+    } catch { problems.push('backend release does not preserve its hosted Production client baseline') }
   } else if (release.activeClientCompatibility !== undefined) {
     problems.push('active client compatibility is only valid for the Plan 55 release lane')
   } else if (release.plan55AppliedMigrationSnapshot !== undefined) {
@@ -332,7 +384,7 @@ export function checkHarnessRelease(release, options = {}) {
       release.providerReadinessFingerprintSha256 !== sha256(canonicalJson(release.providerReadiness))) {
     problems.push('provider readiness evidence is invalid')
   } else if (release.environment === 'production' &&
-      (release.releaseLane === 'verification' || release.releaseLane === 'plan55-production-only'
+      (release.releaseLane === 'verification' || release.releaseLane === 'plan55-production-only' || release.releaseLane === 'backend-system-health'
         ? VERIFICATION_REQUIRED_PROVIDERS
         : PRODUCTION_REQUIRED_PROVIDERS)
         .some((name) => release.providerReadiness[name] !== true)) {
@@ -393,6 +445,34 @@ export function checkHarnessRelease(release, options = {}) {
   const expectedBundle = sha256(canonicalJson({ ...release, bundleSha256: undefined }))
   if (release.bundleSha256 !== expectedBundle) problems.push('release bundle checksum mismatch')
   return problems
+}
+
+function backendTransactionCoverage(root) {
+  const manifest = JSON.parse(readFileSync(resolve(root, 'config/harness/transaction-critical-coverage.json'), 'utf8'))
+  const evidence = evaluateBehavioralEvidence(manifest, [])
+  if (evidence.entries.some((entry) => entry.status !== 'MAPPED')) throw new Error('backend release requires complete strict transaction mapping')
+  return { manifestSha256: sha256(canonicalJson(manifest)), entryCount: evidence.entries.length, boundAssertionsRequired: evidence.entries.reduce((sum, entry) => sum + entry.requiredTests, 0) }
+}
+
+export function deriveBackendActiveClientCompatibility(hosted) {
+  requireBackendHostedBaseline(hosted)
+  return validatePlan55ActiveClientCompatibility(hosted.clientCompatibility, {
+    productionSourceBase: {
+      sha: hosted.clientCompatibility?.gitSha,
+      releaseId: hosted.clientCompatibility?.releaseId,
+    },
+  })
+}
+
+function requireBackendHostedBaseline(hosted) {
+  if (hosted?.environment !== 'production' || hosted?.projectRef !== 'iwevizmsedyqozxlawwl' ||
+      hosted?.registered !== true || !Number.isSafeInteger(hosted?.revision) || hosted.revision < 0 ||
+      !/^[0-9a-f]{40}$/u.test(hosted?.gitSha ?? '') ||
+      !new RegExp(`^harness-${hosted.gitSha.slice(0, 12)}-[0-9a-f]{12}$`, 'u').test(hosted?.releaseId ?? '') ||
+      (hosted.controlActiveReleaseId !== null &&
+        !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(hosted.controlActiveReleaseId ?? ''))) {
+    throw new Error('backend release requires an exact registered Production baseline')
+  }
 }
 
 function validatePlan55ActiveClientCompatibility(value, policy) {
@@ -931,10 +1011,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (hostedBeforeIndex >= 0 && (!hostedBeforePath || hostedBeforePath.startsWith('--'))) {
       throw new Error('--hosted-before requires a path')
     }
-    if (release.releaseLane === 'plan55-production-only' && !hostedBeforePath) {
+    if (['plan55-production-only', 'backend-system-health'].includes(release.releaseLane) && !hostedBeforePath) {
       throw new Error('Plan 55 verification requires --hosted-before')
     }
-    if (release.releaseLane !== 'plan55-production-only' && hostedBeforePath) {
+    if (!['plan55-production-only', 'backend-system-health'].includes(release.releaseLane) && hostedBeforePath) {
       throw new Error('--hosted-before is only valid for the Plan 55 Production lane')
     }
     const hostedBefore = hostedBeforePath
@@ -957,10 +1037,10 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (hostedBeforeIndex >= 0 && (!hostedBeforePath || hostedBeforePath.startsWith('--'))) {
       throw new Error('--hosted-before requires a path')
     }
-    if (lane === 'plan55-production-only' && !hostedBeforePath) {
+    if (['plan55-production-only', 'backend-system-health'].includes(lane) && !hostedBeforePath) {
       throw new Error('Plan 55 production release requires --hosted-before')
     }
-    if (lane !== 'plan55-production-only' && hostedBeforePath) {
+    if (!['plan55-production-only', 'backend-system-health'].includes(lane) && hostedBeforePath) {
       throw new Error('--hosted-before is only valid for the Plan 55 Production lane')
     }
     const hostedBeforeBytes = hostedBeforePath

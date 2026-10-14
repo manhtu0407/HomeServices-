@@ -107,7 +107,7 @@ export function selectExactEasBuilds(release, builds) {
 
 export function selectActiveProductionEasBuilds(release, builds) {
   const compatibility = release?.activeClientCompatibility
-  if (release?.releaseLane !== 'plan55-production-only' || !compatibility) {
+  if (!['plan55-production-only', 'backend-system-health'].includes(release?.releaseLane) || !compatibility) {
     return Object.freeze({})
   }
   const selected = {}
@@ -177,7 +177,7 @@ export function verifyMobileBinaryAttestation(receipt, release) {
   if (release?.releaseLane === 'plan55-production-only' && !activeProduction) {
     problems.push('Plan 55 release requires attestation of the exact active Production client binaries')
   }
-  if (activeProduction && release?.releaseLane !== 'plan55-production-only') {
+  if (activeProduction && !['plan55-production-only', 'backend-system-health'].includes(release?.releaseLane)) {
     problems.push('active Production binary relation is reserved for the Plan 55 release lane')
   }
   for (const platform of ['ios', 'android']) {

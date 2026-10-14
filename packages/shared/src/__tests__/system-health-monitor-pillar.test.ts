@@ -8,6 +8,7 @@ import {
   evaluateSystemHealth,
   isSystemEvidenceFresh,
   mobileHealthObservationInputSchema,
+  normalizeStoredSystemHealthSnapshot,
   sanitizeSystemIncidentPacket,
   serializeSystemHealthSnapshot,
   systemHealthFingerprint,
@@ -92,6 +93,42 @@ describe('System health evidence contract', () => {
     expect(systemHealthFingerprint('PRODUCTION', 'Backend API', 'edge-availability', 'project:abc')).toBe('production:backend_api:edge-availability:project_abc')
   })
 
+  it('normalizes physical v1 storage rows and maps only complete v2 profile metadata', () => {
+    const physicalV1Row = {
+      schema_version: 1,
+      profile_schema_version: null,
+      profile_id: null,
+      required_check_ids: null,
+      coverage_gaps: null,
+      environment: 'production',
+      project_ref: 'abcdefgh1234',
+      release_id: null,
+      scheduled_at: '2026-10-11T00:00:00.000Z',
+      completed_at: '2026-10-11T00:00:01.000Z',
+      expires_at: '2026-10-11T00:03:01.000Z',
+      overall_status: 'gray',
+      checks: [],
+    }
+    const physicalV2ProfileRow = {
+      ...physicalV1Row,
+      profile_schema_version: 2,
+      profile_id: 'cloudflare-admin-v1',
+      required_check_ids: ['backend-core'],
+      coverage_gaps: ['app-crash'],
+    }
+
+    expect(normalizeStoredSystemHealthSnapshot(physicalV1Row)).toMatchObject({ schema_version: 1, environment: 'production' })
+    expect(normalizeStoredSystemHealthSnapshot(physicalV2ProfileRow)).toMatchObject({
+      schema_version: 2,
+      profile_id: 'cloudflare-admin-v1',
+      required_check_ids: ['backend-core'],
+      coverage_gaps: ['app-crash'],
+    })
+    expect(normalizeStoredSystemHealthSnapshot({ ...physicalV2ProfileRow, profile_schema_version: null })).toBeNull()
+    expect(normalizeStoredSystemHealthSnapshot({ ...physicalV2ProfileRow, required_check_ids: null })).toBeNull()
+    expect(normalizeStoredSystemHealthSnapshot({ ...physicalV2ProfileRow, profile_id: 'unknown-profile' })).toBeNull()
+  })
+
   it('keeps Edge and Shared contract twins behaviorally aligned without a cross-runtime import', () => {
     expect(edgeContractSource).not.toMatch(/from\s+['"][^'"]*packages\/shared/u)
 
@@ -142,6 +179,13 @@ describe('System health evidence contract', () => {
     expect(shared.systemHealthSnapshotSchema.safeParse(snapshot).success).toBe(true)
     expect(edge.systemHealthSnapshotSchema.safeParse(profileSnapshot).success).toBe(true)
     expect(shared.systemHealthSnapshotSchema.safeParse(profileSnapshot).success).toBe(true)
+    expect(edge.normalizeStoredSystemHealthSnapshot({
+      ...snapshot, profile_schema_version: 2, profile_id: 'cloudflare-admin-v1',
+      required_check_ids: ['backend-core'], coverage_gaps: ['app-crash'],
+    })).toEqual(shared.normalizeStoredSystemHealthSnapshot({
+      ...snapshot, profile_schema_version: 2, profile_id: 'cloudflare-admin-v1',
+      required_check_ids: ['backend-core'], coverage_gaps: ['app-crash'],
+    }))
     expect(edge.systemHealthSnapshotSchema.safeParse(invalidProfileSnapshot).success).toBe(false)
     expect(shared.systemHealthSnapshotSchema.safeParse(invalidProfileSnapshot).success).toBe(false)
     expect(edge.systemHealthSnapshotSchema.safeParse(invalidCoverageSnapshot).success).toBe(false)

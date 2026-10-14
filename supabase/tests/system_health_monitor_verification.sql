@@ -1,7 +1,7 @@
 -- @pillar id: P352-system-health-monitor-sql
 -- @pillar invariant: Monitor writes are service-only, mobile observations are limited across caller-chosen sessions for one hashed actor, manual refreshes are limited to once per minute, observer availability changes require two consecutive samples, stale heartbeats cannot replace newer state, Cron guards its request until required secrets exist, rollback can stop the minute schedule without deleting evidence, Cloudflare snapshots require complete evidence, and retention only prunes monitor-owned rows.
 -- @pillar authority: user-approved System Health Monitoring implementation plan | governance/RULES.md #8 (retain diagnostic failure evidence and never expose private data)
--- @pillar target: supabase/migrations/20261011100000_system_health_monitor.sql; supabase/migrations/20261014100000_system_health_availability_debounce.sql
+-- @pillar target: supabase/migrations/20261011100000_system_health_monitor.sql; supabase/migrations/20261013121000_system_health_profile_v2.sql; supabase/migrations/20261014100000_system_health_availability_debounce.sql
 -- @pillar layer: sql
 -- @pillar siblings: P351-system-health-monitor-contract, P18-capability-registry-parity
 -- @pillar mutation: Remove the Cron request secret guard, rollback-only schedule stop, lease conflict predicate, manual refresh cooldown, actor-level mobile observation limit, required-check gray normalization, seven-day actor limiter cleanup, two-sample observer availability threshold, or stale-heartbeat fence; permit client table reads or resolve incidents on gray evidence; the assertions below raise.
@@ -75,6 +75,9 @@ begin
   end if;
 
   if has_function_privilege('anon', 'public.record_system_health_snapshot(jsonb)', 'execute')
+     or has_function_privilege('anon', 'public.record_system_health_snapshot_v2(jsonb)', 'execute')
+     or has_function_privilege('authenticated', 'public.record_system_health_snapshot_v2(jsonb)', 'execute')
+     or not has_function_privilege('service_role', 'public.record_system_health_snapshot_v2(jsonb)', 'execute')
      or has_function_privilege('authenticated', 'public.claim_system_health_run(text,timestamptz,uuid,integer)', 'execute')
      or has_function_privilege('authenticated', 'public.claim_system_health_manual_refresh(text,timestamptz)', 'execute')
      or has_function_privilege('authenticated', 'public.claim_system_health_delivery(text,text,timestamptz,integer)', 'execute')
@@ -255,17 +258,31 @@ begin
     'coverage_gaps', jsonb_build_array('app-crash', 'push-notifications')
   );
   v_snapshot := jsonb_set(v_snapshot, '{completed_at}', to_jsonb(clock_timestamp() + interval '4 seconds'));
-  if not public.record_system_health_snapshot(v_snapshot) then
+  if not public.record_system_health_snapshot_v2(v_snapshot) then
     raise exception 'P352: a profile v2 snapshot with missing required evidence must be accepted safely';
   end if;
   if not exists (
     select 1 from public.system_health_snapshots
-    where environment = 'local' and scheduled_at = v_bucket and schema_version = 2
+    where environment = 'local' and scheduled_at = v_bucket and schema_version = 1 and profile_schema_version = 2
       and profile_id = 'cloudflare-admin-v1' and overall_status = 'gray'
       and checks @> '[{"check_id":"backend-database-availability","status":"gray","reason_code":"REQUIRED_CHECK_MISSING"}]'::jsonb
       and jsonb_array_length(coverage_gaps) = 2
   ) then
     raise exception 'P352: missing required evidence must be materialized as gray in profile v2';
+  end if;
+
+  v_snapshot := v_snapshot - 'profile_id' - 'required_check_ids' - 'coverage_gaps';
+  v_snapshot := jsonb_set(v_snapshot, '{schema_version}', '1'::jsonb);
+  v_snapshot := jsonb_set(v_snapshot, '{completed_at}', to_jsonb(clock_timestamp() + interval '5 seconds'));
+  if not public.record_system_health_snapshot(v_snapshot) then
+    raise exception 'P352: legacy v1 recording must remain available alongside profile v2';
+  end if;
+  if exists (
+    select 1 from public.system_health_snapshots
+    where environment = 'local' and scheduled_at = v_bucket
+      and (profile_schema_version is not null or profile_id is not null or required_check_ids is not null or coverage_gaps is not null)
+  ) then
+    raise exception 'P352: legacy v1 writes must clear superseded profile metadata';
   end if;
 
   v_first := public.record_system_mobile_observation(

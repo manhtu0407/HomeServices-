@@ -69,7 +69,14 @@ try {
     Write-Output "check $fn"
     & docker compose run --rm --pull never deno check --config $config $entry
     $checked += 1
-    if ($LASTEXITCODE -ne 0) { $failed += $fn }
+    if ($LASTEXITCODE -ne 0) {
+      $failed += $fn
+      continue
+    }
+    if ($fn -eq "mobile-api") {
+      & docker compose run --rm --pull never deno test --config $config supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts
+      if ($LASTEXITCODE -ne 0) { $failed += "$fn compatibility tests" }
+    }
   }
 
   Write-Output ""

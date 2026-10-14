@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { systemHealthSnapshotSchema, type EdgeSystemHealthSnapshot as SystemHealthSnapshot } from "../_shared/contracts/system-health.ts";
+import { normalizeStoredSystemHealthSnapshot, type EdgeSystemHealthSnapshot as SystemHealthSnapshot } from "../_shared/contracts/system-health.ts";
 import { normalizeSystemMonitorAggregate } from "./collector.ts";
 import { createSystemMonitorHandler, type MonitorStore } from "./handler.ts";
 
@@ -39,7 +39,7 @@ function createSupabaseMonitorStore(
     },
     async readPreviousSnapshot(environment, before) {
       const { data, error } = await client.from("system_health_snapshots")
-        .select("schema_version,profile_id,required_check_ids,coverage_gaps,environment,project_ref,release_id,scheduled_at,completed_at,expires_at,overall_status,checks")
+        .select("schema_version,profile_schema_version,profile_id,required_check_ids,coverage_gaps,environment,project_ref,release_id,scheduled_at,completed_at,expires_at,overall_status,checks")
         .eq("environment", environment)
         .lt("scheduled_at", before)
         .order("scheduled_at", { ascending: false })
@@ -93,7 +93,7 @@ function createSupabaseMonitorStore(
     },
     async readLatestSnapshot(environment) {
       const { data, error } = await client.from("system_health_snapshots")
-        .select("schema_version,profile_id,required_check_ids,coverage_gaps,environment,project_ref,release_id,scheduled_at,completed_at,expires_at,overall_status,checks")
+        .select("schema_version,profile_schema_version,profile_id,required_check_ids,coverage_gaps,environment,project_ref,release_id,scheduled_at,completed_at,expires_at,overall_status,checks")
         .eq("environment", environment)
         .order("scheduled_at", { ascending: false })
         .limit(1)
@@ -102,7 +102,10 @@ function createSupabaseMonitorStore(
       return parseSnapshot(data);
     },
     async recordSnapshot(snapshot) {
-      const { data, error } = await client.rpc("record_system_health_snapshot", { p_snapshot: snapshot });
+      const rpcName = snapshot.schema_version === 2
+        ? "record_system_health_snapshot_v2"
+        : "record_system_health_snapshot";
+      const { data, error } = await client.rpc(rpcName, { p_snapshot: snapshot });
       if (error || typeof data !== "boolean") throw new Error("SNAPSHOT_WRITE_FAILED");
       return data;
     },
@@ -160,8 +163,7 @@ async function boundedSupabaseFetch(input: RequestInfo | URL, init?: RequestInit
 }
 
 function parseSnapshot(value: unknown): SystemHealthSnapshot | null {
-  const parsed = systemHealthSnapshotSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  return normalizeStoredSystemHealthSnapshot(value);
 }
 
 function normalizeWorkerEvidence(value: unknown): Record<string, unknown> | null {

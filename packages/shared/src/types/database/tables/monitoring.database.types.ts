@@ -246,6 +246,7 @@ export type MonitoringTables = {
           expires_at: string
           overall_status: string
           profile_id: string | null
+          profile_schema_version: number | null
           project_ref: string | null
           release_id: string | null
           required_check_ids: Json | null
@@ -262,6 +263,7 @@ export type MonitoringTables = {
           expires_at: string
           overall_status: string
           profile_id?: string | null
+          profile_schema_version?: number | null
           project_ref?: string | null
           release_id?: string | null
           required_check_ids?: Json | null
@@ -278,6 +280,7 @@ export type MonitoringTables = {
           expires_at?: string
           overall_status?: string
           profile_id?: string | null
+          profile_schema_version?: number | null
           project_ref?: string | null
           release_id?: string | null
           required_check_ids?: Json | null

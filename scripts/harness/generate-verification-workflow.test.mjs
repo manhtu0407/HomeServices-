@@ -74,11 +74,11 @@ test('every mutation and rollback step is the strict workflow text, byte for byt
   }
 })
 
-test('candidate and rollback counts include the optional release lane binding', () => {
+test('candidate and rollback counts include exact backend, retained-client, and lane bindings', () => {
   for (const workflow of [strict, verification]) {
     assert.match(workflow, /test "\$\{#release_bindings\[@\]\}" -eq "\$expected_binding_count"/u)
     assert.match(workflow, /\[ "\$\{#rollback_bindings\[@\]\}" -eq "\$expected_rollback_binding_count" \]/u)
-    assert.equal((workflow.match(/releaseLane==='plan55-production-only'\?28:r\.releaseLane\?26:25/gu) ?? []).length, 2)
+    assert.equal((workflow.match(/includes\(r\.releaseLane\);process\.stdout\.write\(String\(retained\?30:r\.releaseLane\?28:27\)\)/gu) ?? []).length, 2)
   }
 })
 

@@ -75,7 +75,15 @@ for fn in "${functions[@]}"; do
   docker compose run --rm --pull never deno check --config "$config" "$entry"
   code=$?
   checked=$((checked + 1))
-  [ "$code" -eq 0 ] || failed+=("$fn")
+  if [ "$code" -ne 0 ]; then
+    failed+=("$fn")
+    continue
+  fi
+  if [ "$fn" = "mobile-api" ]; then
+    docker compose run --rm --pull never deno test --config "$config" supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts
+    test_code=$?
+    [ "$test_code" -eq 0 ] || failed+=("$fn compatibility tests")
+  fi
 done
 
 echo

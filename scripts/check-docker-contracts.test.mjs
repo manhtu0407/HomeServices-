@@ -364,6 +364,7 @@ function goodFiles() {
       'missing deno.json or index.ts',
       'exit 2',
       'edge check: discovered=',
+      'deno test --config $config supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts',
     ].join('\n'),
     'docker/scripts/edge-check.sh': [
       'unknown function(s)',
@@ -371,6 +372,7 @@ function goodFiles() {
       'missing deno.json or index.ts',
       'exit 2',
       'edge check: discovered=',
+      'deno test --config "$config" supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts',
     ].join('\n'),
     'docker/scripts/gen-types.sh': [
       'bash "$repo_root/scripts/run-supabase.sh" gen types typescript --local > "$temp"',
@@ -640,7 +642,7 @@ test('a stdout-only Desktop updater failure keeps its diagnostic and exit code',
   }
 })
 
-test('all seven canonical Edge targets are checked exactly once', () => {
+test('all seven canonical Edge targets and the client compatibility pillar run exactly once', () => {
   const fake = fakeDocker('edge-pass')
   try {
     const result = runRunner(['docker/scripts/edge-check'], { env: fake.env })
@@ -659,7 +661,7 @@ test('all seven canonical Edge targets are checked exactly once', () => {
         'sepay-webhook',
       ],
     )
-    assert.equal(readFileSync(fake.log, 'utf8').trim().split(/\r?\n/).length, 8)
+    assert.equal(readFileSync(fake.log, 'utf8').trim().split(/\r?\n/).length, 9)
   } finally {
     rmSync(fake.directory, { recursive: true, force: true })
   }

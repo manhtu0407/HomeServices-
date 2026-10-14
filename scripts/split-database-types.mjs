@@ -39,7 +39,8 @@ const TABLES_DIR = `${OUT_DIR}/tables`
 // a broader rule that would swallow it.
 const BUCKET_RULES = [
   ['kael', (name) => name.startsWith('kael_')],
-  ['harness', (name) => name.startsWith('harness_') || name.startsWith('stage1_')],
+  ['harness', (name) => name.startsWith('harness_') || name.startsWith('stage1_') ||
+    name === 'backend_system_health_release_evidence'],
   ['monitoring', (name) => name.startsWith('system_health_') || name.startsWith('system_mobile_health_') ||
     name.startsWith('system_monitor_')],
   ['matching', (name) => name.startsWith('matching_') || name.startsWith('confirmation_') ||
@@ -269,6 +270,11 @@ export function join(root = ROOT) {
     ...read('helpers.database.types.ts', 'helpers'),
     ...read('enums.database.types.ts', 'constants'),
   ].join('\n')
+}
+
+function generatedTypesMatch(expected, actual = join()) {
+  const comparable = (text) => normalize(text).replace(/\n+$/u, '')
+  return comparable(actual) === comparable(expected)
 }
 
 // Counts top-level members per section of the public schema. Depth-based rather than
@@ -522,7 +528,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   } else if (flag === '--check-against') {
     const expected = normalize(source())
     const actual = join()
-    if (actual === expected) console.log('generated types match the committed split tree')
+    if (generatedTypesMatch(expected, actual)) console.log('generated types match the committed split tree')
     else {
       const left = actual.split('\n')
       const right = expected.split('\n')

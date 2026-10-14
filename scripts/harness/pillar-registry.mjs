@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const write = process.argv.includes('--write')
 
-const SEARCH_ROOTS = ['apps', 'packages', 'scripts/system-monitor', 'supabase/tests']
+const SEARCH_ROOTS = ['apps', 'packages', 'scripts/system-monitor', 'supabase/functions', 'supabase/tests']
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.expo', '.turbo', 'ios', 'android'])
 const REQUIRED_FIELDS = ['id', 'invariant', 'authority', 'target', 'layer', 'siblings', 'mutation']
 const LAYERS = new Set(['unit', 'integration', 'static-type', 'security-negative', 'ui-visual', 'sql'])

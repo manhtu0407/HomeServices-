@@ -67,6 +67,21 @@ test('tracks final function ACLs, dropped overloads, and invoker views', () => {
   })
 })
 
+test('tracks explicit service-role table restrictions after default grants are revoked', () => {
+  withFixture((root) => {
+    write(resolve(root, 'supabase/migrations/20260101000000_service_role_table_acl.sql'), `
+      create table public.items(id uuid primary key);
+      alter table public.items enable row level security;
+      revoke all on public.items from service_role;
+      grant select on public.items to service_role;
+    `)
+    const matrix = buildAccessMatrix({ root })
+    assert.deepEqual(matrix.tables[0].serviceRole, ['select'])
+    write(resolve(root, 'config/harness/access-matrix.json'), `${JSON.stringify(matrix, null, 2)}\n`)
+    assert.deepEqual(checkAccessMatrix({ root }).problems, [])
+  })
+})
+
 test('rejects a broad SECURITY DEFINER function without a fixed search path', () => {
   withFixture((root) => {
     write(resolve(root, 'supabase/migrations/20260101000000_unsafe.sql'), `

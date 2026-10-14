@@ -56,6 +56,41 @@ export const systemHealthSnapshotSchema = z.discriminatedUnion('schema_version',
 export type EdgeSystemHealthCheck = z.infer<typeof systemHealthCheckSchema>
 export type EdgeSystemHealthSnapshot = z.infer<typeof systemHealthSnapshotSchema>
 
+export function normalizeStoredSystemHealthSnapshot(value: unknown): EdgeSystemHealthSnapshot | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null
+  const row = value as Record<string, unknown>
+  if (row.schema_version !== 1) return null
+
+  const base = {
+    schema_version: 1 as const,
+    environment: row.environment,
+    project_ref: row.project_ref,
+    release_id: row.release_id,
+    scheduled_at: row.scheduled_at,
+    completed_at: row.completed_at,
+    expires_at: row.expires_at,
+    overall_status: row.overall_status,
+    checks: row.checks,
+  }
+  const profileFields = [row.profile_id, row.required_check_ids, row.coverage_gaps]
+  const hasLegacyProfileMetadata = (row.profile_schema_version === null || row.profile_schema_version === undefined)
+    && profileFields.every((field) => field === null || field === undefined)
+  if (hasLegacyProfileMetadata) {
+    const parsed = systemHealthSnapshotSchema.safeParse(base)
+    return parsed.success ? parsed.data : null
+  }
+
+  if (row.profile_schema_version !== 2) return null
+  const parsed = systemHealthSnapshotSchema.safeParse({
+    ...base,
+    schema_version: 2,
+    profile_id: row.profile_id,
+    required_check_ids: row.required_check_ids,
+    coverage_gaps: row.coverage_gaps,
+  })
+  return parsed.success ? parsed.data : null
+}
+
 export const mobileHealthObservationInputSchema = z.object({
   client_session_id: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu),
   observed_at: z.iso.datetime({ offset: true }),
