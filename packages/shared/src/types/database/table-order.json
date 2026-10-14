@@ -18,6 +18,7 @@
   "ambassador_multiplier_tiers",
   "ambassador_program_versions",
   "api_logs",
+  "backend_system_health_release_evidence",
   "chat_guard_redaction_evidence",
   "chat_messages",
   "compensation_negotiations",

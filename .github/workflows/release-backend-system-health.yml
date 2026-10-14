@@ -1,0 +1,702 @@
+name: release-backend-system-health
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type release-cloudflare-backend to release the Backend/Admin monitor
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  quality:
+    name: strict Backend, Admin, database, and zero-inference gates
+    if: github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Verify immutable main identity
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/main"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare strict transaction runners
+        run: |
+          mkdir -p artifacts/transactions artifacts/release
+          node scripts/harness/transaction-critical-coverage.mjs --require-mapped
+      - name: Type checks and runtime suites
+        run: |
+          pnpm type-check:api
+          pnpm type-check:shared
+          pnpm type-check:mobile
+          pnpm test:api --reporter=default --reporter=json --outputFile=../../artifacts/transactions/api-vitest.json
+          pnpm test:shared
+          pnpm test:system-monitor-worker
+          pnpm test:mobile --runInBand --json --outputFile=../../artifacts/transactions/mobile-jest.json
+      - name: Require real transaction behavior and zero inference
+        run: |
+          node scripts/harness/transaction-critical-coverage.mjs --require-behavioral \
+            --results artifacts/transactions/api-vitest.json \
+            --results artifacts/transactions/mobile-jest.json
+          node scripts/harness/transaction-behavior-receipt.mjs \
+            --results artifacts/transactions/api-vitest.json \
+            --results artifacts/transactions/mobile-jest.json \
+            --output artifacts/release/transaction-behavior.json
+      - name: Harness, access, migration, release, and source gates
+        run: |
+          pnpm harness:pillars:check
+          pnpm lint:test-collection
+          pnpm harness:verify
+          pnpm harness:manifest:check
+          pnpm harness:capabilities:check
+          pnpm harness:privileged:check
+          pnpm harness:access:check
+          pnpm harness:migrations:check
+          pnpm harness:reliability:check
+          pnpm harness:promotion:check
+          pnpm lint:structure
+          pnpm lint:baseline
+          pnpm lint:workplan
+          pnpm lint:comments
+          pnpm lint:edge-db > artifacts/release/parity.log
+          pnpm lint:production-ui-copy -- --output artifacts/release/production-ui-normality.json
+          pnpm doctor:react
+      - name: Deno and Cloudflare D1 runtime checks
+        run: |
+          pnpm edge:check
+          pnpm test:system-monitor-deployment
+      - name: Build and ship readiness
+        run: |
+          pnpm build
+          pnpm ship:check
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: config/security/gitleaks.toml
+      - name: Replay canonical migrations on an isolated empty database
+        run: |
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --empty-reset \
+            --inventory config/harness/migration-inventory.json \
+            --output artifacts/empty-reset
+          pnpm --filter @nestscout/api exec supabase \
+            --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" start
+          pnpm --filter @nestscout/api exec supabase \
+            --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db reset --local
+      - name: Run local Edge integration and SQL verification
+        env:
+          NESTSCOUT_ENVIRONMENT: local
+          NESTSCOUT_TEST_DB_URL: postgresql://postgres:postgres@127.0.0.1:55322/postgres
+        run: |
+          pnpm --filter @nestscout/api exec vitest run --passWithNoTests=false src/__tests__/integration
+          node scripts/run.mjs docker/scripts/run-sql-tests --stop-on-first-failure
+      - name: Verify generated types against the empty-reset database
+        run: |
+          pnpm --filter @nestscout/api exec supabase \
+            --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" \
+            gen types typescript --local > artifacts/release/database.types.ts
+          node scripts/split-database-types.mjs --join > artifacts/release/database.types.rejoined.ts
+          cmp artifacts/release/database.types.rejoined.ts artifacts/release/database.types.ts
+          pnpm --filter @nestscout/api exec supabase \
+            --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db lint --local --fail-on warning
+      - name: Record quality evidence from executed runners
+        run: |
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const files = ['artifacts/transactions/api-vitest.json', 'artifacts/transactions/mobile-jest.json',
+            'artifacts/release/transaction-behavior.json', 'artifacts/release/parity.log',
+            'artifacts/release/database.types.ts']
+          const evidence = {
+            schemaVersion: 'backend-system-health-quality/v1',
+            status: 'PASS',
+            gitSha: process.env.GITHUB_SHA,
+            workflowRunId: process.env.GITHUB_RUN_ID,
+            files: Object.fromEntries(files.map((path) => [path,
+              createHash('sha256').update(readFileSync(path)).digest('hex')])),
+            transactionBehavior: JSON.parse(readFileSync('artifacts/release/transaction-behavior.json', 'utf8')),
+          }
+          writeFileSync('artifacts/release/quality-evidence.json', `${JSON.stringify(evidence, null, 2)}\n`, { flag: 'wx' })
+          NODE
+      - name: Upload immutable Backend quality evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-system-health-quality-${{ github.sha }}
+          path: |
+            artifacts/transactions/*.json
+            artifacts/release/*
+          if-no-files-found: warn
+          retention-days: 90
+
+  release-config-gate:
+    name: require Backend-only Production configuration
+    needs: quality
+    if: needs.quality.result == 'success' && github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    environment:
+      name: production
+      deployment: false
+    steps:
+      - name: Require only the configured Backend/Admin release inputs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SYSTEM_HEALTH_MONITOR_SECRET: ${{ secrets.SYSTEM_HEALTH_MONITOR_SECRET }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          VIETMAP_API_KEY: ${{ secrets.VIETMAP_API_KEY }}
+          KAEL_DURABLE_GUARDS_ENABLED: ${{ vars.KAEL_DURABLE_GUARDS_ENABLED }}
+          PRODUCTION_SYSTEM_HEALTH_OWNER_EMAIL: ${{ secrets.PRODUCTION_SYSTEM_HEALTH_OWNER_EMAIL }}
+          PRODUCTION_SYSTEM_HEALTH_OWNER_PASSWORD: ${{ secrets.PRODUCTION_SYSTEM_HEALTH_OWNER_PASSWORD }}
+          PRODUCTION_SYSTEM_HEALTH_OPERATOR_EMAIL: ${{ secrets.PRODUCTION_SYSTEM_HEALTH_OPERATOR_EMAIL }}
+          PRODUCTION_SYSTEM_HEALTH_OPERATOR_PASSWORD: ${{ secrets.PRODUCTION_SYSTEM_HEALTH_OPERATOR_PASSWORD }}
+          PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL }}
+          PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD }}
+          PRODUCTION_SYNTHETIC_WORKER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_EMAIL }}
+          PRODUCTION_SYNTHETIC_WORKER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in SUPABASE_ACCESS_TOKEN PRODUCTION_SUPABASE_ANON_KEY \
+            PRODUCTION_SUPABASE_SERVICE_ROLE_KEY CLOUDFLARE_API_TOKEN \
+            ANTHROPIC_API_KEY PERPLEXITY_API_KEY VIETMAP_API_KEY \
+            PRODUCTION_SYSTEM_HEALTH_OWNER_EMAIL PRODUCTION_SYSTEM_HEALTH_OWNER_PASSWORD \
+            PRODUCTION_SYSTEM_HEALTH_OPERATOR_EMAIL PRODUCTION_SYSTEM_HEALTH_OPERATOR_PASSWORD \
+            PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD \
+            PRODUCTION_SYNTHETIC_WORKER_EMAIL PRODUCTION_SYNTHETIC_WORKER_PASSWORD; do
+            test -n "${!name}"
+          done
+          [[ "$SYSTEM_HEALTH_MONITOR_SECRET" =~ ^[0-9a-f]{64}$ ]]
+          [[ "$SYSTEM_HEALTH_OBSERVER_SECRET" =~ ^[0-9a-f]{64}$ ]]
+          test "$KAEL_DURABLE_GUARDS_ENABLED" = true
+
+  production-release:
+    name: expand, deploy Cloudflare observer, verify Admin roles, and promote
+    needs: [quality, release-config-gate]
+    if: needs.quality.result == 'success' && needs.release-config-gate.result == 'success' && github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend')
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production
+    env:
+      PRODUCTION_PROJECT_REF: iwevizmsedyqozxlawwl
+      PRODUCTION_PROJECT_URL: https://iwevizmsedyqozxlawwl.supabase.co
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: backend-system-health-quality-${{ github.sha }}
+          path: artifacts
+      - name: Verify source and quality evidence identity
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = "refs/heads/main"
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          node -e "const e=require('./artifacts/release/quality-evidence.json');if(e.status!=='PASS'||e.gitSha!==process.env.GITHUB_SHA||e.transactionBehavior.partialCount!==0||e.transactionBehavior.unverifiedCount!==0||e.transactionBehavior.boundAssertions.passed!==e.transactionBehavior.boundAssertions.required)process.exit(1)"
+          node scripts/harness/hosted-state.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-before.json
+      - name: Build the Backend-only immutable release and strict transaction proof
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          VIETMAP_API_KEY: ${{ secrets.VIETMAP_API_KEY }}
+          KAEL_DURABLE_GUARDS_ENABLED: ${{ vars.KAEL_DURABLE_GUARDS_ENABLED }}
+          KAEL_AI_KILL_SWITCH: ${{ vars.KAEL_AI_KILL_SWITCH }}
+          NESTSCOUT_ANDROID_FCM_V1_READY: ${{ vars.NESTSCOUT_ANDROID_FCM_V1_READY }}
+          NESTSCOUT_IOS_APNS_READY: ${{ vars.NESTSCOUT_IOS_APNS_READY }}
+          NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY: ${{ vars.NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release artifacts/rollback
+          node scripts/harness/release-bundle.mjs \
+            --environment production --lane backend-system-health \
+            --hosted-before artifacts/release/hosted-before.json \
+            --output artifacts/release/release.json
+          node scripts/harness/release-bundle.mjs --verify artifacts/release/release.json \
+            --hosted-before artifacts/release/hosted-before.json
+          node -e "const r=require('./artifacts/release/release.json');if(r.releaseLane!=='backend-system-health'||r.environment!=='production')process.exit(1)"
+          node scripts/harness/transaction-critical-coverage.mjs --require-mapped --require-behavioral \
+            --results artifacts/transactions/api-vitest.json \
+            --results artifacts/transactions/mobile-jest.json
+          node scripts/harness/assert-expand-only.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --inventory config/harness/migration-inventory.json \
+            --hosted artifacts/release/hosted-before.json \
+            --output artifacts/release/expand-only.json
+      - name: Verify exact Cloudflare account and capture rollback identities
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          account_id=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.systemHealthObserver.cloudflareAccountId)")
+          worker_name=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.systemHealthObserver.workerName)")
+          pnpm exec wrangler whoami --json --account "$account_id" > artifacts/release/cloudflare-whoami.json
+          pnpm exec wrangler d1 list --json --config scripts/system-monitor/wrangler.jsonc \
+            > artifacts/release/cloudflare-d1-list.json
+          node scripts/system-monitor/verify-cloudflare-target.mjs \
+            --whoami artifacts/release/cloudflare-whoami.json \
+            --d1-list artifacts/release/cloudflare-d1-list.json \
+            --release artifacts/release/release.json \
+            --output artifacts/release/cloudflare-target.json
+          CLOUDFLARE_ACCOUNT_ID="$account_id" \
+            SYSTEM_HEALTH_CLOUDFLARE_WORKER_NAME="$worker_name" \
+            CLOUDFLARE_WORKER_STATE_OUTPUT=artifacts/release/cloudflare-worker-before.json \
+            node scripts/system-monitor/cloudflare-worker-state.mjs
+          SYSTEM_MONITOR_EDGE_STATE_OUTPUT=artifacts/release/system-monitor-edge-before.json \
+            node scripts/system-monitor/edge-deployment.mjs capture \
+              --project-ref "$PRODUCTION_PROJECT_REF" \
+              --output artifacts/release/system-monitor-edge-before.json
+          node scripts/harness/release-control.mjs \
+            --action read --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            > artifacts/release/control-before.json
+          active_release_id=$(node -e "const c=require('./artifacts/release/control-before.json').result;process.stdout.write(c?.active_release_id??'none')")
+          if [ "$active_release_id" = none ]; then
+            printf 'null\n' > artifacts/release/previous-active-release.json
+          else
+            node scripts/harness/hosted-release-artifact.mjs \
+              --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+              --release-id "$active_release_id" \
+              --output artifacts/release/previous-active-release.json
+          fi
+          mkdir -p artifacts/rollback/supabase/functions/mobile-api \
+            artifacts/rollback/supabase/functions/kael-matching-maintainer \
+            artifacts/rollback-source
+          cp supabase/config.toml artifacts/rollback/supabase/config.toml
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback \
+            functions download mobile-api --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback \
+            functions download kael-matching-maintainer --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          previous_monitor_exists=$(node -e "process.stdout.write(require('./artifacts/release/system-monitor-edge-before.json').exists?'true':'false')")
+          if [ "$previous_monitor_exists" = true ]; then
+            previous_git_sha=$(node -e "process.stdout.write(require('./artifacts/release/previous-active-release.json').gitSha||'')")
+            test "${#previous_git_sha}" -eq 40
+            git cat-file -e "$previous_git_sha:supabase/functions/system-monitor/index.ts"
+            git archive "$previous_git_sha" supabase/config.toml supabase/functions/system-monitor supabase/functions/_shared \
+              | tar -x -C artifacts/rollback-source
+          fi
+          cp supabase/functions/mobile-api/deno.json artifacts/rollback/supabase/functions/mobile-api/deno.json
+          cp supabase/functions/mobile-api/deno.lock artifacts/rollback/supabase/functions/mobile-api/deno.lock
+          cp supabase/functions/kael-matching-maintainer/deno.json artifacts/rollback/supabase/functions/kael-matching-maintainer/deno.json
+          cp supabase/functions/kael-matching-maintainer/deno.lock artifacts/rollback/supabase/functions/kael-matching-maintainer/deno.lock
+          node scripts/harness/runtime-release-bindings.mjs \
+            --hosted artifacts/release/hosted-before.json \
+            > artifacts/release/rollback-bindings.txt
+          node scripts/system-monitor/edge-deployment.mjs previous \
+            --release artifacts/release/previous-active-release.json \
+            --edge-state artifacts/release/system-monitor-edge-before.json \
+            --worker-state artifacts/release/cloudflare-worker-before.json \
+            --source-root artifacts/rollback-source \
+            --output artifacts/release/system-monitor-before-proof.json
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const files = ['artifacts/release/hosted-before.json', 'artifacts/release/control-before.json',
+            'artifacts/release/system-monitor-edge-before.json', 'artifacts/release/cloudflare-worker-before.json',
+            'artifacts/release/rollback-bindings.txt', 'artifacts/release/system-monitor-before-proof.json']
+          const evidence = { schemaVersion: 'backend-system-health-rollback/v1', status: 'PASS',
+            gitSha: process.env.GITHUB_SHA,
+            files: Object.fromEntries(files.map((path) => [path,
+              createHash('sha256').update(readFileSync(path)).digest('hex')])) }
+          writeFileSync('artifacts/release/rollback-evidence.json', `${JSON.stringify(evidence, null, 2)}\n`, { flag: 'wx' })
+          NODE
+          release_bindings=$(node scripts/harness/runtime-release-bindings.mjs \
+            --release artifacts/release/release.json)
+          test "$(printf '%s\n' "$release_bindings" | wc -l | tr -d ' ')" = 30
+          test "$(node -e "const r=require('./artifacts/release/control-before.json').result;process.stdout.write(String(r?.revision??0))")" = \
+            "$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(String(r.backendHostedBaseline.revision))")"
+      - name: Seal source-bound quality, parity, expand, and rollback gate receipts
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          node scripts/harness/backend-system-health-gate-receipt.mjs \
+            --release artifacts/release/release.json --gate quality \
+            --evidence artifacts/release/quality-evidence.json \
+            --output artifacts/release/quality-receipt.json
+          node scripts/harness/backend-system-health-gate-receipt.mjs \
+            --release artifacts/release/release.json --gate parity \
+            --evidence artifacts/release/parity.log \
+            --output artifacts/release/parity-receipt.json
+          node scripts/harness/backend-system-health-gate-receipt.mjs \
+            --release artifacts/release/release.json --gate expand \
+            --evidence artifacts/release/expand-only.json \
+            --output artifacts/release/expand-receipt.json
+          node scripts/harness/backend-system-health-gate-receipt.mjs \
+            --release artifacts/release/release.json --gate rollback \
+            --evidence artifacts/release/rollback-evidence.json \
+            --output artifacts/release/rollback-receipt.json
+      - name: Prepare exact rollback config without scheduled triggers
+        run: |
+          node scripts/system-monitor/create-rollback-config.mjs \
+            --output scripts/system-monitor/wrangler.rollback.json
+      - name: Apply only the reviewed expand-only database migration
+        id: production-migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo 'PRODUCTION_MUTATION_STARTED=true' >> "$GITHUB_ENV"
+          node scripts/harness/prepare-migration-workdir.mjs \
+            --inventory config/harness/migration-inventory.json \
+            --hosted artifacts/release/hosted-before.json \
+            --receipt artifacts/release/expand-only.json \
+            --output artifacts/migration-apply
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
+            link --project-ref "$PRODUCTION_PROJECT_REF" --yes
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
+            db push --linked --dry-run --include-all
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/migration-apply \
+            db push --linked --include-all --yes
+          node scripts/harness/hosted-state.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-after-migrations.json
+          node scripts/harness/assert-expand-only.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --hosted artifacts/release/hosted-after-migrations.json \
+            --output artifacts/release/no-pending-migrations.json
+          node -e "const r=require('./artifacts/release/no-pending-migrations.json');if(r.pendingMigrations.length!==0)process.exit(1)"
+      - name: Register exact release and deploy Backend runtime bindings
+        id: backend-deploy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          node scripts/harness/release-control.mjs \
+            --action register --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --release artifacts/release/release.json > artifacts/release/register.json
+          release_id=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.releaseId)")
+          echo "RELEASE_ID=$release_id" >> "$GITHUB_ENV"
+          echo 'BACKEND_BINDINGS_DEPLOYMENT_ATTEMPTED=true' >> "$GITHUB_ENV"
+          mapfile -t release_bindings < <(node scripts/harness/runtime-release-bindings.mjs \
+            --release artifacts/release/release.json)
+          expected_binding_count=$(node -e "const r=require('./artifacts/release/release.json');const retained=['plan55-production-only','backend-system-health'].includes(r.releaseLane);process.stdout.write(String(retained?30:r.releaseLane?28:27))")
+          test "${#release_bindings[@]}" -eq "$expected_binding_count"
+          ./apps/api/node_modules/.bin/supabase secrets set "${release_bindings[@]}" \
+            --project-ref "$PRODUCTION_PROJECT_REF"
+          ./apps/api/node_modules/.bin/supabase functions deploy mobile-api \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+          ./apps/api/node_modules/.bin/supabase functions deploy kael-matching-maintainer \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+      - name: Deploy collector and wait for its persisted snapshot
+        id: collector
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          SYSTEM_HEALTH_MONITOR_SECRET: ${{ secrets.SYSTEM_HEALTH_MONITOR_SECRET }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
+        run: |
+          set -euo pipefail
+          echo 'SYSTEM_HEALTH_EDGE_DEPLOYMENT_ATTEMPTED=true' >> "$GITHUB_ENV"
+          secret_env_file=$(mktemp)
+          umask 077
+          trap 'rm -f "$secret_env_file"' EXIT
+          printf '%s\n' \
+            "SYSTEM_HEALTH_MONITOR_SECRET=$SYSTEM_HEALTH_MONITOR_SECRET" \
+            "SYSTEM_HEALTH_OBSERVER_SECRET=$SYSTEM_HEALTH_OBSERVER_SECRET" \
+            "SYSTEM_HEALTH_ENVIRONMENT=production" \
+            "SYSTEM_HEALTH_EXPECTED_PROJECT_REF=$PRODUCTION_PROJECT_REF" \
+            "SYSTEM_HEALTH_PROFILE_ID=cloudflare-admin-v1" > "$secret_env_file"
+          ./apps/api/node_modules/.bin/supabase secrets set --env-file "$secret_env_file" \
+            --project-ref "$PRODUCTION_PROJECT_REF"
+          ./apps/api/node_modules/.bin/supabase functions deploy system-monitor \
+            --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt
+          echo 'SYSTEM_HEALTH_SCHEDULE_CHANGE_ATTEMPTED=true' >> "$GITHUB_ENV"
+          node scripts/system-monitor/configure-vault-secret.mjs \
+            > artifacts/release/system-monitor-vault-configured.txt
+          SYSTEM_HEALTH_OBSERVER_SECRET="$SYSTEM_HEALTH_OBSERVER_SECRET" \
+            SYSTEM_HEALTH_ENVIRONMENT=production \
+            SYSTEM_HEALTH_EXPECTED_PROJECT_REF="$PRODUCTION_PROJECT_REF" \
+            SYSTEM_HEALTH_PROFILE_ID=cloudflare-admin-v1 \
+            SYSTEM_HEALTH_SNAPSHOT_EVIDENCE_PATH=artifacts/release/system-health-first-snapshot.json \
+            node scripts/system-monitor/wait-for-snapshot.mjs
+      - name: Apply D1 migrations and deploy the independent Cloudflare observer
+        id: observer
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
+        run: |
+          set -euo pipefail
+          echo 'SYSTEM_HEALTH_WORKER_DEPLOYMENT_ATTEMPTED=true' >> "$GITHUB_ENV"
+          pnpm exec wrangler d1 migrations apply nestscout-system-health-observer \
+            --remote --config scripts/system-monitor/wrangler.jsonc \
+            > artifacts/release/cloudflare-d1-migrations.txt
+          secret_file=$(mktemp)
+          trap 'rm -f "$secret_file"' EXIT
+          umask 077
+          node -e "const fs=require('node:fs');fs.writeFileSync(process.argv[1],JSON.stringify({SYSTEM_HEALTH_OBSERVER_SECRET:process.env.SYSTEM_HEALTH_OBSERVER_SECRET}),{flag:'wx',mode:0o600})" "$secret_file"
+          pnpm exec wrangler deploy --config scripts/system-monitor/wrangler.jsonc \
+            --secrets-file "$secret_file" --tag "$RELEASE_ID" --message "$GITHUB_SHA" --strict \
+            > artifacts/release/cloudflare-worker-deploy.txt
+          pnpm exec wrangler deployments list --name nestscout-system-health-observer \
+            --config scripts/system-monitor/wrangler.jsonc --json \
+            > artifacts/release/cloudflare-deployments-after.json
+          d1_query=$(cat <<'SQL'
+          SELECT json_object(
+            'migrations', (SELECT json_group_array(name) FROM d1_migrations),
+            'latestTick', (SELECT json_object('scheduled_at', scheduled_at, 'completed_at', completed_at, 'outcome', outcome)
+              FROM monitor_ticks ORDER BY scheduled_at DESC LIMIT 1),
+            'state', (SELECT json_object('last_snapshot_at', last_snapshot_at, 'last_error_code', last_error_code)
+              FROM monitor_state WHERE singleton_id = 1)
+          ) AS evidence;
+          SQL
+          )
+          verified=false
+          for attempt in $(seq 1 12); do
+            if pnpm exec wrangler d1 execute nestscout-system-health-observer \
+                --remote --json --config scripts/system-monitor/wrangler.jsonc \
+                --command "$d1_query" > artifacts/release/cloudflare-observer-runtime-raw.json && \
+                pnpm exec wrangler deployments list --name nestscout-system-health-observer \
+                  --config scripts/system-monitor/wrangler.jsonc --json \
+                  > artifacts/release/cloudflare-deployments-after.json && \
+                node scripts/system-monitor/verify-cloudflare-runtime.mjs \
+                  --release artifacts/release/release.json \
+                  --deployments artifacts/release/cloudflare-deployments-after.json \
+                  --d1-evidence artifacts/release/cloudflare-observer-runtime-raw.json \
+                  --output artifacts/release/cloudflare-observer-runtime.json; then
+              verified=true
+              break
+            fi
+            sleep 15
+          done
+          test "$verified" = true
+      - name: Byte-prove deployed Edge source and run read-only Admin role probe
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
+          PRODUCTION_SYSTEM_HEALTH_OWNER_EMAIL: ${{ secrets.PRODUCTION_SYSTEM_HEALTH_OWNER_EMAIL }}
+          PRODUCTION_SYSTEM_HEALTH_OWNER_PASSWORD: ${{ secrets.PRODUCTION_SYSTEM_HEALTH_OWNER_PASSWORD }}
+          PRODUCTION_SYSTEM_HEALTH_OPERATOR_EMAIL: ${{ secrets.PRODUCTION_SYSTEM_HEALTH_OPERATOR_EMAIL }}
+          PRODUCTION_SYSTEM_HEALTH_OPERATOR_PASSWORD: ${{ secrets.PRODUCTION_SYSTEM_HEALTH_OPERATOR_PASSWORD }}
+          PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL }}
+          PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD }}
+          PRODUCTION_SYNTHETIC_WORKER_EMAIL: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_EMAIL }}
+          PRODUCTION_SYNTHETIC_WORKER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/candidate-source/supabase/functions/mobile-api \
+            artifacts/candidate-source/supabase/functions/kael-matching-maintainer \
+            artifacts/candidate-source/supabase/functions/system-monitor
+          cp supabase/config.toml artifacts/candidate-source/supabase/config.toml
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/candidate-source \
+            functions download mobile-api --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/candidate-source \
+            functions download kael-matching-maintainer --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          cp supabase/functions/mobile-api/deno.json artifacts/candidate-source/supabase/functions/mobile-api/deno.json
+          cp supabase/functions/mobile-api/deno.lock artifacts/candidate-source/supabase/functions/mobile-api/deno.lock
+          cp supabase/functions/kael-matching-maintainer/deno.json artifacts/candidate-source/supabase/functions/kael-matching-maintainer/deno.json
+          cp supabase/functions/kael-matching-maintainer/deno.lock artifacts/candidate-source/supabase/functions/kael-matching-maintainer/deno.lock
+          node scripts/harness/hosted-state.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --project-url "$PRODUCTION_PROJECT_URL" \
+            --output artifacts/release/hosted-candidate.json
+          node scripts/harness/edge-source-proof.mjs \
+            --release artifacts/release/release.json --hosted artifacts/release/hosted-candidate.json \
+            --source-root artifacts/candidate-source --function mobile-api \
+            --output artifacts/release/mobile-source-proof.json
+          node scripts/harness/edge-source-proof.mjs \
+            --release artifacts/release/release.json --hosted artifacts/release/hosted-candidate.json \
+            --source-root artifacts/candidate-source --function kael-matching-maintainer \
+            --output artifacts/release/maintainer-source-proof.json
+          SYSTEM_MONITOR_EDGE_STATE_OUTPUT=artifacts/release/system-monitor-edge-after.json \
+            node scripts/system-monitor/edge-deployment.mjs capture \
+              --project-ref "$PRODUCTION_PROJECT_REF" \
+              --output artifacts/release/system-monitor-edge-after.json
+          ./apps/api/node_modules/.bin/supabase --workdir artifacts/candidate-source \
+            functions download system-monitor --project-ref "$PRODUCTION_PROJECT_REF" --use-api
+          node scripts/system-monitor/edge-deployment.mjs candidate \
+            --release artifacts/release/release.json \
+            --before artifacts/release/system-monitor-edge-before.json \
+            --after artifacts/release/system-monitor-edge-after.json \
+            --source-root artifacts/candidate-source \
+            --output artifacts/release/system-monitor-edge-proof.json
+          node scripts/system-monitor/backend-release-probe.mjs \
+            --release artifacts/release/release.json \
+            --cloudflare-deployments artifacts/release/cloudflare-deployments-after.json \
+            --cloudflare-d1-evidence artifacts/release/cloudflare-observer-runtime-raw.json \
+            --output artifacts/release/readonly-probe.json
+      - name: Build promotion packet and preserve all evidence before the final CAS
+        env:
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          node scripts/harness/backend-system-health-promotion.mjs \
+            --release artifacts/release/release.json \
+            --transaction-receipt artifacts/release/transaction-behavior.json \
+            --mobile-source-proof artifacts/release/mobile-source-proof.json \
+            --maintainer-source-proof artifacts/release/maintainer-source-proof.json \
+            --system-monitor-edge-proof artifacts/release/system-monitor-edge-proof.json \
+            --readonly-probe artifacts/release/readonly-probe.json \
+            --previous-control artifacts/release/control-before.json \
+            --cloudflare-deployments artifacts/release/cloudflare-deployments-after.json \
+            --cloudflare-d1-evidence artifacts/release/cloudflare-observer-runtime-raw.json \
+            --quality-receipt artifacts/release/quality-receipt.json \
+            --quality-evidence artifacts/release/quality-evidence.json \
+            --parity-receipt artifacts/release/parity-receipt.json \
+            --parity-evidence artifacts/release/parity.log \
+            --expand-receipt artifacts/release/expand-receipt.json \
+            --expand-evidence artifacts/release/expand-only.json \
+            --rollback-receipt artifacts/release/rollback-receipt.json \
+            --rollback-evidence artifacts/release/rollback-evidence.json \
+            --workflow-run-id "$GITHUB_RUN_ID" --workflow-run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --output artifacts/release/promotion-packet.json
+          node -e "const p=require('./artifacts/release/promotion-packet.json');if(p.readonlyProbe.inferenceRequests!==0||p.gates.strictMapping.entries!==65||p.gates.strictMapping.mapped!==65||p.gates.strictMapping.partial!==0||p.gates.strictMapping.unverified!==0)process.exit(1)"
+      - name: Promote the verified Backend release as the final Production mutation
+        id: promote
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          expected_active=$(node -e "const c=require('./artifacts/release/control-before.json').result;process.stdout.write(c?.active_release_id??'none')")
+          expected_revision=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(String(r.backendHostedBaseline.revision))")
+          if node scripts/harness/release-control.mjs \
+              --action promote-backend-system-health --environment production \
+              --project-ref "$PRODUCTION_PROJECT_REF" \
+              --release artifacts/release/release.json \
+              --packet artifacts/release/promotion-packet.json \
+              --expected-active-release-id "$expected_active" \
+              --expected-revision "$expected_revision" \
+              > artifacts/release/backend-promotion.json; then
+            echo 'Backend release promoted with exact baseline CAS'
+          else
+            node scripts/harness/release-control.mjs \
+              --action read --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+              > artifacts/release/control-after-ambiguous-promotion.json
+            release_id=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.releaseId)")
+            active=$(node -e "const c=require('./artifacts/release/control-after-ambiguous-promotion.json').result;process.stdout.write(c?.active_release_id??'none')")
+            revision=$(node -e "const c=require('./artifacts/release/control-after-ambiguous-promotion.json').result;process.stdout.write(String(c?.revision??-1))")
+            if [ "$active" = "$release_id" ] && [ "$revision" = "$((expected_revision + 1))" ]; then
+              echo 'Backend promotion committed; response was lost and hosted state confirms the exact CAS'
+              printf '{"action":"promote-backend-system-health","result":"confirmed-after-ambiguous-response"}\n' \
+                > artifacts/release/backend-promotion.json
+            else
+              echo '::error::Backend promotion outcome could not be confirmed against the exact control revision'
+              exit 1
+            fi
+          fi
+      - name: Disable or restore the candidate safely after a failed release
+        if: failure() && env.PRODUCTION_MUTATION_STARTED == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          SYSTEM_HEALTH_OBSERVER_SECRET: ${{ secrets.SYSTEM_HEALTH_OBSERVER_SECRET }}
+        run: |
+          set +e
+          rollback_status=0
+          if [ -f artifacts/release/control-before.json ]; then
+            node scripts/harness/release-control.mjs \
+              --action read --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+              > artifacts/release/control-at-rollback.json || rollback_status=1
+            expected=$(node -e "const r=require('./artifacts/release/release.json');process.stdout.write(r.releaseId)")
+            active=$(node -e "const c=require('./artifacts/release/control-at-rollback.json').result;process.stdout.write(c?.active_release_id??'none')" 2>/dev/null)
+            if [ "$active" = "$expected" ]; then
+              echo 'Candidate is already active; leaving the verified runtime intact for operator review'
+              exit 1
+            fi
+            baseline=$(node -e "const c=require('./artifacts/release/control-before.json').result;process.stdout.write(c?.active_release_id??'none')")
+            if [ "$active" != "$baseline" ]; then
+              echo '::error::Release control changed unexpectedly; runtime rollback stopped fail-closed'
+              exit 1
+            fi
+          fi
+          if [ "${SYSTEM_HEALTH_SCHEDULE_CHANGE_ATTEMPTED:-false}" = true ]; then
+            node scripts/system-monitor/disable-schedule.mjs || rollback_status=1
+          fi
+          if [ "${SYSTEM_HEALTH_EDGE_DEPLOYMENT_ATTEMPTED:-false}" = true ]; then
+            previous_edge=$(node -e "process.stdout.write(require('./artifacts/release/system-monitor-edge-before.json').exists?'true':'false')" 2>/dev/null)
+            if [ "$previous_edge" = true ]; then
+              ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback-source \
+                functions deploy system-monitor --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt || rollback_status=1
+            else
+              ./apps/api/node_modules/.bin/supabase functions delete system-monitor \
+                --project-ref "$PRODUCTION_PROJECT_REF" --yes || rollback_status=1
+            fi
+          fi
+          if [ "${SYSTEM_HEALTH_WORKER_DEPLOYMENT_ATTEMPTED:-false}" = true ]; then
+            previous_worker=$(node -e "const s=require('./artifacts/release/cloudflare-worker-before.json');process.stdout.write(s.exists?'true':'false')")
+            if [ "$previous_worker" = true ]; then
+              previous_version=$(node -e "process.stdout.write(require('./artifacts/release/cloudflare-worker-before.json').versionId)")
+              pnpm exec wrangler rollback "$previous_version" --name nestscout-system-health-observer \
+                --config scripts/system-monitor/wrangler.jsonc || rollback_status=1
+            else
+              secret_file=$(mktemp)
+              umask 077
+              node -e "const fs=require('node:fs');fs.writeFileSync(process.argv[1],JSON.stringify({SYSTEM_HEALTH_OBSERVER_SECRET:process.env.SYSTEM_HEALTH_OBSERVER_SECRET}),{flag:'wx',mode:0o600})" "$secret_file"
+              pnpm exec wrangler deploy --config scripts/system-monitor/wrangler.rollback.json \
+                --secrets-file "$secret_file" --tag "rollback-${GITHUB_SHA}" --strict || rollback_status=1
+              rm -f "$secret_file"
+            fi
+          fi
+          if [ "${BACKEND_BINDINGS_DEPLOYMENT_ATTEMPTED:-false}" = true ]; then
+            mapfile -t rollback_bindings < <(node scripts/harness/runtime-release-bindings.mjs \
+              --hosted artifacts/release/hosted-before.json)
+            ./apps/api/node_modules/.bin/supabase secrets set "${rollback_bindings[@]}" \
+              --project-ref "$PRODUCTION_PROJECT_REF" || rollback_status=1
+            ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback functions deploy mobile-api \
+              --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt || rollback_status=1
+            ./apps/api/node_modules/.bin/supabase --workdir artifacts/rollback functions deploy kael-matching-maintainer \
+              --project-ref "$PRODUCTION_PROJECT_REF" --use-api --no-verify-jwt || rollback_status=1
+          fi
+          if [ "$rollback_status" -ne 0 ]; then
+            echo '::error::Rollback was incomplete; evidence and the production mutation state require operator review'
+            exit 1
+          fi
+          echo 'Monitoring candidate safely disabled or restored; additive data retained'
+      - name: Upload Backend release, rollback, and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-system-health-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/release
+          if-no-files-found: warn
+          retention-days: 90

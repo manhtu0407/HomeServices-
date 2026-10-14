@@ -1,6 +1,6 @@
 import {
+  normalizeStoredSystemHealthSnapshot,
   sanitizeSystemIncidentPacket,
-  systemHealthSnapshotSchema,
   type EdgeSystemIncidentPacket as SystemIncidentPacket,
   type EdgeSystemHealthSnapshot as SystemHealthSnapshot,
 } from "../../../../_shared/contracts/system-health.ts";
@@ -19,7 +19,7 @@ const SAFE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[
 export async function getSystemHealth(ctx: MobileApiContext, schemaVersion: 1 | 2): Promise<AdminSystemContracts["healthResponse"]> {
   const [snapshotResult, observerResult] = await Promise.all([
     dbQuery<Row>(db(ctx).from("system_health_snapshots")
-      .select("schema_version,profile_id,required_check_ids,coverage_gaps,environment,project_ref,release_id,scheduled_at,completed_at,expires_at,overall_status,checks")
+      .select("schema_version,profile_schema_version,profile_id,required_check_ids,coverage_gaps,environment,project_ref,release_id,scheduled_at,completed_at,expires_at,overall_status,checks")
       .eq("environment", healthEnvironment(ctx)).order("scheduled_at", { ascending: false }).limit(1).maybeSingle()),
     dbQuery<Row>(db(ctx).from("system_health_observer_state")
       .select("observer_heartbeat_at,dispatcher_status,d1_status,last_snapshot_at,last_error_code")
@@ -27,9 +27,9 @@ export async function getSystemHealth(ctx: MobileApiContext, schemaVersion: 1 | 
   ]);
   if (snapshotResult.error || observerResult.error) apiFailure("DB_ERROR", "Không thể tải sức khỏe hệ thống", 500);
 
-  const parsedSnapshot = snapshotResult.data ? systemHealthSnapshotSchema.safeParse(snapshotResult.data) : null;
+  const parsedSnapshot = snapshotResult.data ? normalizeStoredSystemHealthSnapshot(snapshotResult.data) : null;
   const observer = observerResult.data ? serializeObserver(observerResult.data) : null;
-  let snapshot = parsedSnapshot?.success ? parsedSnapshot.data : null;
+  let snapshot = parsedSnapshot;
   if (snapshot?.schema_version === 2 && schemaVersion === 1) {
     const checks = [...snapshot.checks, {
       check_id: "profile-coverage-unsupported",

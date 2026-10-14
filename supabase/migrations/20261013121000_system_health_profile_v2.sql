@@ -1,18 +1,14 @@
-alter table public.system_health_snapshots
-  drop constraint if exists system_health_snapshots_schema_version_check;
-
-alter table public.system_health_snapshots
-  add constraint system_health_snapshots_schema_version_check check (schema_version in (1, 2));
-
 alter table public.system_health_snapshots add column if not exists profile_id text;
+alter table public.system_health_snapshots add column if not exists profile_schema_version smallint;
 alter table public.system_health_snapshots add column if not exists required_check_ids jsonb;
 alter table public.system_health_snapshots add column if not exists coverage_gaps jsonb;
 
 alter table public.system_health_snapshots
   add constraint system_health_snapshots_profile_contract_check check (
-    (schema_version = 1 and profile_id is null and required_check_ids is null and coverage_gaps is null)
+    (profile_schema_version is null and profile_id is null and required_check_ids is null and coverage_gaps is null)
     or (
-      schema_version = 2
+      schema_version = 1
+      and profile_schema_version = 2
       and profile_id = 'cloudflare-admin-v1'
       and jsonb_typeof(required_check_ids) = 'array'
       and jsonb_array_length(required_check_ids) between 1 and 32
@@ -23,20 +19,38 @@ alter table public.system_health_snapshots
     )
   );
 
-alter function public.record_system_health_snapshot(jsonb) rename to record_system_health_snapshot_v1_internal;
-revoke all on function public.record_system_health_snapshot_v1_internal(jsonb) from public, anon, authenticated, service_role;
+create or replace function public.clear_system_health_profile_on_legacy_snapshot_update()
+returns trigger
+language plpgsql
+set search_path = ''
+as $function$
+begin
+  if new.completed_at > old.completed_at then
+    new.profile_schema_version := null;
+    new.profile_id := null;
+    new.required_check_ids := null;
+    new.coverage_gaps := null;
+  end if;
+  return new;
+end;
+$function$;
 
-create function public.record_system_health_snapshot(p_snapshot jsonb)
+create trigger system_health_snapshots_clear_legacy_profile_metadata
+before update on public.system_health_snapshots
+for each row execute function public.clear_system_health_profile_on_legacy_snapshot_update();
+
+create function public.record_system_health_snapshot_v2(p_snapshot jsonb)
 returns boolean
 language plpgsql
 security definer
-set search_path = public, pg_temp
-as $$
+set search_path = ''
+as $function$
 declare
   v_version text := p_snapshot->>'schema_version';
   v_environment text := p_snapshot->>'environment';
   v_scheduled_at timestamptz := (p_snapshot->>'scheduled_at')::timestamptz;
   v_completed_at timestamptz := (p_snapshot->>'completed_at')::timestamptz;
+  v_expires_at timestamptz := (p_snapshot->>'expires_at')::timestamptz;
   v_profile_id text := p_snapshot->>'profile_id';
   v_required jsonb := p_snapshot->'required_check_ids';
   v_gaps jsonb := p_snapshot->'coverage_gaps';
@@ -48,15 +62,8 @@ declare
   v_had_missing_required boolean := false;
 begin
   if p_snapshot is null or jsonb_typeof(p_snapshot) <> 'object'
-    or v_version not in ('1', '2') then
-    raise exception using errcode = '22023', message = 'invalid system health snapshot version';
-  end if;
-
-  if v_version = '1' then
-    return public.record_system_health_snapshot_v1_internal(p_snapshot);
-  end if;
-
-  if octet_length(p_snapshot::text) > 16384
+    or v_version is distinct from '2'
+    or octet_length(p_snapshot::text) > 16384
     or v_environment not in ('production', 'staging', 'local')
     or v_profile_id <> 'cloudflare-admin-v1'
     or jsonb_typeof(v_required) is distinct from 'array'
@@ -64,8 +71,11 @@ begin
     or jsonb_typeof(v_gaps) is distinct from 'array'
     or jsonb_array_length(v_gaps) > 16
     or jsonb_typeof(v_checks) is distinct from 'array'
-    or (p_snapshot->>'expires_at')::timestamptz <= v_completed_at
-    or (p_snapshot->>'expires_at')::timestamptz > v_completed_at + interval '180 seconds'
+    or v_scheduled_at is null
+    or v_completed_at is null
+    or v_expires_at is null
+    or v_expires_at <= v_completed_at
+    or v_expires_at > v_completed_at + interval '180 seconds'
     or v_scheduled_at > clock_timestamp() + interval '30 seconds'
     or v_completed_at < v_scheduled_at
     or v_completed_at > clock_timestamp() + interval '60 seconds' then
@@ -132,23 +142,31 @@ begin
     raise exception using errcode = '22023', message = 'system health status does not match required checks';
   end if;
 
-  v_projected := p_snapshot
+  v_projected := (p_snapshot
+    - 'profile_id' - 'required_check_ids' - 'coverage_gaps')
     || jsonb_build_object('schema_version', 1, 'checks', v_checks, 'overall_status', v_expected_status);
-  v_saved := public.record_system_health_snapshot_v1_internal(v_projected);
+  if octet_length(v_projected::text) > 2048 then
+    raise exception using errcode = '22023', message = 'projected system health snapshot exceeds legacy storage limit';
+  end if;
+
+  v_saved := public.record_system_health_snapshot(v_projected);
   if not v_saved then return false; end if;
 
   update public.system_health_snapshots
-  set schema_version = 2,
+  set profile_schema_version = 2,
       profile_id = v_profile_id,
       required_check_ids = v_required,
       coverage_gaps = v_gaps
-  where environment = v_environment and scheduled_at = date_trunc('minute', v_scheduled_at);
+  where environment = v_environment
+    and scheduled_at = date_trunc('minute', v_scheduled_at)
+    and completed_at = v_completed_at;
   return found;
 end;
-$$;
+$function$;
 
-revoke all on function public.record_system_health_snapshot(jsonb) from public, anon, authenticated;
-grant execute on function public.record_system_health_snapshot(jsonb) to service_role;
+revoke all on function public.clear_system_health_profile_on_legacy_snapshot_update() from public, anon, authenticated, service_role;
+revoke all on function public.record_system_health_snapshot_v2(jsonb) from public, anon, authenticated;
+grant execute on function public.record_system_health_snapshot_v2(jsonb) to service_role;
 
 with deferred_incidents as (
   update public.system_health_incidents

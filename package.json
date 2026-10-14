@@ -27,7 +27,7 @@
     "test:mobile": "node scripts/run.mjs run-package-script @nestscout/mobile test",
     "test:sandbox": "node scripts/run.mjs run-package-script @nestscout/sandbox test",
     "test:shared": "node scripts/run.mjs run-package-script @nestscout/shared test",
-    "test:system-monitor-deployment": "node --test scripts/system-monitor/cloudflare-worker-state.test.mjs scripts/system-monitor/create-rollback-config.test.mjs scripts/system-monitor/edge-deployment.test.mjs scripts/system-monitor/verify-cloudflare-target.test.mjs scripts/system-monitor/verify-cloudflare-runtime.test.mjs scripts/system-monitor/wait-for-snapshot.test.mjs scripts/system-monitor-vault-secret.test.mjs",
+    "test:system-monitor-deployment": "node --test scripts/system-monitor/cloudflare-worker-state.test.mjs scripts/system-monitor/create-rollback-config.test.mjs scripts/system-monitor/edge-deployment.test.mjs scripts/system-monitor/verify-cloudflare-target.test.mjs scripts/system-monitor/verify-cloudflare-runtime.test.mjs scripts/system-monitor/wait-for-snapshot.test.mjs scripts/system-monitor-vault-secret.test.mjs scripts/system-monitor/backend-release-probe.test.mjs scripts/harness/backend-system-health-promotion.test.mjs scripts/harness/release-bundle.test.mjs scripts/harness/runtime-release-bindings.test.mjs scripts/harness/mobile-binary-attestation.test.mjs scripts/harness/release-control.test.mjs",
     "test:system-monitor-worker": "vitest run --config packages/shared/system-monitor.vitest.config.mts",
     "type-check": "node scripts/run.mjs run-turbo type-check",
     "type-check:api": "node scripts/run.mjs run-package-script @nestscout/api type-check",

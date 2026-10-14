@@ -60,13 +60,16 @@ function enforceStage1ClientCompatibility(
     : null;
   const build = positiveHeaderInteger(request, "x-client-build-number");
   const applicationId = request.headers.get("x-client-application-id")?.trim() ?? "";
-  if (epoch === null || epoch < compatibility.contractEpoch) {
-    if (platformPolicy !== null && platformPolicy.minimumBuildNumber !== null &&
-      build !== null && build >= platformPolicy.minimumBuildNumber &&
+  if (epoch !== compatibility.contractEpoch) {
+    const legacyMinimumBuildNumber = platformPolicy?.legacyMinimumBuildNumber ??
+      platformPolicy?.minimumBuildNumber ?? null;
+    if (epoch === compatibility.contractEpoch - 1 && platformPolicy !== null &&
+      legacyMinimumBuildNumber !== null && build !== null && build >= legacyMinimumBuildNumber &&
       applicationId === platformPolicy.applicationId) return;
-    rejectIncompatibleClient(compatibility.contractEpoch, platformPolicy?.minimumBuildNumber ?? null, platform);
+    rejectIncompatibleClient(compatibility.contractEpoch, legacyMinimumBuildNumber, platform);
   }
   const easBuildId = request.headers.get("x-client-eas-build-id")?.trim().toLowerCase() ?? "";
+  const easBuildIdIsValid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(easBuildId);
   const runtimeVersion = request.headers.get("x-client-runtime-version")?.trim() ?? "";
   const gitSha = request.headers.get("x-client-git-sha")?.trim().toLowerCase() ?? "";
   const releaseId = request.headers.get("x-client-release-id")?.trim() ?? "";
@@ -75,7 +78,9 @@ function enforceStage1ClientCompatibility(
     platformPolicy.minimumBuildNumber === null || build === null ||
     build < platformPolicy.minimumBuildNumber ||
     applicationId !== platformPolicy.applicationId ||
-    !platformPolicy.easBuildId || easBuildId !== platformPolicy.easBuildId ||
+    !easBuildIdIsValid ||
+    (platformPolicy.easBuildIdMode !== "release-bound" &&
+      (!platformPolicy.easBuildId || easBuildId !== platformPolicy.easBuildId)) ||
     !platformPolicy.runtimeVersion || runtimeVersion !== platformPolicy.runtimeVersion ||
     gitSha !== compatibility.gitSha || releaseId !== compatibility.releaseId
   ) {

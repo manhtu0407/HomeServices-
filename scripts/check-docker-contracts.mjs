@@ -223,6 +223,10 @@ export function dockerContractProblems(files) {
       ],
       'strict Edge selection and an honest discovered/checked/failed summary are required',
     )
+    requireText(problems, files, path,
+      [/deno test[\s\S]*?request-runtime-pillar\.test\.ts/u],
+      'the client compatibility regression test must run in the pinned Deno runtime',
+    )
   }
 
   rejectText(problems, files, 'docker/scripts/gen-types.sh', /if\s+!\s+bash\s+[^\n]*run-supabase/i, 'the POSIX type runner must preserve the Supabase exit code')

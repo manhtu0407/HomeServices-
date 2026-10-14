@@ -15,6 +15,7 @@ import { buildSyntheticSmokeReceipt } from '../../apps/api/scripts/lib/stage1-sy
 import { buildStage1PromotionPacket } from './stage1-promotion-packet.mjs'
 import { buildMobileBinaryAttestation } from './mobile-binary-attestation.mjs'
 import { buildHarnessRelease } from './release-bundle.mjs'
+import { verifyBackendPromotionPacket } from './backend-system-health-promotion.mjs'
 import { buildEdgeSourceProof } from './edge-source-proof.mjs'
 import { buildProductionUiNormalityReceipt } from '../check-production-ui-copy.mjs'
 import { createReleaseControlClient } from './release-control-client.mjs'
@@ -183,6 +184,70 @@ function buildPlan55ReleaseForControlTest() {
   })
 }
 
+function buildBackendReleaseForControlTest() {
+  const policy = JSON.parse(readFileSync(resolve(process.cwd(), 'config/harness/plan55-production-only-policy.json'), 'utf8'))
+  const inventory = JSON.parse(readFileSync(resolve(process.cwd(), 'config/harness/migration-inventory.json'), 'utf8'))
+  const clientCompatibility = {
+    gitSha: policy.productionSourceBase.sha, releaseId: policy.productionSourceBase.releaseId, contractEpoch: 2,
+    ios: { applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 55,
+      easBuildId: '11111111-1111-4111-8111-111111111111', runtimeVersion: '0.2.2' },
+    android: { applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 5,
+      easBuildId: '22222222-2222-4222-8222-222222222222', runtimeVersion: '0.2.2' },
+  }
+  const hostedBeforeBytes = Buffer.from(JSON.stringify({
+    environment: 'production', projectRef: policy.projectRef, registered: true,
+    releaseId: policy.productionSourceBase.releaseId, gitSha: policy.productionSourceBase.sha,
+    controlActiveReleaseId: policy.productionSourceBase.releaseId, revision: 7,
+    clientCompatibility, migrations: inventory.entries.slice(0, 3).map(({ version, name }) => ({ version, name })),
+  }))
+  return buildHarnessRelease({ environment: 'production', lane: 'backend-system-health',
+    gitSha: '9'.repeat(40), hostedBeforeBytes, requireCleanWorktree: false,
+    providerReadiness: { ...productionProviderReadiness(), android_fcm_v1: false,
+      ios_apns: false, push_receipt_reconciler: false } })
+}
+
+function backendPacketForControlTest(backendRelease) {
+  const packet = {
+    schemaVersion: 'backend-system-health-promotion/v1', environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl', releaseId: backendRelease.releaseId,
+    gitSha: backendRelease.gitSha, bundleSha256: backendRelease.bundleSha256,
+    previous: { releaseId: backendRelease.backendHostedBaseline.controlActiveReleaseId,
+      revision: backendRelease.backendHostedBaseline.revision },
+    sourceProofs: {
+      'mobile-api': { deploymentId: 'mobile-deployment', proofSha256: 'a'.repeat(64) },
+      'kael-matching-maintainer': { deploymentId: 'maintainer-deployment', proofSha256: 'b'.repeat(64) },
+      'system-monitor': {
+        releaseId: backendRelease.releaseId, gitSha: backendRelease.gitSha, profileId: 'cloudflare-admin-v1',
+        edgeFunctionId: '123e4567-e89b-42d3-a456-426614174000', edgeVersion: 42,
+        sourceSha256: backendRelease.systemHealthObserver.edgeFunction.sha256,
+        runtimeConfigurationSha256: backendRelease.systemHealthObserver.edgeFunction.runtimeConfiguration.sha256,
+        proofSha256: '3'.repeat(64),
+      },
+    },
+    gates: {
+      strictMapping: { entries: 65, mapped: 65, partial: 0, unverified: 0, manifestSha256: backendRelease.transactionCoverage.manifestSha256 },
+      boundAssertions: { required: 12, passed: 12, failed: 0 },
+      qualityReceiptSha256: 'c'.repeat(64), parityReceiptSha256: 'd'.repeat(64),
+      expandReceiptSha256: 'e'.repeat(64), rollbackReceiptSha256: 'f'.repeat(64),
+    },
+    observer: { releaseId: backendRelease.releaseId, gitSha: backendRelease.gitSha,
+      workerBundleSha256: backendRelease.systemHealthObserver.workerBundleSha256,
+      d1MigrationsSha256: backendRelease.systemHealthObserver.d1MigrationsSha256,
+      receiptSha256: '1'.repeat(64), completedAt: '2026-10-14T00:00:00.000Z' },
+    readonlyProbe: { releaseId: backendRelease.releaseId, gitSha: backendRelease.gitSha,
+      receiptSha256: '2'.repeat(64), completedAt: '2026-10-14T00:00:00.000Z', inferenceRequests: 0 },
+    generatedAt: '2026-10-14T00:00:00.000Z',
+  }
+  packet.packetSha256 = createHash('sha256').update(JSON.stringify(sortForTest(packet))).digest('hex')
+  return packet
+}
+
+function sortForTest(value) {
+  if (Array.isArray(value)) return value.map(sortForTest)
+  if (!value || typeof value !== 'object') return value
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortForTest(value[key])]))
+}
+
 test('parseReleaseControlArgs keeps secrets out of CLI and requires explicit action', () => {
   assert.deepEqual(parseReleaseControlArgs([
     '--action', 'read',
@@ -206,6 +271,49 @@ test('parseReleaseControlArgs keeps secrets out of CLI and requires explicit act
     () => parseReleaseControlArgs(['--action', 'read', '--service-role-key', 'secret']),
     /unknown argument/u,
   )
+  assert.equal(parseReleaseControlArgs(['--action', 'promote-backend-system-health', '--expected-revision', '0']).expectedRevision, 0)
+})
+
+test('backend system-health promotion uses only the source-bound atomic RPC', async () => {
+  const backendRelease = buildBackendReleaseForControlTest()
+  const backendPacket = backendPacketForControlTest(backendRelease)
+  assert.deepEqual(verifyBackendPromotionPacket(backendPacket, backendRelease), [])
+  assert.deepEqual(buildReleaseControlInvocation({
+    action: 'promote-backend-system-health', release: backendRelease, packet: backendPacket,
+    expectedActiveReleaseId: backendRelease.backendHostedBaseline.controlActiveReleaseId,
+    expectedRevision: backendRelease.backendHostedBaseline.revision,
+  }), {
+    name: 'promote_backend_system_health_release_atomic',
+    args: {
+      p_release_id: backendRelease.releaseId,
+      p_expected_active_release_id: backendRelease.backendHostedBaseline.controlActiveReleaseId,
+      p_expected_revision: backendRelease.backendHostedBaseline.revision,
+      p_packet: backendPacket,
+    },
+  })
+  const promoted = await executeReleaseControl({
+    action: 'promote-backend-system-health', release: backendRelease, packet: backendPacket,
+    expectedActiveReleaseId: backendRelease.backendHostedBaseline.controlActiveReleaseId,
+    expectedRevision: backendRelease.backendHostedBaseline.revision,
+  }, {
+    async rpc(name, args) {
+      assert.equal(name, 'promote_backend_system_health_release_atomic')
+      assert.equal(args.p_expected_revision, 7)
+      return [{ active_release_id: backendRelease.releaseId, revision: 8 }]
+    },
+  })
+  assert.equal(promoted.result[0].active_release_id, backendRelease.releaseId)
+  assert.throws(() => buildReleaseControlInvocation({
+    action: 'promote-backend-system-health', release: backendRelease, packet: backendPacket,
+    expectedActiveReleaseId: backendRelease.backendHostedBaseline.controlActiveReleaseId,
+    expectedRevision: backendRelease.backendHostedBaseline.revision - 1,
+  }), /exact active release baseline/u)
+  assert.throws(() => buildReleaseControlInvocation({
+    action: 'promote-backend-system-health', release: backendRelease,
+    packet: { ...backendPacket, gitSha: '0'.repeat(40) },
+    expectedActiveReleaseId: backendRelease.backendHostedBaseline.controlActiveReleaseId,
+    expectedRevision: backendRelease.backendHostedBaseline.revision,
+  }), /immutable release/u)
 })
 
 test('buildReleaseControlInvocation binds register and configure to immutable evidence', () => {

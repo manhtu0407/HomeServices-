@@ -121,10 +121,30 @@ function tableInventory(source) {
       classification,
       rlsEnabled,
       actorCommands,
-      serviceRole: ['select', 'insert', 'update', 'delete'],
+      serviceRole: serviceRolePrivileges(source, name),
       realtime: false,
     }
   }).map((table) => ({ ...table, realtime: realtimeForTable(source, table.name) }))
+}
+
+function serviceRolePrivileges(source, tableName) {
+  const all = ['select', 'insert', 'update', 'delete']
+  let privileges = [...all]
+  const escaped = escapeRegex(tableName)
+  for (const statement of splitSqlStatements(source)) {
+    const normalized = stripLeadingSqlComments(statement).trim()
+    const match = /^(grant|revoke)\s+([a-z,\s]+?)\s+on\s+(?:table\s+)?(?:public\.)?([a-zA-Z_][a-zA-Z0-9_]*)\s+(to|from)\s+([^;]+)$/iu.exec(normalized)
+    if (!match || !new RegExp(`^${escaped}$`, 'iu').test(match[3]) ||
+        !parseRoles(match[5]).includes('service_role')) continue
+    const grantsAll = /^all(?:\s+privileges)?$/iu.test(match[2].trim())
+    const granted = grantsAll
+      ? all
+      : sortedUnique(match[2].split(',').map((value) => value.trim().toLowerCase()).filter((value) => all.includes(value)))
+    privileges = match[1].toLowerCase() === 'grant'
+      ? [...new Set([...privileges, ...granted])]
+      : privileges.filter((privilege) => !granted.includes(privilege))
+  }
+  return all.filter((privilege) => privileges.includes(privilege))
 }
 
 function viewInventory(source) {

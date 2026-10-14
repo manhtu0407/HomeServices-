@@ -5,6 +5,48 @@ import type { Database } from '../schema.database.types'
 
 export type HarnessTables = {
 /* @slice:begin tables:harness */
+      backend_system_health_release_evidence: {
+        Row: {
+          created_at: string
+          packet: Json
+          packet_sha256: string
+          previous_active_release_id: string | null
+          release_id: string
+          revision: number
+        }
+        Insert: {
+          created_at?: string
+          packet: Json
+          packet_sha256: string
+          previous_active_release_id?: string | null
+          release_id: string
+          revision: number
+        }
+        Update: {
+          created_at?: string
+          packet?: Json
+          packet_sha256?: string
+          previous_active_release_id?: string | null
+          release_id?: string
+          revision?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "backend_system_health_release_e_previous_active_release_id_fkey"
+            columns: ["previous_active_release_id"]
+            isOneToOne: false
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+          {
+            foreignKeyName: "backend_system_health_release_evidence_release_id_fkey"
+            columns: ["release_id"]
+            isOneToOne: true
+            referencedRelation: "harness_releases"
+            referencedColumns: ["release_id"]
+          },
+        ]
+      }
       harness_dependency_circuits: {
         Row: {
           dependency: string

@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 460,
-    "migrationDigest": "7f59ed34d11d5a4338d100165cfd2f9a625ef6d4bc79f8805fff1aeba5029167"
+    "migrationCount": 461,
+    "migrationDigest": "847689f94b322d354a0e9ccd442352d8154ae5089f130af00902e1c3cb14d93b"
   },
   "actors": [
     "anonymous",
@@ -324,6 +324,19 @@
         "insert",
         "update",
         "delete"
+      ],
+      "realtime": false
+    },
+    {
+      "name": "backend_system_health_release_evidence",
+      "classification": "internal",
+      "rlsEnabled": true,
+      "actorCommands": {
+        "anonymous": [],
+        "authenticated": []
+      },
+      "serviceRole": [
+        "select"
       ],
       "realtime": false
     },
@@ -1177,10 +1190,7 @@
         "authenticated": []
       },
       "serviceRole": [
-        "select",
-        "insert",
-        "update",
-        "delete"
+        "select"
       ],
       "realtime": false
     },
@@ -1193,10 +1203,7 @@
         "authenticated": []
       },
       "serviceRole": [
-        "select",
-        "insert",
-        "update",
-        "delete"
+        "select"
       ],
       "realtime": false
     },
@@ -3510,10 +3517,7 @@
         "authenticated": []
       },
       "serviceRole": [
-        "select",
-        "insert",
-        "update",
-        "delete"
+        "select"
       ],
       "realtime": false
     },
@@ -4894,6 +4898,12 @@
       ]
     },
     {
+      "signature": "clear_system_health_profile_on_legacy_snapshot_update()",
+      "securityDefiner": false,
+      "fixedSearchPath": true,
+      "executeRoles": []
+    },
+    {
       "signature": "commit_kael_ai_batch_item_result(uuid, uuid, uuid, uuid, text, jsonb, jsonb, text, text, timestamp with time zone)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -5780,6 +5790,14 @@
       ]
     },
     {
+      "signature": "promote_backend_system_health_release_atomic(text, text, bigint, jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
       "signature": "promote_learning_candidate(text, text, text, text[], jsonb, jsonb, service_type, text, text, numeric, integer, uuid, text, uuid, text)",
       "securityDefiner": true,
       "fixedSearchPath": true,
@@ -6034,6 +6052,14 @@
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": []
+    },
+    {
+      "signature": "record_system_health_snapshot_v2(jsonb)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
     },
     {
       "signature": "record_system_health_snapshot(jsonb)",

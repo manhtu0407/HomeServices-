@@ -49,6 +49,15 @@ test('treats a missing function as an empty pre-deploy baseline', async () => {
   assert.deepEqual(state, { exists: false })
 })
 
+test('treats absent Edge and Worker runtimes as a first install even if an older manifest declared intent', () => {
+  const evidence = verifySystemMonitorPreviousState({
+    release,
+    edgeState: { exists: false },
+    workerState: { exists: false },
+  })
+  assert.deepEqual(evidence, { status: 'no_previous_monitor', edgeExists: false, workerExists: false })
+})
+
 test('accepts a previous monitor only when Worker and Edge identities match the active release', () => {
   const evidence = verifySystemMonitorPreviousState({
     release,

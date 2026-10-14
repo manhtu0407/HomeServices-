@@ -4,7 +4,7 @@ create schema if not exists private;
 
 create table if not exists private.kael_scope_change_quote_basis (
   quote_id uuid primary key,
-  incident_id uuid not null references public.kael_job_incidents(id) on delete cascade,
+  incident_id uuid not null unique references public.kael_job_incidents(id) on delete cascade,
   job_id uuid not null references public.jobs(id) on delete cascade,
   worker_id uuid not null,
   incident_revision integer not null check (incident_revision >= 0),
@@ -68,10 +68,6 @@ begin
     return;
   end if;
 
-  delete from private.kael_scope_change_quote_basis as basis
-    where basis.incident_id = p_incident_id
-      and basis.quote_id is distinct from p_quote_id;
-
   insert into private.kael_scope_change_quote_basis (
     quote_id, incident_id, job_id, worker_id, incident_revision,
     expires_at, analysis
@@ -79,8 +75,8 @@ begin
     p_quote_id, p_incident_id, p_job_id, p_worker_id, p_expected_revision,
     p_quote_expires_at, p_analysis
   )
-  on conflict (quote_id) do update
-    set incident_id = excluded.incident_id,
+  on conflict (incident_id) do update
+    set quote_id = excluded.quote_id,
         job_id = excluded.job_id,
         worker_id = excluded.worker_id,
         incident_revision = excluded.incident_revision,

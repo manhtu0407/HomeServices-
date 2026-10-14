@@ -167,6 +167,9 @@ function hostedBeforeBytes(root = resolve('.')) {
     projectRef: policy.projectRef,
     releaseId: policy.productionSourceBase.releaseId,
     gitSha: policy.productionSourceBase.sha,
+    registered: true,
+    controlActiveReleaseId: policy.productionSourceBase.releaseId,
+    revision: 12,
     releaseLane: 'verification',
     clientCompatibility: plan55ActiveClientCompatibility,
     migrations: inventory.entries.slice(0, 3).map(({ version, name }) => ({ version, name })),
@@ -427,3 +430,40 @@ function canonicalize(value) {
   }
   return value
 }
+
+ test('backend lane preserves hosted clients with strict coverage while push is disabled', () => {
+  const options = { environment: 'production', lane: 'backend-system-health', gitSha: 'f'.repeat(40), providerReadiness: pushUnready, requireCleanWorktree: false, hostedBeforeBytes: hostedBeforeBytes() }
+  const release = buildHarnessRelease(options)
+  assert.deepEqual(release.activeClientCompatibility, plan55ActiveClientCompatibility)
+  assert.equal(release.transactionCoverage.entryCount, 65)
+  assert.equal(release.transactionCoverage.boundAssertionsRequired, 445)
+  assert.deepEqual(checkHarnessRelease(release, { hostedBeforeBytes: options.hostedBeforeBytes }), [])
+  assert.equal(release.migrationInventory.migrationCount, JSON.parse(readFileSync('config/harness/migration-inventory.json')).migrationCount)
+  assert.equal(release.plan55AppliedMigrationSnapshot, undefined)
+  assert.throws(() => buildHarnessRelease({ ...options, activeClientCompatibility: plan55ActiveClientCompatibility }), /derived/)
+  for (const patch of [{ environment: 'staging' }, { projectRef: 'wrong' }, { gitSha: '0'.repeat(40) },
+    { releaseId: 'harness-000000000000-000000000000' }, { registered: false }, { revision: -1 }]) {
+    assert.throws(() => buildHarnessRelease({ ...options, hostedBeforeBytes: Buffer.from(JSON.stringify({ ...JSON.parse(options.hostedBeforeBytes), ...patch })) }))
+  }
+  assert.ok(checkHarnessRelease({ ...release, activeClientCompatibility: { ...release.activeClientCompatibility, contractEpoch: 3 } }).includes('backend release does not preserve its hosted Production client baseline'))
+  assert.ok(checkHarnessRelease(withProviders(release, { ...pushUnready, durable_guards: false })).includes('production provider readiness is incomplete'))
+})
+
+test('successive backend releases preserve the exact older mobile contract epoch', () => {
+  const options = { environment: 'production', lane: 'backend-system-health', gitSha: 'f'.repeat(40),
+    providerReadiness: pushUnready, requireCleanWorktree: false }
+  const hosted = JSON.parse(hostedBeforeBytes().toString('utf8'))
+  hosted.gitSha = 'e'.repeat(40)
+  hosted.releaseId = `harness-${hosted.gitSha.slice(0, 12)}-cccccccccccc`
+  hosted.controlActiveReleaseId = 'harness-eeeeeeeeeeee-ffffffffffff'
+  hosted.revision = 29
+  const bytes = Buffer.from(`${JSON.stringify(hosted, null, 2)}\n`)
+  const release = buildHarnessRelease({ ...options, hostedBeforeBytes: bytes })
+  assert.equal(release.backendHostedBaseline.gitSha, hosted.gitSha)
+  assert.equal(release.backendHostedBaseline.releaseId, hosted.releaseId)
+  assert.equal(release.backendHostedBaseline.controlActiveReleaseId, hosted.controlActiveReleaseId)
+  assert.equal(release.backendHostedBaseline.revision, hosted.revision)
+  assert.equal(release.activeClientCompatibility.gitSha, plan55ActiveClientCompatibility.gitSha)
+  assert.equal(release.activeClientCompatibility.contractEpoch, 2)
+  assert.deepEqual(checkHarnessRelease(release, { hostedBeforeBytes: bytes }), [])
+})

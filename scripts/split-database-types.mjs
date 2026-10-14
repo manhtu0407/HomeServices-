@@ -39,7 +39,8 @@ const TABLES_DIR = `${OUT_DIR}/tables`
 // a broader rule that would swallow it.
 const BUCKET_RULES = [
   ['kael', (name) => name.startsWith('kael_')],
-  ['harness', (name) => name.startsWith('harness_') || name.startsWith('stage1_')],
+  ['harness', (name) => name.startsWith('harness_') || name.startsWith('stage1_') ||
+    name === 'backend_system_health_release_evidence'],
   ['monitoring', (name) => name.startsWith('system_health_') || name.startsWith('system_mobile_health_') ||
     name.startsWith('system_monitor_')],
   ['matching', (name) => name.startsWith('matching_') || name.startsWith('confirmation_') ||

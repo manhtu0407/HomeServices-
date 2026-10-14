@@ -24,6 +24,10 @@ test('system health monitor tables belong to the monitoring lifecycle', () => {
   }
 })
 
+test('backend system-health promotion evidence belongs to the harness lifecycle', () => {
+  assert.equal(bucketOf('backend_system_health_release_evidence'), 'harness')
+})
+
 test('type regeneration preserves neighboring files and exact schema bytes', () => {
   const source = readFileSync(resolve(root, 'scripts/split-database-types.mjs'), 'utf8')
   // Refuse to exercise a destructive generator even inside the regression fixture.

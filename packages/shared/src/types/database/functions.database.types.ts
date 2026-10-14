@@ -3419,6 +3419,19 @@ export type DatabaseFunctions = {
         Args: { p_evidence: Json }
         Returns: boolean
       }
+      promote_backend_system_health_release_atomic: {
+        Args: {
+          p_expected_active_release_id: string
+          p_expected_revision: number
+          p_packet: Json
+          p_release_id: string
+        }
+        Returns: {
+          active_release_id: string
+          previous_active_release_id: string
+          revision: number
+        }[]
+      }
       promote_learning_candidate: {
         Args: {
           p_actor_id?: string
@@ -3871,7 +3884,7 @@ export type DatabaseFunctions = {
         Args: { p_snapshot: Json }
         Returns: boolean
       }
-      record_system_health_snapshot_v1_internal: {
+      record_system_health_snapshot_v2: {
         Args: { p_snapshot: Json }
         Returns: boolean
       }

@@ -26,7 +26,9 @@ export type PlatformManualBankConfig = {
 export type MobileClientPlatformCompatibility = {
   applicationId: string;
   minimumBuildNumber: number | null;
+  legacyMinimumBuildNumber?: number | null;
   easBuildId: string | null;
+  easBuildIdMode?: "exact" | "release-bound";
   runtimeVersion: string | null;
 };
 
@@ -252,6 +254,10 @@ function readMobileClientPlatformCompatibility(
   platform: "IOS" | "ANDROID",
   defaultApplicationId: string,
 ): MobileClientPlatformCompatibility {
+  const easBuildIdBinding = getEnv(`NESTSCOUT_STAGE1_${platform}_EAS_BUILD_ID`);
+  const releaseBoundEasId = getEnv("NESTSCOUT_ENVIRONMENT") === "production" &&
+    getEnv("HARNESS_RELEASE_LANE") === "backend-system-health" &&
+    easBuildIdBinding?.trim().toLowerCase() === "release-bound";
   const applicationId = readBoundedText(
     getEnv(`NESTSCOUT_STAGE1_${platform}_APPLICATION_ID`),
     160,
@@ -261,7 +267,11 @@ function readMobileClientPlatformCompatibility(
     minimumBuildNumber: readPositiveInteger(
       getEnv(`NESTSCOUT_STAGE1_${platform}_MINIMUM_BUILD_NUMBER`),
     ),
-    easBuildId: readUuid(getEnv(`NESTSCOUT_STAGE1_${platform}_EAS_BUILD_ID`)),
+    legacyMinimumBuildNumber: readPositiveInteger(
+      getEnv(`NESTSCOUT_STAGE1_${platform}_LEGACY_MINIMUM_BUILD_NUMBER`),
+    ),
+    easBuildId: releaseBoundEasId ? null : readUuid(easBuildIdBinding),
+    easBuildIdMode: releaseBoundEasId ? "release-bound" : "exact",
     runtimeVersion: readBoundedText(
       getEnv(`NESTSCOUT_STAGE1_${platform}_RUNTIME_VERSION`),
       80,

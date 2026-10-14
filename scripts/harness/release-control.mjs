@@ -13,6 +13,7 @@ import { verifySyntheticSmokeReceiptChecksum } from '../../apps/api/scripts/lib/
 import { verifyStage1PromotionPacket } from './stage1-promotion-packet.mjs'
 import { verifyEdgeSourceProof } from './edge-source-proof.mjs'
 import { verifyStage1StagingValidationPacket } from './stage1-staging-validation-packet.mjs'
+import { verifyBackendPromotionPacket } from './backend-system-health-promotion.mjs'
 import {
   loadPlan55ProductionOnlyPolicy,
   resolvePlan55PairedWavePreregistration,
@@ -20,7 +21,7 @@ import {
 } from './promotion.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const ACTIONS = new Set(['abort', 'configure', 'promote', 'read', 'reconcile-stale', 'record', 'recover', 'register'])
+const ACTIONS = new Set(['abort', 'configure', 'promote', 'promote-backend-system-health', 'read', 'reconcile-stale', 'record', 'recover', 'register'])
 const SHA256 = /^[0-9a-f]{64}$/u
 const RELEASE_ID = /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u
 const COHORT_ID = /^synthetic-stage1-[0-9a-f]{12}-[0-9a-f]{12}-[A-Za-z0-9_-]{1,48}$/u
@@ -62,7 +63,7 @@ export function parseReleaseControlArgs(args = process.argv.slice(2)) {
     if (argument === '--') continue
     if (argument === '--expected-revision') {
       const raw = requireValue(args, ++index, argument)
-      if (!/^[1-9][0-9]*$/u.test(raw)) throw new Error('--expected-revision requires a positive integer')
+      if (!/^(0|[1-9][0-9]*)$/u.test(raw)) throw new Error('--expected-revision requires a non-negative integer')
       parsed.expectedRevision = Number(raw)
       continue
     }
@@ -82,6 +83,28 @@ export function buildReleaseControlInvocation(input) {
   if (action === 'register') {
     assertRelease(release)
     return { name: 'register_harness_release', args: releaseRegistrationArgs(release, input.previousReleaseId) }
+  }
+  if (action === 'promote-backend-system-health') {
+    if (release?.environment !== 'production' || release?.releaseLane !== 'backend-system-health' ||
+        checkHarnessRelease(release).length || verifyBackendPromotionPacket(input.packet, release).length) {
+      throw new Error('backend system-health promotion packet does not match the immutable release')
+    }
+    if (!Number.isSafeInteger(input.expectedRevision) || input.expectedRevision < 0 ||
+        input.expectedActiveReleaseId !== release.backendHostedBaseline?.controlActiveReleaseId ||
+        input.expectedRevision !== release.backendHostedBaseline?.revision ||
+        input.packet.previous?.releaseId !== input.expectedActiveReleaseId ||
+        input.packet.previous?.revision !== input.expectedRevision) {
+      throw new Error('backend system-health promotion requires the exact active release baseline')
+    }
+    return {
+      name: 'promote_backend_system_health_release_atomic',
+      args: {
+        p_release_id: release.releaseId,
+        p_expected_active_release_id: input.expectedActiveReleaseId,
+        p_expected_revision: input.expectedRevision,
+        p_packet: input.packet,
+      },
+    }
   }
   if (action === 'configure' || action === 'promote') {
     assertReleaseCore(release)
@@ -165,7 +188,7 @@ export async function executeReleaseControl(input, client) {
   const invocation = buildReleaseControlInvocation(input)
   const result = await client.rpc(invocation.name, invocation.args)
   if (input.action === 'abort' && result !== true) throw new Error('hosted canary abort did not apply')
-  if (['configure', 'promote'].includes(input.action) && (!Array.isArray(result) || result.length !== 1)) {
+  if (['configure', 'promote', 'promote-backend-system-health'].includes(input.action) && (!Array.isArray(result) || result.length !== 1)) {
     throw new Error(`hosted release ${input.action} did not return one atomic control row`)
   }
   if (input.action === 'configure') {
@@ -185,6 +208,13 @@ export async function executeReleaseControl(input, client) {
     if (row?.active_release_id !== input.release.releaseId ||
         !Number.isSafeInteger(row?.revision) || row.revision !== input.expectedRevision + 1) {
       throw new Error('hosted release promotion returned the wrong atomic control state')
+    }
+  }
+  if (input.action === 'promote-backend-system-health') {
+    const row = result[0]
+    if (row?.active_release_id !== input.release.releaseId ||
+        !Number.isSafeInteger(row?.revision) || row.revision !== input.expectedRevision + 1) {
+      throw new Error('hosted backend system-health promotion returned the wrong atomic control state')
     }
   }
   if (input.action === 'record' && (typeof result !== 'string' || !UUID.test(result))) {
