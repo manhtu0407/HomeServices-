@@ -22,6 +22,8 @@ import { readdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { allowMainInCi, inspectGitState } from './check-ship-ready-git-state.mjs'
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const NODE = process.execPath
 
@@ -69,39 +71,13 @@ function testFiles() {
 }
 
 function gitState() {
-  const problems = []
   const branch = git(['rev-parse', '--abbrev-ref', 'HEAD'])?.trim()
   const status = git(['status', '--porcelain'])
-
-  if (branch === null || status === null) {
-    problems.push(['git is not answering here — run this inside the repository', []])
-    return { branch: branch ?? 'unknown', problems }
-  }
-  if (branch === 'main') {
-    problems.push(['on main — branch before you push', []])
-  }
-
-  const groups = { staged: [], unstaged: [], untracked: [] }
-  for (const line of status.split(/\r?\n/).filter(Boolean)) {
-    const code = line.slice(0, 2)
-    const path = line.slice(3)
-    if (code === '??') groups.untracked.push(path)
-    else {
-      if (code[0] !== ' ') groups.staged.push(path)
-      if (code[1] !== ' ') groups.unstaged.push(path)
-    }
-  }
-
-  const dirty = groups.staged.length + groups.unstaged.length + groups.untracked.length
-  if (dirty) {
-    const detail = []
-    for (const [label, paths] of Object.entries(groups)) {
-      for (const path of paths) detail.push(`${label.padEnd(10)} ${path}`)
-    }
-    problems.push([`${dirty} path(s) not committed — a push carries only what is committed`, detail])
-  }
-
-  return { branch, problems }
+  return inspectGitState({
+    branch,
+    status,
+    allowMain: allowMainInCi(process.argv.slice(2), process.env),
+  })
 }
 
 function runGate(name, args) {
@@ -117,7 +93,7 @@ console.log(`ship readiness on ${state.branch}\n`)
 
 console.log('git state')
 if (state.problems.length === 0) {
-  console.log('  ok    worktree clean, branch is not main')
+  console.log(`  ok    worktree clean${state.branch === 'main' ? ' for CI main release' : ', branch is not main'}`)
 } else {
   for (const [summary, detail] of state.problems) {
     console.log(`  FAIL  ${summary}`)

@@ -100,7 +100,7 @@ jobs:
       - name: Build and ship readiness
         run: |
           pnpm build
-          pnpm ship:check
+          pnpm ship:check -- --allow-main-in-ci
       - name: Secret scan
         uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
