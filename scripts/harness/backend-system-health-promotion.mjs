@@ -275,7 +275,7 @@ function readJson(path) {
 
 function buildFromFiles(args) {
   const required = ['release', 'transaction-receipt', 'mobile-source-proof', 'maintainer-source-proof', 'system-monitor-edge-proof',
-    'readonly-probe', 'previous-control', 'cloudflare-deployments', 'cloudflare-d1-evidence',
+    'readonly-probe', 'previous-control', 'cloudflare-versions', 'cloudflare-deployments', 'cloudflare-d1-evidence',
     'quality-receipt', 'quality-evidence', 'parity-receipt', 'parity-evidence',
     'expand-receipt', 'expand-evidence', 'rollback-receipt', 'rollback-evidence', 'output']
   if (required.some((key) => !args[key]) || !/^\d{1,20}$/u.test(args['workflow-run-id'] ?? '') ||
@@ -300,6 +300,7 @@ function buildFromFiles(args) {
     readonlyProbe: readJson(args['readonly-probe']),
     previous: { releaseId: previousState.active_release_id ?? null, revision: previousState.revision },
     cloudflare: {
+      versions: readJson(args['cloudflare-versions']),
       deployments: readJson(args['cloudflare-deployments']),
       d1Evidence: readJson(args['cloudflare-d1-evidence']),
     },

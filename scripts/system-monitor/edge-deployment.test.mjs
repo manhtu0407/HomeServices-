@@ -84,6 +84,49 @@ test('rejects an unregistered existing monitor before Production mutation', () =
   }), /SYSTEM_MONITOR_UNREGISTERED_RUNTIME_FOUND/u)
 })
 
+test('accepts only a rollback-tagged Worker with confirmed empty Cron schedules as a dormant first-install remnant', () => {
+  const previousRelease = { ...release, environment: 'production', systemHealthObserver: undefined }
+  const dormantWorker = {
+    exists: true,
+    deploymentId: 'deployment-id',
+    versionId: '123e4567-e89b-12d3-a456-426614174000',
+    createdAt: '2026-10-15T10:00:00.000Z',
+    releaseTag: `rollback-${'c'.repeat(40)}`,
+    releaseMessage: null,
+    cronSchedules: [],
+  }
+  const evidence = verifySystemMonitorPreviousState({
+    release: previousRelease,
+    edgeState: { exists: false },
+    workerState: dormantWorker,
+  })
+  assert.deepEqual(evidence, {
+    status: 'dormant_rollback_worker_verified',
+    releaseId: previousRelease.releaseId,
+    edgeExists: false,
+    workerExists: true,
+    workerVersionId: '123e4567-e89b-12d3-a456-426614174000',
+    workerReleaseTag: dormantWorker.releaseTag,
+    workerCronSchedules: [],
+  })
+})
+
+test('rejects an unverified Cron schedule when evaluating a rollback remnant', () => {
+  assert.throws(() => verifySystemMonitorPreviousState({
+    release: { ...release, systemHealthObserver: undefined },
+    edgeState: { exists: false },
+    workerState: { exists: true, releaseTag: `rollback-${'c'.repeat(40)}`, cronSchedules: ['* * * * *'] },
+  }), /SYSTEM_MONITOR_UNREGISTERED_RUNTIME_FOUND/u)
+})
+
+test('does not treat a rollback-tagged Worker as dormant when the active release registered the observer', () => {
+  assert.throws(() => verifySystemMonitorPreviousState({
+    release,
+    edgeState: { exists: false },
+    workerState: { exists: true, releaseTag: `rollback-${'c'.repeat(40)}`, cronSchedules: [] },
+  }), /SYSTEM_MONITOR_PREVIOUS_RUNTIME_IDENTITY_MISMATCH/u)
+})
+
 test('candidate proof requires a new active version and byte-matching source', () => {
   const evidence = verifySystemMonitorCandidate({
     release,
