@@ -2,6 +2,7 @@ name: release-backend-system-health
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
   push:
     branches: [main]
@@ -17,12 +18,15 @@ permissions:
 
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('backend-system-health-pr-{0}', github.event.pull_request.number) || 'production-release' }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   quality:
     name: strict Backend, Admin, database, and zero-inference gates
-    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend'))
+    if: >-
+      (github.event_name != 'pull_request' || github.event.pull_request.draft == false) &&
+      ((github.event_name == 'pull_request' && github.base_ref == 'main') ||
+      (github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend')))
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -124,8 +128,7 @@ jobs:
           pnpm --filter @nestscout/api exec supabase \
             --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" \
             gen types typescript --local > artifacts/release/database.types.ts
-          node scripts/split-database-types.mjs --join > artifacts/release/database.types.rejoined.ts
-          cmp artifacts/release/database.types.rejoined.ts artifacts/release/database.types.ts
+          node scripts/split-database-types.mjs --check-against artifacts/release/database.types.ts
           pnpm --filter @nestscout/api exec supabase \
             --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db lint --local --fail-on warning
       - name: Record quality evidence from executed runners

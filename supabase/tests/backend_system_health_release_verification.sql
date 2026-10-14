@@ -88,9 +88,9 @@ begin
       false, false, 'supabase/functions/kael-matching-maintainer/index.ts', null, repeat('c',64));
   delete from public.system_health_snapshots where environment='production';
   insert into public.system_health_snapshots(schema_version, environment, project_ref, release_id,
-    scheduled_at, completed_at, expires_at, overall_status, checks, profile_id, required_check_ids, coverage_gaps)
-  values(2, 'production', 'iwevizmsedyqozxlawwl', v_release_id, snapshot_at, snapshot_at,
-    snapshot_at+interval '180 seconds', 'gray', '[{"check_id":"backend-core","status":"green"},{"check_id":"backend-storage-realtime-io","status":"gray"},{"check_id":"backend-scheduled-workers","status":"gray"},{"check_id":"kael-agentic","status":"gray"},{"check_id":"app-native-connectivity","status":"gray"},{"check_id":"observer-dispatcher","status":"green"}]', 'cloudflare-admin-v1', '["backend-core","backend-storage-realtime-io","backend-scheduled-workers","kael-agentic","app-native-connectivity","observer-dispatcher"]',
+    scheduled_at, completed_at, expires_at, overall_status, checks, profile_schema_version, profile_id, required_check_ids, coverage_gaps)
+  values(1, 'production', 'iwevizmsedyqozxlawwl', v_release_id, snapshot_at, snapshot_at,
+    snapshot_at+interval '180 seconds', 'gray', '[{"check_id":"backend-core","status":"green"},{"check_id":"backend-storage-realtime-io","status":"gray"},{"check_id":"backend-scheduled-workers","status":"gray"},{"check_id":"kael-agentic","status":"gray"},{"check_id":"app-native-connectivity","status":"gray"},{"check_id":"observer-dispatcher","status":"green"}]', 2, 'cloudflare-admin-v1', '["backend-core","backend-storage-realtime-io","backend-scheduled-workers","kael-agentic","app-native-connectivity","observer-dispatcher"]',
     '["app-crash","push-notifications"]');
   insert into public.system_health_observer_state(environment, observer_heartbeat_at, d1_status, last_snapshot_at)
   values('production', snapshot_at, 'green', snapshot_at) on conflict(environment) do update

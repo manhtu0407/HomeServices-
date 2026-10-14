@@ -115,7 +115,8 @@ begin
  or p_packet#>>'{observer,d1MigrationsSha256}' is distinct from r.release_artifact#>>'{systemHealthObserver,d1MigrationsSha256}' then raise exception using errcode='23514',message='BACKEND_RELEASE_OBSERVER_INVALID'; end if;
  select * into s from public.system_health_snapshots x where x.environment='production' order by x.completed_at desc limit 1;
  select * into o from public.system_health_observer_state x where x.environment='production';
- if s.schema_version is distinct from 2 or s.profile_id is distinct from 'cloudflare-admin-v1'
+ if s.schema_version is distinct from 1 or s.profile_schema_version is distinct from 2
+ or s.profile_id is distinct from 'cloudflare-admin-v1'
  or s.release_id is distinct from p_release_id or s.project_ref is distinct from 'iwevizmsedyqozxlawwl'
  or jsonb_array_length(s.required_check_ids)<>6
  or not (s.required_check_ids @> '["backend-core","backend-storage-realtime-io","backend-scheduled-workers","kael-agentic","app-native-connectivity","observer-dispatcher"]'::jsonb)

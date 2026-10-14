@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "42231fb0cc8f5cf3ad44fa48abc81c3c1a6197c6ae16df54f357d3dfc046c7a8",
+  "migrationsSha256": "2261b4e997b66a487a83b898f09bdb4dd469bef0629ae42886eb2693b7153d7f",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e91abb2c693df49897a6652798f230ed94e32cad54732be7471069a5f1bb857f"
@@ -3332,8 +3332,8 @@
       "version": "20261014120000",
       "name": "backend_system_health_release",
       "file": "supabase/migrations/20261014120000_backend_system_health_release.sql",
-      "sha256": "efb4ad23bec6ee075a737a34f02938c852d6013b874dcce63d472388dd40fb62",
-      "bytes": 14781
+      "sha256": "20ddf927023485b782e70da5e52fac412932eb2140f87e6f53a25e72470783e4",
+      "bytes": 14829
     }
   ]
 }

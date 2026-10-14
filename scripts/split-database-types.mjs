@@ -272,6 +272,11 @@ export function join(root = ROOT) {
   ].join('\n')
 }
 
+function generatedTypesMatch(expected, actual = join()) {
+  const comparable = (text) => normalize(text).replace(/\n+$/u, '')
+  return comparable(actual) === comparable(expected)
+}
+
 // Counts top-level members per section of the public schema. Depth-based rather than
 // shape-based: three RPCs are emitted as multi-line unions (`name:` then `| {...}`) and three
 // more on a single line, so any regex keyed on `name: {` miscounts. Counting also has to stay
@@ -523,7 +528,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   } else if (flag === '--check-against') {
     const expected = normalize(source())
     const actual = join()
-    if (actual === expected) console.log('generated types match the committed split tree')
+    if (generatedTypesMatch(expected, actual)) console.log('generated types match the committed split tree')
     else {
       const left = actual.split('\n')
       const right = expected.split('\n')

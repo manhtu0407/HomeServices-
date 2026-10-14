@@ -457,17 +457,8 @@ jobs:
           retention-days: 1
       - name: Generated type drift check
         if: ${{ !cancelled() && env.DB_LANE == 'true' && steps.reset.outcome == 'success' }}
-        # The artifact is committed split across packages/shared/src/types/database/**.
-        # Rejoining it and comparing bytes keeps this check exactly as strong as the
-        # single-file cmp it replaces; --check-against only makes the failure readable.
-        run: |
-          node scripts/split-database-types.mjs --join > /tmp/rejoined.types.ts
-          if ! cmp -s /tmp/rejoined.types.ts /tmp/database.types.ts; then
-            echo "Generated database types differ from the committed split tree."
-            node scripts/split-database-types.mjs --check-against /tmp/database.types.ts || true
-            diff --unified=3 /tmp/rejoined.types.ts /tmp/database.types.ts | head -400 || true
-            exit 1
-          fi
+        # The Supabase CLI omits terminal newlines; the comparison ignores only that formatting difference.
+        run: node scripts/split-database-types.mjs --check-against /tmp/database.types.ts
       - name: Supabase schema lint
         if: ${{ !cancelled() && env.DB_LANE == 'true' && steps.reset.outcome == 'success' }}
         run: pnpm --filter @nestscout/api exec supabase db lint --local --fail-on warning --workdir ../../.scratch/ci-migrations

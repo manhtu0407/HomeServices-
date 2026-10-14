@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { test } from 'node:test'
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { bucketOf, join as joinTypes, write } from './split-database-types.mjs'
 
@@ -26,6 +27,36 @@ test('system health monitor tables belong to the monitoring lifecycle', () => {
 
 test('backend system-health promotion evidence belongs to the harness lifecycle', () => {
   assert.equal(bucketOf('backend_system_health_release_evidence'), 'harness')
+})
+
+test('generated type comparison accepts terminal newline differences but rejects schema drift', () => {
+  const committed = joinTypes(root)
+  const scratch = resolve(root, '.scratch')
+  mkdirSync(scratch, { recursive: true })
+  const fixture = mkdtempSync(resolve(scratch, 'database-types-compare-'))
+  const generatedPath = resolve(fixture, 'database.types.ts')
+  const compare = () => spawnSync(process.execPath, [
+    resolve(root, 'scripts/split-database-types.mjs'),
+    '--check-against',
+    generatedPath,
+  ], { cwd: root, encoding: 'utf8' })
+  try {
+    writeFileSync(generatedPath, committed.replace(/\n+$/u, ''))
+    const matching = compare()
+    assert.equal(matching.status, 0, matching.stderr)
+
+    writeFileSync(generatedPath, `${committed.trimEnd()}\nexport type Drift = never\n`)
+    const drift = compare()
+    assert.equal(drift.status, 1, `${drift.stdout}\n${drift.stderr}`)
+  } finally {
+    const fixturePath = resolve(fixture)
+    const relativeFixture = relative(scratch, fixturePath)
+    assert.ok(
+      relativeFixture && relativeFixture !== '..' &&
+      !relativeFixture.startsWith(`..${sep}`) && !isAbsolute(relativeFixture),
+    )
+    rmSync(fixturePath, { recursive: true, force: true })
+  }
 })
 
 test('type regeneration preserves neighboring files and exact schema bytes', () => {
