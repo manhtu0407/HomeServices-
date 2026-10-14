@@ -9,6 +9,7 @@ import {
   type PipelineResult,
 } from "../../kael/index.ts";
 import { prepareKaelPipeline } from "../../kael/pipeline/prepare.ts";
+import type { CaseSlotUnderstanding } from "../../kael/tools/case-turn-intent.ts";
 import { runKaelIntentStage } from "../../kael/pipeline/stage-intent.ts";
 import {
   sanitizeCustomerCaseEvidenceText,
@@ -33,6 +34,7 @@ import {
   resolveGroundedServiceProblem,
 } from "./estimate-intake-policy.ts";
 import { finalizeUnpricedStage1Intake } from "./estimate-support.ts";
+import { createReplyComposer } from "./reply-composer.ts";
 import { resolveStage1RuntimeBehavior } from "../release/stage1-release-lane.ts";
 
 // Counts visual evidence across the whole case so price research keys on the case, not the turn.
@@ -51,11 +53,18 @@ export async function advanceKaelChatEstimate(
     address_district?: string;
     language?: "vi" | "en";
     persisted_safety_signals?: string[];
+    slot_understanding?: CaseSlotUnderstanding;
   },
   secrets: EdgeAiSecrets,
 ) {
   const client = db(ctx);
   const progressTarget = { table: "kael_chat_sessions" as const, id: sessionId };
+  const composeReply = createReplyComposer({
+    client,
+    actorId: ctx.user.id,
+    secrets,
+    language: input.language ?? "vi",
+  });
   const llmClarificationEnabled = true;
   const language = input.language ?? "vi";
   const electricalPlaybookEnabled = Boolean(
@@ -84,6 +93,8 @@ export async function advanceKaelChatEstimate(
     earlySafetySignals,
     progressTarget,
     llmClarificationEnabled,
+    slotUnderstanding: input.slot_understanding,
+    composeReply,
   });
   if (prePipeline.handled) return;
   const {
@@ -92,6 +103,7 @@ export async function advanceKaelChatEstimate(
     district,
     conversationContext,
     priorClarificationCount,
+    slotAskCounts,
     previousAnalysisReceipt,
     customerAnalysisDetail,
   } = prePipeline;
@@ -193,6 +205,7 @@ export async function advanceKaelChatEstimate(
               intakeObservation: intent.intakeObservation,
             }),
             costUsd: prepared.stageLogs.reduce((sum, stage) => sum + (stage.costUsd ?? 0), 0),
+            composeReply,
           });
           return;
         }
@@ -260,6 +273,8 @@ export async function advanceKaelChatEstimate(
     problemChips,
     district,
     currentCostUsd,
+    slotAskCounts,
     previousAnalysisReceipt,
+    composeReply,
   });
 }

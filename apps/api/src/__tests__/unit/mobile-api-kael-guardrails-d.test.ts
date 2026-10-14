@@ -58,6 +58,8 @@ describe('Kael Track D guardrails', () => {
       for (const phrase of phrases) {
         const text = category === 'ai_self_reference'
           ? `${phrase} and I cannot help`
+          : category === 'absolute_claims' && phrase === 'khong bao gio'
+          ? `${phrase} co loi`
           : phrase
         expect(checkKaelResponse({ text, actor: 'customer' })).toMatchObject({
           allowed: false,

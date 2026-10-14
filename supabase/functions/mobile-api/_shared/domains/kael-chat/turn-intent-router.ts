@@ -19,6 +19,7 @@ import {
   readCaseRecentTurns,
   type CaseTurnRouting,
 } from "./case-question.service.ts";
+import { pendingClarificationSlotOf, slotAskCountsOf } from "./case-work-artifact.ts";
 import { applyEvidenceGapRfqFallback } from "./evidence-gap-fallback.ts";
 import {
   EVIDENCE_GAP_QUOTE_READINESS,
@@ -26,7 +27,8 @@ import {
   latestQuoteReadinessTurn,
 } from "./evidence-gap-policy.ts";
 import { evidenceGapProbe, parseReferencePriceNote, referencePriceText } from "./evidence-gap-response.ts";
-import { appendKaelSystemTurn, updateKaelSession } from "./session-store.ts";
+import { createReplyComposer, type ReplyComposer } from "./reply-composer.ts";
+import { appendKaelSystemTurn, updateKaelSession, type KaelTurnTelemetry } from "./session-store.ts";
 
 // Only these may arrive as an explicit chip choice; anything else is classified from the text.
 const CHIP_INTENTS = new Set<EdgeKaelTurnIntent>(["request_reference_price", "request_worker_quote", "ask_question"]);
@@ -41,18 +43,30 @@ export async function resolveCaseTurnRouting(input: {
   chipIntent?: string;
   secrets: EdgeAiSecrets;
 }): Promise<{ routing: CaseTurnRouting; quoteTurn: Record<string, unknown> | null }> {
-  const quoteTurn = await latestQuoteReadinessTurn(input.client, input.sessionId);
   const chip = kaelTurnIntentSchema.safeParse(input.chipIntent);
-  if (chip.success && CHIP_INTENTS.has(chip.data)) {
+  const isChip = chip.success && CHIP_INTENTS.has(chip.data);
+  // Two independent reads; the classifier needs both, a chip only the first.
+  const [quoteTurn, recentTurns] = await Promise.all([
+    latestQuoteReadinessTurn(input.client, input.sessionId),
+    isChip ? Promise.resolve([]) : readCaseRecentTurns(input.client, input.sessionId),
+  ]);
+  if (chip.success && isChip) {
     return { routing: { intent: chip.data, source: "chip", confidence: 1 }, quoteTurn };
   }
   const artifact = kaelDiagnosisScopeArtifactSchema.safeParse(input.session.diagnosis_scope);
+  const pendingSlot = artifact.success
+    ? pendingClarificationSlotOf(artifact.data, slotAskCountsOf(input.session.safe_metadata))
+    : null;
   const classified = await classifyCaseTurnIntent({
     actorId: input.ctx.user.id,
     hasLinkedJob: nullableString(input.session.job_id) !== null,
     language: input.language,
     message: input.message,
-    recentTurns: await readCaseRecentTurns(input.client, input.sessionId),
+    pendingSlot: pendingSlot && artifact.success && artifact.data.next_action.kind === "ask_question"
+      ? { slot: pendingSlot, question: artifact.data.next_action.question }
+      : null,
+    openSlots: artifact.success ? artifact.data.missing_facts.filter((slot) => slot !== pendingSlot) : [],
+    recentTurns,
     state: {
       casePhase: nullableString(input.session.case_phase),
       quoteReadiness: nullableString(quoteTurn?.quote_readiness),
@@ -68,6 +82,8 @@ export async function resolveCaseTurnRouting(input: {
       intent: classified.intent,
       source: classified.fallbackUsed ? "fallback" : "ai",
       confidence: classified.confidence,
+      telemetry: classified.telemetry,
+      slotUnderstanding: classified.slotUnderstanding,
     },
     quoteTurn,
   };
@@ -75,6 +91,9 @@ export async function resolveCaseTurnRouting(input: {
 
 // Returns true when the turn was answered here; false sends it to the estimate pipeline as before.
 export async function routeKaelChatTurnIntent(input: {
+  // The routing the caller already resolved for this turn, so the classifier runs once.
+  resolved?: Awaited<ReturnType<typeof resolveCaseTurnRouting>>;
+  composeReply?: ReplyComposer;
   ctx: MobileApiContext;
   client: DbClient;
   sessionId: string;
@@ -85,7 +104,7 @@ export async function routeKaelChatTurnIntent(input: {
   chipIntent?: string;
   secrets: EdgeAiSecrets;
 }): Promise<boolean> {
-  const { routing, quoteTurn } = await resolveCaseTurnRouting(input);
+  const { routing, quoteTurn } = input.resolved ?? await resolveCaseTurnRouting(input);
   await updateKaelSession(input.client, input.sessionId, {
     safe_metadata: compactMetadata({
       ...input.persistedMetadata,
@@ -93,6 +112,14 @@ export async function routeKaelChatTurnIntent(input: {
         intent: routing.intent,
         source: routing.source,
         confidence: routing.confidence,
+        ...(routing.telemetry
+          ? {
+            provider: routing.telemetry.provider,
+            model: routing.telemetry.model,
+            latency_ms: Math.round(routing.telemetry.latencyMs),
+            cost_usd: routing.telemetry.costUsd,
+          }
+          : {}),
         at: new Date().toISOString(),
       },
     }),
@@ -139,11 +166,13 @@ async function appendRoutedReply(
   text: string,
   nextActions: EdgeKaelNextAction[],
   extra: Record<string, unknown> = {},
+  telemetry: KaelTurnTelemetry = { replySource: "template" },
 ) {
   await appendKaelSystemTurn(input.client, input.sessionId, {
     contentType: "clarification",
     text,
     nextStatus: asKaelChatStatus(input.session.status) === "estimate_ready" ? "estimate_ready" : "active",
+    telemetry,
     metadata: {
       answered_turn_intent: routing.intent,
       turn_intent_source: routing.source,
@@ -152,6 +181,21 @@ async function appendRoutedReply(
       ...extra,
     },
   });
+}
+
+// The canned sentence is the content; the composer rewords it around what the customer just said.
+function composeNotice(
+  input: Parameters<typeof routeKaelChatTurnIntent>[0],
+  canonical: string,
+  mustKeep: readonly string[] = [],
+) {
+  const composer = input.composeReply ?? createReplyComposer({
+    client: input.client,
+    actorId: input.ctx.user.id,
+    secrets: input.secrets,
+    language: input.language,
+  });
+  return composer({ kind: "notice", canonical, customerSaid: input.message, mustKeep });
 }
 
 async function respondReferencePrice(
@@ -169,9 +213,10 @@ async function respondReferencePrice(
     exclude: ["request_reference_price"],
   });
   if (!inGap) {
-    await appendRoutedReply(input, routing, vi
+    const offered = await composeNotice(input, vi
       ? "Kael đã có đề xuất giá cho việc này ở thẻ phía trên. Bạn xem lại phạm vi và xác nhận nếu đồng ý; Kael không tự xác nhận thay bạn."
-      : "Kael already has a price offer for this case in the card above. Review the scope and confirm if you agree; Kael never confirms for you.", nextActions);
+      : "Kael already has a price offer for this case in the card above. Review the scope and confirm if you agree; Kael never confirms for you.", [vi ? "xác nhận" : "confirm"]);
+    await appendRoutedReply(input, routing, offered.text, nextActions, {}, offered.telemetry);
     return;
   }
   const reference = parseReferencePriceNote(quoteTurn?.reference_price);
@@ -179,17 +224,18 @@ async function respondReferencePrice(
   const rfqAvailable = serviceProblemId
     ? await evidenceGapRfqFallbackAvailable(input.client, serviceProblemId)
     : false;
-  const opening = reference
-    ? referencePriceText(reference, input.language)
-    : vi
+  // A reference range carries a figure and the price disclaimer, so it is never reworded.
+  const noSources = reference ? null : await composeNotice(input, vi
     ? "Hiện Kael chưa có đủ nguồn giá công khai cho đúng việc này để đưa ra khoảng tham khảo, và Kael không đoán giá khi chưa có nguồn."
-    : "Kael does not yet have enough public price sources for this exact work to show a reference range, and it does not guess a price without sources.";
+    : "Kael does not yet have enough public price sources for this exact work to show a reference range, and it does not guess a price without sources.", [vi ? "không đoán" : "guess"]);
+  const opening = reference ? referencePriceText(reference, input.language) : noSources?.text ?? "";
   await appendRoutedReply(
     input,
     routing,
     [opening, ...(rfqAvailable ? [evidenceGapProbe(input.language)] : [])].join("\n\n"),
     nextActions,
     reference ? { reference_price: reference } : {},
+    noSources?.telemetry,
   );
 }
 
@@ -213,7 +259,8 @@ async function respondProceed(
     : (vi
       ? "Để Kael bắt đầu tìm thợ, bạn bấm nút xác nhận trên thẻ đề xuất. Kael không tự xác nhận thay bạn."
       : "To let Kael start finding a worker, press the confirm button on the offer card. Kael never confirms for you.");
-  await appendRoutedReply(input, routing, text, nextActions);
+  const proceed = await composeNotice(input, text, [vi ? (inGap ? "báo giá" : "xác nhận") : (inGap ? "quote" : "confirm")]);
+  await appendRoutedReply(input, routing, proceed.text, nextActions, {}, proceed.telemetry);
 }
 
 async function respondWorkerQuote(
@@ -248,6 +295,7 @@ async function respondWorkerQuote(
     : (vi
       ? "Kael cần hoàn tất phân tích yêu cầu trước khi gửi cho thợ. Bạn bổ sung thông tin còn thiếu để Kael tiếp tục nhé."
       : "Kael needs to finish analysing the request before sending it to workers. Add the missing details so Kael can continue.");
-  await appendRoutedReply(input, routing, text, nextActions, { worker_quote_unavailable_reason: outcome.reason });
+  const notice = await composeNotice(input, text, offerReady ? [vi ? "xác nhận" : "confirm"] : []);
+  await appendRoutedReply(input, routing, notice.text, nextActions, { worker_quote_unavailable_reason: outcome.reason }, notice.telemetry);
   await restoreReviewPhase(input);
 }

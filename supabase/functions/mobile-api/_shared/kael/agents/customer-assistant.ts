@@ -41,11 +41,12 @@ import {
   type ProviderChoice,
 } from "../kael-providers/routing.ts";
 import { maxTokensForPurpose } from "../kael-providers/routing.config.ts";
-import { guardOutput } from "../kael-guardrails/output-gateway.ts";
 import {
-  auditKaelGuardrailTrip,
-  type KaelGuardrailTripClient,
-} from "../kael-guardrails/self-check.ts";
+  auditCustomerAssistantGuardTrip,
+  guardCustomerAssistantAnswer,
+  guardCustomerAssistantOutput,
+  rewriteAssistantAnswer,
+} from "./customer-assistant-guard.ts";
 import { buildKaelSystemPrompt, type KaelPromptLanguage } from "../prompts/system-prompt.ts";
 import { buildRegisterHint, detectRegionalRegister } from "../language/regional-register.ts";
 import {
@@ -87,7 +88,6 @@ import {
 } from "./customer-assistant-policy.ts";
 import {
   buildAssistantRequest,
-  reflowLongAssistantSentences,
   resolveBoundedServiceLifecycleAnswer,
   retrieveAssistantKnowledgeContext,
 } from "./customer-assistant-support.ts";
@@ -137,6 +137,7 @@ export type CustomerAssistantAnswer = {
   readonly service_intent?: "electrical" | "plumbing" | "cleaning" | "hvac" | "upholstery" | "handyman" | null;
   readonly boundary: CustomerAssistantBoundary;
   readonly fallback_used: boolean;
+  readonly regenerated?: boolean;
   readonly public_reasoning_summary?: readonly string[];
   readonly trace?: readonly KaelSafeTraceEvent[];
   readonly normalChatImageAnalysis?: NormalChatImageAnalysis | null;
@@ -545,6 +546,7 @@ async function resolveCustomerAssistantProviders(
       route,
       knowledge,
       data: result.data,
+      rewrite: (hint) => rewriteAssistantAnswer({ request, schema: responseSchema, secrets: input.secrets, spendGate, callAI: input.callAI, hint }),
       latencyMs: result.latencyMs,
       costUsd: result.usage.costUsd,
     });
@@ -589,15 +591,17 @@ async function resolveSuccessfulCustomerAssistantProvider(input: {
   route: ProviderChoice;
   knowledge: Awaited<ReturnType<typeof retrieveAssistantKnowledgeContext>>;
   data: CustomerAssistantProviderPayload;
+  rewrite?: (hint: string) => Promise<string | null>;
   latencyMs: number;
   costUsd: number;
 }): Promise<CustomerAssistantAnswer> {
-  const checked = guardCustomerAssistantOutput(
-    input.data.answer,
-    input.language,
-    input.surface,
-    input.topic,
-  );
+  const { checked, regenerated } = await guardCustomerAssistantAnswer({
+    text: input.data.answer,
+    language: input.language,
+    surface: input.surface,
+    topic: input.topic,
+    rewrite: input.input.imageUrls?.length ? undefined : input.rewrite,
+  });
   if (checked.used_fallback || !checked.allowed) {
     if (input.input.imageUrls?.length) return failImageAnalysis(input.language);
     await auditCustomerAssistantGuardTrip(input.input, input.surface, input.route, checked);
@@ -629,6 +633,7 @@ async function resolveSuccessfulCustomerAssistantProvider(input: {
     knowledge: input.knowledge,
     data: input.data,
     answer: checked.text,
+    regenerated,
     latencyMs: input.latencyMs,
     costUsd: input.costUsd,
   });
@@ -644,6 +649,7 @@ function buildSuccessfulCustomerAssistantAnswer(input: {
   knowledge: Awaited<ReturnType<typeof retrieveAssistantKnowledgeContext>>;
   data: CustomerAssistantProviderPayload;
   answer: string;
+  regenerated: boolean;
   latencyMs: number;
   costUsd: number;
 }): CustomerAssistantAnswer {
@@ -665,6 +671,7 @@ function buildSuccessfulCustomerAssistantAnswer(input: {
     service_intent: input.surface === "customer_normal" ? input.data.service_intent : null,
     boundary: input.data.boundary,
     fallback_used: false,
+    regenerated: input.regenerated,
     public_reasoning_summary: publicReasoningSummary,
     trace: input.trace,
   };
@@ -743,52 +750,4 @@ function publicCustomerReasoningSummary(
   language: KaelPromptLanguage,
 ) {
   return summary.filter((item) => isKaelReasoningPublicSummaryItem(item, language));
-}
-
-function guardCustomerAssistantOutput(
-  text: string,
-  language: KaelPromptLanguage,
-  surface: CustomerAssistantSurface,
-  topic: KaelTopic,
-) {
-  const initial = guardOutput({
-    text,
-    actor: "customer",
-    language,
-    surface,
-    fallbackText: fallbackText(language, topic),
-  });
-  if (initial.reason !== "sentence_too_long") return initial;
-  return guardOutput({
-    text: reflowLongAssistantSentences(text),
-    actor: "customer",
-    language,
-    surface,
-    fallbackText: fallbackText(language, topic),
-  });
-}
-
-async function auditCustomerAssistantGuardTrip(
-  input: CustomerAssistantInput,
-  surface: CustomerAssistantSurface,
-  route: ProviderChoice,
-  checked: ReturnType<typeof guardOutput>,
-) {
-  if (!input.client || !checked.trip) return;
-  await auditKaelGuardrailTrip(
-    input.client as unknown as KaelGuardrailTripClient,
-    {
-      jobId: input.job?.id ?? null,
-      actorId: input.actorId ?? null,
-      actorRole: "customer",
-      surface,
-      reason: checked.trip.reason,
-      guardrailLabel: checked.trip.guardrailLabel ?? null,
-      source: checked.trip.source,
-      safeMetadata: {
-        purpose: "educational_response",
-        provider: route.provider,
-      },
-    },
-  );
 }

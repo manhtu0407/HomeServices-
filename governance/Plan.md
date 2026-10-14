@@ -2016,3 +2016,66 @@ Chạy G1–G9, G11; ghi kết quả thật vào §60.V.
 |---|---|---|---|
 | 0.1 | 2026-10-12 | Claude | Viết lần đầu sau audit code + SQL read-only Production; D1–D4 do Tu chốt, D5–D9 do Claude đề xuất |
 | 0.2 | 2026-10-12 | Claude | Thực thi Phase 0–9. Lệch khỏi plan: (1) `turn_intent` ghi ở lượt Kael trả lời và `last_turn_intent` của phiên, không ở lượt khách; (2) chip Chat thường lưu `reply_next_actions` ở lượt khách vì RPC exchange chỉ nhận metadata lượt khách; (3) thêm pillar P373, P374, P375; (4) gợi ý tiếp theo của thợ chỉ có ở prompt job/intake; (5) D10 (Tu chốt khi Preview lộ ngõ cụt): nút gửi yêu cầu rfq/khảo sát nằm trong thẻ "Báo giá cần rà soát" có sẵn, không khôi phục thẻ RFQ đã xóa |
+
+## 61. Kael hiểu đúng, trả lời tự nhiên — Respond · Harness · Guardrails — 2026-10-14
+
+> **Trigger.** Tu thấy Kael máy móc, lặp mẫu, kẹt, hiểu sai, thiếu chủ động; guardrail kiểm câu chữ làm hội thoại cứng; lượt chậm, tiến trình mờ. Phạm vi: Work khách, Chat thường khách, Kael thợ; **chỉ backend**, giữ nguyên luồng/thẻ/bước. Mức 2 "AI hiểu và soạn lời". Tu tự kiểm chứng; Codex đang release nên không deploy, không apply migration.
+> **EXECUTED (chưa commit)** trên `claude/kael-harness-guardrails-adjust-2621fa`, nền `main` a29a0ac0.
+
+### 61.0 Metadata
+
+```text
+Plan ID:      plan-kael-natural-respond-20261014
+Owner:        Manh Tu            Executor: Claude
+Authority:    RULES #0/#2/#3/#4/#5/#6/#7/#8/#9/#10 · critical.md §3,§4 · STRUCTURES §4.5 · protocols/backend-structure.md · test-pillars.md · code-hygiene.md
+Out of scope: UI; migration/deploy; nguồn/tier giá; bộ nhớ liên phiên mới (critical.md §4); sửa file khóa ngoài persona.md đã được duyệt
+```
+
+### 61.1 Decision Log
+
+| # | Quyết định | Ai | Lý do |
+|---|---|---|---|
+| D1 | Mức 2: AI hiểu + soạn lời, backend-only | Tu ✔ | Giải 4 triệu chứng, không đổi luồng |
+| D2 | Trần câu khách 20→35 (hard), gợi ý mềm ≤25 | Tu ✔ | 20 "từ" = 20 âm tiết ≈ 10-12 từ Anh |
+| D3 | Từ mượn quen (app, chat, video, link, file, check-in…) không còn là tiếng Anh | Tu ✔ | Chạm cách đọc RULES #5 |
+| D4 | Guard trip → viết lại 1 lần rồi mới dùng mẫu; "không bao giờ" chỉ chặn khi cùng câu cam kết kết quả (không xóa mẫu) | Tu ✔ | D-50-D: cấm xóa pattern |
+| D5 | Sửa persona.md (file khóa): dòng "câu ngắn" + đoạn "Hội thoại tự nhiên" | Tu ✔ | `locked_change_policy` |
+| D6 | Không purpose mới, không migration: mở rộng `case_turn_intent`, composer dùng route `educational_response` (flash) | Claude | Tránh recipe 11 bước |
+| D7 | Telemetry vào cột có sẵn + `safe_metadata`; chat thường ghi vào metadata lượt khách | Claude | RPC không ghi metadata lượt Kael |
+| D8 | Playbook electrical giữ "≤20 words/sentence" cho câu cảnh báo an toàn verbatim | Claude | Câu an toàn ngắn có chủ đích; đổi sẽ bump playbook |
+
+### 61.2 Đã làm
+
+- **P0 Đo lượt.** `appendKaelSystemTurn` nhận `telemetry` → cột `ai_provider/ai_model/latency_ms/cost_usd` + `reply_source` (`ai|template|fallback|guard_regenerated`); classifier trả provider/model/latency/cost; chat thường ghi `reply_telemetry` vào metadata lượt khách; thợ ghi `reply_source`. P382.
+- **P1 Guard + charter p12.** Trần 35; bỏ `app/chat/video/link/file/check-in` khỏi danh sách tiếng Anh; "khong bao gio" có điều kiện (`PHRASE_CONDITIONS`, mirror `forbidden-language.json`); `ACTOR_STYLE` theo purpose (chat thường hội thoại); `guided-regeneration.ts` + `customer-assistant-guard.ts` (viết lại 1 lần, không ở stream preview); charter `2026-10-14.p12`. P383, P384.
+- **P2 Hiểu lượt.** Classifier đọc câu trả lời cho slot đang hỏi (`pending_slot_answer`, `answered_slots`); nhận mọi tên quận từ `HCMC_DISTRICTS`; chỉ coi là "đang chờ câu trả lời" khi Kael đã hỏi thật (`slot_ask_counts`); trần 2 lần hỏi cùng một chi tiết → xác minh tại chỗ qua đường "không biết" sẵn có; câu hỏi slot dùng catalog trước regex gộp. P385, P386.
+- **P3 Soạn lời.** `reply-composer.ts`: AI diễn đạt lại câu server đã chốt, mẫu là dự phòng; chặn số mới, câu hỏi thừa, link, mất cụm bắt buộc ("xác nhận"). Áp dụng cho câu hỏi quận, câu hỏi policy (Tier A), giải thích/"không biết", 3 lời router. Tắt bằng env `KAEL_REPLY_COMPOSER_DISABLED=1`. P387.
+- **P6 (một phần).** Router đọc `latestQuoteReadinessTurn` và `readCaseRecentTurns` song song; routing resolve một lần ở `turn.ts`.
+
+### 61.3 Lệch khỏi plan đã duyệt (nói thẳng)
+
+1. Viết lại 1 lần chỉ gắn cho **chat thường** (`customer-assistant`). Work clarification và Kael thợ chưa có (Production: 0 trip làm rõ, 1 trip thợ; cần dựng request riêng). Gap reply (`price-gap-reply`) chưa qua composer.
+2. P2.6 (thêm "không lặp câu đã hỏi" vào prompt chẩn đoán) bỏ: đổi prompt phải bump `2026-08-15.v3` mà 5 test/eval ghim; loop breaker + catalog đã chặn lặp.
+3. P6: chưa gộp 2 lời gọi AI, chưa đo p50/p90 (D9: quyết bằng số đo — chưa có); chỉ gỡ hai lần đọc DB nối tiếp.
+4. Nghi vấn router ghi đè `safe_metadata` bằng snapshot: kiểm code — snapshot chính là thứ request này vừa ghi, không sửa.
+5. Bốn test reflow trong `mobile-api-customer-assistant.test.ts` (không được thu) bị xóa vì giả định trần 20; thay bằng một case trong P384.
+6. Trần 2 lần hỏi KHÔNG áp cho câu hỏi Tier A trong `estimate-support.ts`/`unpriced-request-review.ts` (slot như `address_label` không thỏa bằng `facts`).
+
+### 61.V Verification (thật, trên máy này)
+
+- `vitest` apps/api (collected): 175 file pass / 2 skip, 2162 test pass / 2 skip, exit 0. 6 pillar mới P382–P387; mutation quan sát đỏ cho từng pillar (cap về 20; bỏ điều kiện "khong bao gio"; `regenerationHint` → null; bỏ nguồn `facts.address_district`; `CLARIFICATION_REPEAT_LIMIT` 99; bỏ kiểm số của composer; bỏ `reply_source`).
+- `packages/shared` vitest 184 pass; `type-check:api/shared/mobile` sạch; `jest kael-charter-test` 2 pass (mock p11, không phụ thuộc hằng).
+- `lint:structure`, `lint:baseline`, `lint:comments`, `lint:residue`, `lint:test-collection`, `lint:production-ui-copy`: sạch. Pillar registry ghi lại; `harness:manifest` ghi lại checksum `runtime.kael.case-turn-intent` (1 dòng).
+- **KHÔNG CHẠY:** `edge:check` (Docker daemon không chạy → BLOCKED); `test:mobile` đầy đủ (không đổi mã mobile; chỉ chạy 1 suite); test không được thu (`mobile-api-kael-p8`, `guardrails-d`, `output-gateway`, `customer-assistant`, `worker-kael-chat`, `casework-runtime`) chạy qua config tạm: 11 fail còn lại có nguyên nhân không liên quan code đã sửa (pin chuỗi nguồn, model/timeout cũ); chưa chạy baseline trên `main` để đối chiếu từng ca, nên đó là nhận định, chưa phải số đo; Production, thiết bị thật, mô hình thật: chưa.
+- Release: sửa charter/prompt/guardrail đổi `promptBundleSha256`/`policyBundleSha256` ⇒ cần live evaluation report trước khi ship (`scripts/harness/evaluation.mjs`).
+
+### 61.F Follow-up (Tu quyết)
+
+- Tra giá thị trường thành công 4/128 lần (`insufficient_trusted_data` ×51) — bộ lọc nguồn tin cậy; hướng: mở domain theo dịch vụ, baseline curated, hoặc mặc định rfq cho slug thiếu nguồn.
+- Đo baseline độ trễ bằng telemetry mới sau khi Production chạy §60+§61, rồi mới quyết gộp `case_turn_intent` với chẩn đoán.
+
+### 61.CL Change Log
+
+| Ver | Ngày | Ai | Đổi gì |
+|---|---|---|---|
+| 0.1 | 2026-10-14 | Claude | Plan + thực thi P0–P3, một phần P6; 61.3 ghi các chỗ lệch plan |

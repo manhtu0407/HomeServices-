@@ -14,14 +14,23 @@ import {
   diagnosisScopeWithGroundedAnswer,
   diagnosisScopeWithQuestion,
   loadKaelChatAnalysisState,
+  pendingClarificationSlotOf,
   persistDiagnosisScopeArtifact,
 } from "./case-work-artifact.ts";
 import {
   buildKaelConversationContext,
   mergeKaelCustomerDetailForReanalysis,
 } from "./case-work-context.ts";
-import { maybeHandleDeterministicClarificationReply } from "./clarification.service.ts";
+import {
+  breakRepeatedClarification,
+  maybeHandleDeterministicClarificationReply,
+} from "./clarification.service.ts";
+import { resolveKaelChatAddressDistrict } from "./intake.ts";
+import { sanitizeCustomerCaseEvidenceText } from "../../kael/evidence/untrusted-evidence.ts";
+import type { CaseSlotUnderstanding } from "../../kael/tools/case-turn-intent.ts";
 import { emitKaelChatStep } from "./emit-step.ts";
+import type { ReplyComposer } from "./reply-composer.ts";
+import type { KaelTurnTelemetry } from "./session-store.ts";
 import { maybeApplyKaelBoundaryGuard } from "./guard.ts";
 
 type KaelChatPrePipelineInput = {
@@ -38,6 +47,8 @@ type KaelChatPrePipelineInput = {
   readonly earlySafetySignals: readonly string[];
   readonly progressTarget: KaelProgressTarget;
   readonly llmClarificationEnabled: boolean;
+  readonly slotUnderstanding?: CaseSlotUnderstanding;
+  readonly composeReply?: ReplyComposer;
 };
 
 export type KaelChatPrePipelineResult =
@@ -49,6 +60,7 @@ export type KaelChatPrePipelineResult =
     readonly district: string;
     readonly conversationContext?: string;
     readonly priorClarificationCount: number;
+    readonly slotAskCounts: Readonly<Record<string, number>>;
     readonly previousAnalysisReceipt?: Record<string, unknown>;
     readonly customerAnalysisDetail: string;
   };
@@ -69,6 +81,7 @@ export async function prepareKaelChatPrePipeline(
     earlySafetySignals,
     progressTarget,
     llmClarificationEnabled,
+    slotUnderstanding,
   } = input;
   if (await maybeApplyKaelBoundaryGuard(
     client,
@@ -90,17 +103,20 @@ export async function prepareKaelChatPrePipeline(
     ? buildKaelConversationContext(client, sessionId)
     : null;
   conversationPromise?.catch(() => undefined);
-  const { artifact: initialArtifact, currentCostUsd, persistedTurnCount } = await loadKaelChatAnalysisState(
+  const {
+    artifact: initialArtifact,
+    currentCostUsd,
+    persistedTurnCount,
+    slotAskCounts,
+  } = await loadKaelChatAnalysisState(
     client,
     sessionId,
     serviceType,
     durableCustomerDetail || problemChips.join(" ") || serviceType,
   );
   let artifact = initialArtifact;
-  const pendingClarificationSlot = artifact.next_action.kind === "ask_question" &&
-      artifact.missing_facts.length === 1
-    ? artifact.missing_facts[0]
-    : null;
+  // Kael asks about the first missing detail, so that is the one the next reply answers.
+  const pendingClarificationSlot = pendingClarificationSlotOf(artifact, slotAskCounts);
   if (pendingClarificationSlot && await maybeHandleDeterministicClarificationReply(
     client,
     {
@@ -111,15 +127,19 @@ export async function prepareKaelChatPrePipeline(
       progressTarget,
       safetySignals: earlySafetySignals,
       sessionId,
+      understandingKind: slotUnderstanding?.kind,
+      composeReply: input.composeReply,
     },
   )) return { handled: true };
-  if (pendingClarificationSlot && isGroundedClarificationAnswer(safeCustomerEvidence)) {
-    artifact = diagnosisScopeWithGroundedAnswer(
-      artifact,
-      pendingClarificationSlot,
+  if (pendingClarificationSlot) {
+    const grounded = groundSlotAnswers(artifact, pendingClarificationSlot, slotUnderstanding, {
+      customerEvidence: safeCustomerEvidence,
       durableCustomerDetail,
-    );
-    await persistDiagnosisScopeArtifact(client, sessionId, artifact);
+    });
+    if (grounded !== artifact) {
+      artifact = grounded;
+      await persistDiagnosisScopeArtifact(client, sessionId, artifact);
+    }
   }
   if (await handlePrePipelineEscalationOrCostCap(
     input,
@@ -128,7 +148,7 @@ export async function prepareKaelChatPrePipeline(
     persistedTurnCount,
   )) return { handled: true };
 
-  const intake = await resolvePrePipelineIntake(input, artifact);
+  const intake = await resolvePrePipelineIntake(input, artifact, slotAskCounts);
   if (intake.handled) return intake;
   const district = intake.district;
 
@@ -153,9 +173,31 @@ export async function prepareKaelChatPrePipeline(
     district,
     conversationContext,
     priorClarificationCount,
+    slotAskCounts,
     previousAnalysisReceipt,
     customerAnalysisDetail,
   };
+}
+
+// A reply the model read as an answer fills the detail Kael asked about, in the customer's own words;
+// without that reading, any reply that is not a question or "I don't know" counts, as it always did.
+function groundSlotAnswers(
+  artifact: KaelDiagnosisScopeArtifact,
+  pendingSlot: string,
+  understanding: CaseSlotUnderstanding | undefined,
+  text: { customerEvidence: string; durableCustomerDetail: string },
+): KaelDiagnosisScopeArtifact {
+  let next = artifact;
+  for (const extra of understanding?.answeredSlots ?? []) {
+    if (!next.missing_facts.includes(extra.slot)) continue;
+    next = diagnosisScopeWithGroundedAnswer(next, extra.slot, sanitizeCustomerCaseEvidenceText(extra.value));
+  }
+  const answered = understanding
+    ? understanding.kind === "answered"
+    : isGroundedClarificationAnswer(text.customerEvidence);
+  if (!answered) return next;
+  const own = understanding?.value ? sanitizeCustomerCaseEvidenceText(understanding.value) : "";
+  return diagnosisScopeWithGroundedAnswer(next, pendingSlot, own || text.durableCustomerDetail);
 }
 
 async function handlePrePipelineEscalationOrCostCap(
@@ -231,13 +273,32 @@ async function handlePrePipelineEscalationOrCostCap(
 async function resolvePrePipelineIntake(
   input: KaelChatPrePipelineInput,
   artifact: KaelDiagnosisScopeArtifact,
+  slotAskCounts: Readonly<Record<string, number>>,
 ): Promise<{ handled: true } | { handled: false; district: string }> {
-  const district = normalizeServiceAreaDistrict(input.address_district);
+  // The answer to the district question lives in the artifact, in whatever words the customer used.
+  const savedAnswer = artifact.facts.address_district;
+  const district = normalizeServiceAreaDistrict(input.address_district) ??
+    (typeof savedAnswer === "string" ? resolveKaelChatAddressDistrict(savedAnswer) : null);
   if (!district) {
+    if (await breakRepeatedClarification(input.client, {
+      artifact,
+      customerEvidence: input.safeCustomerEvidence,
+      language: input.language,
+      pendingSlot: "address_district",
+      progressTarget: input.progressTarget,
+      safetySignals: input.earlySafetySignals,
+      sessionId: input.sessionId,
+      slotAskCounts,
+      composeReply: input.composeReply,
+    })) return { handled: true };
+    const canonical = input.language === "en"
+      ? "Which Ho Chi Minh City district is the apartment in? Kael uses it to validate the area and eligible workers."
+      : "Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.";
+    const composed = input.composeReply && input.earlySafetySignals.length === 0
+      ? await input.composeReply({ kind: "ask_detail", canonical, customerSaid: input.safeCustomerEvidence })
+      : null;
     const question = prependDeterministicSafetyGuidance(
-      input.language === "en"
-        ? "Which Ho Chi Minh City district is the apartment in? Kael uses it to validate the area and eligible workers."
-        : "Bạn cho Kael biết quận ở TP.HCM để ước tính đúng khu vực và tìm thợ phù hợp.",
+      composed?.text ?? canonical,
       input.earlySafetySignals,
       input.language,
       { serviceType: input.serviceType },
@@ -253,6 +314,7 @@ async function resolvePrePipelineIntake(
       nextArtifact,
       question,
       ["address_district"],
+      composed?.telemetry,
     );
     return { handled: true };
   }
@@ -275,6 +337,7 @@ async function emitPrePipelineClarification(
   artifact: KaelDiagnosisScopeArtifact,
   question: string,
   missingFields: readonly ("address_district" | "description")[],
+  telemetry?: KaelTurnTelemetry,
 ) {
   await emitKaelChatStep(input.client, input.sessionId, input.progressTarget, {
     artifact,
@@ -282,6 +345,7 @@ async function emitPrePipelineClarification(
       contentType: "clarification",
       text: question,
       nextStatus: "active",
+      telemetry,
       metadata: {
         artifact_proposal: buildKaelMissingInfoArtifactProposal({ missingFields, question }),
         diagnosis_scope: artifact,

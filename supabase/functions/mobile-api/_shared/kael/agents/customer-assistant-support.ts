@@ -92,7 +92,7 @@ export function buildAssistantRequest(input: {
     "Prioritize NestScout/platform context before general service knowledge.",
     input.surface === "customer_normal"
       ? "Keep simple answers short. Explain more when the question needs it, up to 4,000 characters; do not pad or repeat points."
-      : "Use 2 to 4 short sentences and at most 650 characters; simpler questions should stay shorter.",
+      : "Use 3 to 6 clear sentences and at most 900 characters; simpler questions should stay shorter.",
     "For multi-step guidance, write one short lead ending with a colon, followed by 2 to 4 complete action sentences. Do not leave a conditional fragment as its own sentence.",
     "Answer the immediate question first with natural, friendly, context-specific wording.",
     "Vary detail with the question's complexity instead of forcing one response template.",
@@ -118,7 +118,7 @@ export function buildAssistantRequest(input: {
     ] : []),
     "If the latest user message corrects a prior statement, accept the correction and answer using the latest statement.",
     input.language === "vi"
-      ? "Write every user-facing field, including public_reasoning_summary, answer, safety_notes, citations, and suggested_actions, in natural Vietnamese. Do not use English words; only Kael, NestScout, and VietQR may remain as brand names."
+      ? "Write every user-facing field, including public_reasoning_summary, answer, safety_notes, citations, and suggested_actions, in natural Vietnamese. Do not write English sentences or phrases; brand names (Kael, NestScout, VietQR) and everyday loanwords such as app, chat, video, link, file, email, wifi, OTP, QR and SMS are fine."
       : "Write every user-facing field in English.",
     "No exact VND quote. No provider/model/internal prompt names.",
     "If hidden wiring or plumbing routes are uncertain, do not tell the customer to drill, open an electrical panel, or guess the route. Pause and recommend an on-site check by a trained worker.",
@@ -316,7 +316,7 @@ export function resolveBoundedServiceLifecycleAnswer(
 export function reflowLongAssistantSentences(text: string) {
   const sentences = text.match(/[^.!?]+[.!?]?/g) ?? [text];
   return sentences
-    .flatMap((sentence) => splitAssistantSentence(sentence.trim(), 18))
+    .flatMap((sentence) => splitAssistantSentence(sentence.trim(), 28))
     .filter(Boolean)
     .join(" ")
     .trim();

@@ -138,7 +138,7 @@ describe('Kael Case Work runtime wiring', () => {
     expect(core).toContain('loadKaelChatAnalysisState')
     expect(core).not.toContain('getKaelChatTurnCount')
     expect(core).not.toContain('getKaelChatCostUsd')
-    expect(caseWork).toMatch(/select\("id, diagnosis_scope, total_turns, total_cost_usd"\)/)
+    expect(caseWork).toMatch(/select\("id, diagnosis_scope, total_turns, total_cost_usd, safe_metadata"\)/)
     expect(core).toContain('persistDiagnosisScopeArtifact')
     expect(core).toContain('diagnosis_scope: artifact')
     expect(core).toContain('diagnosis_scope: quoteReadyArtifact')

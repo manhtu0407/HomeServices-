@@ -13,6 +13,7 @@ import {
   isKaelPlaybookEnabled,
 } from "../learning/playbooks/registry.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "../prompts/prompts.ts";
+import { intakeSlotQuestion } from "../language/intake-slot-questions.ts";
 import type { IntakeEvalObservation } from "../contracts/types.ts";
 import {
   intakeEvalObservationSchema,
@@ -317,6 +318,9 @@ export function buildFocusedClarificationQuestion(
   };
   const compositeQuestion = compositeQuestions[slot]?.[language];
   if (compositeQuestion) return compositeQuestion;
+  // Different slots used to collapse into one of the pattern lines below; a slot with its own wording keeps it.
+  const cataloguedQuestion = intakeSlotQuestion(slot, language)?.question;
+  if (cataloguedQuestion) return cataloguedQuestion;
   if (/(?:time|window|schedule|urgency|duration|history)/.test(slot)) {
     return language === "en"
       ? "When do you need this work completed?"

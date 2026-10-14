@@ -11,8 +11,8 @@ function readCharter(file: string) {
 describe('Kael P11 charter source files', () => {
   it('tracks the charter version in the version.json manifest', () => {
     const manifest = readCharter('version.json')
-    expect(manifest).toContain('"charter_version": "2026-08-06.p11"')
-    expect(manifest).toContain('"last_modified": "2026-08-06"')
+    expect(manifest).toContain('"charter_version": "2026-10-14.p12"')
+    expect(manifest).toContain('"last_modified": "2026-10-14"')
   })
 
   it('records the locked charter files and lock policy in the manifest', () => {

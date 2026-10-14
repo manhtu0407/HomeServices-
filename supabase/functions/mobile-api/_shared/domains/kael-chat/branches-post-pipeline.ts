@@ -12,6 +12,7 @@ import type { DbClient } from "../../platform/db.ts";
 import type { ServiceType } from "../../../../_shared/domain.ts";
 import { diagnosisScopeWithQuestion } from "./case-work-artifact.ts";
 import { handleKaelPipelineClarification } from "./clarification.service.ts";
+import type { ReplyComposer } from "./reply-composer.ts";
 import { emitKaelChatStep } from "./emit-step.ts";
 import { finalizeKaelChatEstimate } from "./estimate-support.ts";
 import { emitEvidenceGapStep } from "./evidence-gap-response.ts";
@@ -47,6 +48,8 @@ type KaelChatPostPipelineInput = {
   readonly problemChips: string[];
   readonly district: string;
   readonly currentCostUsd: number;
+  readonly slotAskCounts?: Readonly<Record<string, number>>;
+  readonly composeReply?: ReplyComposer;
   readonly previousAnalysisReceipt?: Record<string, unknown>;
 };
 
@@ -115,6 +118,7 @@ export async function handleKaelChatPipelineOutcome(
     district,
     currentCostUsd,
     previousAnalysisReceipt,
+    composeReply: input.composeReply,
     environment: input.ctx.environment,
     releaseId: input.ctx.releaseId,
     deploymentId: input.ctx.deploymentId,
@@ -172,6 +176,7 @@ async function handleFailedKaelChatPipeline(input: {
       language: input.input.language,
       responseSafetySignals: input.responseSafetySignals,
       progressTarget: input.input.progressTarget,
+      slotAskCounts: input.input.slotAskCounts,
     });
     return;
   }

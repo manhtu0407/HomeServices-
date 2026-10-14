@@ -210,6 +210,7 @@ export async function emitEvidenceGapStep(input: {
       contentType: "analysis",
       text: withIntakeSafetyGuidance(content.text, input.responseSafetySignals, input.language),
       nextStatus: "active",
+      telemetry: { replySource: "template" },
       metadata: {
         diagnosis_scope: input.artifact,
         quote_readiness: "validated_price_evidence_unavailable",

@@ -22,6 +22,7 @@ import { intakeObservationMetadata, withIntakeSafetyGuidance } from "./intake-sa
 import { appendKaelSystemTurn, updateKaelSession } from "./session-store.ts";
 import { maybeRequestEstimateEvidence } from "./estimate-request-evidence.ts";
 import { localizedPolicyQuestion, persistUnpricedRequestReview } from "./unpriced-request-review.ts";
+import type { ReplyComposer } from "./reply-composer.ts";
 import { emitEvidenceGapStep } from "./evidence-gap-response.ts";
 import { resolveStage1RuntimeBehavior } from "../release/stage1-release-lane.ts";
 import {
@@ -60,6 +61,7 @@ type FinalizeKaelChatEstimateInput = {
   readonly district: string;
   readonly currentCostUsd: number;
   readonly previousAnalysisReceipt?: Record<string, unknown>;
+  readonly composeReply?: ReplyComposer;
   readonly environment?: string;
   readonly releaseId?: string;
   readonly deploymentId?: string;
@@ -177,6 +179,7 @@ export async function finalizeKaelChatEstimate(
       safetyFlags: buildProfileSafetyFlags(profile, responseSafetySignals, language),
       confidence: estimate.confidence,
       costUsd,
+      composeReply: input.composeReply,
     });
     return;
   }
@@ -414,6 +417,7 @@ export async function finalizeUnpricedStage1Intake(input: {
   profileFacts: Record<string, string>;
   responseSafetySignals: readonly string[];
   costUsd: number;
+  composeReply?: ReplyComposer;
 }) {
   const profile = getKaelPerformanceProfile(input.serviceType);
   if (!profile || (input.policy.quoteMode !== "rfq" && input.policy.quoteMode !== "inspection_only")) {
@@ -444,6 +448,7 @@ export async function finalizeUnpricedStage1Intake(input: {
     safetyFlags: buildProfileSafetyFlags(profile, input.responseSafetySignals, input.language),
     confidence: input.artifact.confidence,
     costUsd: input.costUsd,
+    composeReply: input.composeReply,
   });
 }
 
@@ -548,8 +553,14 @@ async function persistValidatedEstimate(input: {
   };
   if (!quoteReady) {
     const missingField = policy.missingTierA[0] ?? missingRequiredEnrichment[0];
+    const canonicalQuestion = !safetyStop && missingField
+      ? localizedPolicyQuestion(policy, missingField, language)
+      : null;
+    const composedQuestion = canonicalQuestion && input.input.composeReply && input.input.responseSafetySignals.length === 0
+      ? await input.input.composeReply({ kind: "ask_detail", canonical: canonicalQuestion, customerSaid: customerAnalysisDetail })
+      : null;
     const guidance = safetyStop?.customer_message ??
-      (missingField ? localizedPolicyQuestion(policy, missingField, language) : null) ??
+      composedQuestion?.text ?? canonicalQuestion ??
       estimate.needs_inspection_reason ??
       (language === "en"
         ? "Kael needs one more verified detail before an offer can be shown."
@@ -563,6 +574,7 @@ async function persistValidatedEstimate(input: {
       ),
       nextStatus: "active",
       costUsd,
+      telemetry: composedQuestion?.telemetry,
       metadata: {
         diagnosis_scope: quoteReadyArtifact,
         intake_coverage: intakeCoverage,

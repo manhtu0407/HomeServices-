@@ -7,7 +7,7 @@ import {
   kaelDiagnosisScopeArtifactSchema,
 } from "../../kael/index.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
-import { asNumber } from "../../platform/coercions.ts";
+import { asNumber, asRecord } from "../../platform/coercions.ts";
 import { type DbClient, dbQuery } from "../../platform/db.ts";
 import { sanitizeCustomerCaseEvidenceText } from "../../kael/evidence/untrusted-evidence.ts";
 
@@ -20,10 +20,11 @@ export async function loadKaelChatAnalysisState(
   artifact: KaelDiagnosisScopeArtifact;
   currentCostUsd: number;
   persistedTurnCount: number;
+  slotAskCounts: Record<string, number>;
 }> {
   const result = await dbQuery<Record<string, unknown>>(
     client.from("kael_chat_sessions")
-      .select("id, diagnosis_scope, total_turns, total_cost_usd")
+      .select("id, diagnosis_scope, total_turns, total_cost_usd, safe_metadata")
       .eq("id", sessionId)
       .single(),
   );
@@ -54,8 +55,28 @@ export async function loadKaelChatAnalysisState(
     artifact,
     currentCostUsd: asNumber(result.data.total_cost_usd),
     persistedTurnCount: asNumber(result.data.total_turns),
+    slotAskCounts: slotAskCountsOf(result.data.safe_metadata),
   };
 }
+// How many times Kael has already asked for each missing detail in this session.
+export function slotAskCountsOf(sessionMetadata: unknown): Record<string, number> {
+  const counts = asRecord(asRecord(sessionMetadata).slot_ask_counts);
+  return Object.fromEntries(
+    Object.entries(counts).flatMap(([slot, value]) => typeof value === "number" ? [[slot, value]] : []),
+  );
+}
+
+// The detail the customer's next reply answers. A brand-new artifact also says "ask a question", so the
+// question counts only once Kael has really asked for that detail (or it is the single thing missing).
+export function pendingClarificationSlotOf(
+  artifact: KaelDiagnosisScopeArtifact,
+  slotAskCounts: Readonly<Record<string, number>>,
+): string | null {
+  if (artifact.next_action.kind !== "ask_question" || artifact.missing_facts.length === 0) return null;
+  const slot = artifact.missing_facts[0];
+  return artifact.missing_facts.length === 1 || (slotAskCounts[slot] ?? 0) > 0 ? slot : null;
+}
+
 export function diagnosisScopeWithQuestion(
   artifact: KaelDiagnosisScopeArtifact,
   missingFacts: readonly string[],

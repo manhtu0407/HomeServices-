@@ -131,14 +131,22 @@ const DIACRITIC_SENSITIVE_PHRASES: Readonly<Record<string, RegExp>> = {
   vai: /(?:^|[^\p{L}\p{N}_])(?:vai|vãi)(?=$|[^\p{L}\p{N}_])/iu,
   om: /(?:^|[^\p{L}\p{N}_])(?:om|ờm)(?=$|[^\p{L}\p{N}_])/iu,
 };
-const CUSTOMER_SENTENCE_WORD_CAP = 20;
+// Vietnamese writes one syllable per whitespace token, so this is a hard ceiling for run-on text
+// rather than a style target; the prompt asks for 25 or fewer.
+const CUSTOMER_SENTENCE_WORD_CAP = 35;
+
+// "không bao giờ" is ordinary reassurance ("Kael không bao giờ tự xác nhận thay bạn"); it is a
+// guarantee only when the same sentence promises an outcome.
+const PHRASE_CONDITIONS: Readonly<Record<string, RegExp>> = {
+  "khong bao gio": /\b(?:loi|hong|that bai|sai sot|ket qua|dam bao|chac chan|cam ket|tuyet doi|an toan|rui ro|su co)\b/,
+};
 const ENGLISH_SIGNAL_WORDS = [
   "after",
   "this",
   "answer",
   "before",
-  "confirm",
   "check",
+  "confirm",
   "english",
   "job",
   "next",
@@ -155,7 +163,9 @@ const ENGLISH_SIGNAL_WORDS = [
   "worker",
   "customer",
 ];
-const ENGLISH_WORKFLOW_FRAGMENT = /\b(?:app|case|check(?:[-\s]?in)?|confirm|customer|job|next|open|payment|pending|review|scope(?:[-\s]?change)?|staging|status|step|worker)\b/i;
+// Established loanwords (app, chat, video, link, file, check-in) are Vietnamese in everyday use and
+// are deliberately absent from both lists below; real English phrases still trip them.
+const ENGLISH_WORKFLOW_FRAGMENT = /\b(?:case|check(?![-\s]?in\b)|confirm|customer|job|next|open|payment|pending|review|scope(?:[-\s]?change)?|staging|status|step|worker)\b/i;
 const ENGLISH_REPLY_WORDS = [
   "answer",
   "access",
@@ -170,8 +180,6 @@ const ENGLISH_REPLY_WORDS = [
   "cancel",
   "card",
   "case",
-  "chat",
-  "check",
   "code",
   "completed",
   "confirm",
@@ -185,7 +193,6 @@ const ENGLISH_REPLY_WORDS = [
   "error",
   "evidence",
   "feature",
-  "file",
   "flow",
   "form",
   "follow",
@@ -194,7 +201,6 @@ const ENGLISH_REPLY_WORDS = [
   "image",
   "input",
   "job",
-  "link",
   "list",
   "login",
   "message",
@@ -234,7 +240,6 @@ const ENGLISH_REPLY_WORDS = [
   "update",
   "user",
   "verify",
-  "video",
   "warning",
   "worker",
   "workflow",
@@ -272,7 +277,7 @@ export function checkKaelResponse(input: KaelSelfCheckInput): KaelSelfCheckResul
     Exclude<KaelSelfCheckReason, "empty" | "exact_vnd" | "language_mismatch" | "sentence_too_long" | "semantic_guardrail">,
     readonly string[],
   ]>) {
-    const phraseMatched = phrases.some((phrase) => containsCanonicalPhrase(text, canonical, phrase));
+    const phraseMatched = phrases.some((phrase) => matchesForbiddenPhrase(text, canonical, phrase));
     if (!phraseMatched) continue;
     if (reason === "ai_self_reference" && !AI_SELF_REFERENCE_LIMITATION_PATTERN.test(canonical)) {
       continue;
@@ -377,6 +382,18 @@ function selfCheckFailure(result: KaelSelfCheckResult) {
     reason: result.reason ?? "empty",
     guardrailLabel: result.guardrailLabel,
   };
+}
+
+function matchesForbiddenPhrase(
+  originalText: string,
+  canonicalText: string,
+  phrase: string,
+): boolean {
+  const condition = PHRASE_CONDITIONS[phrase];
+  if (!condition) return containsCanonicalPhrase(originalText, canonicalText, phrase);
+  return canonicalText.split(/[.!?;\n]+/).some((sentence) =>
+    containsCanonicalPhrase(sentence, sentence, phrase) && condition.test(sentence)
+  );
 }
 
 function containsCanonicalPhrase(

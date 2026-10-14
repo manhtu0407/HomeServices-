@@ -3,6 +3,8 @@
 
 import type { EdgeKaelNextAction, EdgeKaelTurnIntent } from "../../../../_shared/contracts/kael-next-actions.ts";
 import { kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets } from "../../kael/index.ts";
+import type { CaseTurnIntentResult } from "../../kael/tools/case-turn-intent.ts";
+import { telemetryFromTrace } from "./turn-telemetry.ts";
 import type { NormalChatPreviousTurn } from "../../kael/kael-memory/normal-chat-session.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { asKaelChatStatus, asNumber, asRecord, nullableString } from "../../platform/coercions.ts";
@@ -20,6 +22,8 @@ export type CaseTurnRouting = {
   readonly intent: EdgeKaelTurnIntent;
   readonly source: "chip" | "ai" | "fallback";
   readonly confidence: number;
+  readonly telemetry?: CaseTurnIntentResult["telemetry"];
+  readonly slotUnderstanding?: CaseTurnIntentResult["slotUnderstanding"];
 };
 
 export async function readCaseRecentTurns(
@@ -110,6 +114,7 @@ export async function answerKaelCaseQuestion(input: {
   const quoteTurn = await latestQuoteReadinessTurn(input.client, input.sessionId);
   let text: string;
   let fallbackUsed = false;
+  let telemetry = telemetryFromTrace(undefined, "template");
   try {
     const answer = await answerKaelAssistant(input.ctx, {
       language: input.language,
@@ -124,6 +129,7 @@ export async function answerKaelCaseQuestion(input: {
       ? `${answer.answer}\n\n${input.language === "en" ? "Note" : "Lưu ý"}: ${notes.join(" ")}`
       : answer.answer;
     fallbackUsed = answer.fallback_used;
+    telemetry = telemetryFromTrace(answer.trace, fallbackUsed ? "fallback" : answer.regenerated ? "guard_regenerated" : "ai");
   } catch (error) {
     console.warn("kael case question answer unavailable", {
       sessionId: input.sessionId,
@@ -146,6 +152,7 @@ export async function answerKaelCaseQuestion(input: {
     contentType: "clarification",
     text: text.slice(0, 4_000),
     nextStatus: currentStatus === "estimate_ready" ? "estimate_ready" : "active",
+    telemetry,
     metadata: {
       answered_turn_intent: input.routing.intent,
       turn_intent_source: input.routing.source,
