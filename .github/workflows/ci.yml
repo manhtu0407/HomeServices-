@@ -422,11 +422,16 @@ jobs:
             --empty-reset \
             --inventory config/harness/migration-inventory.json \
             --output .scratch/ci-migrations
+      - name: Prime digest-pinned Supabase images
+        run: |
+          image_args=()
+          if [ "$INTEGRATION_LANE" = 'true' ]; then image_args+=(--include-edge-runtime); fi
+          node scripts/harness/prime-supabase-images.mjs "${image_args[@]}"
       - name: Start isolated local Supabase
         run: |
-          # The integration suite needs the full stack; the schema checks do not need Edge.
-          exclude=()
-          if [ "$INTEGRATION_LANE" != 'true' ]; then exclude=(--exclude edge-runtime); fi
+          # Migration and Edge tests do not exercise the local dashboard or analytics stack.
+          exclude=(--exclude studio,postgres-meta,logflare,vector)
+          if [ "$INTEGRATION_LANE" != 'true' ]; then exclude+=(--exclude edge-runtime); fi
           pnpm --filter @nestscout/api exec supabase start --workdir ../../.scratch/ci-migrations "${exclude[@]}"
       - name: Record isolated Postgres image identity
         run: |

@@ -125,8 +125,21 @@ order by object_kind, schema_name, relation_name, object_name`,
       parameters: [],
     }),
   })
+  const releaseControlResult = await fetchJson(fetchImpl, `${managementOrigin}/database/query/read-only`, {
+    method: 'POST',
+    headers: managementHeaders,
+    signal: AbortSignal.timeout(10_000),
+    body: JSON.stringify({
+      query: `
+select active_release_id, revision
+from public.stage1_release_controls
+where environment = 'production'`,
+      parameters: [],
+    }),
+  })
 
   const release = health?.release ?? {}
+  const releaseControl = hostedReleaseControlState(normalizeRows(releaseControlResult))
   return {
     environment: health?.environment?.name ?? input.environment,
     // Unlike `environment`, this fell back to a bare null rather than the already-validated
@@ -152,6 +165,9 @@ order by object_kind, schema_name, relation_name, object_name`,
     providerReadinessFingerprintSha256: release.provider_readiness_fingerprint_sha256 ?? null,
     providerReadiness: release.provider_readiness ?? null,
     clientCompatibility: release.client_compatibility ?? null,
+    registered: release.registered === true,
+    controlActiveReleaseId: releaseControl.activeReleaseId,
+    revision: releaseControl.revision,
     migrations: normalizeRows(migrationResult),
     migrationObjectPreconditions: normalizeRows(migrationObjectPreconditionResult),
     // Production hosts other Edge Functions too (kael-learning-monitor, sepay-webhook, ...); only
@@ -447,6 +463,25 @@ function normalizeRows(value) {
   if (Array.isArray(value?.result)) return value.result
   if (Array.isArray(value?.data)) return value.data
   throw new Error('hosted deployment evidence response is not a row array')
+}
+
+function hostedReleaseControlState(rows) {
+  if (rows.length > 1) throw new Error('hosted release control evidence is ambiguous')
+  if (rows.length === 0) return { activeReleaseId: null, revision: 0 }
+  const row = rows[0]
+  if (!row || typeof row !== 'object' || Array.isArray(row)) {
+    throw new Error('hosted release control evidence is invalid')
+  }
+  const activeReleaseId = row.active_release_id
+  const revisionValue = row.revision
+  const revision = typeof revisionValue === 'number' ? revisionValue : Number(revisionValue)
+  if ((activeReleaseId !== null && (typeof activeReleaseId !== 'string' ||
+      !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(activeReleaseId))) ||
+      !(typeof revisionValue === 'number' || (typeof revisionValue === 'string' && /^(0|[1-9][0-9]*)$/u.test(revisionValue))) ||
+      !Number.isSafeInteger(revision) || revision < 0) {
+    throw new Error('hosted release control evidence is invalid')
+  }
+  return { activeReleaseId, revision }
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
