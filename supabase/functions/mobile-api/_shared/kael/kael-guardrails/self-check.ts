@@ -135,10 +135,10 @@ const DIACRITIC_SENSITIVE_PHRASES: Readonly<Record<string, RegExp>> = {
 // rather than a style target; the prompt asks for 25 or fewer.
 const CUSTOMER_SENTENCE_WORD_CAP = 35;
 
-// "không bao giờ" is ordinary reassurance ("Kael không bao giờ tự xác nhận thay bạn"); it is a
-// guarantee only when the same sentence promises an outcome.
-const PHRASE_CONDITIONS: Readonly<Record<string, RegExp>> = {
-  "khong bao gio": /\b(?:loi|hong|that bai|sai sot|ket qua|dam bao|chac chan|cam ket|tuyet doi|an toan|rui ro|su co)\b/,
+// "không bao giờ" is ordinary reassurance about who acts ("Kael không bao giờ tự xác nhận thay bạn",
+// "không bao giờ tự mở tủ điện"); in any other sentence it is an outcome guarantee.
+const PHRASE_EXEMPTIONS: Readonly<Record<string, RegExp>> = {
+  "khong bao gio": /\bkhong bao gio\s+(?:tu|chia se|yeu cau|ep|tiet lo|gui|luu|thay|xac nhan|dat)\b/,
 };
 const ENGLISH_SIGNAL_WORDS = [
   "after",
@@ -389,10 +389,10 @@ function matchesForbiddenPhrase(
   canonicalText: string,
   phrase: string,
 ): boolean {
-  const condition = PHRASE_CONDITIONS[phrase];
-  if (!condition) return containsCanonicalPhrase(originalText, canonicalText, phrase);
+  const exemption = PHRASE_EXEMPTIONS[phrase];
+  if (!exemption) return containsCanonicalPhrase(originalText, canonicalText, phrase);
   return canonicalText.split(/[.!?;\n]+/).some((sentence) =>
-    containsCanonicalPhrase(sentence, sentence, phrase) && condition.test(sentence)
+    containsCanonicalPhrase(sentence, sentence, phrase) && !exemption.test(sentence)
   );
 }
 

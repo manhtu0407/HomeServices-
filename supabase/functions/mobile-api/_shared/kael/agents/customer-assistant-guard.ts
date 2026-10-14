@@ -50,7 +50,7 @@ export async function guardCustomerAssistantAnswer(input: {
   readonly surface: CustomerAssistantSurface;
   readonly topic: KaelTopic;
   readonly rewrite?: (hint: string) => Promise<string | null>;
-}): Promise<{ readonly checked: GuardedAnswer; readonly regenerated: boolean }> {
+}): Promise<{ readonly checked: GuardedAnswer; readonly regenerated: boolean; readonly firstTrip?: GuardedAnswer }> {
   const first = guardCustomerAssistantOutput(input.text, input.language, input.surface, input.topic);
   if (!input.rewrite || (first.allowed && !first.used_fallback)) {
     return { checked: first, regenerated: false };
@@ -61,7 +61,7 @@ export async function guardCustomerAssistantAnswer(input: {
     rewrite: input.rewrite,
     guard: (text) => guardCustomerAssistantOutput(text, input.language, input.surface, input.topic),
   });
-  return retry ? { checked: retry, regenerated: true } : { checked: first, regenerated: false };
+  return retry ? { checked: retry, regenerated: true, firstTrip: first } : { checked: first, regenerated: false };
 }
 
 /**

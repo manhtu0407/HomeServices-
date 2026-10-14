@@ -27,7 +27,7 @@ import {
   latestQuoteReadinessTurn,
 } from "./evidence-gap-policy.ts";
 import { evidenceGapProbe, parseReferencePriceNote, referencePriceText } from "./evidence-gap-response.ts";
-import { createReplyComposer, type ReplyComposer } from "./reply-composer.ts";
+import { canonicalReplyComposer, type ReplyComposer } from "./reply-composer.ts";
 import { appendKaelSystemTurn, updateKaelSession, type KaelTurnTelemetry } from "./session-store.ts";
 
 // Only these may arrive as an explicit chip choice; anything else is classified from the text.
@@ -183,19 +183,15 @@ async function appendRoutedReply(
   });
 }
 
-// The canned sentence is the content; the composer rewords it around what the customer just said.
+// Notices about the case state are returned as written.
 function composeNotice(
   input: Parameters<typeof routeKaelChatTurnIntent>[0],
   canonical: string,
   mustKeep: readonly string[] = [],
 ) {
-  const composer = input.composeReply ?? createReplyComposer({
-    client: input.client,
-    actorId: input.ctx.user.id,
-    secrets: input.secrets,
-    language: input.language,
-  });
-  return composer({ kind: "notice", canonical, customerSaid: input.message, mustKeep });
+  // These sentences state where the case stands (offer ready, nothing sent yet); a reworded version could
+  // invert that, so they stay canned. Only the injected composer (tests) may handle them.
+  return (input.composeReply ?? canonicalReplyComposer)({ kind: "notice", canonical, customerSaid: input.message, mustKeep });
 }
 
 async function respondReferencePrice(

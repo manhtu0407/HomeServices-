@@ -117,6 +117,11 @@ export async function prepareKaelChatPrePipeline(
   let artifact = initialArtifact;
   // Kael asks about the first missing detail, so that is the one the next reply answers.
   const pendingClarificationSlot = pendingClarificationSlotOf(artifact, slotAskCounts);
+  const withExtras = groundExtraSlots(artifact, slotUnderstanding);
+  if (withExtras !== artifact) {
+    artifact = withExtras;
+    await persistDiagnosisScopeArtifact(client, sessionId, artifact);
+  }
   if (pendingClarificationSlot && await maybeHandleDeterministicClarificationReply(
     client,
     {
@@ -181,17 +186,26 @@ export async function prepareKaelChatPrePipeline(
 
 // A reply the model read as an answer fills the detail Kael asked about, in the customer's own words;
 // without that reading, any reply that is not a question or "I don't know" counts, as it always did.
-function groundSlotAnswers(
+// Details the customer volunteered about other open slots are kept whatever the reply says about the asked one.
+function groundExtraSlots(
   artifact: KaelDiagnosisScopeArtifact,
-  pendingSlot: string,
   understanding: CaseSlotUnderstanding | undefined,
-  text: { customerEvidence: string; durableCustomerDetail: string },
 ): KaelDiagnosisScopeArtifact {
   let next = artifact;
   for (const extra of understanding?.answeredSlots ?? []) {
     if (!next.missing_facts.includes(extra.slot)) continue;
     next = diagnosisScopeWithGroundedAnswer(next, extra.slot, sanitizeCustomerCaseEvidenceText(extra.value));
   }
+  return next;
+}
+
+function groundSlotAnswers(
+  artifact: KaelDiagnosisScopeArtifact,
+  pendingSlot: string,
+  understanding: CaseSlotUnderstanding | undefined,
+  text: { customerEvidence: string; durableCustomerDetail: string },
+): KaelDiagnosisScopeArtifact {
+  const next = artifact;
   const answered = understanding
     ? understanding.kind === "answered"
     : isGroundedClarificationAnswer(text.customerEvidence);

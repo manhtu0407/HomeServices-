@@ -8,6 +8,7 @@ import {
   regenerateOnce,
   regenerationHint,
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/guided-regeneration'
+import { memoryDb } from '../kael-edge-runtime/harness/memory-db'
 import { guardOutput } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-gateway'
 
 export const PILLAR = {
@@ -67,6 +68,22 @@ describe(`${PILLAR.id}: one guided rewrite before the canned text`, () => {
     expect(retryPrompt).toContain('Reviewer note')
     expect(retryPrompt).toContain('natural Vietnamese')
     expect(seen[1]).toMatchObject({ maxRetries: 0 })
+  })
+
+  it('still audits the trip the rewrite recovered from', async () => {
+    const db = memoryDb({ kael_guardrail_trip_audit: [] })
+    let calls = 0
+    await runCustomerAssistant({
+      callAI: async () => answer(++calls === 1 ? MIXED : GOOD),
+      client: db.client as never,
+      actorId: 'customer-1',
+      language: 'vi',
+      message: 'Máy nước nóng nhà mình bị rò nước thì làm sao?',
+      secrets: { knowledgeRetrievalEnabled: false },
+      surface: 'customer_normal',
+    })
+    expect(db.tables.kael_guardrail_trip_audit, pillarWhy(PILLAR, 'a recovered violation is still a violation to count')).toHaveLength(1)
+    expect(db.tables.kael_guardrail_trip_audit[0]).toMatchObject({ reason_code: 'language_mismatch', safe_metadata: { regenerated: true } })
   })
 
   it('falls back to the canned text when the rewrite is rejected too', async () => {
