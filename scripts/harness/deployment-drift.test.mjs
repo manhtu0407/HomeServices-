@@ -121,7 +121,7 @@ test('collects hosted health, migration, and deployed-function evidence from liv
     projectRef: 'iwevizmsedyqozxlawwl',
     accessToken: 'test-management-token',
     fetchImpl: async (url, init = {}) => {
-      calls.push({ url: String(url), method: init.method ?? 'GET' })
+      calls.push({ url: String(url), method: init.method ?? 'GET', signal: init.signal })
       if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
         return jsonResponse({
           environment: { name: 'production', project_ref: 'iwevizmsedyqozxlawwl' },
@@ -140,6 +140,7 @@ test('collects hosted health, migration, and deployed-function evidence from liv
             price_evidence_bundle_sha256: release.priceEvidenceBundleSha256,
             provider_readiness_fingerprint_sha256: release.providerReadinessFingerprintSha256,
             provider_readiness: release.providerReadiness,
+            registered: true,
           },
         })
       }
@@ -185,11 +186,17 @@ test('collects hosted health, migration, and deployed-function evidence from liv
           definition: null,
         }] })
       }
+      if (String(init.body ?? '').includes('stage1_release_controls')) {
+        return jsonResponse({ result: [{ active_release_id: release.releaseId, revision: '7' }] })
+      }
       return jsonResponse({ result: inventory.entries })
     },
   })
 
   assert.equal(hosted.releaseId, release.releaseId)
+  assert.equal(hosted.registered, true)
+  assert.equal(hosted.controlActiveReleaseId, release.releaseId)
+  assert.equal(hosted.revision, 7)
   assert.equal(hosted.deploymentId, `iwevizmsedyqozxlawwl_${mobileFunctionId}_7`)
   assert.equal(hosted.manifestSha256, release.manifestSha256)
   assert.equal(hosted.bundleSha256, release.bundleSha256)
@@ -208,8 +215,38 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].id, mobileFunctionId)
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].verify_jwt, false)
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].entrypoint_path, 'index.ts')
-  assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'GET', 'GET', 'POST', 'POST'])
+  assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'GET', 'GET', 'POST', 'POST', 'POST'])
+  assert.ok(calls.at(-1).signal instanceof AbortSignal)
   assert.ok(calls.every((call) => call.url.startsWith('https://')))
+})
+
+test('rejects malformed or ambiguous hosted release-control evidence', async () => {
+  for (const controlRows of [
+    [null],
+    [{ active_release_id: null, revision: null }],
+    [{ active_release_id: 'unregistered', revision: '0' }],
+    [{ active_release_id: null, revision: '0' }, { active_release_id: null, revision: '0' }],
+  ]) {
+    await assert.rejects(() => collectHostedDeploymentState({
+      environment: 'production',
+      projectRef: 'iwevizmsedyqozxlawwl',
+      accessToken: 'test-management-token',
+      fetchImpl: async (url, init = {}) => {
+        if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
+          return jsonResponse({
+            environment: { name: 'production', project_ref: 'iwevizmsedyqozxlawwl' },
+            release: { registered: false },
+          })
+        }
+        if (String(url).endsWith('/functions')) return jsonResponse([])
+        if (String(url).includes('/functions/')) return jsonResponse({ status: 'ACTIVE' })
+        if (String(init.body ?? '').includes('stage1_release_controls')) {
+          return jsonResponse({ result: controlRows })
+        }
+        return jsonResponse({ result: [] })
+      },
+    }), /hosted release control evidence is (?:invalid|ambiguous)/u)
+  }
 })
 
 test('collects a null-release baseline when the hosted health probe fails closed pre-release', async () => {
@@ -247,6 +284,9 @@ test('collects a null-release baseline when the hosted health probe fails closed
   assert.equal(hosted.gitSha, null)
   assert.equal(hosted.manifestSha256, null)
   assert.equal(hosted.providerReadiness, null)
+  assert.equal(hosted.registered, false)
+  assert.equal(hosted.controlActiveReleaseId, null)
+  assert.equal(hosted.revision, 0)
   assert.deepEqual(hosted.migrations, [])
   assert.ok(calls.some((call) => call.url.includes('/functions/v1/mobile-api/harness/health')))
 })
