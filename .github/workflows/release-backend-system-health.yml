@@ -112,8 +112,10 @@ jobs:
             --empty-reset \
             --inventory config/harness/migration-inventory.json \
             --output artifacts/empty-reset
+          node scripts/harness/prime-supabase-images.mjs --include-edge-runtime
           pnpm --filter @nestscout/api exec supabase \
-            --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" start
+            --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" \
+            start --exclude studio,postgres-meta,logflare,vector
           pnpm --filter @nestscout/api exec supabase \
             --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db reset --local
       - name: Run local Edge integration and SQL verification
