@@ -159,7 +159,7 @@ function stagingCompatibility() {
     environment: 'staging',
     source: 'eas-build-inventory',
     observedAt: '2026-08-23T02:06:03.000Z',
-    contractEpoch: 2,
+    contractEpoch: 3,
     platforms: {
       ios: {
         applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 44,
@@ -200,7 +200,7 @@ function nativeStagingCompatibility(release) {
         buildNumber: value.minimumBuildNumber,
         easBuildId: value.easBuildId,
         runtimeVersion: value.runtimeVersion,
-        contractEpoch: '2',
+        contractEpoch: '3',
         gitSha: release.gitSha,
         releaseId: release.releaseId,
         buildProfile: 'native-proof-staging',
@@ -348,7 +348,7 @@ test('staging bindings require explicit compatibility evidence from real EAS inv
   const bindings = runtimeReleaseBindingsFromStagingRelease(release, compatibility)
   assert.equal(bindings.NESTSCOUT_ENVIRONMENT, 'staging')
   assert.equal(bindings.HARNESS_RELEASE_ID, release.releaseId)
-  assert.equal(bindings.NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH, '2')
+  assert.equal(bindings.NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH, '3')
   assert.equal(bindings.NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER, '44')
   assert.equal(bindings.NESTSCOUT_STAGE1_ANDROID_EAS_BUILD_ID, compatibility.platforms.android.easBuildId)
   assert.equal(bindingArguments(bindings).length, 25)

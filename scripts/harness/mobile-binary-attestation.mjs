@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { checkHarnessRelease, resolveReleaseArtifactPath } from './release-bundle.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const CURRENT_CLIENT_CONTRACT_EPOCH = 3
 const SHA256 = /^[0-9a-f]{64}$/u
 const GIT_SHA = /^[0-9a-f]{40}$/u
 const UUID =/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu
@@ -86,7 +87,9 @@ export function buildMobileBinaryAttestation(input) {
     releaseId: release.releaseId,
     gitSha: release.gitSha,
     sourceFingerprintSha256: release.mobileBuildFingerprintSha256,
-    contractEpoch: 2,
+    contractEpoch: relation === 'active_production'
+      ? release.activeClientCompatibility?.contractEpoch
+      : CURRENT_CLIENT_CONTRACT_EPOCH,
     ...(relation === 'exact' ? {} : { binaryRelation: relation }),
     platforms,
     generatedAt: new Date(input.now ?? Date.now()).toISOString(),
@@ -150,7 +153,7 @@ function selectEasBuilds(release, builds, requireReleaseCommit) {
 export function verifyMobileBinaryAttestation(receipt, release) {
   const problems = []
   if (receipt?.schemaVersion !== 'stage1-mobile-binary-attestation.v2' ||
-      receipt?.contractEpoch !== 2 || !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(receipt?.releaseId ?? '') ||
+      (!Number.isSafeInteger(receipt?.contractEpoch) || receipt.contractEpoch < 1) || !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(receipt?.releaseId ?? '') ||
       !/^[0-9a-f]{40}$/u.test(receipt?.gitSha ?? '') || !SHA256.test(receipt?.sourceFingerprintSha256 ?? '') ||
       !Number.isFinite(Date.parse(receipt?.generatedAt ?? ''))) {
     problems.push('mobile binary attestation identity is invalid')
@@ -165,6 +168,12 @@ export function verifyMobileBinaryAttestation(receipt, release) {
   }
   const exactCommit = relation === 'exact'
   const activeProduction = relation === 'active_production'
+  const expectedContractEpoch = activeProduction
+    ? release?.activeClientCompatibility?.contractEpoch
+    : CURRENT_CLIENT_CONTRACT_EPOCH
+  if (receipt?.contractEpoch !== expectedContractEpoch || !Number.isSafeInteger(expectedContractEpoch)) {
+    problems.push('mobile binary attestation contract epoch does not match its release relation')
+  }
   if (release?.releaseLane === 'plan55-production-only' && !activeProduction) {
     problems.push('Plan 55 release requires attestation of the exact active Production client binaries')
   }

@@ -10,14 +10,14 @@ describe('resolveClientContractEpoch', () => {
     expect(resolveClientContractEpoch({
       ...releaseInput,
       easBuildId: 'b14c8cd0-a3f8-4ec6-ad64-6893b371af67',
-    })).toBe('2')
+    })).toBe('3')
   })
 
   it.each([
     '',
     'local-native-harness-123456789abc-123456789abc',
     'not-a-build-id',
-  ])('keeps an unattested local build out of strict contract epoch 2: %s', (easBuildId) => {
+  ])('keeps an unattested local build out of strict contract epoch 3: %s', (easBuildId) => {
     expect(resolveClientContractEpoch({ ...releaseInput, easBuildId })).toBe('')
   })
 })

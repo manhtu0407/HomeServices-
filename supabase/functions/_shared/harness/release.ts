@@ -176,7 +176,7 @@ function readRuntimeClientPlatform(
 function runtimeClientCompatibilityComplete(value: NonNullable<HarnessRuntimeRelease["clientCompatibility"]>): boolean {
   return /^[0-9a-f]{40}$/i.test(value.gitSha) &&
     /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/i.test(value.releaseId) &&
-    value.contractEpoch === 2 && [value.ios, value.android].every((platform) =>
+    value.contractEpoch === 3 && [value.ios, value.android].every((platform) =>
     Boolean(platform.applicationId && platform.minimumBuildNumber && platform.easBuildId && platform.runtimeVersion)
   );
 }

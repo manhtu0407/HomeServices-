@@ -30,14 +30,19 @@ const REPLY = 'Máy lạnh chảy nước thường do ống thoát nước bị
 const RELEASED_HEADERS = {
   'x-client-platform': 'ios',
   'x-client-application-id': 'com.phanmanhtu.homeservices',
-  'x-client-build-number': '45',
+  'x-client-build-number': '56',
+  'x-client-contract-epoch': '3',
+  'x-client-eas-build-id': '11111111-1111-4111-8111-111111111111',
+  'x-client-runtime-version': '0.3.2',
+  'x-client-git-sha': 'b'.repeat(40),
+  'x-client-release-id': 'harness-p252-release',
 }
 const COMPATIBILITY = {
-  contractEpoch: 2,
+  contractEpoch: 3,
   releaseId: 'harness-p252-release',
   gitSha: 'b'.repeat(40),
-  ios: { applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 45, easBuildId: null, runtimeVersion: null },
-  android: { applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 4, easBuildId: null, runtimeVersion: null },
+  ios: { applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 56, easBuildId: '11111111-1111-4111-8111-111111111111', runtimeVersion: '0.3.2' },
+  android: { applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 5, easBuildId: '22222222-2222-4222-8222-222222222222', runtimeVersion: '0.3.2' },
 } as const
 
 function sseBody(frames: string[]) {
@@ -366,7 +371,7 @@ describe('P252 Kael chat over the real mobile-api handler', () => {
     vi.stubGlobal('fetch', provider.fetch)
     const { client, send } = setupWorker()
 
-    const response = await send({ ...RELEASED_HEADERS, 'x-client-platform': 'android', 'x-client-application-id': 'com.phanmanhtu.nestscout', 'x-client-build-number': '4' })
+    const response = await send({ ...RELEASED_HEADERS, 'x-client-platform': 'android', 'x-client-application-id': 'com.phanmanhtu.nestscout', 'x-client-build-number': '5', 'x-client-eas-build-id': '22222222-2222-4222-8222-222222222222', 'x-client-runtime-version': '0.3.2' })
     const text = await response.text()
     const events = sseEvents(text)
     const complete = client.calls.find((call) => call.table === 'rpc:complete_worker_kael_general_turn_atomic')

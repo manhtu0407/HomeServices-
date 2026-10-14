@@ -127,7 +127,7 @@ function assertHostedRelease(hosted, release) {
   if (hosted?.environment !== 'staging' || hosted?.projectRef !== PROJECT_REF ||
       hosted?.evidenceSource !== 'hosted-api-and-readonly-sql' || !Array.isArray(hosted?.migrations) ||
       hosted.migrations.length === 0 ||
-      hosted?.clientCompatibility?.contractEpoch !== 2 ||
+      hosted?.clientCompatibility?.contractEpoch !== 3 ||
       fields.some(([hostedField, releaseField]) => hosted?.[hostedField] !== release?.[releaseField])) {
     throw new Error('Staging hosted identity does not match the release')
   }

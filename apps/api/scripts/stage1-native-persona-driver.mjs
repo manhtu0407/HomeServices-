@@ -184,7 +184,7 @@ function loadConfig(options) {
     cohortId: options.cohort,
     runId,
     sequence: 1,
-    mobileAttestation: { contractEpoch: 2 },
+    mobileAttestation: { contractEpoch: 3 },
     clientBinary: {
       applicationId: 'com.phanmanhtu.homeservices',
       buildNumber: options.iosBuildNumber,

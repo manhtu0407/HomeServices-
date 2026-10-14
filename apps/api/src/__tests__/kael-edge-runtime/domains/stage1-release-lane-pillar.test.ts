@@ -88,7 +88,7 @@ describe('Stage-1 release lane', () => {
       releaseId: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
       sessionId: '10000000-0000-4000-8000-000000000055',
       deploymentId,
-      clientContractEpoch: 2,
+      clientContractEpoch: 3,
     }
     await expect(resolveStage1RuntimeBehavior({
       rpc: () => Promise.resolve({ data: 'candidate', error: null }),
@@ -110,6 +110,23 @@ describe('Stage-1 release lane', () => {
     })
   })
 
+  it('keeps already released epoch-2 Android clients on previous behavior', async () => {
+    let calls = 0
+    await expect(resolveStage1RuntimeBehavior({
+      rpc: () => {
+        calls += 1
+        return Promise.resolve({ data: 'active', error: null })
+      },
+    }, {
+      environment: 'production',
+      releaseId: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
+      sessionId: '10000000-0000-4000-8000-000000000055',
+      deploymentId,
+      clientContractEpoch: 2,
+    })).resolves.toBe('previous')
+    expect(calls).toBe(0)
+  })
+
   it('keeps new bytes on previous behavior until their exact provider deployment is attested', async () => {
     let calls = 0
     await expect(resolveStage1RuntimeBehavior({
@@ -122,7 +139,7 @@ describe('Stage-1 release lane', () => {
       releaseId: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
       sessionId: '10000000-0000-4000-8000-000000000055',
       deploymentId: 'iwevizmsedyqozxlawwl_10000000-0000-4000-8000-000000000055_8',
-      clientContractEpoch: 2,
+      clientContractEpoch: 3,
     })).resolves.toBe('previous')
     expect(calls, pillarWhy(PILLAR, 'the database must reject an unattested deployment/release pair')).toBe(1)
 
@@ -136,7 +153,7 @@ describe('Stage-1 release lane', () => {
       environment: 'production',
       releaseId: 'harness-aaaaaaaaaaaa-bbbbbbbbbbbb',
       sessionId: '10000000-0000-4000-8000-000000000055',
-      clientContractEpoch: 2,
+      clientContractEpoch: 3,
     })).resolves.toBe('previous')
     expect(calls, pillarWhy(PILLAR, 'missing provider identity cannot be repaired by mutable release secrets')).toBe(0)
   })

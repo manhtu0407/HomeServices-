@@ -5,11 +5,12 @@ import type { ConfigContext, ExpoConfig } from 'expo/config'
 import type { PillarManifest } from '@/__tests__/pillar-manifest'
 
 import createExpoConfig from '../../app.config'
+import { resolveClientContractEpoch } from '../client-contract-epoch'
 
 export const PILLAR = {
   id: 'P37-ios-release-readiness',
   invariant:
-    'the store-bound iOS release uses one version 0.3.2 Build 56 identity and aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
+    'the store-bound iOS release uses one version 0.3.2 Build 56 identity at client contract epoch 3, with aligned metadata, purpose strings, audio posture, and an enabled notification entitlement path',
   authority: [
     'apps/mobile/eas.json production profile with appVersionSource local',
     'governance/RULES.md #8 (no fake or silently degraded runtime state)',
@@ -18,7 +19,7 @@ export const PILLAR = {
   layer: 'security-negative',
   siblings: ['P08-worker-dock-motion', 'P09-native-ios-liquid-tabs'],
   mutation:
-    'set ios.buildNumber below 54, remove expo-notifications, or disable iosPushNotificationsEnabled — release identity or push setup turns red',
+    'set ios.buildNumber below 56, remove expo-notifications, or disable iosPushNotificationsEnabled — release identity or push setup turns red',
 } as const satisfies PillarManifest
 
 const mobileRoot = resolve(__dirname, '..', '..')
@@ -69,6 +70,18 @@ function pluginOptions(plugins: ExpoConfig['plugins'], name: string) {
 }
 
 describe('iOS release readiness', () => {
+  it('uses contract epoch 3 only for an attributable EAS release build', () => {
+    const releaseIdentity = {
+      buildReleaseId: 'harness-123456789abc-123456789abc',
+      easBuildId: 'b14c8cd0-a3f8-4ec6-ad64-6893b371af67',
+      gitSha: '1'.repeat(40),
+    }
+
+    expect(resolveClientContractEpoch(releaseIdentity)).toBe('3')
+    expect(resolveClientContractEpoch({ ...releaseIdentity, easBuildId: 'local-build' })).toBe('')
+    expect(resolveClientContractEpoch({ ...releaseIdentity, buildReleaseId: '' })).toBe('')
+  })
+
   it('keeps the evaluated, static, and store release identities aligned', () => {
     const evaluated = createExpoConfig({
       config: { name: 'NestScout', slug: 'home-services' },

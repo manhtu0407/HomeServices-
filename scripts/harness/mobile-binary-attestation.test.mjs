@@ -92,6 +92,7 @@ test('binds exact EAS iOS and Android store builds plus downloaded artifact byte
   assert.equal(receipt.platforms.ios.buildNumber, mobilePolicy.platforms.ios.buildNumber)
   assert.equal(receipt.platforms.android.buildNumber, mobilePolicy.platforms.android.buildNumber)
   assert.equal(receipt.schemaVersion, 'stage1-mobile-binary-attestation.v2')
+  assert.equal(receipt.contractEpoch, 3)
   assert.equal(receipt.platforms.ios.easFingerprintAlgorithm, 'sha1')
   assert.equal(receipt.platforms.ios.easFingerprintHash, '1'.repeat(40))
   assert.match(receipt.platforms.ios.artifactSha256, /^[0-9a-f]{64}$/u)
@@ -227,6 +228,7 @@ test('Plan 55 attests the exact active Production EAS builds without requiring t
     now,
   })
   assert.equal(receipt.binaryRelation, 'active_production')
+  assert.equal(receipt.contractEpoch, clientCompatibility.contractEpoch)
   assert.equal(receipt.platforms.ios.buildNumber, 46)
   assert.equal(receipt.platforms.android.buildNumber, 5)
   assert.equal(receipt.platforms.ios.gitCommitHash, 'a'.repeat(40))

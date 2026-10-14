@@ -44,7 +44,7 @@ const BINDINGS = Object.freeze([
   ['HARNESS_PROVIDER_READINESS_FINGERPRINT_SHA256', 'providerReadinessFingerprintSha256'],
 ])
 const CLIENT_BINDINGS = Object.freeze([
-  ['NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH', () => '2'],
+  ['NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH', () => '3'],
   ['NESTSCOUT_STAGE1_IOS_APPLICATION_ID', (receipt) => receipt.platforms.ios.applicationId],
   ['NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER', (receipt) => String(receipt.platforms.ios.buildNumber)],
   ['NESTSCOUT_STAGE1_IOS_EAS_BUILD_ID', (receipt) => receipt.platforms.ios.easBuildId],
@@ -257,7 +257,7 @@ function checkStagingClientCompatibility(evidence, release) {
       }
     }
   }
-  if (evidence?.contractEpoch !== 2) problems.push('contractEpoch must be 2')
+  if (evidence?.contractEpoch !== 3) problems.push('contractEpoch must be 3')
   const observedAt = evidence?.observedAt
   if (typeof observedAt !== 'string' || !Number.isFinite(Date.parse(observedAt)) ||
       new Date(observedAt).toISOString() !== observedAt) {
@@ -296,7 +296,7 @@ function checkNativeStagingArtifact(platform, value, evidence) {
     buildNumber: value.minimumBuildNumber,
     easBuildId: value.easBuildId,
     runtimeVersion: value.runtimeVersion,
-    contractEpoch: '2',
+    contractEpoch: '3',
     gitSha: evidence.gitSha,
     releaseId: evidence.releaseId,
     buildProfile: 'native-proof-staging',
