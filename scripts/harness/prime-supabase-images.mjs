@@ -50,7 +50,7 @@ const SUPABASE_IMAGES = Object.freeze([
   {
     service: 'mailpit',
     tag: 'v1.22.3',
-    digest: 'sha256:168f762c218e167ba88ae7e48194126eb5ba9e99ef652063e3f14f9c4f0ee70f',
+    digest: 'sha256:168f762c218e167ba88ae7e48194126eb5ba5e99ef652063e3f14f9c4f0ee70f',
   },
 ])
 
@@ -89,7 +89,11 @@ export function primeSupabaseImageCache({ cliVersion, includeEdgeRuntime = false
   for (const { service, tag, digest } of plan) {
     const source = `ghcr.io/supabase/${service}@${digest}`
     const target = `public.ecr.aws/supabase/${service}:${tag}`
-    runDocker(['pull', '--platform', 'linux/amd64', source])
+    try {
+      runDocker(['pull', '--platform', 'linux/amd64', source])
+    } catch (error) {
+      throw new Error(`SUPABASE_IMAGE_DOCKER_COMMAND_FAILED:${service}:pull`, { cause: error })
+    }
     const imageId = runDocker(['image', 'inspect', '--format', '{{.Id}}', source]).trim()
     if (!/^sha256:[a-f0-9]{64}$/u.test(imageId)) throw new Error('SUPABASE_IMAGE_SOURCE_ID_INVALID')
     runDocker(['tag', imageId, target])

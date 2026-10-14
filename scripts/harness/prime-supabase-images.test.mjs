@@ -57,7 +57,7 @@ test('plans only digest-verified Supabase runtime images for linux amd64', () =>
     {
       service: 'mailpit',
       tag: 'v1.22.3',
-      digest: 'sha256:168f762c218e167ba88ae7e48194126eb5ba9e99ef652063e3f14f9c4f0ee70f',
+      digest: 'sha256:168f762c218e167ba88ae7e48194126eb5ba5e99ef652063e3f14f9c4f0ee70f',
     },
   ])
 })
@@ -109,5 +109,21 @@ test('fails closed if the cache tag is not the pinned linux amd64 image', () => 
   assert.throws(
     () => primeSupabaseImageCache({ cliVersion: '2.98.2', runDocker }),
     /SUPABASE_IMAGE_CACHE_IDENTITY_MISMATCH/u,
+  )
+})
+
+test('identifies the image service when a digest pull fails', () => {
+  const runDocker = (args) => {
+    if (args[0] === 'pull' && args[3].includes('/mailpit@')) {
+      throw new Error('manifest unavailable')
+    }
+    if (args[0] === 'image' && args[1] === 'inspect' && args[3] === '{{.Id}}') return imageId
+    if (args[0] === 'image' && args[1] === 'inspect') return `linux/amd64 ${imageId}`
+    return ''
+  }
+
+  assert.throws(
+    () => primeSupabaseImageCache({ cliVersion: '2.98.2', runDocker }),
+    /SUPABASE_IMAGE_DOCKER_COMMAND_FAILED:mailpit:pull/u,
   )
 })
