@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { buildTransactionBehaviorReceipt } from './transaction-behavior-receipt.mjs'
 import { transactionBehaviorFixture } from './fixtures/transaction-behavior-fixture.mjs'
@@ -8,6 +9,11 @@ import {
   verifyBackendSystemMonitorEdgeProof,
   verifyBackendGateReceipt,
 } from './backend-system-health-promotion.mjs'
+
+const releaseWorkflow = readFileSync(
+  new URL('../../.github/workflows/release-backend-system-health.yml', import.meta.url),
+  'utf8',
+)
 
 function evidence(status = 'MAPPED') {
   const fixture = transactionBehaviorFixture(status)
@@ -32,6 +38,17 @@ test('runner receipt cannot be reused against another release catalog or asserte
     assert.throws(() => requireBackendTransactionEvidence(receipt, { ...coverage, ...change }), /TRANSACTION_CATALOG_MISMATCH/)
   }
   assert.throws(() => requireBackendTransactionEvidence(null, coverage), /TRANSACTION_EVIDENCE_INVALID/)
+})
+
+test('rollback capture maps the Production service-role secret required by release-control reads', () => {
+  const stepName = '      - name: Verify exact Cloudflare account and capture rollback identities'
+  const stepStart = releaseWorkflow.indexOf(stepName)
+  assert.notEqual(stepStart, -1, 'the Production rollback-capture step must remain present')
+  const nextStep = releaseWorkflow.indexOf('\n      - name: ', stepStart + stepName.length)
+  const step = releaseWorkflow.slice(stepStart, nextStep < 0 ? undefined : nextStep)
+
+  assert.match(step, /SUPABASE_SERVICE_ROLE_KEY: \$\{\{ secrets\.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY \}\}/u)
+  assert.match(step, /release-control\.mjs \\\r?\n\s+--action read/u)
 })
 
 test('system-monitor Edge proof is bound to the exact release, runtime config and downloaded source closure', () => {
