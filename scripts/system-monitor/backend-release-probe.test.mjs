@@ -42,7 +42,8 @@ function fixture() {
       accessToken: `${role}-${'t'.repeat(40)}`, userId,
     }])), now: () => nowMs,
     cloudflare: {
-      deployments: [{ annotations: { 'workers/tag': release.releaseId }, versions: [{ version_id: 'v1', percentage: 100 }] }],
+      versions: [{ id: 'v1', annotations: { 'workers/tag': release.releaseId, 'workers/message': release.gitSha } }],
+      deployments: [{ id: 'deployment-1', versions: [{ version_id: 'v1', percentage: 100 }] }],
       d1Evidence: { migrations: ['0001.sql'], latestTick: { outcome: 'completed', scheduled_at: iso(-1000), completed_at: iso() },
         state: { last_snapshot_at: iso(), last_error_code: null } },
     },
@@ -262,7 +263,7 @@ test('rejects incorrectly granted Customer access without reading private error 
 test('rejects unhealthy D1 even when Backend and Admin are readable', async () => {
   const { input } = fixture()
   input.cloudflare.d1Evidence.state.last_error_code = 'D1_FAILED'
-  await assert.rejects(probeBackendRelease(input), /CLOUDFLARE_OBSERVER_TICK_NOT_HEALTHY/u)
+  await assert.rejects(probeBackendRelease(input), /CLOUDFLARE_OBSERVER_REPORTED_ERROR/u)
 })
 
 for (const kind of ['digest', 'foreign-release', 'future', 'stale', 'extra-pii', 'inference', 'wrong-profile-role']) {

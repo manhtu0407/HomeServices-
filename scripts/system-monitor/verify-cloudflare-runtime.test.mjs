@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { verifyCloudflareRuntimeEvidence } from './verify-cloudflare-runtime.mjs'
+import { verifyCloudflareRuntimeEvidence, verifyCloudflareWorkerDeploymentIdentity } from './verify-cloudflare-runtime.mjs'
 
 const nowMs = Date.parse('2026-10-13T12:00:00.000Z')
 const release = {
@@ -23,13 +23,20 @@ const deployments = {
   success: true,
   deployments: [{
     id: 'deployment-1',
-    annotations: { 'workers/tag': release.releaseId },
+    annotations: { 'workers/message': release.gitSha },
     versions: [{ version_id: 'version-1', percentage: 100 }],
+  }],
+}
+const workerVersions = {
+  success: true,
+  result: [{
+    id: 'version-1',
+    annotations: { 'workers/tag': release.releaseId, 'workers/message': release.gitSha },
   }],
 }
 
 test('verifies the current Worker release tag, applied D1 migrations, and a live D1 tick', () => {
-  const result = verifyCloudflareRuntimeEvidence({ deployments, d1Evidence: makeD1Evidence(), release, nowMs })
+  const result = verifyCloudflareRuntimeEvidence({ deployments, versions: workerVersions, d1Evidence: makeD1Evidence(), release, nowMs })
   assert.deepEqual(result, {
     status: 'verified',
     releaseId: release.releaseId,
@@ -50,30 +57,71 @@ test('verifies the current Worker release tag, applied D1 migrations, and a live
   })
 })
 
-test('rejects an untagged deployment even when its source version is current', () => {
-  const wrong = structuredClone(deployments)
-  wrong.deployments[0].annotations['workers/tag'] = 'other-release'
+test('can fail fast on Worker identity without requiring a Cron tick yet', () => {
+  const result = verifyCloudflareWorkerDeploymentIdentity({ deployments, versions: workerVersions.result, release })
+  assert.equal(result.releaseId, release.releaseId)
+  assert.equal(result.gitSha, release.gitSha)
+  assert.deepEqual(result.workerVersions, [{ versionId: 'version-1', percentage: 100 }])
+})
+
+test('accepts a result.items Worker version-list shape only when its annotations match', () => {
+  const versions = { success: true, result: { items: workerVersions.result } }
+  const result = verifyCloudflareWorkerDeploymentIdentity({ deployments, versions, release })
+  assert.equal(result.status, 'verified')
+  assert.equal(result.workerVersions[0].versionId, 'version-1')
+})
+
+test('rejects a Worker version tagged for another release even when the deployment points to it', () => {
+  const wrong = structuredClone(workerVersions)
+  wrong.result[0].annotations['workers/tag'] = 'other-release'
   assert.throws(
-    () => verifyCloudflareRuntimeEvidence({ deployments: wrong, d1Evidence: makeD1Evidence(), release, nowMs }),
+    () => verifyCloudflareRuntimeEvidence({ deployments, versions: wrong, d1Evidence: makeD1Evidence(), release, nowMs }),
+    /CLOUDFLARE_WORKER_DEPLOYMENT_IDENTITY_MISMATCH/u,
+  )
+})
+
+test('rejects a deployment that points to a different version than the tagged release', () => {
+  const wrong = structuredClone(deployments)
+  wrong.deployments[0].versions[0].version_id = 'version-other'
+  assert.throws(
+    () => verifyCloudflareRuntimeEvidence({ deployments: wrong, versions: workerVersions, d1Evidence: makeD1Evidence(), release, nowMs }),
+    /CLOUDFLARE_WORKER_DEPLOYMENT_IDENTITY_MISMATCH/u,
+  )
+})
+
+test('rejects a version message that does not identify the merged source SHA', () => {
+  const wrong = structuredClone(workerVersions)
+  wrong.result[0].annotations['workers/message'] = 'b'.repeat(40)
+  assert.throws(
+    () => verifyCloudflareRuntimeEvidence({ deployments, versions: wrong, d1Evidence: makeD1Evidence(), release, nowMs }),
+    /CLOUDFLARE_WORKER_DEPLOYMENT_IDENTITY_MISMATCH/u,
+  )
+})
+
+test('rejects traffic splits instead of treating a partly deployed release as production identity', () => {
+  const wrong = structuredClone(deployments)
+  wrong.deployments[0].versions[0].percentage = 50
+  assert.throws(
+    () => verifyCloudflareRuntimeEvidence({ deployments: wrong, versions: workerVersions, d1Evidence: makeD1Evidence(), release, nowMs }),
     /CLOUDFLARE_WORKER_DEPLOYMENT_IDENTITY_MISMATCH/u,
   )
 })
 
 test('rejects missing D1 migrations', () => {
   assert.throws(
-    () => verifyCloudflareRuntimeEvidence({ deployments, d1Evidence: makeD1Evidence(['0001_initial.sql']), release, nowMs }),
+    () => verifyCloudflareRuntimeEvidence({ deployments, versions: workerVersions, d1Evidence: makeD1Evidence(['0001_initial.sql']), release, nowMs }),
     /CLOUDFLARE_D1_MIGRATION_EVIDENCE_INCOMPLETE/u,
   )
 })
 
 test('rejects stale ticks, pending reconciliation errors, and late timestamps', () => {
   assert.throws(
-    () => verifyCloudflareRuntimeEvidence({ deployments, d1Evidence: makeD1Evidence(undefined, nowMs - 181_000), release, nowMs }),
+    () => verifyCloudflareRuntimeEvidence({ deployments, versions: workerVersions, d1Evidence: makeD1Evidence(undefined, nowMs - 181_000), release, nowMs }),
     /CLOUDFLARE_OBSERVER_TICK_NOT_HEALTHY/u,
   )
   assert.throws(
-    () => verifyCloudflareRuntimeEvidence({ deployments, d1Evidence: makeD1Evidence(undefined, undefined, 'OUTAGE_RECONCILIATION_PENDING'), release, nowMs }),
-    /CLOUDFLARE_OBSERVER_TICK_NOT_HEALTHY/u,
+    () => verifyCloudflareRuntimeEvidence({ deployments, versions: workerVersions, d1Evidence: makeD1Evidence(undefined, undefined, 'OUTAGE_RECONCILIATION_PENDING'), release, nowMs }),
+    /CLOUDFLARE_OBSERVER_REPORTED_ERROR/u,
   )
 })
 

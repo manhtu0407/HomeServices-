@@ -321,12 +321,12 @@ function parseCli(args) {
   for (let index = 0; index < args.length; index += 1) {
     const key = args[index]
     const value = args[index + 1]
-    if (!['--release', '--cloudflare-deployments', '--cloudflare-d1-evidence', '--output'].includes(key) ||
+    if (!['--release', '--cloudflare-versions', '--cloudflare-deployments', '--cloudflare-d1-evidence', '--output'].includes(key) ||
         !value || value.startsWith('--')) throw new Error('BACKEND_PROBE_ARGUMENTS_INVALID')
     result[key.slice(2)] = value
     index += 1
   }
-  if (Object.keys(result).length !== 4) throw new Error('BACKEND_PROBE_ARGUMENTS_INVALID')
+  if (Object.keys(result).length !== 5) throw new Error('BACKEND_PROBE_ARGUMENTS_INVALID')
   return result
 }
 
@@ -358,6 +358,7 @@ async function main(args) {
       worker: { email: process.env.PRODUCTION_SYNTHETIC_WORKER_EMAIL, password: process.env.PRODUCTION_SYNTHETIC_WORKER_PASSWORD },
     },
     cloudflare: {
+      versions: readJson(options['cloudflare-versions']),
       deployments: readJson(options['cloudflare-deployments']),
       d1Evidence: readJson(options['cloudflare-d1-evidence']),
     },

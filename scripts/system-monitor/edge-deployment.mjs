@@ -74,11 +74,23 @@ export function verifySystemMonitorPreviousState(input) {
   if (!edgeState?.exists && !workerState?.exists) {
     return Object.freeze({ status: 'no_previous_monitor', edgeExists: false, workerExists: false })
   }
-  if (release === null) {
+  if (!release) {
     throw new Error('SYSTEM_MONITOR_UNREGISTERED_RUNTIME_FOUND')
   }
   const observer = release?.systemHealthObserver
   if (!observer) {
+    if (release.environment === 'production' && /^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(release.releaseId ?? '') &&
+        /^[0-9a-f]{40}$/u.test(release.gitSha ?? '') && !edgeState?.exists && isDormantRollbackWorker(workerState)) {
+      return Object.freeze({
+        status: 'dormant_rollback_worker_verified',
+        releaseId: release.releaseId,
+        edgeExists: false,
+        workerExists: true,
+        workerVersionId: workerState.versionId,
+        workerReleaseTag: workerState.releaseTag,
+        workerCronSchedules: [],
+      })
+    }
     throw new Error('SYSTEM_MONITOR_UNREGISTERED_RUNTIME_FOUND')
   }
   if (!edgeState?.exists || !workerState?.exists || workerState.releaseTag !== release.releaseId ||
@@ -96,6 +108,13 @@ export function verifySystemMonitorPreviousState(input) {
     sourceSha256: source.sha256,
     sourceInputs: source.inputs,
   })
+}
+
+function isDormantRollbackWorker(workerState) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu.test(workerState?.versionId ?? '') &&
+    workerState?.exists === true && typeof workerState.deploymentId === 'string' && workerState.deploymentId.length > 0 &&
+    /^rollback-[0-9a-f]{40}$/u.test(workerState.releaseTag ?? '') && Array.isArray(workerState.cronSchedules) &&
+    workerState.cronSchedules.length === 0
 }
 
 export function verifySystemMonitorCandidate(input) {

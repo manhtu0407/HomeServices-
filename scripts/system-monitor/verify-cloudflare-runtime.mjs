@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 
 const MAX_EVIDENCE_AGE_MS = 180_000
 
-export function verifyCloudflareRuntimeEvidence(input) {
+export function verifyCloudflareWorkerDeploymentIdentity(input) {
   const release = input?.release
   const observer = release?.systemHealthObserver
   if (!observer || !/^harness-[0-9a-f]{12}-[0-9a-f]{12}$/u.test(release.releaseId ?? '') ||
@@ -13,14 +13,46 @@ export function verifyCloudflareRuntimeEvidence(input) {
   const deployments = parseJson(input.deployments)
   const listed = Array.isArray(deployments) ? deployments : deployments?.deployments ?? deployments?.result
   const latest = Array.isArray(listed) ? listed[0] : null
-  const tag = latest?.annotations?.['workers/tag']
-  const versions = latest?.versions
-  if (!latest || tag !== release.releaseId || !Array.isArray(versions) || versions.length === 0 ||
-      versions.some((version) => typeof version.version_id !== 'string' || !Number.isFinite(version.percentage)) ||
-      Math.abs(versions.reduce((sum, version) => sum + version.percentage, 0) - 100) > 0.01) {
+  const deployedVersions = latest?.versions
+  const versionsDocument = parseJson(input.versions)
+  const versionEntries = Array.isArray(versionsDocument)
+    ? versionsDocument
+    : Array.isArray(versionsDocument?.result)
+      ? versionsDocument.result
+      : Array.isArray(versionsDocument?.result?.items)
+        ? versionsDocument.result.items
+        : versionsDocument?.versions ?? versionsDocument?.items ?? versionsDocument?.data
+  const version = Array.isArray(versionEntries)
+    ? versionEntries.find((entry) => (entry?.id ?? entry?.version_id) === deployedVersions?.[0]?.version_id)
+    : null
+  const deploymentVersion = deployedVersions?.[0]
+  if (!latest || !Array.isArray(deployedVersions) || deployedVersions.length !== 1 ||
+      deploymentVersion?.version_id !== version?.id && deploymentVersion?.version_id !== version?.version_id ||
+      !Number.isFinite(deploymentVersion?.percentage) || Math.abs(deploymentVersion.percentage - 100) > 0.01 ||
+      version?.annotations?.['workers/tag'] !== release.releaseId ||
+      version?.annotations?.['workers/message'] !== release.gitSha) {
     throw new Error('CLOUDFLARE_WORKER_DEPLOYMENT_IDENTITY_MISMATCH')
   }
 
+  return Object.freeze({
+    status: 'verified',
+    releaseId: release.releaseId,
+    gitSha: release.gitSha,
+    profileId: observer.profileId,
+    workerName: observer.workerName,
+    workerBundleSha256: observer.workerBundleSha256,
+    deploymentId: latest.id ?? null,
+    workerVersions: deployedVersions.map((deployedVersion) => ({
+      versionId: deployedVersion.version_id,
+      percentage: deployedVersion.percentage,
+    })),
+  })
+}
+
+export function verifyCloudflareRuntimeEvidence(input) {
+  const release = input?.release
+  const observer = release?.systemHealthObserver
+  const workerIdentity = verifyCloudflareWorkerDeploymentIdentity(input)
   const d1 = parseD1Evidence(input.d1Evidence)
   const expectedMigrations = observer.d1Migrations.map((migration) => basename(migration.path)).sort()
   const appliedMigrations = [...new Set(d1.migrations)].sort()
@@ -32,21 +64,17 @@ export function verifyCloudflareRuntimeEvidence(input) {
   const scheduledAt = Date.parse(d1.latestTick?.scheduled_at ?? '')
   const completedAt = Date.parse(d1.latestTick?.completed_at ?? '')
   const snapshotAt = Date.parse(d1.state?.last_snapshot_at ?? '')
+  if (d1.state?.last_error_code !== null && d1.state?.last_error_code !== undefined) {
+    throw new Error('CLOUDFLARE_OBSERVER_REPORTED_ERROR')
+  }
   if (d1.latestTick?.outcome !== 'completed' || !Number.isFinite(scheduledAt) || !Number.isFinite(completedAt) ||
       !Number.isFinite(snapshotAt) || scheduledAt > completedAt || completedAt > nowMs || snapshotAt > nowMs ||
-      nowMs - completedAt > MAX_EVIDENCE_AGE_MS || nowMs - snapshotAt > MAX_EVIDENCE_AGE_MS || d1.state.last_error_code !== null) {
+      nowMs - completedAt > MAX_EVIDENCE_AGE_MS || nowMs - snapshotAt > MAX_EVIDENCE_AGE_MS) {
     throw new Error('CLOUDFLARE_OBSERVER_TICK_NOT_HEALTHY')
   }
 
   return Object.freeze({
-    status: 'verified',
-    releaseId: release.releaseId,
-    gitSha: release.gitSha,
-    profileId: observer.profileId,
-    workerName: observer.workerName,
-    workerBundleSha256: observer.workerBundleSha256,
-    deploymentId: latest.id ?? null,
-    workerVersions: versions.map((version) => ({ versionId: version.version_id, percentage: version.percentage })),
+    ...workerIdentity,
     d1Database: observer.d1Database,
     d1MigrationsSha256: observer.d1MigrationsSha256,
     appliedMigrations,
@@ -97,18 +125,28 @@ function readJson(path) {
 }
 
 function main(args) {
-  const deploymentPath = args[args.indexOf('--deployments') + 1]
-  const d1Path = args[args.indexOf('--d1-evidence') + 1]
-  const releasePath = args[args.indexOf('--release') + 1]
-  const outputPath = args[args.indexOf('--output') + 1]
-  if ([deploymentPath, d1Path, releasePath, outputPath].some((value) => !value || value.startsWith('--'))) {
+  const argument = (name) => args[args.indexOf(name) + 1]
+  const deploymentPath = argument('--deployments')
+  const versionsPath = argument('--versions')
+  const releasePath = argument('--release')
+  const d1Path = argument('--d1-evidence')
+  const outputPath = argument('--output')
+  const identityOnly = args.includes('--identity-only')
+  if ([deploymentPath, versionsPath, releasePath].some((value) => !value || value.startsWith('--')) ||
+      (!identityOnly && [d1Path, outputPath].some((value) => !value || value.startsWith('--')))) {
     throw new Error('CLOUDFLARE_RUNTIME_ARGUMENTS_INVALID')
   }
-  const evidence = verifyCloudflareRuntimeEvidence({
+  const identityInput = {
     deployments: readJson(deploymentPath),
-    d1Evidence: readJson(d1Path),
+    versions: readJson(versionsPath),
     release: readJson(releasePath),
-  })
+  }
+  if (identityOnly) {
+    verifyCloudflareWorkerDeploymentIdentity(identityInput)
+    process.stdout.write('Cloudflare Worker version and deployment identity verified\n')
+    return
+  }
+  const evidence = verifyCloudflareRuntimeEvidence({ ...identityInput, d1Evidence: readJson(d1Path) })
   writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`, { flag: 'wx' })
   process.stdout.write('Cloudflare deployment, D1 migrations, and live observer tick verified\n')
 }

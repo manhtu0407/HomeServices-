@@ -487,9 +487,17 @@ jobs:
           pnpm exec wrangler deploy --config scripts/system-monitor/wrangler.jsonc \
             --secrets-file "$secret_file" --tag "$RELEASE_ID" --message "$GITHUB_SHA" --strict \
             > artifacts/release/cloudflare-worker-deploy.txt
+          pnpm exec wrangler versions list --name nestscout-system-health-observer \
+            --config scripts/system-monitor/wrangler.jsonc --json \
+            > artifacts/release/cloudflare-versions-after.json
           pnpm exec wrangler deployments list --name nestscout-system-health-observer \
             --config scripts/system-monitor/wrangler.jsonc --json \
             > artifacts/release/cloudflare-deployments-after.json
+          node scripts/system-monitor/verify-cloudflare-runtime.mjs \
+            --identity-only \
+            --release artifacts/release/release.json \
+            --versions artifacts/release/cloudflare-versions-after.json \
+            --deployments artifacts/release/cloudflare-deployments-after.json
           d1_query=$(cat <<'SQL'
           SELECT json_object(
             'migrations', (SELECT json_group_array(name) FROM d1_migrations),
@@ -501,26 +509,33 @@ jobs:
           SQL
           )
           verified=false
-          for attempt in $(seq 1 12); do
-            if pnpm exec wrangler d1 execute nestscout-system-health-observer \
-                --remote --json --config scripts/system-monitor/wrangler.jsonc \
-                --command "$d1_query" > artifacts/release/cloudflare-observer-runtime-raw.json && \
-                pnpm exec wrangler deployments list --name nestscout-system-health-observer \
-                  --config scripts/system-monitor/wrangler.jsonc --json \
-                  > artifacts/release/cloudflare-deployments-after.json && \
-                node scripts/system-monitor/verify-cloudflare-runtime.mjs \
-                  --release artifacts/release/release.json \
-                  --deployments artifacts/release/cloudflare-deployments-after.json \
-                  --d1-evidence artifacts/release/cloudflare-observer-runtime-raw.json \
-                  --output artifacts/release/cloudflare-observer-runtime.json; then
+          for attempt in $(seq 1 18); do
+            pnpm exec wrangler d1 execute nestscout-system-health-observer \
+              --remote --json --config scripts/system-monitor/wrangler.jsonc \
+              --command "$d1_query" > artifacts/release/cloudflare-observer-runtime-raw.json
+            if node scripts/system-monitor/verify-cloudflare-runtime.mjs \
+                --release artifacts/release/release.json \
+                --versions artifacts/release/cloudflare-versions-after.json \
+                --deployments artifacts/release/cloudflare-deployments-after.json \
+                --d1-evidence artifacts/release/cloudflare-observer-runtime-raw.json \
+                --output artifacts/release/cloudflare-observer-runtime.json \
+                2> artifacts/release/cloudflare-observer-runtime-error.txt; then
               verified=true
               break
             fi
-            sleep 15
+            if ! grep -qx 'CLOUDFLARE_OBSERVER_TICK_NOT_HEALTHY' artifacts/release/cloudflare-observer-runtime-error.txt; then
+              cat artifacts/release/cloudflare-observer-runtime-error.txt
+              exit 1
+            fi
+            if [[ "$attempt" -lt 18 ]]; then sleep 60; fi
           done
-          test "$verified" = true
+          if [[ "$verified" != true ]]; then
+            cat artifacts/release/cloudflare-observer-runtime-error.txt
+            exit 1
+          fi
       - name: Byte-prove deployed Edge source and run read-only Admin role probe
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY }}
           PRODUCTION_SUPABASE_ANON_KEY: ${{ secrets.PRODUCTION_SUPABASE_ANON_KEY }}
@@ -535,6 +550,17 @@ jobs:
           PRODUCTION_SYNTHETIC_WORKER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_PASSWORD }}
         run: |
           set -euo pipefail
+          pnpm exec wrangler versions list --name nestscout-system-health-observer \
+            --config scripts/system-monitor/wrangler.jsonc --json \
+            > artifacts/release/cloudflare-versions-after.json
+          pnpm exec wrangler deployments list --name nestscout-system-health-observer \
+            --config scripts/system-monitor/wrangler.jsonc --json \
+            > artifacts/release/cloudflare-deployments-after.json
+          node scripts/system-monitor/verify-cloudflare-runtime.mjs \
+            --identity-only \
+            --release artifacts/release/release.json \
+            --versions artifacts/release/cloudflare-versions-after.json \
+            --deployments artifacts/release/cloudflare-deployments-after.json
           mkdir -p artifacts/candidate-source/supabase/functions/mobile-api \
             artifacts/candidate-source/supabase/functions/kael-matching-maintainer \
             artifacts/candidate-source/supabase/functions/system-monitor
@@ -573,6 +599,7 @@ jobs:
             --output artifacts/release/system-monitor-edge-proof.json
           node scripts/system-monitor/backend-release-probe.mjs \
             --release artifacts/release/release.json \
+            --cloudflare-versions artifacts/release/cloudflare-versions-after.json \
             --cloudflare-deployments artifacts/release/cloudflare-deployments-after.json \
             --cloudflare-d1-evidence artifacts/release/cloudflare-observer-runtime-raw.json \
             --output artifacts/release/readonly-probe.json
@@ -590,6 +617,7 @@ jobs:
             --system-monitor-edge-proof artifacts/release/system-monitor-edge-proof.json \
             --readonly-probe artifacts/release/readonly-probe.json \
             --previous-control artifacts/release/control-before.json \
+            --cloudflare-versions artifacts/release/cloudflare-versions-after.json \
             --cloudflare-deployments artifacts/release/cloudflare-deployments-after.json \
             --cloudflare-d1-evidence artifacts/release/cloudflare-observer-runtime-raw.json \
             --quality-receipt artifacts/release/quality-receipt.json \
