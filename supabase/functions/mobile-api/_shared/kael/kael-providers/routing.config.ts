@@ -101,7 +101,7 @@ export const KAEL_ROUTING_CONFIG: Record<KaelPurpose, KaelPurposeRoutingConfig> 
   normal_chat_memory: config("normal_chat_memory", deepseek("deepseek-v4-flash"), undefined, 0.005, 8_000, false, 800),
   normal_chat_search: config("normal_chat_search", perplexityFastSearch(), undefined, 0.001, 8_000, false, 5),
   normal_chat_suggestions: config("normal_chat_suggestions", deepseekFlash(), undefined, 0.005, 8_000, false, 350),
-  case_turn_intent: config("case_turn_intent", deepseekFlash(), undefined, 0.002, 6_000, false, 200),
+  case_turn_intent: config("case_turn_intent", deepseekFlash(), undefined, 0.002, 6_000, false, 400),
 });
 
 export function maxTokensForPurpose(

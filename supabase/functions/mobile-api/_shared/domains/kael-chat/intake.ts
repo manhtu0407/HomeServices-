@@ -1,6 +1,7 @@
 import { compactMetadata } from "../../platform/domain-utils.ts";
 import { sanitizeApartmentAccessProfile } from "../worker/apartment-access.ts";
 import {
+  HCMC_DISTRICTS,
   normalizeServiceAreaDistrict,
   sanitizeForLLM,
   type KaelChatCreateInput,
@@ -32,6 +33,21 @@ type PrepareInitialKaelChatIntakeInput = {
   readonly initialSafetySignals: readonly string[];
 };
 
+const stripVietnamese = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").toLowerCase();
+
+// Longest names first so "Bình Thạnh" is never read as a shorter name inside it.
+const DISTRICT_NAME_PATTERNS = Object.entries(HCMC_DISTRICTS)
+  .filter(([slug]) => slug !== "hcmc_all" && !/^q\d+$/.test(slug))
+  .map(([slug, label]) => ({ slug, name: stripVietnamese(label) }))
+  .sort((a, b) => b.name.length - a.name.length);
+
+function districtNamedInText(text: string) {
+  const haystack = ` ${stripVietnamese(text).replace(/[^a-z0-9]+/g, " ")} `;
+  const match = DISTRICT_NAME_PATTERNS.find(({ name }) => haystack.includes(` ${name} `));
+  return match ? normalizeServiceAreaDistrict(match.slug) : null;
+}
+
 export function resolveKaelChatAddressDistrict(
   ...candidates: ReadonlyArray<string | null | undefined>
 ) {
@@ -44,6 +60,9 @@ export function resolveKaelChatAddressDistrict(
     )?.[1];
     const extractedInlineDistrict = normalizeServiceAreaDistrict(inlineDistrict);
     if (extractedInlineDistrict) return extractedInlineDistrict;
+
+    const named = candidate ? districtNamedInText(candidate) : null;
+    if (named) return named;
 
     for (const segment of candidate?.split(/[,;\u2013\u2014\u00b7|/]/) ?? []) {
       const extracted = normalizeServiceAreaDistrict(segment);

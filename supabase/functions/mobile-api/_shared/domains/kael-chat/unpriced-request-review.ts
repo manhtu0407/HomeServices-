@@ -10,6 +10,7 @@ import type { DbClient } from "../../platform/db.ts";
 import { asRecord, nullableString } from "../../platform/coercions.ts";
 import { intakeSlotQuestion, isPlaceholderQuestion } from "../../kael/language/intake-slot-questions.ts";
 import { appendKaelSystemTurn, updateKaelSession } from "./session-store.ts";
+import type { ReplyComposer } from "./reply-composer.ts";
 import { buildConfirmedWorkerScopeSummary } from "./estimate-evidence.ts";
 import {
   matchingWorkerRequirementsForCase,
@@ -34,6 +35,7 @@ export async function persistUnpricedRequestReview(input: {
   profileFactCoverage: { facts: Record<string, string>; missing: readonly string[] };
   confidence: number;
   costUsd: number;
+  composeReply?: ReplyComposer;
 }) {
   const { language, client, sessionId, customerAnalysisDetail } = input;
   const safetyStop = input.safetyFlags.find((flag) => flag.severity === "stop");
@@ -44,9 +46,13 @@ export async function persistUnpricedRequestReview(input: {
     estimateProblemSummary: input.problemSummary,
     language,
   });
-  const question = firstMissing
+  const canonicalQuestion = firstMissing
     ? localizedPolicyQuestion(input.policy, firstMissing, language)
     : null;
+  const composed = canonicalQuestion && !safetyStop && input.composeReply
+    ? await input.composeReply({ kind: "ask_detail", canonical: canonicalQuestion, customerSaid: customerAnalysisDetail })
+    : null;
+  const question = composed?.text ?? canonicalQuestion;
   const artifact = kaelDiagnosisScopeArtifactSchema.parse({
     ...input.artifact,
     case_phase: orderEligible ? "offer_review" : "analysis",
@@ -117,6 +123,7 @@ export async function persistUnpricedRequestReview(input: {
     text: orderEligible ? readyText : safetyStop?.customer_message ?? question ?? readyText,
     nextStatus: orderEligible ? "estimate_ready" : "active",
     costUsd: input.costUsd,
+    telemetry: composed?.telemetry,
     metadata: {
       diagnosis_scope: artifact,
       intake_coverage: intakeCoverage,

@@ -49,7 +49,7 @@ import { createSignedVisionUrls } from "./media-vision.ts";
 import { validateAndConsumeKaelChatEvidenceMediaRefs } from "./media-upload.ts";
 import { persistReviewedVoiceTranscripts } from "./persistence.service.ts";
 import { getKaelChat } from "./read.service.ts";
-import { routeKaelChatTurnIntent } from "./turn-intent-router.ts";
+import { resolveCaseTurnRouting, routeKaelChatTurnIntent } from "./turn-intent-router.ts";
 import {
   assertIntakeConfirmationCompleted,
   assertKaelSessionOwnership,
@@ -130,7 +130,20 @@ export async function sendKaelChatTurn(
       persisted.persistedSafetySignals,
       ctx.user.id,
     );
-  if (routable && await routeKaelChatTurnIntent({
+  const resolved = routable
+    ? await resolveCaseTurnRouting({
+      ctx,
+      client,
+      sessionId,
+      session,
+      message: persisted.message,
+      language: persisted.language,
+      chipIntent: input.turn_intent,
+      secrets,
+    })
+    : null;
+  if (resolved && await routeKaelChatTurnIntent({
+    resolved,
     ctx,
     client,
     sessionId,
@@ -150,6 +163,7 @@ export async function sendKaelChatTurn(
     address_district: nullableString(persisted.metadata.address_district) ?? undefined,
     language: persisted.language,
     persisted_safety_signals: persisted.persistedSafetySignals,
+    slot_understanding: resolved?.routing.slotUnderstanding,
   }, secrets);
 
   return getKaelChat(ctx, sessionId);

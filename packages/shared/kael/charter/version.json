@@ -1,8 +1,8 @@
 {
-  "charter_version": "2026-08-06.p11",
+  "charter_version": "2026-10-14.p12",
   "created_at": "2026-05-25",
-  "last_modified": "2026-08-06",
-  "source": "P11: truthful AI introduction without refusal hedging; base P10 bounded service-adjacent guidance",
+  "last_modified": "2026-10-14",
+  "source": "P12: natural Vietnamese sentence ceiling, everyday loanwords, conditional absolute-claim phrase; base P11 truthful AI introduction",
   "locked_files": [
     "identity.md",
     "persona.md",

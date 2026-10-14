@@ -137,5 +137,7 @@ export async function answerKaelAssistant(
     boundary: answer.boundary,
     fallback_used: answer.fallback_used,
     public_reasoning_summary: answer.public_reasoning_summary,
+    trace: answer.trace,
+    regenerated: answer.regenerated === true,
   };
 }

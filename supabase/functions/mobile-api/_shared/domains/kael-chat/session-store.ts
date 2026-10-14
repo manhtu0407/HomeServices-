@@ -8,6 +8,17 @@ import { kaelIntakeConfirmationSchema } from "../../kael/pipeline/intake-confirm
 import { publishKaelChatReply } from "./reply-channel.ts";
 import { clarificationNextActions } from "./clarification-next-actions.ts";
 
+export type KaelReplySource = "ai" | "template" | "fallback" | "guard_regenerated";
+
+// Which writer produced a Kael turn and what it cost, so replies can be compared across paths.
+export type KaelTurnTelemetry = {
+  readonly provider?: "anthropic" | "deepseek" | "perplexity" | null;
+  readonly model?: string | null;
+  readonly latencyMs?: number | null;
+  readonly costUsd?: number | null;
+  readonly replySource?: KaelReplySource;
+};
+
 type ExistingKaelSessionByClientRequest =
   | { kind: "ready"; sessionId: string }
   | { kind: "pending" }
@@ -113,6 +124,7 @@ export async function appendKaelSystemTurn(
     nextStatus: "active" | "estimate_ready" | "unsupported";
     estimate?: unknown;
     costUsd?: number;
+    telemetry?: KaelTurnTelemetry;
     metadata?: Record<string, unknown>;
     sessionMetadata?: Record<string, unknown>;
   },
@@ -130,6 +142,9 @@ export async function appendKaelSystemTurn(
   const nextIndex = asNumber(sessionResult.data.total_turns) + 1;
   const textContent = normalizeKaelResponseBrand(input.text);
   const turnMetadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
+  if (input.telemetry?.replySource && turnMetadata.reply_source === undefined) {
+    turnMetadata.reply_source = input.telemetry.replySource;
+  }
   if (input.contentType === "clarification" && turnMetadata.next_actions === undefined) {
     const language = asRecord(sessionResult.data.safe_metadata).language === "en" ? "en" : "vi";
     const actions = clarificationNextActions(turnMetadata, language);
@@ -143,7 +158,12 @@ export async function appendKaelSystemTurn(
     text_content: textContent,
     media_refs: [],
     safe_metadata: turnMetadata,
-    cost_usd: input.costUsd ?? null,
+    cost_usd: input.costUsd ?? input.telemetry?.costUsd ?? null,
+    ai_provider: input.telemetry?.provider ?? null,
+    ai_model: input.telemetry?.model ?? null,
+    latency_ms: input.telemetry?.latencyMs === undefined || input.telemetry.latencyMs === null
+      ? null
+      : Math.max(0, Math.round(input.telemetry.latencyMs)),
   });
   // An estimate renders as its own card, not as streamed text.
   if (input.contentType !== "estimate" && typeof inserted.id === "string") {
@@ -158,13 +178,38 @@ export async function appendKaelSystemTurn(
   if (input.nextStatus === "estimate_ready") {
     sessionUpdate.estimate_ready_at = new Date().toISOString();
   }
-  if (input.sessionMetadata) {
+  const askedSlot = askedClarificationSlot(input.contentType, turnMetadata);
+  if (input.sessionMetadata || askedSlot) {
+    const existing = asRecord(sessionResult.data.safe_metadata);
+    const askCounts = asRecord(existing.slot_ask_counts);
     sessionUpdate.safe_metadata = compactMetadata({
-      ...asRecord(sessionResult.data.safe_metadata),
-      ...input.sessionMetadata,
+      ...existing,
+      ...(input.sessionMetadata ?? {}),
+      ...(askedSlot
+        ? { slot_ask_counts: { ...askCounts, [askedSlot]: asNumber(askCounts[askedSlot]) + 1 } }
+        : {}),
     });
   }
   await updateKaelSession(client, sessionId, sessionUpdate);
+}
+
+// The detail a clarification turn asks for, so a question asked twice can be told from one asked once.
+// An explanation of the same question is not a new ask.
+function askedClarificationSlot(
+  contentType: string,
+  turnMetadata: Record<string, unknown>,
+): string | null {
+  if (contentType !== "clarification" || turnMetadata.clarification_source === "deterministic_explanation") {
+    return null;
+  }
+  const scope = asRecord(turnMetadata.diagnosis_scope);
+  if (asRecord(scope.next_action).kind !== "ask_question") return null;
+  const first = Array.isArray(scope.missing_facts) ? scope.missing_facts[0] : null;
+  return typeof first === "string" && first.length > 0 ? first.slice(0, 80) : null;
+}
+
+export function slotAskCount(sessionMetadata: unknown, slot: string): number {
+  return asNumber(asRecord(asRecord(sessionMetadata).slot_ask_counts)[slot]);
 }
 
 export async function getKaelChatCostUsd(

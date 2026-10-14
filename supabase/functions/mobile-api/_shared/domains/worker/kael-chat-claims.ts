@@ -99,6 +99,7 @@ export async function completeWorkerKaelChatTurn(
     safety_notes: input.answer.safety_notes,
     redirect_scope_change: input.answer.redirect_scope_change,
     fallback_used: input.answer.fallback_used,
+    reply_source: input.answer.fallback_used ? "fallback" : "ai",
     guardrail_reason: input.answer.guardrail_reason ?? null,
     provider_attempts: formatWorkerAssistProviderAttempts(input.answer.provider_attempts ?? []),
     kael_trace: input.answer.trace ?? [],

@@ -30,6 +30,7 @@ import {
 } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { answerKaelAssistant } from "./assistant.ts";
+import { replyTelemetryMetadata } from "../kael-chat/turn-telemetry.ts";
 import { customerConversationNextActions, startCaseNextAction } from "./kael-conversation-next-actions.ts";
 import {
   buildKaelVisionValidationEvidence,
@@ -245,6 +246,7 @@ export async function sendCustomerKaelConversationTurn(
       p_media_refs: mediaRefs,
       p_kael_text: kaelText,
       p_safe_metadata: {
+        reply_telemetry: replyTelemetryMetadata(answer.trace, answer.fallback_used, answer.regenerated),
         ...(normalChatImageAnalysis ? { normal_chat_image_analysis: normalChatImageAnalysis } : {}),
         ...(normalChatScope && answer.service_intent
           ? { reply_next_actions: [startCaseNextAction(answer.service_intent, input.language)] }

@@ -18,10 +18,32 @@ import type { DbClient } from "../../platform/db.ts";
 // Below this the router keeps today's behaviour and treats the turn as new case information.
 export const CASE_TURN_INTENT_MIN_CONFIDENCE = 0.6;
 
+export type CaseSlotAnswerKind = "answered" | "unknown" | "asks_why" | "other";
+
+const slotAnswerSchema = z.object({
+  kind: z.enum(["answered", "unknown", "asks_why", "other"]),
+  slot: z.string().max(80).nullable().optional(),
+  value: z.string().max(200).nullable().optional(),
+  confidence: z.number().min(0).max(1),
+}).strict();
+
 const intentOutputSchema = z.object({
   intent: kaelTurnIntentSchema,
   confidence: z.number().min(0).max(1),
+  pending_slot_answer: slotAnswerSchema.nullable().optional(),
+  answered_slots: z.array(z.object({
+    slot: z.string().min(1).max(80),
+    value: z.string().min(1).max(200),
+  }).strict()).max(4).optional(),
 }).strict();
+
+// How the customer's reply relates to the question Kael is waiting on.
+export type CaseSlotUnderstanding = {
+  readonly kind: CaseSlotAnswerKind;
+  readonly slot: string | null;
+  readonly value: string | null;
+  readonly answeredSlots: readonly { readonly slot: string; readonly value: string }[];
+};
 
 export type CaseTurnIntentState = {
   readonly casePhase: string | null;
@@ -35,6 +57,13 @@ export type CaseTurnIntentResult = {
   readonly intent: EdgeKaelTurnIntent;
   readonly confidence: number;
   readonly fallbackUsed: boolean;
+  readonly slotUnderstanding?: CaseSlotUnderstanding;
+  readonly telemetry?: {
+    readonly provider: "deepseek";
+    readonly model: string;
+    readonly latencyMs: number;
+    readonly costUsd: number;
+  };
 };
 
 const FALLBACK: CaseTurnIntentResult = {
@@ -59,6 +88,10 @@ export async function classifyCaseTurnIntent(input: {
   hasLinkedJob: boolean;
   language: "vi" | "en";
   message: string;
+  // The detail Kael last asked for; set only while a question is waiting for an answer.
+  pendingSlot?: { readonly slot: string; readonly question: string | null } | null;
+  // Other details still missing, so one message can answer several.
+  openSlots?: readonly string[];
   recentTurns: readonly { role: string; text: string | null }[];
   state: CaseTurnIntentState;
   client: DbClient;
@@ -93,7 +126,7 @@ export async function classifyCaseTurnIntent(input: {
     purpose: "case_turn_intent",
     provider: route.provider,
     model: route.model,
-    maxTokens: maxTokensForPurpose("case_turn_intent", 200),
+    maxTokens: maxTokensForPurpose("case_turn_intent", 400),
     temperature: 0,
     timeoutMs: Math.min(route.latencyBudgetMs, 6_000),
     maxRetries: 0,
@@ -105,8 +138,11 @@ export async function classifyCaseTurnIntent(input: {
           actor: "customer",
           language: input.language,
           permissionSummary: "Classify only. Never answer the customer, never quote a price, never trigger a workflow action.",
-          contextSummary: `Return strict JSON {"intent": one of ${KAEL_TURN_INTENTS.join(", ")}, "confidence": 0..1}. ` +
-            `Intent meanings: ${JSON.stringify(INTENT_GUIDE)}. The latest customer message decides the intent; earlier turns only give context.`,
+          contextSummary: `Return strict JSON {"intent": one of ${KAEL_TURN_INTENTS.join(", ")}, "confidence": 0..1${
+            input.pendingSlot ? ', "pending_slot_answer": {...}, "answered_slots": [...]' : ""
+          }}. ` +
+            `Intent meanings: ${JSON.stringify(INTENT_GUIDE)}. The latest customer message decides the intent; earlier turns only give context.` +
+            (input.pendingSlot ? SLOT_ANSWER_GUIDE : ""),
         }),
       },
       {
@@ -119,6 +155,13 @@ export async function classifyCaseTurnIntent(input: {
             has_estimate: input.state.hasEstimate,
             quote_mode: input.state.quoteMode,
           },
+          ...(input.pendingSlot
+            ? {
+              pending_slot: input.pendingSlot.slot,
+              pending_question: input.pendingSlot.question?.slice(0, 300) ?? null,
+              open_slots: (input.openSlots ?? []).slice(0, 8),
+            }
+            : {}),
           recent_turns: transcript,
           latest_customer_message: message,
         }).slice(0, 8_000),
@@ -147,8 +190,46 @@ export async function classifyCaseTurnIntent(input: {
     }
     return FALLBACK;
   }
+  const slotUnderstanding = input.pendingSlot
+    ? understandSlotAnswer(result.data, input.pendingSlot.slot, input.openSlots ?? [])
+    : undefined;
+  const telemetry = {
+    provider: "deepseek" as const,
+    model: route.model,
+    latencyMs: result.latencyMs,
+    costUsd: result.usage.costUsd,
+  };
   if (result.data.confidence < CASE_TURN_INTENT_MIN_CONFIDENCE) {
-    return { intent: "provide_information", confidence: result.data.confidence, fallbackUsed: true };
+    return { intent: "provide_information", confidence: result.data.confidence, fallbackUsed: true, slotUnderstanding, telemetry };
   }
-  return { intent: result.data.intent, confidence: result.data.confidence, fallbackUsed: false };
+  return { intent: result.data.intent, confidence: result.data.confidence, fallbackUsed: false, slotUnderstanding, telemetry };
+}
+
+const SLOT_ANSWER_GUIDE = " pending_slot is the detail Kael just asked about (pending_question). " +
+  "pending_slot_answer = {kind, slot, value, confidence}: kind answered = the message gives that detail, " +
+  "and value is the customer's own words for it (200 characters at most, no invented facts); " +
+  "unknown = the customer says they do not know or cannot tell; asks_why = they ask why it is needed or what it means; " +
+  "other = the message does not address it. answered_slots lists any other open_slots the message also answers, " +
+  "each with the customer's own words as value. Use only slot names from pending_slot and open_slots.";
+
+export const CASE_SLOT_ANSWER_MIN_CONFIDENCE = 0.6;
+
+function understandSlotAnswer(
+  data: z.infer<typeof intentOutputSchema>,
+  pendingSlot: string,
+  openSlots: readonly string[],
+): CaseSlotUnderstanding | undefined {
+  const answer = data.pending_slot_answer;
+  if (!answer || answer.confidence < CASE_SLOT_ANSWER_MIN_CONFIDENCE) return undefined;
+  const allowed = new Set([pendingSlot, ...openSlots]);
+  const answeredSlots = (data.answered_slots ?? []).filter((item) =>
+    item.slot !== pendingSlot && allowed.has(item.slot)
+  );
+  const value = answer.value?.trim() || null;
+  return {
+    kind: answer.kind === "answered" && !value ? "other" : answer.kind,
+    slot: pendingSlot,
+    value,
+    answeredSlots,
+  };
 }

@@ -7,7 +7,8 @@ Vietnamese is the default user-facing language. English is allowed only through 
 
 - Use one consistent Vietnamese system for service, status, problem, complexity, workflow state, role, queue, rating, earnings, and profile settings.
 - Do not leak English fallback copy such as local, deal, Customer, Worker profile, Choose area, or unsupported placeholder labels.
-- Keep customer copy short and practical. Prefer one direct next step over a paragraph of explanation.
+- Keep customer copy practical and natural. Prefer one direct next step over a paragraph of explanation.
+- Everyday loanwords that Vietnamese speakers already use (app, chat, video, link, file, check-in, email, wifi, OTP, QR, SMS) are Vietnamese. Only full English phrases or sentences count as mixing languages.
 - Price copy must be transparent but not absolute. Use ranges or Kael-locked values from backend state only.
 - Do not display fake queue, fake worker, fake rating, fake earning, fake price, or future-service hints.
 

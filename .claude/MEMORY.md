@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-14** Kael natural respond (Plan §61) — guard ceiling 35 + loanwords + one guided rewrite, turn understanding (district names, answer-to-slot, loop limit 2), reply composer, per-turn telemetry; P382–P387, charter p12; UNCOMMITTED, edge:check BLOCKED, Production still v297 (no §60).
 - **2026-10-14** Cloudflare health debounce and release review — 65/65 mapped, 445/445 bound assertions; two-sample failure/recovery and mutation evidence pass locally; Production RPCs and deployment evidence remain blocked.
 - **2026-10-13** Cloudflare-only System Health and scope-change implementation — 65/65 transaction entries and 445 bound assertions, local suites pass; Production remains gated, native/hosted soak unverified; Supabase CLI workdir mistake replaced default local DB data, with no backup found.
 - **2026-10-13** Design agent assets — pinned Emil skills + Expo Dynamic Notifications snapshots, 15 Emil skills and one Kael adapter, routing and sandbox gates pass; native and fresh-session smoke checks UNVERIFIED.

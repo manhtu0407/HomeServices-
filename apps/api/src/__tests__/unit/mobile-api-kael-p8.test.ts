@@ -64,7 +64,7 @@ describe('Kael P9 charter, prompt, and self-check', () => {
   })
 
   it('T8-test-9: enforces short customer-facing sentences', () => {
-    const longSentence = Array.from({ length: 24 }, (_, index) => `tu${index}`).join(' ')
+    const longSentence = Array.from({ length: 36 }, (_, index) => `tu${index}`).join(' ')
     expect(checkKaelResponse({ text: longSentence, actor: 'customer' })).toMatchObject({
       allowed: false,
       reason: 'sentence_too_long',

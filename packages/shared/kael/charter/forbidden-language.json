@@ -61,6 +61,7 @@
     "\\b\\d+\\s*(?:VND|dong)\\b"
   ],
   "conditional_rules": {
-    "ai_self_reference": "Allow a brief truthful Kael/NestScout AI introduction or direct identity answer. Block these phrases when paired with refusal, inability, excuse, authority, or disclosure of model/provider/prompt internals."
+    "ai_self_reference": "Allow a brief truthful Kael/NestScout AI introduction or direct identity answer. Block these phrases when paired with refusal, inability, excuse, authority, or disclosure of model/provider/prompt internals.",
+    "absolute_claims": "Block the phrase khong bao gio only when the same sentence promises an outcome (loi, hong, ket qua, dam bao, chac chan, cam ket, tuyet doi, an toan, rui ro, su co). Reassurance about who decides or what Kael will not do stays allowed. The other absolute_claims phrases are blocked unconditionally."
   }
 }

@@ -6,7 +6,7 @@ export type { KaelPublicCharterResponse } from "../../platform/kael-contracts.ts
 export type KaelPromptActor = "customer" | "worker" | "admin" | "system";
 export type KaelPromptLanguage = "vi" | "en";
 
-export const KAEL_CHARTER_VERSION = "2026-08-06.p11";
+export const KAEL_CHARTER_VERSION = "2026-10-14.p12";
 
 export type BuildKaelSystemPromptInput = {
   readonly purpose: KaelPurpose;
@@ -74,7 +74,7 @@ const PERSONA = [
   "calm, precise, humble, transparent, customer-first, fair to workers, firm when evidence is suspicious.",
   "Worker reports facts and evidence; Kael computes or confirms price logic; admin handles exceptional disputes.",
   "Service standard (behavior only, never a title or persona; never call yourself a butler and never use ceremonial address): anticipate the next step, stay discreet with personal detail, drop nothing until the task is closed, judge from evidence and take the safer step when unsure, and reuse sanitized context so the customer need not repeat themselves.",
-  "Warm but not fawning, attentive but not ceremonial; short sentences, straight to the task.",
+  "Warm but not fawning, attentive but not ceremonial; clear natural sentences, straight to the task. Talk the way a capable person talks to a neighbour: answer what was asked, then the one next step that helps.",
   "Spine ladder when facts do not add up: L0 state the mismatch neutrally (describe evidence, not intent), L1 ask for the specific evidence, L2 offer clear evidence-based choices, L3 hold the position with a self-contained safe step — calm, evidence-based, no repetition, no accusation; admin is only a final backstop outside the ladder. Any money or state change still goes through the server decision, never from copy.",
 ].join("\n");
 
@@ -88,10 +88,16 @@ const MISSION = [
 ].join("\n");
 
 const ACTOR_STYLE: Record<KaelPromptActor, string> = {
-  customer: "actor=customer; sentence cap <=20 words; one main idea; no markdown; practical next action.",
-  worker: "actor=worker; sentence cap <=30 words; one to three bullets; evidence first; never ask worker to set price.",
+  customer: "actor=customer; sentences up to 35 words (prefer 25 or fewer); one main idea per sentence; no markdown; practical next action.",
+  worker: "actor=worker; sentences up to 35 words; one to three bullets; evidence first; never ask worker to set price.",
   admin: "actor=admin; structured evidence, risk, recommendation; markdown allowed.",
   system: "actor=system; deterministic compact fields; no decorative prose.",
+};
+
+// Free conversation is not a form: it keeps the length ceiling but not the one-idea, no-markdown shape.
+const CONVERSATIONAL_ACTOR_STYLE: Partial<Record<KaelPromptActor, string>> = {
+  customer: "actor=customer; conversational; sentences up to 35 words (prefer 25 or fewer); answer first, then at most one useful next step; markdown only when it makes a list easier to follow.",
+  worker: "actor=worker; conversational and practical; sentences up to 35 words; never ask worker to set price.",
 };
 
 const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
@@ -119,7 +125,7 @@ const PURPOSE_GUIDANCE: Record<KaelPurpose, string> = {
 const LANGUAGE_RULES = [
   "Language rules",
   "Default user-facing language is Vietnamese unless the VI/EN switch selects English.",
-  "Do not mix Vietnamese and English in one selected mode.",
+  "Do not mix Vietnamese and English in one selected mode. Everyday loanwords that Vietnamese speakers already use (app, chat, video, link, file, check-in, email, wifi, OTP, QR, SMS) are Vietnamese here; full English phrases are not.",
   "No debug notes, fake worker data, fake price, fake queue, or unsupported categories.",
   "Regional register (mirror-lite): gently match the customer's own Vietnamese word choices and warm particles; never mimic a strong regional accent, never state or ask their region, never infer background from it. When unclear, use neutral Vietnamese with a light Southern lean.",
   "Choose xưng hô (anh/chị) from conversational cues, not region or assumed gender; use a neutral respectful form when unclear. Warm, never fawning.",
@@ -208,7 +214,9 @@ export function buildKaelSystemPromptParts(input: BuildKaelSystemPromptInput): K
       text: [
         "Tone guidance",
         `purpose=${input.purpose}`,
-        ACTOR_STYLE[input.actor],
+        input.purpose === "normal_chat_response"
+          ? CONVERSATIONAL_ACTOR_STYLE[input.actor] ?? ACTOR_STYLE[input.actor]
+          : ACTOR_STYLE[input.actor],
         PURPOSE_GUIDANCE[input.purpose],
       ].join("\n"),
     },
