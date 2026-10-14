@@ -213,6 +213,7 @@ export async function sendCustomerKaelConversationTurn(
     },
     reasoning: options.reasoning,
     response: options.response,
+    includeTelemetry: true,
   });
   throwIfCustomerConversationAborted(ctx.signal, secrets.requestSignal);
   const customerText = (

@@ -141,6 +141,8 @@ export async function appendKaelSystemTurn(
   }
   const nextIndex = asNumber(sessionResult.data.total_turns) + 1;
   const textContent = normalizeKaelResponseBrand(input.text);
+  // The pipeline cost and a composer or answer call on the same turn are separate spend.
+  const totalCost = (input.costUsd ?? 0) + (input.telemetry?.costUsd ?? 0);
   const turnMetadata: Record<string, unknown> = { ...(input.metadata ?? {}) };
   if (input.telemetry?.replySource && turnMetadata.reply_source === undefined) {
     turnMetadata.reply_source = input.telemetry.replySource;
@@ -158,7 +160,7 @@ export async function appendKaelSystemTurn(
     text_content: textContent,
     media_refs: [],
     safe_metadata: turnMetadata,
-    cost_usd: input.costUsd ?? input.telemetry?.costUsd ?? null,
+    cost_usd: input.costUsd === undefined && input.telemetry?.costUsd === undefined ? null : totalCost,
     ai_provider: input.telemetry?.provider ?? null,
     ai_model: input.telemetry?.model ?? null,
     latency_ms: input.telemetry?.latencyMs === undefined || input.telemetry.latencyMs === null
@@ -172,7 +174,7 @@ export async function appendKaelSystemTurn(
   const sessionUpdate: Record<string, unknown> = {
     total_turns: nextIndex,
     total_cost_usd: asNumber(sessionResult.data.total_cost_usd) +
-      (input.costUsd ?? 0),
+      totalCost,
     status: input.nextStatus,
   };
   if (input.nextStatus === "estimate_ready") {

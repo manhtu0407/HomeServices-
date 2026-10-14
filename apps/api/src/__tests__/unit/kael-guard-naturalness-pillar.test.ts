@@ -22,7 +22,7 @@ export const PILLAR = {
   layer: 'unit',
   siblings: ['P17-adversarial-surface-matrix', 'P30-kael-prompt-assembly'],
   mutation:
-    'set CUSTOMER_SENTENCE_WORD_CAP back to 20 — the 30-token case turns red; put "video" back in ENGLISH_REPLY_WORDS — the loanword case turns red; drop PHRASE_CONDITIONS so "khong bao gio" is unconditional — the reassurance case turns red; delete the guarantee context from the condition — the guarantee case turns red',
+    'set CUSTOMER_SENTENCE_WORD_CAP back to 20 — the 30-token case turns red; put "video" back in ENGLISH_REPLY_WORDS — the loanword case turns red; drop PHRASE_EXEMPTIONS so "khong bao gio" is unconditional — the reassurance case turns red; widen the exemption to any sentence — the guarantee cases turn red',
 } as const satisfies PillarManifest
 
 const sentence = (words: number) => `${Array.from({ length: words }, () => 'tốt').join(' ')}.`
@@ -69,6 +69,12 @@ describe(`${PILLAR.id}: natural Vietnamese is not a guard trip`, () => {
       allowed: false,
       reason: 'absolute_claim',
     })
+    for (const text of ['Máy sẽ không bao giờ cháy nữa.', 'Ống sẽ không bao giờ rò nước.']) {
+      expect(checkKaelResponse({ text, actor: 'customer', language: 'vi' }), pillarWhy(PILLAR, text)).toMatchObject({
+        allowed: false,
+        reason: 'absolute_claim',
+      })
+    }
     expect(checkKaelResponse({ text: 'Tuyệt đối an toàn, chắc chắn 100%.', actor: 'customer', language: 'vi' })).toMatchObject({
       allowed: false,
       reason: 'absolute_claim',

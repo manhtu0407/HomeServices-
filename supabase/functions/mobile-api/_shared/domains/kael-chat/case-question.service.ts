@@ -123,6 +123,7 @@ export async function answerKaelCaseQuestion(input: {
     }, input.secrets, {
       memorySummary: caseSummaryForAnswer(input.session, quoteTurn),
       previousTurns: await readCaseRecentTurns(input.client, input.sessionId),
+      includeTelemetry: true,
     });
     const notes = answer.safety_notes.filter((note) => note.trim().length > 0);
     text = notes.length > 0

@@ -48,6 +48,8 @@ export async function answerKaelAssistant(
     onNormalChatImageAnalysis?: (analysis: NonNullable<Awaited<ReturnType<typeof runCustomerAssistant>>["normalChatImageAnalysis"]>) => void;
     reasoning?: KaelReasoningReporter;
     response?: KaelResponseReporter;
+    // Internal callers only: the trace names providers and policies and never belongs in a public response.
+    includeTelemetry?: boolean;
   } = {},
 ) {
   const client = db(ctx);
@@ -137,7 +139,8 @@ export async function answerKaelAssistant(
     boundary: answer.boundary,
     fallback_used: answer.fallback_used,
     public_reasoning_summary: answer.public_reasoning_summary,
-    trace: answer.trace,
-    regenerated: answer.regenerated === true,
+    ...(options.includeTelemetry
+      ? { trace: answer.trace, regenerated: answer.regenerated === true }
+      : {}),
   };
 }

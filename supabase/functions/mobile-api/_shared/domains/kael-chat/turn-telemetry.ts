@@ -10,7 +10,8 @@ export function telemetryFromTrace(
   replySource: KaelReplySource,
 ): KaelTurnTelemetry {
   const call = [...(trace ?? [])].reverse().find((event) => event.provider !== null);
-  if (!call) return { replySource };
+  // No provider call and no fallback means the text came from a deterministic path.
+  if (!call) return { replySource: replySource === "ai" ? "template" : replySource };
   return {
     replySource,
     provider: call.provider,
