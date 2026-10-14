@@ -103,6 +103,7 @@ function fixture(overrides = {}) {
     providerReadiness,
     providerReadinessFingerprintSha256: createHash('sha256').update(canonicalJson(providerReadiness)).digest('hex'),
     activeClientCompatibility: {
+      contractEpoch: 2,
       ios: {
         easBuildId: '00000000-0000-4000-8000-000000000001',
         applicationId: 'com.phanmanhtu.homeservices',

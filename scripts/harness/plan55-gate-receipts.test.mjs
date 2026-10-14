@@ -547,6 +547,7 @@ test('auto-packages release-stage gates from the exact Production release artifa
     providerReadiness,
     providerReadinessFingerprintSha256: digest(Buffer.from(canonicalJson(providerReadiness))),
     activeClientCompatibility: {
+      contractEpoch: 2,
       ios: {
         easBuildId: '00000000-0000-4000-8000-000000000001',
         applicationId: 'com.phanmanhtu.homeservices',
