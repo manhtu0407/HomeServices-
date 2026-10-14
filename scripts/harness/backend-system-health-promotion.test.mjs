@@ -14,6 +14,22 @@ const releaseWorkflow = readFileSync(
   new URL('../../.github/workflows/release-backend-system-health.yml', import.meta.url),
   'utf8',
 )
+const configureVaultHelper = readFileSync(
+  new URL('../system-monitor/configure-vault-secret.mjs', import.meta.url),
+  'utf8',
+)
+const disableScheduleHelper = readFileSync(
+  new URL('../system-monitor/disable-schedule.mjs', import.meta.url),
+  'utf8',
+)
+
+function workflowStep(name) {
+  const stepName = `      - name: ${name}`
+  const stepStart = releaseWorkflow.indexOf(stepName)
+  assert.notEqual(stepStart, -1, `the ${name} step must remain present`)
+  const nextStep = releaseWorkflow.indexOf('\n      - name: ', stepStart + stepName.length)
+  return releaseWorkflow.slice(stepStart, nextStep < 0 ? undefined : nextStep)
+}
 
 function evidence(status = 'MAPPED') {
   const fixture = transactionBehaviorFixture(status)
@@ -41,14 +57,21 @@ test('runner receipt cannot be reused against another release catalog or asserte
 })
 
 test('rollback capture maps the Production service-role secret required by release-control reads', () => {
-  const stepName = '      - name: Verify exact Cloudflare account and capture rollback identities'
-  const stepStart = releaseWorkflow.indexOf(stepName)
-  assert.notEqual(stepStart, -1, 'the Production rollback-capture step must remain present')
-  const nextStep = releaseWorkflow.indexOf('\n      - name: ', stepStart + stepName.length)
-  const step = releaseWorkflow.slice(stepStart, nextStep < 0 ? undefined : nextStep)
+  const step = workflowStep('Verify exact Cloudflare account and capture rollback identities')
 
   assert.match(step, /SUPABASE_SERVICE_ROLE_KEY: \$\{\{ secrets\.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY \}\}/u)
   assert.match(step, /release-control\.mjs \\\r?\n\s+--action read/u)
+})
+
+test('collector and rollback bind the service-role variable consumed by both monitor CLI helpers', () => {
+  const secretBinding = /^[ \t]+SUPABASE_SERVICE_ROLE_KEY: \$\{\{ secrets\.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY \}\}$/mu
+  const collector = workflowStep('Deploy collector and wait for its persisted snapshot')
+  const rollback = workflowStep('Disable or restore the candidate safely after a failed release')
+
+  assert.match(collector, secretBinding)
+  assert.match(rollback, secretBinding)
+  assert.match(configureVaultHelper, /serviceRoleKey: process\.env\.SUPABASE_SERVICE_ROLE_KEY/u)
+  assert.match(disableScheduleHelper, /serviceRoleKey: process\.env\.SUPABASE_SERVICE_ROLE_KEY/u)
 })
 
 test('system-monitor Edge proof is bound to the exact release, runtime config and downloaded source closure', () => {

@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 461,
+  "migrationCount": 462,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "2261b4e997b66a487a83b898f09bdb4dd469bef0629ae42886eb2693b7153d7f",
+  "migrationsSha256": "0ca750b5a12ca757ee3e47d332e90762b91ca6c0140887e932a1157df5b5144f",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e91abb2c693df49897a6652798f230ed94e32cad54732be7471069a5f1bb857f"
@@ -3334,6 +3334,13 @@
       "file": "supabase/migrations/20261014120000_backend_system_health_release.sql",
       "sha256": "20ddf927023485b782e70da5e52fac412932eb2140f87e6f53a25e72470783e4",
       "bytes": 14829
+    },
+    {
+      "version": "20261015100000",
+      "name": "system_health_monitor_vault_compatibility",
+      "file": "supabase/migrations/20261015100000_system_health_monitor_vault_compatibility.sql",
+      "sha256": "1f9bdd1b37dd9ed0b220a406cb9e3818922eb5c4562d7a7b7dd82485fe1f4f28",
+      "bytes": 1464
     }
   ]
 }

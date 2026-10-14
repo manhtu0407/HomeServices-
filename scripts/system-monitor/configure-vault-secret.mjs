@@ -50,7 +50,7 @@ export async function configureSystemHealthMonitorSecret(input) {
 async function main() {
   const result = await configureSystemHealthMonitorSecret({
     supabaseUrl: process.env.PRODUCTION_PROJECT_URL,
-    serviceRoleKey: process.env.PRODUCTION_SUPABASE_SERVICE_ROLE_KEY,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     monitorSecret: process.env.SYSTEM_HEALTH_MONITOR_SECRET,
   })
   if (result.configured) process.stdout.write('system health Vault credential configured\n')
