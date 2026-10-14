@@ -47,7 +47,8 @@ function enforceStage1ClientCompatibility(
       "x-client-release-id",
     ];
     if (
-      epoch === compatibility.contractEpoch &&
+      compatibility.contractEpoch > 1 &&
+      epoch === compatibility.contractEpoch - 1 &&
       WEB_PREVIEW_ORIGINS.has(request.headers.get("origin") ?? "") &&
       applicationId === "com.phanmanhtu.nestscout.web-preview" &&
       nativeIdentityHeaders.every((header) => !request.headers.has(header))

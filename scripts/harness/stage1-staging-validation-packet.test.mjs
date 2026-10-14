@@ -28,7 +28,7 @@ test('binds one Staging cohort to live hosted SQL, release identity, and both so
     deploymentId: `xyylanuyflrjzbjzhqfl_${mobileId}_7`,
     evidenceSource: 'hosted-api-and-readonly-sql',
     migrations: canonicalMigrationEntries(release.migrationInventory),
-    clientCompatibility: { contractEpoch: 2, ios: {}, android: {} },
+    clientCompatibility: { contractEpoch: 3, ios: {}, android: {} },
     managedEdgeFunctions: {
       'mobile-api': managed(mobileId, 7, '7'),
       'kael-matching-maintainer': managed(maintainerId, 3, '8'),
@@ -87,7 +87,7 @@ test('accepts exact hosted migration aliases through the canonical equivalence r
     providerReadinessFingerprintSha256: release.providerReadinessFingerprintSha256,
     deploymentId: `xyylanuyflrjzbjzhqfl_${mobileId}_7`,
     evidenceSource: 'hosted-api-and-readonly-sql', migrations,
-    clientCompatibility: { contractEpoch: 2, ios: {}, android: {} },
+    clientCompatibility: { contractEpoch: 3, ios: {}, android: {} },
     managedEdgeFunctions: {
       'mobile-api': managed(mobileId, 7, '7'),
       'kael-matching-maintainer': managed(maintainerId, 3, '8'),

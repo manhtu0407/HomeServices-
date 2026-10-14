@@ -195,7 +195,7 @@ function assertStagingRuntimeHealth(health: RuntimeHealth): void {
   const compatibility = health.release.client_compatibility
   if (health.status !== 'ok' || health.environment.name !== 'staging' || !health.environment.project_ref ||
       !health.release.registered || health.release.release_id === 'unreleased' ||
-      !/^[0-9a-f]{40}$/u.test(health.release.git_sha) || compatibility?.contractEpoch !== 2 ||
+      !/^[0-9a-f]{40}$/u.test(health.release.git_sha) || compatibility?.contractEpoch !== 3 ||
       !compatibility.ios.applicationId || !compatibility.ios.minimumBuildNumber ||
       !compatibility.ios.easBuildId || !compatibility.ios.runtimeVersion) {
     throw new Error('Staging Edge runtime does not expose one complete registered release identity')

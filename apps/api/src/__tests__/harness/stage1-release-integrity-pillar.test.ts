@@ -154,19 +154,19 @@ describe('Stage 1 release integrity', () => {
     expect(response.headers.get('x-support-code')).toMatch(/^[A-F0-9]{8}$/)
   })
 
-  it('validates the contract epoch against the exact per-platform EAS binary identity', async () => {
+  it('preserves prior Android compatibility while requiring exact epoch-3 release identity', async () => {
     let authenticationCalls = 0
     const clientCompatibility = {
-      contractEpoch: 2,
+      contractEpoch: 3,
       releaseId,
       gitSha: 'a'.repeat(40),
       ios: {
-        applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 45,
-        easBuildId: '11111111-1111-4111-8111-111111111111', runtimeVersion: '0.2.0',
+        applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 56,
+        easBuildId: '11111111-1111-4111-8111-111111111111', runtimeVersion: '0.3.2',
       },
       android: {
-        applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 4,
-        easBuildId: '22222222-2222-4222-8222-222222222222', runtimeVersion: '0.2.0',
+        applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 5,
+        easBuildId: '22222222-2222-4222-8222-222222222222', runtimeVersion: '0.3.2',
       },
     } as const
     const handler = createMobileApiHandler({
@@ -179,58 +179,63 @@ describe('Stage 1 release integrity', () => {
       environment: 'production',
       clientCompatibility,
     })
-    const headers = {
-      'content-type': 'application/json',
+    const request = (headers: Record<string, string>) => handler(new Request('https://api.example.test/kael/chat', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...headers },
+      body: '{}',
+    }))
+    const iosIdentity = {
+      'x-client-platform': 'ios',
+      'x-client-application-id': 'com.phanmanhtu.homeservices',
+      'x-client-build-number': '56',
+      'x-client-contract-epoch': '3',
+      'x-client-eas-build-id': '11111111-1111-4111-8111-111111111111',
+      'x-client-runtime-version': '0.3.2',
+      'x-client-git-sha': 'a'.repeat(40),
+      'x-client-release-id': releaseId,
+    }
+    const iosCurrent = await request(iosIdentity)
+    expect(iosCurrent.status).toBe(401)
+    expect(authenticationCalls).toBe(1)
+
+    const iosStaleBuild = await request({ ...iosIdentity, 'x-client-build-number': '55' })
+    expect(iosStaleBuild.status).toBe(426)
+    const iosWrongEasIdentity = await request({
+      ...iosIdentity,
+      'x-client-eas-build-id': '33333333-3333-4333-8333-333333333333',
+    })
+    expect(iosWrongEasIdentity.status).toBe(426)
+    expect(authenticationCalls).toBe(1)
+
+    const installedAndroid = await request({
+      'x-client-platform': 'android',
+      'x-client-application-id': 'com.phanmanhtu.nestscout',
+      'x-client-build-number': '5',
+      'x-client-contract-epoch': '2',
+    })
+    expect(installedAndroid.status).toBe(401)
+    expect(authenticationCalls).toBe(2)
+
+    const staleAndroid = await request({
       'x-client-platform': 'android',
       'x-client-application-id': 'com.phanmanhtu.nestscout',
       'x-client-build-number': '4',
       'x-client-contract-epoch': '2',
+    })
+    expect(staleAndroid.status).toBe(426)
+    expect(authenticationCalls).toBe(2)
+
+    const androidCurrentIdentity = await request({
+      'x-client-platform': 'android',
+      'x-client-application-id': 'com.phanmanhtu.nestscout',
+      'x-client-build-number': '5',
+      'x-client-contract-epoch': '3',
       'x-client-eas-build-id': '22222222-2222-4222-8222-222222222222',
-      'x-client-runtime-version': '0.2.0',
+      'x-client-runtime-version': '0.3.2',
       'x-client-git-sha': 'a'.repeat(40),
       'x-client-release-id': releaseId,
-    }
-    const compatible = await handler(new Request('https://api.example.test/kael/chat', {
-      method: 'POST', headers, body: '{}',
-    }))
-    expect(compatible.status).toBe(401)
-    expect(authenticationCalls).toBe(1)
-
-    const legacyCompatible = await handler(new Request('https://api.example.test/kael/chat', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-client-platform': 'android',
-        'x-client-application-id': 'com.phanmanhtu.nestscout',
-        'x-client-build-number': '4',
-      },
-      body: '{}',
-    }))
-    expect(legacyCompatible.status).toBe(401)
-    expect(authenticationCalls).toBe(2)
-
-    const incompatibleLegacyHeaders: Record<string, string>[] = [
-      {},
-      {
-        'x-client-platform': 'android',
-        'x-client-application-id': 'com.phanmanhtu.nestscout',
-        'x-client-build-number': '3',
-      },
-    ]
-    for (const legacyHeaders of incompatibleLegacyHeaders) {
-      const legacyStale = await handler(new Request('https://api.example.test/kael/chat', {
-        method: 'POST', headers: { 'content-type': 'application/json', ...legacyHeaders }, body: '{}',
-      }))
-      expect(legacyStale.status).toBe(426)
-      expect(await legacyStale.json()).toMatchObject({ code: 'CLIENT_UPDATE_REQUIRED' })
-    }
-    expect(authenticationCalls).toBe(2)
-
-    const stale = await handler(new Request('https://api.example.test/kael/chat', {
-      method: 'POST', headers: { ...headers, 'x-client-eas-build-id': '33333333-3333-4333-8333-333333333333' }, body: '{}',
-    }))
-    expect(stale.status).toBe(426)
-    expect(await stale.json()).toMatchObject({ code: 'CLIENT_UPDATE_REQUIRED' })
-    expect(authenticationCalls).toBe(2)
+    })
+    expect(androidCurrentIdentity.status).toBe(401)
+    expect(authenticationCalls).toBe(3)
   })
 })

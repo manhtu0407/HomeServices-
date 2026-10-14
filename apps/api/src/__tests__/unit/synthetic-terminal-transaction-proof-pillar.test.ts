@@ -70,7 +70,7 @@ describe('isolated synthetic terminal transaction proof', () => {
       serviceRoleKey: 'test-only', anonKey: 'test-only',
       release: { releaseId, gitSha: 'a'.repeat(40) },
       clientBinary: { applicationId: 'test.app', buildNumber: 1, easBuildId: 'test-build', runtimeVersion: '1' },
-      mobileAttestation: { contractEpoch: 2 },
+      mobileAttestation: { contractEpoch: 3 },
     })
     const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: result.code }), {
       status: result.status,

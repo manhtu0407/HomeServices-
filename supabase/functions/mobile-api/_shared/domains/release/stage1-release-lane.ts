@@ -2,7 +2,7 @@ import { apiFailure } from "../../platform/api-failure.ts";
 
 export type Stage1ReleaseLane = "candidate" | "active" | "previous";
 export type Stage1RuntimeBehavior = "governed" | "previous";
-export const STAGE1_CLIENT_CONTRACT_EPOCH = 2;
+export const STAGE1_CLIENT_CONTRACT_EPOCH = 3;
 
 export type Stage1ReleaseLaneClient = {
   rpc(

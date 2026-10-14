@@ -99,7 +99,12 @@ const OTHER_WORKER = 'c253abcd-0000-4000-8000-0000000000d2'
 const RELEASED = {
   'x-client-platform': 'ios',
   'x-client-application-id': 'com.phanmanhtu.homeservices',
-  'x-client-build-number': '45',
+  'x-client-build-number': '56',
+  'x-client-contract-epoch': '3',
+  'x-client-eas-build-id': '11111111-1111-4111-8111-111111111111',
+  'x-client-runtime-version': '0.3.2',
+  'x-client-git-sha': 'c'.repeat(40),
+  'x-client-release-id': 'harness-p253-release',
 }
 
 function handlerFor(role: 'customer' | 'worker', userId: string, client: ReturnType<typeof makeStatefulClient>) {
@@ -109,11 +114,11 @@ function handlerFor(role: 'customer' | 'worker', userId: string, client: ReturnT
     }),
     services: createEdgeServices({} as Parameters<typeof createEdgeServices>[0]),
     clientCompatibility: {
-      contractEpoch: 2,
+      contractEpoch: 3,
       releaseId: 'harness-p253-release',
       gitSha: 'c'.repeat(40),
-      ios: { applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 45, easBuildId: null, runtimeVersion: null },
-      android: { applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 4, easBuildId: null, runtimeVersion: null },
+      ios: { applicationId: 'com.phanmanhtu.homeservices', minimumBuildNumber: 56, easBuildId: '11111111-1111-4111-8111-111111111111', runtimeVersion: '0.3.2' },
+      android: { applicationId: 'com.phanmanhtu.nestscout', minimumBuildNumber: 5, easBuildId: '22222222-2222-4222-8222-222222222222', runtimeVersion: '0.3.2' },
     },
   })
   return async (method: string, path: string, body?: unknown) => {
