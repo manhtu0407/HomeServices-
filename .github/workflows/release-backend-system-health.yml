@@ -1,6 +1,8 @@
 name: release-backend-system-health
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
@@ -14,13 +16,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: production-release
+  group: ${{ github.event_name == 'pull_request' && format('backend-system-health-pr-{0}', github.event.pull_request.number) || 'production-release' }}
   cancel-in-progress: false
 
 jobs:
   quality:
     name: strict Backend, Admin, database, and zero-inference gates
-    if: github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend')
+    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || (github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend'))
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -35,11 +37,16 @@ jobs:
           cache: pnpm
       - name: Verify immutable main identity
         run: |
+          set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test "$GITHUB_REF" = "refs/heads/main"
           test -z "$(git status --porcelain=v1 --untracked-files=all)"
-          git fetch --no-tags origin main
-          test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            test "$GITHUB_BASE_REF" = "main"
+          else
+            test "$GITHUB_REF" = "refs/heads/main"
+            git fetch --no-tags origin main
+            test "$(git rev-parse origin/main)" = "$GITHUB_SHA"
+          fi
       - run: pnpm install --frozen-lockfile
       - name: Prepare strict transaction runners
         run: |
