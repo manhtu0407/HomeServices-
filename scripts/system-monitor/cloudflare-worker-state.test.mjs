@@ -6,7 +6,7 @@ import { readCloudflareWorkerState } from './cloudflare-worker-state.mjs'
 const input = {
   accountId: '45dec251ed1c9627256f9b6ba24bcdff',
   workerName: 'nestscout-system-health-observer',
-  apiToken: 'cloudflare-test-token-that-is-not-real',
+  apiToken: 'nonsensitive-placeholder-value-for-tests',
 }
 
 test('captures active Worker Version metadata and Cron state for rollback without retaining credentials', async () => {
