@@ -7,16 +7,17 @@ import { pillarWhy, type PillarManifest } from './pillar-manifest'
 
 export const PILLAR = {
   id: 'P353-system-health-monitor-runtime',
-  invariant: 'Collector requests and optional worker completion telemetry stay within bounded deadlines, and required evidence never appears green when missing',
+  invariant: 'Supabase runtime route prefixes normalize for collector and observer endpoints, requests remain bounded, and required evidence never appears green when missing',
   authority: [
     'user-approved System Health Monitoring implementation plan',
     'governance/RULES.md #0 (backend and mobile runtime boundaries)',
     'governance/RULES.md #8 (honest evidence and bounded data)',
+    'https://supabase.com/docs/guides/functions/routing (function route paths)',
   ],
   target: 'supabase/functions/system-monitor/index.ts; supabase/functions/system-monitor/handler.ts; supabase/functions/system-monitor/collector.ts; supabase/functions/_shared/system-monitor/worker-heartbeat.ts',
   layer: 'security-negative',
   siblings: ['P351-system-health-monitor-contract', 'P352-system-health-monitor-sql'],
-  mutation: 'permit an inference or deferred-provider URL, coerce malformed aggregate or schedule evidence to zero, skip two-sample Auth/DB availability state, or let a collector/worker heartbeat exceed its deadline and these assertions fail',
+  mutation: 'drop /system-monitor runtime-prefix normalization, permit an inference/deferred-provider URL, coerce malformed evidence to zero, skip two-sample availability, or bypass heartbeat deadlines, and the route, provider, availability, or bounded-evidence assertions fail',
 } as const satisfies PillarManifest
 
 const now = new Date('2026-10-11T12:30:00.000Z')
@@ -364,6 +365,30 @@ describe('System health monitor runtime pillar', () => {
     expect(fixture.fetchPaths.some((path) => /(?:events\/|api\.telegram\.org)/iu.test(path))).toBe(false)
     expect(fixture.savedSnapshot?.schema_version === 2 ? fixture.savedSnapshot.coverage_gaps : null).toEqual(['app-crash', 'push-notifications'])
     expect(fixture.savedSnapshot?.checks.some((check) => check.check_id.includes('sentry'))).toBe(false)
+  })
+
+  it('routes public monitor paths after Supabase Edge Runtime strips the functions API prefix', async () => {
+    const fixture = createFixture()
+    const observerResponse = await fixture.handler(new Request('https://monitor.test/system-monitor/observer/latest?schema_version=2', {
+      method: 'GET',
+      headers: { 'x-system-monitor-observer-secret': 'observer-test-secret' },
+    }))
+    expect(observerResponse.status).toBe(200)
+
+    const collectorResponse = await fixture.handler(new Request('https://monitor.test/system-monitor', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-system-monitor-secret': 'monitor-test-secret' },
+      body: JSON.stringify({ scheduled_at: now.toISOString() }),
+    }))
+    expect(collectorResponse.status).toBe(200)
+    expect(fixture.savedSnapshot?.environment).toBe('production')
+
+    const unrelatedPath = await fixture.handler(new Request('https://monitor.test/system-monitoring/observer/latest', {
+      method: 'GET',
+      headers: { 'x-system-monitor-observer-secret': 'observer-test-secret' },
+    }))
+    expect(unrelatedPath.status).toBe(404)
+    expect(fixture.observerHeartbeatWrites).toBe(0)
   })
 
   it('negotiates snapshot v1 and v2 while projecting a gray coverage check for legacy readers', async () => {

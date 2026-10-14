@@ -56,7 +56,8 @@ const COLLECTOR_BUDGET_MS = 25_000;
 export function createSystemMonitorHandler(dependencies: MonitorHandlerDependencies) {
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url);
-    const route = (url.pathname.replace(/^\/functions\/v1\/system-monitor/u, "").replace(/\/$/u, "") || "/");
+    const route = normalizeSystemMonitorRoute(url.pathname);
+    if (route === null) return json({ error: "NOT_FOUND" }, 404);
     if (route.startsWith("/observer/")) {
       return handleObserverRequest(request, route, dependencies);
     }
@@ -170,6 +171,17 @@ export function createSystemMonitorHandler(dependencies: MonitorHandlerDependenc
       }).catch(() => undefined);
     }
   };
+}
+
+function normalizeSystemMonitorRoute(pathname: string): string | null {
+  const normalizedPath = pathname.length > 1 && pathname.endsWith("/")
+    ? pathname.slice(0, -1)
+    : pathname;
+  for (const prefix of ["/functions/v1/system-monitor", "/system-monitor"]) {
+    if (normalizedPath === prefix) return "/";
+    if (normalizedPath.startsWith(`${prefix}/`)) return normalizedPath.slice(prefix.length);
+  }
+  return normalizedPath === "/" ? "/" : null;
 }
 
 async function handleObserverRequest(
