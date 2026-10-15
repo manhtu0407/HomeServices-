@@ -244,6 +244,91 @@ test('bounds body streaming timeout and cancels the reader', async () => {
   assert.equal(canceled, true)
 })
 
+test('the default Admin budget permits a six-second audited response without changing the observer budget', async (context) => {
+  context.mock.timers.enable({ apis: ['setTimeout'] })
+  const { input } = fixture()
+  const original = input.fetcher
+  let resume
+  let delayed = false
+  input.fetcher = async (url, options) => {
+    if (!delayed && url.pathname.includes('/admin/system/health')) {
+      delayed = true
+      await new Promise((resolve) => { resume = resolve })
+    }
+    return original(url, options)
+  }
+  const pending = probeBackendRelease(input).then(value => ({ value }), error => ({ error }))
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(typeof resume, 'function')
+  context.mock.timers.tick(6000)
+  resume()
+  const result = await pending
+  assert.equal(result.error, undefined)
+  assert.equal(result.value.backendVerified, true)
+})
+
+test('allows audited Admin reads their own bounded deadline while keeping observer reads short', async () => {
+  const { input } = fixture()
+  const original = input.fetcher
+  input.requestTimeoutMs = 10
+  input.adminRequestTimeoutMs = 80
+  input.fetcher = async (url, options) => {
+    if (url.pathname.includes('/admin/system/health')) await new Promise((resolve) => setTimeout(resolve, 20))
+    return original(url, options)
+  }
+  assert.equal((await probeBackendRelease(input)).backendVerified, true)
+  input.fetcher = async (url, options) => {
+    if (url.pathname.endsWith('/observer/latest')) await new Promise((resolve) => setTimeout(resolve, 20))
+    return original(url, options)
+  }
+  await assert.rejects(probeBackendRelease(input), /BACKEND_PROBE_TIMEOUT/u)
+})
+
+test('still aborts an Admin response body at its bounded deadline and rejects an unbounded configuration', async () => {
+  const { input, calls } = fixture()
+  const original = input.fetcher
+  let canceled = false
+  input.adminRequestTimeoutMs = 20
+  input.fetcher = async (url, options) => url.pathname.includes('/admin/system/health')
+    ? new Response(new ReadableStream({ cancel() { canceled = true } })) : original(url, options)
+  await assert.rejects(probeBackendRelease(input), /BACKEND_PROBE_TIMEOUT/u)
+  assert.equal(canceled, true)
+  input.adminRequestTimeoutMs = 10001
+  calls.length = 0
+  await assert.rejects(probeBackendRelease(input), /BACKEND_PROBE_CONFIGURATION_INVALID/u)
+  assert.equal(calls.length, 0)
+})
+
+for (const kind of ['newer', 'older', 'same-inconsistent', 'regresses-after-owner']) {
+  test(`handles ${kind} Admin snapshots while the scheduled collector continues running`, async () => {
+    const { input, snapshot } = fixture()
+    snapshot.scheduled_at = iso(-3000)
+    snapshot.completed_at = iso(-1000)
+    snapshot.expires_at = iso(179000)
+    const original = input.fetcher
+    input.fetcher = async (url, options) => {
+      if (!url.pathname.includes('/admin/system/health')) return original(url, options)
+      if (!/Bearer (owner|operator)-/u.test(options.headers.authorization ?? '')) return original(url, options)
+      const updated = structuredClone(snapshot)
+      if (kind === 'newer') updated.completed_at = iso()
+      if (kind === 'older') updated.completed_at = iso(-2000)
+      if (kind === 'regresses-after-owner' && options.headers.authorization === `Bearer ${input.tokens.owner.accessToken}`) {
+        updated.completed_at = iso()
+      }
+      updated.expires_at = new Date(Date.parse(updated.completed_at) + 180000).toISOString()
+      if (kind === 'same-inconsistent') {
+        const io = updated.checks.find((check) => check.check_id === 'backend-storage-realtime-io')
+        assert.ok(io)
+        io.status = 'green'
+        io.observed_at = iso()
+      }
+      return Response.json({ snapshot: updated })
+    }
+    if (kind === 'newer') assert.equal((await probeBackendRelease(input)).snapshotCompletedAt, iso())
+    else await assert.rejects(probeBackendRelease(input), /BACKEND_PROBE_ADMIN_SNAPSHOT_MISMATCH/u)
+  })
+}
+
 test('rejects foreign target before any network', async () => {
   const { input, calls } = fixture()
   input.supabaseUrl = 'https://provider.example.com'
