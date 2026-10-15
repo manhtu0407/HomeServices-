@@ -12,7 +12,7 @@ export function verifyCloudflareWorkerDeploymentIdentity(input) {
 
   const deployments = parseJson(input.deployments)
   const listed = Array.isArray(deployments) ? deployments : deployments?.deployments ?? deployments?.result
-  const latest = Array.isArray(listed) ? listed[0] : null
+  const latest = latestWorkerDeployment(listed)
   const deployedVersions = latest?.versions
   const versionsDocument = parseJson(input.versions)
   const versionEntries = Array.isArray(versionsDocument)
@@ -84,6 +84,26 @@ export function verifyCloudflareRuntimeEvidence(input) {
       snapshotAt: new Date(snapshotAt).toISOString(),
     },
   })
+}
+
+function latestWorkerDeployment(deployments) {
+  if (!Array.isArray(deployments) || deployments.length === 0) return null
+
+  let latest = null
+  let latestCreatedAt = Number.NEGATIVE_INFINITY
+  let newestCount = 0
+  for (const deployment of deployments) {
+    const createdAt = Date.parse(deployment?.created_on ?? '')
+    if (!Number.isFinite(createdAt)) return null
+    if (createdAt > latestCreatedAt) {
+      latest = deployment
+      latestCreatedAt = createdAt
+      newestCount = 1
+    } else if (createdAt === latestCreatedAt) {
+      newestCount += 1
+    }
+  }
+  return newestCount === 1 ? latest : null
 }
 
 function parseD1Evidence(value) {

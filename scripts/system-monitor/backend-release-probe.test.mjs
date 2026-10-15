@@ -43,7 +43,7 @@ function fixture() {
     }])), now: () => nowMs,
     cloudflare: {
       versions: [{ id: 'v1', annotations: { 'workers/tag': release.releaseId, 'workers/message': release.gitSha } }],
-      deployments: [{ id: 'deployment-1', versions: [{ version_id: 'v1', percentage: 100 }] }],
+      deployments: [{ id: 'deployment-1', created_on: iso(-5000), versions: [{ version_id: 'v1', percentage: 100 }] }],
       d1Evidence: { migrations: ['0001.sql'], latestTick: { outcome: 'completed', scheduled_at: iso(-1000), completed_at: iso() },
         state: { last_snapshot_at: iso(), last_error_code: null } },
     },

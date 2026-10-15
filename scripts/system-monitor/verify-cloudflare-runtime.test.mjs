@@ -23,6 +23,7 @@ const deployments = {
   success: true,
   deployments: [{
     id: 'deployment-1',
+    created_on: '2026-10-13T11:00:00.000Z',
     annotations: { 'workers/message': release.gitSha },
     versions: [{ version_id: 'version-1', percentage: 100 }],
   }],
@@ -122,6 +123,53 @@ test('rejects stale ticks, pending reconciliation errors, and late timestamps', 
   assert.throws(
     () => verifyCloudflareRuntimeEvidence({ deployments, versions: workerVersions, d1Evidence: makeD1Evidence(undefined, undefined, 'OUTAGE_RECONCILIATION_PENDING'), release, nowMs }),
     /CLOUDFLARE_OBSERVER_REPORTED_ERROR/u,
+  )
+})
+
+test('selects the newest release from oldest-first Cloudflare deployment history', () => {
+  const deploymentsOldestFirst = [
+    { id: 'deployment-old', created_on: '2026-10-14T21:47:12.767573Z', versions: [{ version_id: 'version-old', percentage: 100 }] },
+    { id: 'deployment-rollback', created_on: '2026-10-14T21:51:02.624096Z', versions: [{ version_id: 'version-rollback', percentage: 100 }] },
+    { id: 'deployment-current', created_on: '2026-10-14T23:18:18.482949Z', versions: [{ version_id: 'version-current', percentage: 100 }] },
+  ]
+  const versions = [
+    { id: 'version-old', annotations: { 'workers/tag': 'harness-old', 'workers/message': 'c'.repeat(40) } },
+    { id: 'version-rollback', annotations: { 'workers/tag': 'rollback-old', 'workers/message': 'd'.repeat(40) } },
+    { id: 'version-current', annotations: { 'workers/tag': release.releaseId, 'workers/message': release.gitSha } },
+  ]
+
+  const result = verifyCloudflareWorkerDeploymentIdentity({ deployments: deploymentsOldestFirst, versions, release })
+
+  assert.equal(result.deploymentId, 'deployment-current')
+  assert.deepEqual(result.workerVersions, [{ versionId: 'version-current', percentage: 100 }])
+})
+
+test('rejects a release that appears only on an older Worker deployment', () => {
+  const deploymentsNewestLast = [
+    { id: 'deployment-old', created_on: '2026-10-13T11:00:00.000Z', versions: [{ version_id: 'version-current', percentage: 100 }] },
+    { id: 'deployment-new', created_on: '2026-10-13T12:00:00.000Z', versions: [{ version_id: 'version-new', percentage: 100 }] },
+  ]
+  const versions = [
+    { id: 'version-current', annotations: { 'workers/tag': release.releaseId, 'workers/message': release.gitSha } },
+    { id: 'version-new', annotations: { 'workers/tag': 'harness-other', 'workers/message': 'd'.repeat(40) } },
+  ]
+
+  assert.throws(
+    () => verifyCloudflareWorkerDeploymentIdentity({ deployments: deploymentsNewestLast, versions, release }),
+    /CLOUDFLARE_WORKER_DEPLOYMENT_IDENTITY_MISMATCH/u,
+  )
+})
+
+test('rejects tied deployment timestamps instead of guessing the active version', () => {
+  const createdOn = '2026-10-13T12:00:00.000Z'
+  const tiedDeployments = [
+    { id: 'deployment-one', created_on: createdOn, versions: [{ version_id: 'version-1', percentage: 100 }] },
+    { id: 'deployment-two', created_on: createdOn, versions: [{ version_id: 'version-1', percentage: 100 }] },
+  ]
+
+  assert.throws(
+    () => verifyCloudflareWorkerDeploymentIdentity({ deployments: tiedDeployments, versions: workerVersions, release }),
+    /CLOUDFLARE_WORKER_DEPLOYMENT_IDENTITY_MISMATCH/u,
   )
 })
 
