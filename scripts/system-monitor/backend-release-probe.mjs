@@ -196,9 +196,9 @@ export function verifyBackendReleaseProbeReceipt(receipt, release, nowMs = Date.
       Object.entries(PROBE_ROLES).some(([role, expected]) => receipt.profileRolesVerified[role] !== expected) ||
       !receipt.checkStatuses || typeof receipt.checkStatuses !== 'object' || Array.isArray(receipt.checkStatuses) ||
       Object.keys(receipt.checkStatuses).sort().join('|') !== [...PROFILE_CHECKS].sort().join('|') ||
-      receipt.checkStatuses['backend-core'] !== 'green' || receipt.checkStatuses['observer-dispatcher'] !== 'green' ||
-      Object.entries(receipt.checkStatuses).some(([id, status]) => id !== 'app-native-connectivity' &&
-        id !== 'backend-core' && id !== 'observer-dispatcher' && ['red', 'yellow'].includes(status)) ||
+      Object.entries(receipt.checkStatuses).some(([id, status]) =>
+        ['kael-agentic', 'app-native-connectivity'].includes(id)
+          ? !['green', 'gray'].includes(status) : status !== 'green') ||
       Object.values(receipt.checkStatuses).some((status) => !['green', 'yellow', 'red', 'gray'].includes(status)) ) {
     problems.push('BACKEND_PROBE_RECEIPT_CHECKS_INVALID')
   }

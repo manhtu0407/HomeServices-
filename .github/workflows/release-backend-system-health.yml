@@ -591,6 +591,14 @@ jobs:
             --release artifacts/release/release.json --hosted artifacts/release/hosted-candidate.json \
             --source-root artifacts/candidate-source --function kael-matching-maintainer \
             --output artifacts/release/maintainer-source-proof.json
+          node scripts/harness/source-deployment-attestation.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --proof artifacts/release/mobile-source-proof.json \
+            --output artifacts/release/mobile-source-attestation.json
+          node scripts/harness/source-deployment-attestation.mjs \
+            --environment production --project-ref "$PRODUCTION_PROJECT_REF" \
+            --proof artifacts/release/maintainer-source-proof.json \
+            --output artifacts/release/maintainer-source-attestation.json
           SYSTEM_MONITOR_EDGE_STATE_OUTPUT=artifacts/release/system-monitor-edge-after.json \
             node scripts/system-monitor/edge-deployment.mjs capture \
               --project-ref "$PRODUCTION_PROJECT_REF" \

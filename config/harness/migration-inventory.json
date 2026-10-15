@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 462,
+  "migrationCount": 463,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "0ca750b5a12ca757ee3e47d332e90762b91ca6c0140887e932a1157df5b5144f",
+  "migrationsSha256": "6d8bd736479115c6b85f8b6e40ee61070c6988c9d1544cfbcc21a5a69fcdcfe7",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e91abb2c693df49897a6652798f230ed94e32cad54732be7471069a5f1bb857f"
@@ -3341,6 +3341,13 @@
       "file": "supabase/migrations/20261015100000_system_health_monitor_vault_compatibility.sql",
       "sha256": "1f9bdd1b37dd9ed0b220a406cb9e3818922eb5c4562d7a7b7dd82485fe1f4f28",
       "bytes": 1464
+    },
+    {
+      "version": "20261015120000",
+      "name": "backend_promotion_monitor_evidence",
+      "file": "supabase/migrations/20261015120000_backend_promotion_monitor_evidence.sql",
+      "sha256": "c6316352f3e4c21310062822d563044536137b34ce94f65fbe098013c2bfd262",
+      "bytes": 19984
     }
   ]
 }

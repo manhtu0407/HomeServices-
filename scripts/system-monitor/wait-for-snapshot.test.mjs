@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { waitForFreshSystemHealthSnapshot } from './wait-for-snapshot.mjs'
+import { isOperationalSystemHealthSnapshot, waitForFreshSystemHealthSnapshot } from './wait-for-snapshot.mjs'
 
 const nowMs = Date.parse('2026-10-13T12:00:00.000Z')
 const baseInput = {
@@ -194,7 +194,35 @@ function operationalSnapshot(observerStatus, completedAt) {
     'kael-agentic', 'app-native-connectivity', 'observer-dispatcher']
   snapshot.required_check_ids = ids
   snapshot.checks = ids.map((check_id) => ({ ...snapshot.checks[0], check_id,
-    status: check_id === 'observer-dispatcher' ? observerStatus : check_id === 'app-native-connectivity' ? 'gray' : 'green' }))
+    status: check_id === 'observer-dispatcher' ? observerStatus : check_id === 'app-native-connectivity' ? 'gray' : 'green',
+    reason_code: check_id === 'app-native-connectivity' ? 'NO_ACTIVE_NATIVE_SESSIONS' : 'OBSERVED' }))
   snapshot.overall_status = observerStatus === 'red' ? 'red' : 'gray'
   return snapshot
 }
+
+test('operational release tolerates only explained inactivity while missing backend evidence blocks', () => {
+  const snapshot = operationalSnapshot('green', nowMs)
+  const kael = snapshot.checks.find((check) => check.check_id === 'kael-agentic')
+  Object.assign(kael, { status: 'gray', reason_code: 'NO_RECENT_AI_ACTIVITY', sample_count: 0 })
+  assert.equal(isOperationalSystemHealthSnapshot(snapshot), true)
+  for (const reason of ['KAEL_EVIDENCE_MISSING', 'KAEL_EVIDENCE_INCOMPLETE', 'LEARNING_QUEUE_EVIDENCE_MISSING']) {
+    kael.reason_code = reason
+    assert.equal(isOperationalSystemHealthSnapshot(snapshot), false, reason)
+  }
+  Object.assign(kael, { reason_code: 'NO_RECENT_AI_ACTIVITY', sample_count: 20 })
+  assert.equal(isOperationalSystemHealthSnapshot(snapshot), true, 'completed cached runs do not imply inference activity')
+  kael.sample_count = -1
+  assert.equal(isOperationalSystemHealthSnapshot(snapshot), false, 'negative outcomes are invalid evidence')
+  Object.assign(kael, { reason_code: 'NO_RECENT_AI_ACTIVITY', sample_count: 0 })
+  for (const id of ['backend-core', 'backend-storage-realtime-io', 'backend-scheduled-workers', 'observer-dispatcher']) {
+    const check = snapshot.checks.find((item) => item.check_id === id)
+    check.status = 'gray'
+    assert.equal(isOperationalSystemHealthSnapshot(snapshot), false, `missing required ${id}`)
+    check.status = 'green'
+  }
+  const native = snapshot.checks.find((check) => check.check_id === 'app-native-connectivity')
+  for (const status of ['yellow', 'red']) {
+    native.status = status
+    assert.equal(isOperationalSystemHealthSnapshot(snapshot), false, `observed native ${status} must block`)
+  }
+})
