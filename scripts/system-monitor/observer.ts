@@ -523,7 +523,8 @@ function validateSnapshot(snapshot: Snapshot | null, config: ObserverConfig, now
   for (const check of snapshot.checks) {
     const observed = check.observed_at === null ? null : Date.parse(check.observed_at)
     if (observed !== null && (!Number.isFinite(observed) || observed > nowMs)) return 'SNAPSHOT_INVALID'
-    if (check.status !== 'gray' && (observed === null || nowMs - observed > 180_000)) return 'SNAPSHOT_STALE'
+    if (check.status !== 'gray' && observed === null) return 'SNAPSHOT_STALE'
+    if (['green', 'yellow'].includes(check.status) && observed !== null && nowMs - observed > 180_000) return 'SNAPSHOT_STALE'
   }
   const observedIds = new Set(snapshot.checks.map((check) => check.check_id))
   if ((snapshot.required_check_ids ?? []).some((checkId) => !observedIds.has(checkId))) return 'REQUIRED_CHECK_MISSING'
