@@ -190,13 +190,13 @@ begin
 
   update public.system_health_snapshots s set checks=(
     select jsonb_agg(case when x->>'check_id'='kael-agentic' then
-      x||jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',0,'observed_at',snapshot_at)
+      x||jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',20,'observed_at',snapshot_at)
       else x end) from jsonb_array_elements(s.checks) x
   ) where s.environment='production';
   select checks into ready_checks from public.system_health_snapshots where environment='production';
   foreach changed in array array[
     jsonb_build_object('status','gray','reason_code','KAEL_EVIDENCE_MISSING','sample_count',0,'observed_at',snapshot_at),
-    jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',1,'observed_at',snapshot_at),
+    jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',-1,'observed_at',snapshot_at),
     jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',0,'observed_at',snapshot_at-interval '181 seconds'),
     jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',0,'observed_at',null),
     jsonb_build_object('status','red','reason_code','ERROR_RATE_HIGH','sample_count',20,'observed_at',snapshot_at)

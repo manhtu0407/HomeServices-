@@ -243,7 +243,8 @@ begin
  or exists(select 1 from jsonb_array_elements(s.checks) x where case
    when x->>'check_id'='app-native-connectivity' then x->>'status' in ('green','gray')
    when x->>'check_id'='kael-agentic' and x->>'status'='gray' then
-     x->>'reason_code'='NO_RECENT_AI_ACTIVITY' and x->'sample_count'='0'::jsonb
+     x->>'reason_code'='NO_RECENT_AI_ACTIVITY' and jsonb_typeof(x->'sample_count')='number'
+     and (x->>'sample_count')::bigint between 0 and 9007199254740991
      and (x->>'observed_at')::timestamptz>t-interval '180 seconds'
      and (x->>'observed_at')::timestamptz<=t+interval '30 seconds'
    else x->>'status'='green'

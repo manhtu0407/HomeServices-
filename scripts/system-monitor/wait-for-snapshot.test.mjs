@@ -209,8 +209,10 @@ test('operational release tolerates only explained inactivity while missing back
     kael.reason_code = reason
     assert.equal(isOperationalSystemHealthSnapshot(snapshot), false, reason)
   }
-  Object.assign(kael, { reason_code: 'NO_RECENT_AI_ACTIVITY', sample_count: 1 })
-  assert.equal(isOperationalSystemHealthSnapshot(snapshot), false, 'inactivity must have zero outcomes')
+  Object.assign(kael, { reason_code: 'NO_RECENT_AI_ACTIVITY', sample_count: 20 })
+  assert.equal(isOperationalSystemHealthSnapshot(snapshot), true, 'completed cached runs do not imply inference activity')
+  kael.sample_count = -1
+  assert.equal(isOperationalSystemHealthSnapshot(snapshot), false, 'negative outcomes are invalid evidence')
   Object.assign(kael, { reason_code: 'NO_RECENT_AI_ACTIVITY', sample_count: 0 })
   for (const id of ['backend-core', 'backend-storage-realtime-io', 'backend-scheduled-workers', 'observer-dispatcher']) {
     const check = snapshot.checks.find((item) => item.check_id === id)

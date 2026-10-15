@@ -56,7 +56,8 @@ export function isOperationalSystemHealthSnapshot(snapshot) {
       const check = checks[0]
       if (check.status === 'green') return true
       if (check.status !== 'gray') return false
-      if (id === 'kael-agentic') return check.reason_code === 'NO_RECENT_AI_ACTIVITY' && check.sample_count === 0
+      if (id === 'kael-agentic') return check.reason_code === 'NO_RECENT_AI_ACTIVITY' &&
+        Number.isSafeInteger(check.sample_count) && check.sample_count >= 0
       return id === 'app-native-connectivity' &&
         ['NO_ACTIVE_NATIVE_SESSIONS', 'NATIVE_SESSION_EVIDENCE_MISSING'].includes(check.reason_code)
     })

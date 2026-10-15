@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "ba5f8a635992ecd28864f25c6797aab0005f66ff0065d3ccbb9b64ca4e889203",
+  "migrationsSha256": "6d8bd736479115c6b85f8b6e40ee61070c6988c9d1544cfbcc21a5a69fcdcfe7",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e91abb2c693df49897a6652798f230ed94e32cad54732be7471069a5f1bb857f"
@@ -3346,8 +3346,8 @@
       "version": "20261015120000",
       "name": "backend_promotion_monitor_evidence",
       "file": "supabase/migrations/20261015120000_backend_promotion_monitor_evidence.sql",
-      "sha256": "bb9042240b2abf3b97007ff5d263818f084a326d195ff8a1d5f328321292cefb",
-      "bytes": 19903
+      "sha256": "c6316352f3e4c21310062822d563044536137b34ce94f65fbe098013c2bfd262",
+      "bytes": 19984
     }
   ]
 }
