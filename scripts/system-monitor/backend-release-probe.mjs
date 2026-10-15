@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { waitForFreshSystemHealthSnapshot } from './wait-for-snapshot.mjs'
+import { isOperationalSystemHealthSnapshot, waitForFreshSystemHealthSnapshot } from './wait-for-snapshot.mjs'
 import { verifyCloudflareRuntimeEvidence } from './verify-cloudflare-runtime.mjs'
 
 const PROJECT = 'iwevizmsedyqozxlawwl'
@@ -106,13 +106,7 @@ export async function probeBackendRelease(input) {
         new Set(snapshot.checks.map((check) => check.check_id)).size !== PROFILE_CHECKS.length) {
       throw new Error('BACKEND_PROBE_PROFILE_INCOMPLETE')
     }
-    for (const id of ['backend-core', 'observer-dispatcher']) {
-      if (snapshot.checks?.find((check) => check.check_id === id)?.status !== 'green') {
-        throw new Error('BACKEND_PROBE_OPERATIONAL_CHECK_FAILED')
-      }
-    }
-    if (snapshot.checks.some((check) => check.check_id !== 'app-native-connectivity' &&
-        ['red', 'yellow'].includes(check.status))) throw new Error('BACKEND_PROBE_OPERATIONAL_CHECK_FAILED')
+    if (!isOperationalSystemHealthSnapshot(snapshot)) throw new Error('BACKEND_PROBE_OPERATIONAL_CHECK_FAILED')
     const evidence = await waitForFreshSystemHealthSnapshot({
       supabaseUrl: input.supabaseUrl, observerSecret: input.observerSecret,
       environment: 'production', projectRef: PROJECT, profileId: 'cloudflare-admin-v1',

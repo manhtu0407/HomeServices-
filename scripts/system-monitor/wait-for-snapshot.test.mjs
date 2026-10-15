@@ -126,3 +126,40 @@ function makeSnapshot(completedAt = nowMs) {
     }],
   }
 }
+
+test('operational readiness waits for a new collector snapshot after observer recovery', async () => {
+  let calls = 0
+  let clock = nowMs
+  const result = await waitForFreshSystemHealthSnapshot({
+    ...baseInput, requireOperational: true, timeoutMs: 5000,
+    now: () => clock, sleep: async (duration) => { clock += duration },
+    fetcher: async () => {
+      calls += 1
+      return Response.json({ snapshot: operationalSnapshot(calls === 1 ? 'red' : 'green', clock) })
+    },
+  })
+  assert.equal(calls, 2)
+  assert.equal(result.overallStatus, 'gray')
+})
+
+test('operational readiness fails within its budget if a detector remains unhealthy', async () => {
+  let clock = nowMs
+  let calls = 0
+  await assert.rejects(waitForFreshSystemHealthSnapshot({
+    ...baseInput, requireOperational: true,
+    now: () => clock, sleep: async (duration) => { clock += duration },
+    fetcher: async () => { calls += 1; return Response.json({ snapshot: operationalSnapshot('red', clock) }) },
+  }), /SYSTEM_HEALTH_SNAPSHOT_NOT_OPERATIONAL/u)
+  assert.equal(calls, 2)
+})
+
+function operationalSnapshot(observerStatus, completedAt) {
+  const snapshot = makeSnapshot(completedAt)
+  const ids = ['backend-core', 'backend-storage-realtime-io', 'backend-scheduled-workers',
+    'kael-agentic', 'app-native-connectivity', 'observer-dispatcher']
+  snapshot.required_check_ids = ids
+  snapshot.checks = ids.map((check_id) => ({ ...snapshot.checks[0], check_id,
+    status: check_id === 'observer-dispatcher' ? observerStatus : check_id === 'app-native-connectivity' ? 'gray' : 'green' }))
+  snapshot.overall_status = observerStatus === 'red' ? 'red' : 'gray'
+  return snapshot
+}
