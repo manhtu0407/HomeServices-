@@ -36,7 +36,9 @@ export async function probeBackendRelease(input) {
   const fetcher = input.fetcher ?? fetch
   const now = input.now ?? (() => Date.now())
   const timeoutMs = input.requestTimeoutMs ?? 5000
-  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 5000) throw new Error('BACKEND_PROBE_CONFIGURATION_INVALID')
+  const adminTimeoutMs = input.adminRequestTimeoutMs ?? 10000
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 5000 ||
+      !Number.isInteger(adminTimeoutMs) || adminTimeoutMs < 1 || adminTimeoutMs > 10000) throw new Error('BACKEND_PROBE_CONFIGURATION_INVALID')
   async function get(path, headers = {}, expected = 200) {
     const url = new URL(path, input.supabaseUrl)
     const queryKeys = [...url.searchParams.keys()].sort()
@@ -47,10 +49,11 @@ export async function probeBackendRelease(input) {
     if (url.origin !== input.supabaseUrl || (!PATHS.has(url.pathname + url.search) && !ownProfileRoute)) {
       throw new Error('BACKEND_PROBE_ROUTE_FORBIDDEN')
     }
+    const deadlineMs = url.pathname.startsWith('/functions/v1/mobile-api/admin/system/') ? adminTimeoutMs : timeoutMs
     const controller = new AbortController()
     let timer
     const deadline = new Promise((_, reject) => {
-      timer = setTimeout(() => { controller.abort(); reject(new Error('BACKEND_PROBE_TIMEOUT')) }, timeoutMs)
+      timer = setTimeout(() => { controller.abort(); reject(new Error('BACKEND_PROBE_TIMEOUT')) }, deadlineMs)
     })
     try {
       return await Promise.race([deadline, (async () => {
@@ -121,6 +124,7 @@ export async function probeBackendRelease(input) {
   const observer = await snapshotEvidence(await get('/functions/v1/system-monitor/observer/latest?schema_version=2', {
     'x-system-monitor-observer-secret': input.observerSecret,
   }))
+  let latest = observer
   const profileRolesVerified = {}
   for (const [role, expectedProfileRole] of Object.entries(PROBE_ROLES)) {
     const identity = input.tokens[role]
@@ -139,10 +143,12 @@ export async function probeBackendRelease(input) {
   for (const role of ['owner', 'operator']) {
     const headers = { authorization: `Bearer ${input.tokens[role].accessToken}` }
     const adminHealth = await snapshotEvidence(await get('/functions/v1/mobile-api/admin/system/health?schema_version=2', headers))
-    if (adminHealth.completedAt !== observer.completedAt ||
-        JSON.stringify(adminHealth.checkStatuses) !== JSON.stringify(observer.checkStatuses)) {
+    if (adminHealth.completedAt < latest.completedAt ||
+        adminHealth.completedAt === latest.completedAt &&
+        JSON.stringify(adminHealth.checkStatuses) !== JSON.stringify(latest.checkStatuses)) {
       throw new Error('BACKEND_PROBE_ADMIN_SNAPSHOT_MISMATCH')
     }
+    latest = adminHealth
     const incidents = await get('/functions/v1/mobile-api/admin/system/incidents?limit=1', headers)
     if (incidents?.data_quality !== 'available' || !Array.isArray(incidents.records) ||
         incidents.records.length > 1 || typeof incidents.has_more !== 'boolean') throw new Error('BACKEND_PROBE_INCIDENTS_INVALID')
@@ -156,8 +162,8 @@ export async function probeBackendRelease(input) {
   const receipt = {
     schemaVersion: 'backend-release-probe.v2', environment: 'production', projectRef: PROJECT,
     releaseId: release.releaseId, gitSha: release.gitSha, completedAt: new Date(now()).toISOString(),
-    snapshotCompletedAt: observer.completedAt, overallStatus: observer.overallStatus,
-    checkStatuses: observer.checkStatuses,
+    snapshotCompletedAt: latest.completedAt, overallStatus: latest.overallStatus,
+    checkStatuses: latest.checkStatuses,
     profileRolesVerified,
     cloudflareVerified: cloudflare.status === 'verified', backendVerified: true, inferenceRequests: 0,
     method: 'GET', requestCount: 16,
