@@ -87,6 +87,41 @@ test('stops immediately on an observer authorization failure', async () => {
   assert.equal(calls, 1)
 })
 
+test('accepts a new failure evaluation carrying an old observer heartbeat without declaring readiness', async () => {
+  const snapshot = operationalSnapshot('red', nowMs)
+  const observer = snapshot.checks.find((check) => check.check_id === 'observer-dispatcher')
+  observer.reason_code = 'OBSERVER_HEARTBEAT_STALE'
+  observer.observed_at = new Date(nowMs - 3_600_000).toISOString()
+  const result = await waitForFreshSystemHealthSnapshot({
+    ...baseInput, fetcher: async () => Response.json({ snapshot }),
+  })
+  assert.equal(result.overallStatus, 'red')
+  let clock = nowMs
+  await assert.rejects(waitForFreshSystemHealthSnapshot({
+    ...baseInput, requireOperational: true, now: () => clock,
+    sleep: async (duration) => { clock += duration },
+    fetcher: async () => Response.json({ snapshot }),
+  }), /SYSTEM_HEALTH_SNAPSHOT_NOT_OPERATIONAL/u)
+})
+
+test('still rejects old positive evidence, expired evaluations, and invalid failure timestamps', async () => {
+  for (const kind of ['green', 'yellow', 'expired', 'future', 'null']) {
+    const snapshot = operationalSnapshot('red', nowMs)
+    const observer = snapshot.checks.find((check) => check.check_id === 'observer-dispatcher')
+    observer.observed_at = new Date(nowMs - 3_600_000).toISOString()
+    if (kind === 'green' || kind === 'yellow') {
+      observer.status = kind
+      snapshot.overall_status = kind === 'yellow' ? 'yellow' : 'gray'
+    }
+    if (kind === 'expired') snapshot.expires_at = new Date(nowMs).toISOString()
+    if (kind === 'future') observer.observed_at = new Date(nowMs + 1).toISOString()
+    if (kind === 'null') observer.observed_at = null
+    await assert.rejects(waitForFreshSystemHealthSnapshot({
+      ...baseInput, fetcher: async () => Response.json({ snapshot }),
+    }), /SYSTEM_HEALTH_SNAPSHOT_INVALID_OR_STALE/u, kind)
+  }
+})
+
 test('rejects a cross-project target before making a request', async () => {
   let calls = 0
   await assert.rejects(

@@ -116,7 +116,8 @@ function validateSnapshot(snapshot, config, nowMs) {
     checkIds.add(check.check_id)
     const observedAt = check.observed_at === null ? null : Date.parse(check.observed_at)
     if (observedAt !== null && (!Number.isFinite(observedAt) || observedAt > nowMs)) return null
-    if (check.status !== 'gray' && (observedAt === null || nowMs - observedAt > MAX_SNAPSHOT_AGE_MS)) return null
+    if (check.status !== 'gray' && observedAt === null) return null
+    if (['green', 'yellow'].includes(check.status) && nowMs - observedAt > MAX_SNAPSHOT_AGE_MS) return null
   }
   if (snapshot.required_check_ids.some((checkId) => !checkIds.has(checkId))) return null
   const expectedStatus = snapshot.checks.some((check) => check.status === 'red')

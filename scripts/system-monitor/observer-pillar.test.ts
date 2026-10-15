@@ -221,6 +221,48 @@ describe('Cloudflare system health observer with local D1', () => {
     expect(result.snapshotStatus).toBe('unavailable')
   })
 
+  it('persists a fresh failure evaluation of an old heartbeat and resolves it only after a fresh pass', async () => {
+    let snapshot = makeSnapshot(TEST_NOW, [{
+      check_id: 'observer-dispatcher', component: 'operations', status: 'red',
+      reason_code: 'OBSERVER_HEARTBEAT_STALE', incident_id: null,
+    }])
+    const checks = snapshot.checks as Array<Record<string, unknown>>
+    checks[0].observed_at = new Date(TEST_NOW - 3_600_000).toISOString()
+    const fixture = createFixture(() => snapshot)
+    const failed = await runSystemHealthObserver(fixture.config, {
+      fetcher: fixture.fetcher, now: () => new Date(TEST_NOW), scheduledTime: TEST_NOW,
+    })
+    expect(failed.snapshotStatus).toBe('fresh')
+    expect(failed.outageReason).toBeNull()
+    expect(fixture.heartbeats.at(-1)).toMatchObject({ dispatcher_status: 'green', d1_status: 'green' })
+    const incident = await env.DB.prepare("SELECT incident_id, status FROM monitor_incidents WHERE reason_code = 'OBSERVER_HEARTBEAT_STALE'")
+      .first<{ incident_id: string; status: string }>()
+    expect(incident?.status).toBe('open')
+    snapshot = makeSnapshot(TEST_NOW + 60_000, [{
+      check_id: 'observer-dispatcher', component: 'operations', status: 'green', reason_code: 'OBSERVER_HEALTHY', incident_id: null,
+    }])
+    await runSystemHealthObserver(fixture.config, {
+      fetcher: fixture.fetcher, now: () => new Date(TEST_NOW + 60_000), scheduledTime: TEST_NOW + 60_000,
+    })
+    const resolved = await env.DB.prepare('SELECT status FROM monitor_incidents WHERE incident_id = ?')
+      .bind(incident?.incident_id ?? '').first<{ status: string }>()
+    expect(resolved?.status).toBe('resolved')
+  })
+
+  it.each(['green', 'yellow'] as const)('rejects old %s evidence inside a new snapshot', async (status) => {
+    const snapshot = makeSnapshot(TEST_NOW, [{
+      check_id: 'observer-dispatcher', component: 'operations', status, reason_code: 'OBSERVER_HEALTHY', incident_id: null,
+    }])
+    const checks = snapshot.checks as Array<Record<string, unknown>>
+    checks[0].observed_at = new Date(TEST_NOW - 3_600_000).toISOString()
+    const fixture = createFixture(() => snapshot)
+    const result = await runSystemHealthObserver(fixture.config, {
+      fetcher: fixture.fetcher, now: () => new Date(TEST_NOW), scheduledTime: TEST_NOW,
+    })
+    expect(result.snapshotStatus).toBe('unavailable')
+    expect(result.outageReason).toBe('SNAPSHOT_STALE')
+  })
+
   it('rejects a legacy v1 profile and missing required evidence as gray coverage failures', async () => {
     const legacy = makeSnapshot(TEST_NOW, [{
       check_id: 'backend-edge-availability', component: 'backend', status: 'green', reason_code: 'EDGE_AVAILABLE', incident_id: null,
