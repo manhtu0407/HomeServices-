@@ -31,8 +31,8 @@ export async function waitForFreshSystemHealthSnapshot(input) {
       } else {
         const payload = await readBoundedJson(response)
         const evidence = validateSnapshot(payload?.snapshot, config, now())
-        if (evidence) return evidence
-        lastReason = 'SYSTEM_HEALTH_SNAPSHOT_INVALID_OR_STALE'
+        if (evidence && (!input.requireOperational || isOperationalSystemHealthSnapshot(payload.snapshot))) return evidence
+        lastReason = evidence ? 'SYSTEM_HEALTH_SNAPSHOT_NOT_OPERATIONAL' : 'SYSTEM_HEALTH_SNAPSHOT_INVALID_OR_STALE'
       }
     } catch (error) {
       if (error instanceof Error && error.message === 'SYSTEM_HEALTH_SNAPSHOT_AUTH_FAILED') throw error
@@ -44,6 +44,12 @@ export async function waitForFreshSystemHealthSnapshot(input) {
     await sleep(Math.min(config.pollIntervalMs, timeoutMs - (now() - startedAt)))
   }
   throw new Error(lastReason)
+}
+
+export function isOperationalSystemHealthSnapshot(snapshot) {
+  return Array.isArray(snapshot?.checks) &&
+    ['backend-core', 'observer-dispatcher'].every((id) => snapshot.checks.find((check) => check.check_id === id)?.status === 'green') &&
+    !snapshot.checks.some((check) => check.check_id !== 'app-native-connectivity' && ['red', 'yellow'].includes(check.status))
 }
 
 function validateConfig(input) {
@@ -141,6 +147,7 @@ async function main() {
     environment: process.env.SYSTEM_HEALTH_ENVIRONMENT,
     projectRef: process.env.SYSTEM_HEALTH_EXPECTED_PROJECT_REF,
     profileId: process.env.SYSTEM_HEALTH_PROFILE_ID,
+    requireOperational: process.env.SYSTEM_HEALTH_REQUIRE_OPERATIONAL === 'true',
   })
   const output = process.env.SYSTEM_HEALTH_SNAPSHOT_EVIDENCE_PATH
   if (output) writeFileSync(output, `${JSON.stringify(evidence, null, 2)}\n`, { flag: 'wx' })

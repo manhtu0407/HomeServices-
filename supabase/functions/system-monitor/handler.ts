@@ -4,6 +4,7 @@ import {
   type SystemMonitorEvidence,
 } from "./collector.ts";
 import type { EdgeSystemHealthSnapshot as SystemHealthSnapshot } from "../_shared/contracts/system-health.ts";
+import { readRealtimeEvidence } from "./realtime-probe.ts";
 
 export type MonitorStore = {
   claimRun(environment: string, scheduledAt: string, ownerId: string): Promise<boolean>;
@@ -48,6 +49,7 @@ export type MonitorHandlerDependencies = {
   readonly createStore: (supabaseUrl: string, serviceKey: string, fetcher?: typeof fetch) => MonitorStore;
   readonly fetcher: typeof fetch;
   readonly now?: () => Date;
+  readonly createRealtimeSocket?: (url: string) => Pick<WebSocket, "addEventListener" | "removeEventListener" | "send" | "close">;
 };
 
 const MAX_REQUEST_BYTES = 4 * 1024;
@@ -110,7 +112,8 @@ export function createSystemMonitorHandler(dependencies: MonitorHandlerDependenc
       readEdgeEvidence(supabaseUrl, dependencies.env, budgetFetch),
       readAuthEvidence(supabaseUrl, dependencies.env, budgetFetch),
       readStorageEvidence(supabaseUrl, dependencies.env, budgetFetch),
-      readRealtimeEvidence(supabaseUrl, dependencies.env, budgetFetch),
+      readRealtimeEvidence({ supabaseUrl, anonKey: dependencies.env("SUPABASE_ANON_KEY") ?? dependencies.env("SUPABASE_PUBLISHABLE_KEY") ?? "",
+        createSocket: dependencies.createRealtimeSocket, timeoutMs: Math.min(5000, deadline - Date.now()) }),
       safeRead(() => store.databaseProbe(), null),
       safeRead(() => store.readWorkerEvidence(), null),
       safeRead(() => store.readKaelEvidence(configuredEnvironment, new Date(now.getTime() - 5 * 60_000).toISOString()), null),
@@ -327,19 +330,6 @@ async function readStorageEvidence(supabaseUrl: string, env: (name: string) => s
     return { status: response.status, healthy: body.valid && typeof health === "boolean" ? health : null };
   } catch {
     return { status: null, healthy: null };
-  }
-}
-
-async function readRealtimeEvidence(supabaseUrl: string, env: (name: string) => string | undefined, fetcher: typeof fetch) {
-  const url = new URL("/realtime/v1/healthcheck", supabaseUrl).toString();
-  const anonKey = env("SUPABASE_ANON_KEY") ?? env("SUPABASE_PUBLISHABLE_KEY") ?? "";
-  if (!isSystemMonitorEvidenceUrlAllowed(url) || !anonKey) return { status: null };
-  try {
-    const response = await fetcher(url, { method: "GET", headers: { apikey: anonKey }, redirect: "error" });
-    await response.body?.cancel().catch(() => undefined);
-    return { status: response.status };
-  } catch {
-    return { status: null };
   }
 }
 

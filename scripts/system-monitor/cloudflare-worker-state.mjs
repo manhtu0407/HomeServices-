@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -93,9 +93,45 @@ export async function readCloudflareWorkerState(input) {
   })
 }
 
+export async function restoreCloudflareWorkerSchedules(input) {
+  const { accountId, workerName, apiToken, cronSchedules } = input ?? {}
+  if (accountId !== '45dec251ed1c9627256f9b6ba24bcdff' || workerName !== 'nestscout-system-health-observer' ||
+      typeof apiToken !== 'string' || apiToken.length < 20 || !Array.isArray(cronSchedules) || cronSchedules.length > 3 ||
+      cronSchedules.some((cron) => typeof cron !== 'string' || !/^[0-9A-Za-z*,/ -]{9,100}$/u.test(cron))) {
+    throw new Error('CLOUDFLARE_SCHEDULE_RESTORE_CONFIGURATION_INVALID')
+  }
+  try {
+    const response = await (input.fetcher ?? fetch)(
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}/schedules`, {
+        method: 'PUT', redirect: 'error', signal: AbortSignal.timeout(5000),
+        headers: { authorization: `Bearer ${apiToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify(cronSchedules.map((cron) => ({ cron }))),
+      })
+    if (!response.ok) { await response.body?.cancel(); throw new Error('write failed') }
+    const text = await response.text()
+    if (Buffer.byteLength(text, 'utf8') > 16384) throw new Error('response too large')
+    const result = JSON.parse(text)
+    const restored = result?.result?.schedules
+    if (result?.success !== true || !Array.isArray(restored) ||
+        JSON.stringify(restored.map((item) => item?.cron).sort()) !== JSON.stringify([...cronSchedules].sort())) {
+      throw new Error('schedule mismatch')
+    }
+  } catch {
+    throw new Error('CLOUDFLARE_SCHEDULE_RESTORE_FAILED')
+  }
+}
+
 async function main() {
   const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
   const workerName = process.env.SYSTEM_HEALTH_CLOUDFLARE_WORKER_NAME
+  const restoreFrom = process.env.CLOUDFLARE_WORKER_RESTORE_SCHEDULES_FROM
+  if (restoreFrom) {
+    const before = JSON.parse(readFileSync(restoreFrom, 'utf8'))
+    await restoreCloudflareWorkerSchedules({ accountId, workerName, apiToken: process.env.CLOUDFLARE_API_TOKEN,
+      cronSchedules: before.cronSchedules })
+    process.stdout.write('Captured Cloudflare Cron schedules restored\n')
+    return
+  }
   const state = await readCloudflareWorkerState({
     accountId,
     workerName,

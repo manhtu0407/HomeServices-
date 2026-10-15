@@ -35,3 +35,12 @@ test('Backend probe and promotion consume the same captured Worker Version evide
   assert.ok(promotion.includes('backend-system-health-promotion.mjs'), 'build the final promotion packet')
   assert.ok(promotion.includes(versionsPath), 'bind promotion to the same deployed Worker Version')
 })
+
+test('Admin probing waits for operational recovery and rollback restores the captured Cron inventory', () => {
+  const probe = workflowStep('Byte-prove deployed Edge source and run read-only Admin role probe')
+  assert.ok(probe.includes('SYSTEM_HEALTH_REQUIRE_OPERATIONAL=true'))
+  assert.ok(probe.indexOf('wait-for-snapshot.mjs') < probe.indexOf('backend-release-probe.mjs'))
+  const rollback = workflowStep('Disable or restore the candidate safely after a failed release')
+  assert.ok(rollback.includes('CLOUDFLARE_WORKER_RESTORE_SCHEDULES_FROM=artifacts/release/cloudflare-worker-before.json'))
+  assert.ok(rollback.indexOf('wrangler rollback') < rollback.indexOf('node scripts/system-monitor/cloudflare-worker-state.mjs'))
+})

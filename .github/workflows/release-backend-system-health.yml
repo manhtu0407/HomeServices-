@@ -550,6 +550,12 @@ jobs:
           PRODUCTION_SYNTHETIC_WORKER_PASSWORD: ${{ secrets.PRODUCTION_SYNTHETIC_WORKER_PASSWORD }}
         run: |
           set -euo pipefail
+          SYSTEM_HEALTH_ENVIRONMENT=production \
+            SYSTEM_HEALTH_EXPECTED_PROJECT_REF="$PRODUCTION_PROJECT_REF" \
+            SYSTEM_HEALTH_PROFILE_ID=cloudflare-admin-v1 \
+            SYSTEM_HEALTH_REQUIRE_OPERATIONAL=true \
+            SYSTEM_HEALTH_SNAPSHOT_EVIDENCE_PATH=artifacts/release/system-health-operational-snapshot.json \
+            node scripts/system-monitor/wait-for-snapshot.mjs
           pnpm exec wrangler versions list --name nestscout-system-health-observer \
             --config scripts/system-monitor/wrangler.jsonc --json \
             > artifacts/release/cloudflare-versions-after.json
@@ -709,6 +715,10 @@ jobs:
               previous_version=$(node -e "process.stdout.write(require('./artifacts/release/cloudflare-worker-before.json').versionId)")
               pnpm exec wrangler rollback "$previous_version" --name nestscout-system-health-observer \
                 --config scripts/system-monitor/wrangler.jsonc || rollback_status=1
+              CLOUDFLARE_ACCOUNT_ID=45dec251ed1c9627256f9b6ba24bcdff \
+                SYSTEM_HEALTH_CLOUDFLARE_WORKER_NAME=nestscout-system-health-observer \
+                CLOUDFLARE_WORKER_RESTORE_SCHEDULES_FROM=artifacts/release/cloudflare-worker-before.json \
+                node scripts/system-monitor/cloudflare-worker-state.mjs || rollback_status=1
             else
               secret_file=$(mktemp)
               umask 077

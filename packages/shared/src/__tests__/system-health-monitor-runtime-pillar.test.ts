@@ -2,8 +2,47 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { isSystemMonitorEvidenceUrlAllowed, normalizeSystemMonitorAggregate } from '../../../../supabase/functions/system-monitor/collector'
 import { createSystemMonitorBudgetedFetch, createSystemMonitorHandler, type MonitorStore } from '../../../../supabase/functions/system-monitor/handler'
+import { readRealtimeEvidence } from '../../../../supabase/functions/system-monitor/realtime-probe'
 import { recordSystemMonitorWorkerCompletion, SYSTEM_MONITOR_WORKER_HEARTBEAT_TIMEOUT_MS } from '../../../../supabase/functions/_shared/system-monitor/worker-heartbeat'
 import { pillarWhy, type PillarManifest } from './pillar-manifest'
+
+describe('Realtime health transport', () => {
+  it('times out an unrelated reply and removes listeners before closing', async () => {
+    vi.useFakeTimers()
+    try {
+      const socket = Object.assign(new EventTarget(), { send: vi.fn(), close: vi.fn() })
+      const removed = vi.spyOn(socket, 'removeEventListener')
+      const pending = readRealtimeEvidence({ supabaseUrl: 'https://abcdefgh.supabase.co', anonKey: 'public-test-key', createSocket: () => socket })
+      socket.dispatchEvent(new Event('open'))
+      socket.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ topic: 'phoenix', event: 'phx_reply', ref: 'another-request', payload: { status: 'ok' } }) }))
+      await vi.advanceTimersByTimeAsync(5000)
+      expect(await pending).toEqual({ status: 504 })
+      expect(socket.close).toHaveBeenCalledOnce()
+      expect(removed).toHaveBeenCalledTimes(4)
+      expect(vi.getTimerCount()).toBe(0)
+    } finally { vi.useRealTimers() }
+  })
+
+  it('fails safely on malformed messages, a closed transport, or constructor failure', async () => {
+    for (const event of [new MessageEvent('message', { data: 'private malformed response' }), new Event('close'), new Event('error')]) {
+      const socket = Object.assign(new EventTarget(), { send: vi.fn(), close: vi.fn() })
+      const pending = readRealtimeEvidence({ supabaseUrl: 'https://abcdefgh.supabase.co', anonKey: 'public-test-key', createSocket: () => socket })
+      socket.dispatchEvent(event)
+      expect(await pending).toEqual({ status: 503 })
+      expect(socket.close).toHaveBeenCalledOnce()
+    }
+    expect(await readRealtimeEvidence({ supabaseUrl: 'https://abcdefgh.supabase.co', anonKey: 'public-test-key',
+      createSocket: () => { throw new Error('private transport configuration') } })).toEqual({ status: 503 })
+  })
+
+  it('rejects foreign or credential-bearing targets before opening any socket', async () => {
+    const createSocket = vi.fn()
+    for (const supabaseUrl of ['https://api.anthropic.com', 'https://user:password@abcdefgh.supabase.co', 'https://abcdefgh.supabase.co/?token=private']) {
+      expect(await readRealtimeEvidence({ supabaseUrl, anonKey: 'public-test-key', createSocket })).toEqual({ status: null })
+    }
+    expect(createSocket).not.toHaveBeenCalled()
+  })
+})
 
 export const PILLAR = {
   id: 'P353-system-health-monitor-runtime',
@@ -143,7 +182,6 @@ describe('System health monitor runtime pillar', () => {
     expect([...fixture.fetchPaths].sort()).toEqual([
       '/auth/v1/health',
       '/functions/v1/mobile-api/harness/health',
-      '/realtime/v1/healthcheck',
       '/storage/v1/health',
     ].sort())
     expect(fixture.savedSnapshot).toMatchObject({ schema_version: 2, profile_id: 'cloudflare-admin-v1' })
@@ -627,6 +665,25 @@ function createFixture() {
     } as Record<string, string>)[name],
     createStore: () => store,
     now: () => currentNow,
+    createRealtimeSocket: (target) => {
+      const url = new URL(target)
+      expect(url.protocol).toBe('wss:')
+      expect(url.hostname).toBe('abcdefgh.supabase.co')
+      expect(url.pathname).toBe('/realtime/v1/websocket')
+      expect(url.searchParams.get('apikey')).toBe('anon-test-key')
+      const socket = new EventTarget()
+      queueMicrotask(() => socket.dispatchEvent(new Event('open')))
+      return Object.assign(socket, {
+        close() {},
+        send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
+          const heartbeat = JSON.parse(String(data))
+          expect(heartbeat).toMatchObject({ topic: 'phoenix', event: 'heartbeat', payload: {} })
+          queueMicrotask(() => socket.dispatchEvent(realtimeStatus === 200
+            ? new MessageEvent('message', { data: JSON.stringify({ topic: 'phoenix', event: 'phx_reply', ref: heartbeat.ref, payload: { status: 'ok' } }) })
+            : new Event('error')))
+        },
+      })
+    },
     fetcher: async (input) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input : input.url)
       fetchPaths.push(url.pathname)
@@ -637,7 +694,6 @@ function createFixture() {
         })
       }
       if (url.pathname === '/storage/v1/health') return Response.json(storagePayload)
-      if (url.pathname === '/realtime/v1/healthcheck') return new Response('ok', { status: realtimeStatus })
       if (url.pathname === '/auth/v1/health') return new Response('{}', { status: authStatus })
       throw new Error('Unexpected outbound request')
     },

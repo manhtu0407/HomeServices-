@@ -1,13 +1,47 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { readCloudflareWorkerState } from './cloudflare-worker-state.mjs'
+import { readCloudflareWorkerState, restoreCloudflareWorkerSchedules } from './cloudflare-worker-state.mjs'
 
 const input = {
   accountId: '45dec251ed1c9627256f9b6ba24bcdff',
   workerName: 'nestscout-system-health-observer',
   apiToken: 'nonsensitive-placeholder-value-for-tests',
 }
+
+test('rollback restores the captured schedule set including an empty dormant baseline', async () => {
+  for (const cronSchedules of [[], ['* * * * *']]) {
+    const requests = []
+    await restoreCloudflareWorkerSchedules({ ...input, cronSchedules,
+      fetcher: async (url, init) => {
+        requests.push({ url: String(url), init })
+        return Response.json({ success: true, result: { schedules: cronSchedules.map((cron) => ({ cron })) } })
+      },
+    })
+    assert.equal(requests.length, 1)
+    assert.equal(requests[0].url, `https://api.cloudflare.com/client/v4/accounts/${input.accountId}/workers/scripts/${input.workerName}/schedules`)
+    assert.equal(requests[0].init.method, 'PUT')
+    assert.deepEqual(JSON.parse(requests[0].init.body), cronSchedules.map((cron) => ({ cron })))
+    assert.ok(requests[0].init.signal instanceof AbortSignal)
+  }
+})
+
+test('rollback rejects an unverified schedule target and a failed write', async () => {
+  let calls = 0
+  await assert.rejects(restoreCloudflareWorkerSchedules({ ...input, accountId: 'f'.repeat(32), cronSchedules: [],
+    fetcher: async () => { calls += 1; return Response.json({ success: true }) },
+  }), /CLOUDFLARE_SCHEDULE_RESTORE_CONFIGURATION_INVALID/u)
+  assert.equal(calls, 0)
+  await assert.rejects(restoreCloudflareWorkerSchedules({ ...input, cronSchedules: [],
+    fetcher: async () => Response.json({ success: false, errors: [{ message: input.apiToken }] }, { status: 500 }),
+  }), (error) => error.message === 'CLOUDFLARE_SCHEDULE_RESTORE_FAILED')
+})
+
+test('rollback does not report success when Cloudflare retains a different schedule set', async () => {
+  await assert.rejects(restoreCloudflareWorkerSchedules({ ...input, cronSchedules: [],
+    fetcher: async () => Response.json({ success: true, result: { schedules: [{ cron: '* * * * *' }] } }),
+  }), /CLOUDFLARE_SCHEDULE_RESTORE_FAILED/u)
+})
 
 test('captures active Worker Version metadata and Cron state for rollback without retaining credentials', async () => {
   const requests = []
