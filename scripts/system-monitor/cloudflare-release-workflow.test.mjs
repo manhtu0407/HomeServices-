@@ -44,3 +44,14 @@ test('Admin probing waits for operational recovery and rollback restores the cap
   assert.ok(rollback.includes('CLOUDFLARE_WORKER_RESTORE_SCHEDULES_FROM=artifacts/release/cloudflare-worker-before.json'))
   assert.ok(rollback.indexOf('wrangler rollback') < rollback.indexOf('node scripts/system-monitor/cloudflare-worker-state.mjs'))
 })
+
+test('Backend source proofs are attested in the hosted ledger before final promotion', () => {
+  const probe = workflowStep('Byte-prove deployed Edge source and run read-only Admin role probe')
+  for (const name of ['mobile', 'maintainer']) {
+    const proof = `--proof artifacts/release/${name}-source-proof.json`
+    assert.ok(probe.includes(`node scripts/harness/source-deployment-attestation.mjs`))
+    assert.ok(probe.includes(proof), `persist the verified ${name} source in the hosted attestation ledger`)
+    assert.ok(probe.includes(`--output artifacts/release/${name}-source-attestation.json`))
+    assert.ok(probe.indexOf(proof) < probe.indexOf('backend-release-probe.mjs'))
+  }
+})

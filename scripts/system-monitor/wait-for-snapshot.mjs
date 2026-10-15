@@ -47,9 +47,19 @@ export async function waitForFreshSystemHealthSnapshot(input) {
 }
 
 export function isOperationalSystemHealthSnapshot(snapshot) {
-  return Array.isArray(snapshot?.checks) &&
-    ['backend-core', 'observer-dispatcher'].every((id) => snapshot.checks.find((check) => check.check_id === id)?.status === 'green') &&
-    !snapshot.checks.some((check) => check.check_id !== 'app-native-connectivity' && ['red', 'yellow'].includes(check.status))
+  const ids = ['backend-core', 'backend-storage-realtime-io', 'backend-scheduled-workers',
+    'kael-agentic', 'app-native-connectivity', 'observer-dispatcher']
+  return Array.isArray(snapshot?.checks) && snapshot.checks.length === ids.length &&
+    ids.every((id) => {
+      const checks = snapshot.checks.filter((check) => check.check_id === id)
+      if (checks.length !== 1) return false
+      const check = checks[0]
+      if (check.status === 'green') return true
+      if (check.status !== 'gray') return false
+      if (id === 'kael-agentic') return check.reason_code === 'NO_RECENT_AI_ACTIVITY' && check.sample_count === 0
+      return id === 'app-native-connectivity' &&
+        ['NO_ACTIVE_NATIVE_SESSIONS', 'NATIVE_SESSION_EVIDENCE_MISSING'].includes(check.reason_code)
+    })
 }
 
 function validateConfig(input) {

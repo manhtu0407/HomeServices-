@@ -31,8 +31,11 @@ function fixture() {
     coverage_gaps: ['app-crash', 'push-notifications'],
     checks: ['backend-core', 'backend-storage-realtime-io', 'backend-scheduled-workers',
       'kael-agentic', 'app-native-connectivity', 'observer-dispatcher'].map((check_id) => ({ check_id,
-        status: ['backend-core', 'observer-dispatcher'].includes(check_id) ? 'green' : 'gray',
-        reason_code: 'OBSERVED', observed_at: ['backend-core', 'observer-dispatcher'].includes(check_id) ? iso() : null })),
+        status: ['kael-agentic', 'app-native-connectivity'].includes(check_id) ? 'gray' : 'green',
+        reason_code: check_id === 'kael-agentic' ? 'NO_RECENT_AI_ACTIVITY' :
+          check_id === 'app-native-connectivity' ? 'NO_ACTIVE_NATIVE_SESSIONS' : 'OBSERVED',
+        sample_count: ['kael-agentic', 'app-native-connectivity'].includes(check_id) ? 0 : 1,
+        observed_at: check_id === 'app-native-connectivity' ? null : iso() })),
   }
   const calls = []
   const input = {
@@ -317,10 +320,11 @@ for (const kind of ['newer', 'older', 'same-inconsistent', 'regresses-after-owne
       }
       updated.expires_at = new Date(Date.parse(updated.completed_at) + 180000).toISOString()
       if (kind === 'same-inconsistent') {
-        const io = updated.checks.find((check) => check.check_id === 'backend-storage-realtime-io')
-        assert.ok(io)
-        io.status = 'green'
-        io.observed_at = iso()
+        const kael = updated.checks.find((check) => check.check_id === 'kael-agentic')
+        assert.ok(kael)
+        kael.status = 'green'
+        kael.reason_code = 'OUTCOMES_HEALTHY'
+        kael.observed_at = iso()
       }
       return Response.json({ snapshot: updated })
     }
@@ -380,3 +384,16 @@ test('receipt verifier rejects a checksummed failed operational status', async (
   receipt.receiptSha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
   assert.ok(verifyBackendReleaseProbeReceipt(receipt, input.release, nowMs).length > 0)
 })
+
+for (const [id, status] of [['backend-storage-realtime-io', 'gray'], ['backend-scheduled-workers', 'gray'],
+  ['app-native-connectivity', 'red'], ['kael-agentic', 'yellow']]) {
+  test(`receipt verifier rejects checksummed ${id} ${status}`, async () => {
+    const { input } = fixture()
+    const receipt = { ...await probeBackendRelease(input) }
+    receipt.checkStatuses[id] = status
+    receipt.overallStatus = status === 'red' ? 'red' : status === 'yellow' ? 'yellow' : 'gray'
+    const { receiptSha256: _, ...payload } = receipt
+    receipt.receiptSha256 = createHash('sha256').update(JSON.stringify(payload)).digest('hex')
+    assert.ok(verifyBackendReleaseProbeReceipt(receipt, input.release, nowMs).length > 0)
+  })
+}

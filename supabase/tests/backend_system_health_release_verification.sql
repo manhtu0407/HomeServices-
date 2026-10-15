@@ -1,7 +1,7 @@
 -- @pillar id: P389-backend-system-health-release-promotion-sql
 -- @pillar invariant: Backend release promotion is service-role-only, verifies fresh monitor evidence and exact source identity, atomically fences the active release revision, and persists one immutable replay receipt.
 -- @pillar authority: governance/critical.md #3 No False Completion | governance/protocols/backend-structure.md §25
--- @pillar target: supabase/migrations/20261014120000_backend_system_health_release.sql
+-- @pillar target: supabase/migrations/20261015120000_backend_promotion_monitor_evidence.sql
 -- @pillar layer: sql
 -- @pillar siblings: P354-system-health-cloudflare-observer-d1,P388-mobile-client-contract-compatibility
 -- @pillar mutation: Remove the role, source, freshness, CAS, replay, or append-only guard; its corresponding denial or replay assertion must fail.
@@ -19,6 +19,7 @@ declare
   result record;
   snapshot_at timestamptz := clock_timestamp();
   key text;
+  ready_checks jsonb;
 begin
   if has_function_privilege('anon', 'public.promote_backend_system_health_release_atomic(text,text,bigint,jsonb)', 'execute')
     or has_function_privilege('authenticated', 'public.promote_backend_system_health_release_atomic(text,text,bigint,jsonb)', 'execute') then
@@ -59,6 +60,9 @@ begin
     jsonb_build_object('releaseLane', 'backend-system-health', 'transactionCoverage',
       jsonb_build_object('manifestSha256', sha, 'entryCount', 65, 'boundAssertionsRequired', 445),
       'activeClientCompatibility', client_compatibility,
+      'edgeRuntimeConfigurations', jsonb_build_object(
+        'mobile-api',jsonb_build_object('sha256',sha,'verifyJwt',false,'importMap',false),
+        'kael-matching-maintainer',jsonb_build_object('sha256',sha,'verifyJwt',false,'importMap',false)),
       'backendHostedBaseline', jsonb_build_object('environment', 'production',
         'projectRef', 'iwevizmsedyqozxlawwl', 'registered', true,
         'gitSha', repeat('c',40), 'releaseId', v_previous_release_id,
@@ -75,17 +79,35 @@ begin
     candidate_release_id=null, candidate_cohort_id=null, candidate_packet_sha256=null,
     candidate_started_at=null where environment='production';
 
-  insert into public.stage1_source_deployment_attestations (
-    deployment_id, environment, release_id, function_name, edge_version,
-    source_sha256, hosted_bundle_sha256, runtime_configuration_sha256,
-    verify_jwt, import_map, entrypoint_path, import_map_path, proof_sha256
-  ) values
-    ('iwevizmsedyqozxlawwl_11111111-1111-4111-8111-111111111111_2000000000',
-      'production', v_release_id, 'mobile-api', 2000000000, sha, sha, sha,
-      false, false, 'supabase/functions/mobile-api/index.ts', null, repeat('b',64)),
-    ('iwevizmsedyqozxlawwl_22222222-2222-4222-8222-222222222222_2000000000',
-      'production', v_release_id, 'kael-matching-maintainer', 2000000000, sha, sha, sha,
-      false, false, 'supabase/functions/kael-matching-maintainer/index.ts', null, repeat('c',64));
+  if has_function_privilege('authenticated',
+    'public.attest_stage1_source_deployment(text,text,text,text,integer,text,text,text,boolean,boolean,text,text,text)','execute') then
+    raise exception 'App roles must not attest Backend source';
+  end if;
+  foreach key in array array['revision','candidate'] loop
+    update public.stage1_release_controls set revision=case when key='revision' then 8 else 7 end,
+      candidate_release_id=case when key='candidate' then v_previous_release_id else null end,
+      candidate_cohort_id=case when key='candidate' then 'synthetic-stage1-cccccccccccc-dddddddddddd-fixture' else null end,
+      candidate_packet_sha256=case when key='candidate' then sha else null end,
+      candidate_started_at=case when key='candidate' then snapshot_at else null end
+      where environment='production';
+    begin
+      perform public.attest_stage1_source_deployment('production',v_release_id,'mobile-api',
+        'iwevizmsedyqozxlawwl_11111111-1111-4111-8111-111111111111_2000000000',2000000000,
+        sha,sha,sha,false,false,'supabase/functions/mobile-api/index.ts',null,repeat('b',64));
+      raise exception 'Backend source attestation accepted a changed control %',key;
+    exception when object_not_in_prerequisite_state then
+      if sqlerrm<>'STAGE1_SOURCE_RELEASE_NOT_CONTROLLED' then raise; end if;
+    end;
+  end loop;
+  update public.stage1_release_controls set candidate_release_id=null,candidate_cohort_id=null,
+    candidate_packet_sha256=null,candidate_started_at=null where environment='production';
+  update public.stage1_release_controls set revision=7 where environment='production';
+  perform public.attest_stage1_source_deployment('production',v_release_id,'mobile-api',
+    'iwevizmsedyqozxlawwl_11111111-1111-4111-8111-111111111111_2000000000',2000000000,
+    sha,sha,sha,false,false,'supabase/functions/mobile-api/index.ts',null,repeat('b',64));
+  perform public.attest_stage1_source_deployment('production',v_release_id,'kael-matching-maintainer',
+    'iwevizmsedyqozxlawwl_22222222-2222-4222-8222-222222222222_2000000000',2000000000,
+    sha,sha,sha,false,false,'supabase/functions/kael-matching-maintainer/index.ts',null,repeat('c',64));
   delete from public.system_health_snapshots where environment='production';
   insert into public.system_health_snapshots(schema_version, environment, project_ref, release_id,
     scheduled_at, completed_at, expires_at, overall_status, checks, profile_schema_version, profile_id, required_check_ids, coverage_gaps)
@@ -166,6 +188,50 @@ begin
     raise exception 'Backend promotion accepted stale revision';
   exception when serialization_failure then null; end;
 
+  update public.system_health_snapshots s set checks=(
+    select jsonb_agg(case when x->>'check_id'='kael-agentic' then
+      x||jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',0,'observed_at',snapshot_at)
+      else x end) from jsonb_array_elements(s.checks) x
+  ) where s.environment='production';
+  select checks into ready_checks from public.system_health_snapshots where environment='production';
+  foreach changed in array array[
+    jsonb_build_object('status','gray','reason_code','KAEL_EVIDENCE_MISSING','sample_count',0,'observed_at',snapshot_at),
+    jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',1,'observed_at',snapshot_at),
+    jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',0,'observed_at',snapshot_at-interval '181 seconds'),
+    jsonb_build_object('status','gray','reason_code','NO_RECENT_AI_ACTIVITY','sample_count',0,'observed_at',null),
+    jsonb_build_object('status','red','reason_code','ERROR_RATE_HIGH','sample_count',20,'observed_at',snapshot_at)
+  ] loop
+    update public.system_health_snapshots s set checks=(select jsonb_agg(case
+      when x->>'check_id'='kael-agentic' then x||changed else x end) from jsonb_array_elements(ready_checks) x)
+      where s.environment='production';
+    begin
+      perform public.promote_backend_system_health_release_atomic(v_release_id,v_previous_release_id,7,packet);
+      raise exception 'Backend promotion accepted missing, inconsistent, stale or failing Kael evidence %',changed;
+    exception when check_violation then
+      if sqlerrm<>'BACKEND_RELEASE_MONITOR_EVIDENCE_INVALID' then raise; end if;
+    end;
+  end loop;
+  update public.system_health_snapshots set checks=ready_checks where environment='production';
+  insert into public.system_health_snapshots(schema_version,environment,project_ref,release_id,
+    scheduled_at,completed_at,expires_at,overall_status,checks,profile_schema_version,profile_id,required_check_ids,coverage_gaps)
+    select schema_version,environment,project_ref,release_id,scheduled_at-age,
+      completed_at-age,expires_at-age,overall_status,checks,
+      profile_schema_version,profile_id,required_check_ids,coverage_gaps from public.system_health_snapshots
+      cross join (values (interval '60 seconds'),(interval '181 seconds')) as history(age)
+      where environment='production';
+  foreach changed in array array[
+    to_jsonb(snapshot_at-interval '181 seconds'),to_jsonb(snapshot_at+interval '1 second'),
+    to_jsonb(snapshot_at-interval '30 seconds')
+  ] loop
+    update public.system_health_observer_state set last_snapshot_at=(changed #>> '{}')::timestamptz where environment='production';
+    begin
+      perform public.promote_backend_system_health_release_atomic(v_release_id,v_previous_release_id,7,packet);
+      raise exception 'Backend promotion accepted stale, future or unpersisted observer snapshot %',changed;
+    exception when check_violation then
+      if sqlerrm<>'BACKEND_RELEASE_MONITOR_EVIDENCE_INVALID' then raise; end if;
+    end;
+  end loop;
+  update public.system_health_observer_state set last_snapshot_at=snapshot_at-interval '60 seconds' where environment='production';
   select * into result from public.promote_backend_system_health_release_atomic(v_release_id,v_previous_release_id,7,packet);
   if result.active_release_id<>v_release_id or result.previous_active_release_id<>v_previous_release_id or result.revision<>8 then raise exception 'Backend promotion CAS failed'; end if;
   select * into result from public.promote_backend_system_health_release_atomic(v_release_id,v_previous_release_id,7,packet);
