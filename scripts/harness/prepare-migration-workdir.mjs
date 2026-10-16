@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs'
 import { basename, dirname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -7,8 +8,11 @@ import { canonicalMigrationEntries, resolveHostedMigrationState } from './migrat
 import { pendingMigrationEntries } from './release-safety.mjs'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+// The Edge worker contract imports this data outside the functions tree.
+const LOCAL_FUNCTION_DEPENDENCY = 'packages/shared/src/worker-capability-data.ts'
 
 export function buildMigrationApplyPlan(input) {
+  if (input.localInstance) throw new Error('local instance selection requires an empty local migration plan')
   if (input.mode === 'staging-catchup') {
     throw new Error('Staging migration catch-up is locked; only the Production migration lane is available.')
   }
@@ -50,6 +54,7 @@ export function buildMigrationApplyPlan(input) {
 }
 
 export function buildEmptyMigrationApplyPlan(input) {
+  const localRuntime = validateLocalInstance(input.localInstance)
   const selected = canonicalMigrationEntries(input.inventory)
   if (selected.length === 0) throw new Error('empty reset migration inventory is empty')
   const versions = selected.map((entry) => entry.version)
@@ -60,7 +65,8 @@ export function buildEmptyMigrationApplyPlan(input) {
     schemaVersion: '1.0.0',
     mode: 'empty-reset',
     environment: 'local',
-    projectRef: 'nestscout',
+    projectRef: localRuntime ? `nestscout-qa-${localRuntime.name}` : 'nestscout',
+    ...(localRuntime ? { localRuntime } : {}),
     hostedVersions: [],
     pendingVersions: versions,
     files: selected.map((entry) => ({
@@ -84,6 +90,10 @@ export function materializeEmptyMigrationWorkdir(input) {
   const root = resolve(input.root ?? ROOT)
   const output = resolveInsideRoot(root, input.output)
   const plan = buildEmptyMigrationApplyPlan(input)
+  if (existsSync(resolve(root, 'supabase/functions'))) plan.functionFiles = localFunctionSources(root)
+  if (plan.localRuntime && relative(root, output).replaceAll('\\', '/') !== `.scratch/local-migrations-qa-${plan.localRuntime.name}`) {
+    throw new Error('local instance workdir must use its dedicated scratch path')
+  }
   if (existsSync(output)) {
     if (!input.reuseExisting) throw new Error('empty reset migration workdir already exists')
     try {
@@ -108,7 +118,7 @@ function assertReusableEmptyMigrationWorkdir(input) {
   }
 
   const copiedConfig = readFileSync(resolve(input.output, 'supabase/config.toml'))
-  const sourceConfig = readFileSync(resolve(input.root, 'supabase/config.toml'))
+  const sourceConfig = localMigrationConfig(input.root, input.plan)
   if (!copiedConfig.equals(sourceConfig)) throw new Error('existing local migration workdir config differs from source')
 
   const copiedSeed = readFileSync(resolve(input.output, 'supabase/seed.sql'))
@@ -131,6 +141,12 @@ function assertReusableEmptyMigrationWorkdir(input) {
     const copiedDigest = migrationDigest(readFileSync(copied, 'utf8'))
     if (sourceDigest !== entry.sha256 || copiedDigest !== entry.sha256) {
       throw new Error(`existing local migration workdir source checksum mismatch: ${entry.version}`)
+    }
+  }
+  for (const entry of input.plan.functionFiles ?? []) {
+    const copied = resolveInsideRoot(input.output, entry.file)
+    if (!existsSync(copied) || createHash('sha256').update(readFileSync(copied)).digest('hex') !== entry.sha256) {
+      throw new Error('existing local function source checksum mismatch')
     }
   }
 }
@@ -168,10 +184,11 @@ function uniqueSiblingPath(path, label) {
 
 function materializeMigrationWorkdir(input) {
   const { root, output, plan } = input
+  const config = localMigrationConfig(root, plan)
   const supabaseRoot = resolve(output, 'supabase')
   const migrationRoot = resolve(supabaseRoot, 'migrations')
   mkdirSync(migrationRoot, { recursive: true })
-  copyFileSync(resolve(root, 'supabase/config.toml'), resolve(supabaseRoot, 'config.toml'))
+  writeFileSync(resolve(supabaseRoot, 'config.toml'), config)
   if (input.includeSeed) {
     copyFileSync(resolve(root, 'supabase/seed.sql'), resolve(supabaseRoot, 'seed.sql'))
     // supautils <3.2.2 can crash on EXECUTE denial; keep the actual negative SQL tests intact.
@@ -186,7 +203,35 @@ function materializeMigrationWorkdir(input) {
     }
     copyFileSync(source, resolve(migrationRoot, entry.file.split('/').at(-1)))
   }
+  for (const entry of plan.functionFiles ?? []) {
+    const source = resolveInsideRoot(root, entry.file)
+    if (createHash('sha256').update(readFileSync(source)).digest('hex') !== entry.sha256) {
+      throw new Error('local function source checksum changed during preparation')
+    }
+    const copied = resolveInsideRoot(output, entry.file)
+    mkdirSync(dirname(copied), { recursive: true })
+    copyFileSync(source, copied)
+  }
   writeFileSync(resolve(output, 'apply-plan.json'), `${JSON.stringify(plan, null, 2)}\n`)
+}
+
+function localFunctionSources(root) {
+  let tracked
+  try {
+    tracked = execFileSync('git', ['ls-files', '-z', '--', 'supabase/functions', LOCAL_FUNCTION_DEPENDENCY], {
+      cwd: root, encoding: 'utf8', timeout: 15_000, windowsHide: true, stdio: 'pipe',
+    }).split('\0').filter(Boolean).sort()
+  } catch {
+    throw new Error('tracked local function source inventory unavailable')
+  }
+  return tracked.map((file) => {
+    if ((!file.startsWith('supabase/functions/') && file !== LOCAL_FUNCTION_DEPENDENCY) || /(?:^|\/)\.env(?:\.|$)/u.test(file)) {
+      throw new Error('local function source inventory contains an unsafe file')
+    }
+    const source = resolveInsideRoot(root, file)
+    if (!lstatSync(source).isFile()) throw new Error('local function source must be a regular file')
+    return { file, sha256: createHash('sha256').update(readFileSync(source)).digest('hex') }
+  })
 }
 
 function resolveInsideRoot(root, value) {
@@ -198,6 +243,37 @@ function resolveInsideRoot(root, value) {
 
 function migrationDigest(source) {
   return createHash('sha256').update(source.replace(/\r\n/gu, '\n')).digest('hex')
+}
+
+function validateLocalInstance(value) {
+  if (value == null) return null
+  if (typeof value.name !== 'string' || !/^[a-z][a-z0-9-]{0,39}$/u.test(value.name) ||
+      ['production', 'staging', 'main', 'default', 'nestscout'].includes(value.name)) {
+    throw new Error('invalid local instance name')
+  }
+  if (!Number.isInteger(value.portBase) || value.portBase < 1024 || value.portBase > 65520) {
+    throw new Error('invalid local instance port base')
+  }
+  return { name: value.name, portBase: value.portBase }
+}
+
+function localMigrationConfig(root, plan) {
+  const source = readFileSync(resolve(root, 'supabase/config.toml'))
+  const target = validateLocalInstance(plan.localRuntime)
+  if (!target) return source
+  let projectCount = 0
+  const config = source.toString('utf8').replace(/^project_id[ \t]*=[ \t]*"([^"]+)"[ \t]*\r?$/gmu, (_line, project) => {
+    if (project !== 'nestscout') throw new Error('local instance source project differs from nestscout')
+    projectCount += 1
+    return `project_id = "nestscout-qa-${target.name}"`
+  }).replace(/^((?:shadow_|inspector_)?port[ \t]*=[ \t]*)(\d+)(.*)$/gmu, (_line, prefix, digits, suffix) => {
+    const port = Number(digits)
+    const offset = port === 8083 ? 8 : port - 55320
+    if (offset < 0 || offset > 9) throw new Error('local instance config contains an unrecognized port')
+    return `${prefix}${target.portBase + offset}${suffix}`
+  })
+  if (projectCount !== 1) throw new Error('local instance source must contain exactly one project identity')
+  return Buffer.from(config)
 }
 
 function parseArgs(args) {
@@ -220,7 +296,7 @@ function parseArgs(args) {
       options.refreshStale = true
       continue
     }
-    if (!['--inventory', '--hosted', '--receipt', '--output'].includes(key)) {
+    if (!['--inventory', '--hosted', '--receipt', '--output', '--instance', '--port-base'].includes(key)) {
       throw new Error(`unknown argument: ${key}`)
     }
     const value = args[++index]
@@ -244,6 +320,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     if (options.emptyReset && (options.stagingCatchup || options.receipt || options.hosted)) {
       throw new Error('--empty-reset cannot be combined with hosted release options')
     }
+    if ((options.instance || options['port-base']) && (!options.emptyReset || !options.instance || !options['port-base'])) {
+      throw new Error('local instance requires --empty-reset, --instance and --port-base together')
+    }
     if (!options.emptyReset && !options.stagingCatchup && !options.receipt) {
       throw new Error('--receipt is required')
     }
@@ -260,6 +339,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       output: options.output,
       reuseExisting: options.reuse,
       refreshStaleExisting: options.refreshStale,
+      localInstance: options.instance ? { name: options.instance, portBase: Number(options['port-base']) } : null,
       onStaleSnapshotArchived: (path) => console.log(`archived stale local migration workdir: ${path}`),
     }
     const plan = options.emptyReset

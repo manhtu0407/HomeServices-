@@ -73,6 +73,45 @@ locations on Windows before dispatching a runner. This keeps an already-open
 agent process from using a stale `PATH` after Docker Desktop is installed or
 updated.
 
+### An isolated QA instance
+
+When the default ports belong to another session, preserve that stack and select
+a named local instance with a free port range:
+
+```text
+pnpm db:local:up --profile lean --instance journey56 --port-base 58320
+pnpm db:local:down --instance journey56
+```
+
+The project is `nestscout-qa-journey56`; its canonical migration/config copy lives
+in `.scratch/local-migrations-qa-journey56`. API/DB ports are base + 1/+2, and the
+Edge inspector uses base + 8. Doctor checks the selected ports before startup.
+The committed config and default project are unchanged. Hosted migration plans
+reject this option. Instance names cannot be hosted environment names or paths.
+
+QA instances use an owned bridge whose default published address is loopback,
+through the CLI's `--network-id`. Provider secret environment variables are removed
+from the isolated startup child. This network is not an egress firewall: function
+fixture servers must separately reject inference traffic and must not load provider
+secrets. A post-start guard inspects actual published bindings, requires loopback,
+and stops only the named QA instance if that check fails. The CLI can bootstrap
+successfully while this acceptance gate fails. An internal
+bridge was tested but did not publish ports on the current Engine, preventing the
+CLI host from initializing PostgreSQL.
+
+Empty-reset snapshots include checksummed tracked Edge sources and the Shared
+worker-capability data imported by Edge. Reuse detects changed source or copied
+bytes; refresh archives the previous snapshot. Untracked files and environment
+files are not copied; a tracked environment file is rejected. These snapshots
+must not be used as evidence for new untracked Edge files. Hosted apply plans
+remain migration-only. The official Supabase CLI is pinned in `apps/api`.
+
+Use the named workdir explicitly for CLI status, local reset, function serve and
+test consumers. The default reset/down aliases still address the default stack;
+do not use them for an isolated instance. Named down checks the copied project
+identity and preserves volumes and the QA network. Verify actual ownership
+before restarting an existing instance or deleting any retained resource.
+
 On Windows, a launch is also gated by its filesystem origin. If Codex Desktop,
 an AppContainer, or a `CodexSandboxUsers` child sees `%LOCALAPPDATA%\Docker` but
 WSL/DrvFS cannot see the same path under `/mnt/c`, do not launch Docker Desktop

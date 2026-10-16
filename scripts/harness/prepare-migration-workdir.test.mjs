@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
+import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -193,4 +194,77 @@ test('refreshing a stale empty-reset workdir preserves the old snapshot and inst
   assert.equal(readFileSync(join(root, archivedPath, 'preserved-marker.txt'), 'utf8'), 'old snapshot')
   assert.equal(readFileSync(join(root, archivedPath, 'supabase/migrations/20260804000000_fixture.sql'), 'utf8'), 'select 2;\n')
   assert.equal(readdirSync(join(root, '.scratch')).some((name) => name.startsWith('local-migrations-refresh-')), false)
+})
+
+test('an isolated local instance changes only its copied project and ports and remains reusable', () => {
+  const root = mkdtempSync(join(tmpdir(), 'nestscout-local-instance-'))
+  mkdirSync(join(root, 'supabase/migrations'), { recursive: true })
+  const sql = 'select 1;\n'
+  const config = 'project_id = "nestscout"\n[api]\nport = 55321\n[db]\nport = 55322\nshadow_port = 55320\n[studio]\nport = 55323\n[inbucket]\nport = 55324\n[edge_runtime]\ninspector_port = 8083\n'
+  writeFileSync(join(root, 'supabase/config.toml'), config)
+  writeFileSync(join(root, 'supabase/seed.sql'), sql)
+  writeFileSync(join(root, 'supabase/migrations/20260804000000_fixture.sql'), sql)
+  const fixtureInventory = { migrationEquivalences: { version: '1.0.0', groups: [] }, entries: [{ version: '20260804000000', file: 'supabase/migrations/20260804000000_fixture.sql', sha256: createHash('sha256').update(sql).digest('hex') }] }
+  const input = { root, output: '.scratch/local-migrations-qa-journey56', inventory: fixtureInventory, localInstance: { name: 'journey56', portBase: 58320 } }
+  const plan = materializeEmptyMigrationWorkdir(input)
+  assert.equal(plan.projectRef, 'nestscout-qa-journey56')
+  assert.deepEqual(plan.localRuntime, input.localInstance)
+  const copied = readFileSync(join(root, input.output, 'supabase/config.toml'), 'utf8')
+  assert.match(copied, /^project_id = "nestscout-qa-journey56"$/mu)
+  for (const port of [58320, 58321, 58322, 58323, 58324, 58328]) assert.ok(copied.includes(`= ${port}\n`))
+  assert.equal(readFileSync(join(root, 'supabase/config.toml'), 'utf8'), config)
+  assert.equal(readFileSync(join(root, input.output, 'supabase/seed.sql'), 'utf8'), sql)
+  assert.throws(() => materializeEmptyMigrationWorkdir({ ...input, output: 'supabase' }), /dedicated scratch path/u)
+  assert.equal(readFileSync(join(root, 'supabase/config.toml'), 'utf8'), config)
+  assert.deepEqual(materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true }), plan)
+  assert.throws(() => materializeEmptyMigrationWorkdir({ ...input, localInstance: { name: 'journey56', portBase: 59320 }, reuseExisting: true }), /stale|differs/u)
+})
+
+test('local instance selection rejects unsafe names and invalid port ranges before planning', () => {
+  for (const name of ['../production', 'production', 'staging', 'main', '', 'UPPER', 'x;echo', 'x'.repeat(41)]) {
+    assert.throws(() => buildEmptyMigrationApplyPlan({ inventory, localInstance: { name, portBase: 58320 } }), /local instance/u)
+  }
+  for (const portBase of [0, 1023, 65530, 58320.5, Number.NaN, '58320']) {
+    assert.throws(() => buildEmptyMigrationApplyPlan({ inventory, localInstance: { name: 'journey56', portBase } }), /port base/u)
+  }
+})
+
+test('a local instance override cannot be used for a hosted migration apply plan', () => {
+  assert.throws(() => buildMigrationApplyPlan({ inventory, hosted, receipt, localInstance: { name: 'journey56', portBase: 58320 } }), /local instance.*empty/u)
+})
+
+test('local runtime snapshots copy tracked function sources and reject stale or changed copies', () => {
+  const root = mkdtempSync(join(tmpdir(), 'nestscout-local-functions-'))
+  mkdirSync(join(root, 'supabase/migrations'), { recursive: true })
+  mkdirSync(join(root, 'supabase/functions/mobile-api'), { recursive: true })
+  mkdirSync(join(root, 'packages/shared/src'), { recursive: true })
+  const sql = 'select 1;\n'
+  const entry = 'Deno.serve(() => new Response("fixture"))\n'
+  writeFileSync(join(root, 'supabase/config.toml'), 'project_id = "fixture"\n')
+  writeFileSync(join(root, 'supabase/seed.sql'), sql)
+  writeFileSync(join(root, 'supabase/migrations/20260804000000_fixture.sql'), sql)
+  writeFileSync(join(root, 'supabase/functions/mobile-api/index.ts'), entry)
+  writeFileSync(join(root, 'packages/shared/src/worker-capability-data.ts'), 'export const capabilities = {}\n')
+  writeFileSync(join(root, 'supabase/functions/.env'), 'PRIVATE_FIXTURE=not-for-copy\n')
+  const git = (...args) => execFileSync('git', args, { cwd: root, windowsHide: true, timeout: 15_000, stdio: 'pipe' })
+  git('init', '--quiet')
+  git('add', '--', 'supabase/functions/mobile-api/index.ts')
+  git('add', '--', 'packages/shared/src/worker-capability-data.ts')
+  const fixtureInventory = { migrationEquivalences: { version: '1.0.0', groups: [] }, entries: [{ version: '20260804000000', file: 'supabase/migrations/20260804000000_fixture.sql', sha256: createHash('sha256').update(sql).digest('hex') }] }
+  const input = { root, output: '.scratch/local-migrations', inventory: fixtureInventory }
+  const plan = materializeEmptyMigrationWorkdir(input)
+  const copied = join(root, input.output, 'supabase/functions/mobile-api/index.ts')
+  assert.equal(readFileSync(copied, 'utf8'), entry)
+  assert.equal(readFileSync(join(root, input.output, 'packages/shared/src/worker-capability-data.ts'), 'utf8'), 'export const capabilities = {}\n')
+  assert.equal(existsSync(join(root, input.output, 'supabase/functions/.env')), false)
+  assert.deepEqual(materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true }), plan)
+  writeFileSync(copied, 'changed copy')
+  assert.throws(() => materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true }), /function.*checksum/u)
+  writeFileSync(copied, entry)
+  writeFileSync(join(root, 'supabase/functions/mobile-api/index.ts'), `${entry}// changed source\n`)
+  assert.throws(() => materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true }), /stale/u)
+  materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true, refreshStaleExisting: true })
+  assert.equal(readFileSync(copied, 'utf8'), `${entry}// changed source\n`)
+  git('add', '--', 'supabase/functions/.env')
+  assert.throws(() => materializeEmptyMigrationWorkdir({ ...input, reuseExisting: true }), /unsafe file/u)
 })

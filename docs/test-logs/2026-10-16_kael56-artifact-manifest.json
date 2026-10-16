@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "baseline": "e8b95d2122a8ce802c5504630a778f6e51daa72f",
+  "branch": "codex/kael56-admin-partial-loading-20261016",
+  "implementation": "uncommitted; local only",
+  "diffSha256": "1ef09831634257bb7257a1bf4ca6581925c0c9c9de1e340d3c7eabda408ac213",
+  "recordedAt": "2026-10-15T19:35:14.376Z",
+  "artifacts": [
+    {
+      "file": ".scratch/intake-api-full.json",
+      "bytes": 832293,
+      "sha256": "f94a67dda2393009dae43b2f78550cff0cd583050c736e6a3c6948a309aaa5ac"
+    },
+    {
+      "file": ".scratch/admin-priority-mobile-full.json",
+      "bytes": 1144404,
+      "sha256": "531d58fc34b53e284166b392106960e8a90da07a5233ab99fb14518240148828"
+    },
+    {
+      "file": ".scratch/admin-priority-red-expanded.json",
+      "bytes": 261831,
+      "sha256": "c54392839a78e17e96b2e278e5d7c9529f65dbc4c6ade41043b251223aff479c"
+    },
+    {
+      "file": ".scratch/admin-priority-original-source.json",
+      "bytes": 427327,
+      "sha256": "d7e414ece0f017127a3040686abac8946f7272233ac2a162380e7c27e804ca09"
+    },
+    {
+      "file": ".scratch/admin-priority-restored.json",
+      "bytes": 14074,
+      "sha256": "64509ee960fe6ea7f4317a848a8deb3ff8a25e32e045568bb7e0f89fb543ef31"
+    },
+    {
+      "file": ".scratch/campaign-strict-final.log",
+      "bytes": 13423,
+      "sha256": "baeeac89335b899f3fe1795f2ba3188610bf5dd11e106e26cc1d49577f3c32d9"
+    },
+    {
+      "file": ".scratch/qa-all-node-final.log",
+      "bytes": 77724,
+      "sha256": "70da5c1bad253f0c24bc5270fea91e2e148b92182506c7588d6506c9d1479165"
+    },
+    {
+      "file": ".scratch/qa-infra-complete-tests.log",
+      "bytes": 4439,
+      "sha256": "02e994f02a2bee99b37b99f7ebaa7046b8a7b28df0d84caf0e15973be1b8261d"
+    },
+    {
+      "file": ".scratch/final-static-results.json",
+      "bytes": 1097,
+      "sha256": "5bd20c1e3d9517ab77c2a9fc7b72a45da7feb4413aad4be74d03d899ac275313"
+    },
+    {
+      "file": ".scratch/campaign-build-pinned-final.log",
+      "bytes": 3168,
+      "sha256": "99648726b4ef353b946624e9c4bae982a2a39cbb76ae924327467dc2d3aee607"
+    },
+    {
+      "file": ".scratch/qa-stack-up-safe.log",
+      "bytes": 1708,
+      "sha256": "0d119c8ddd69bd7cedd4b0dcd96ad0de9af9c2c621849cfb34c86a1d28d56b8e"
+    },
+    {
+      "file": ".scratch/qa-stack-up-result.json",
+      "bytes": 148,
+      "sha256": "397ccbee56d65e27bf5f7c2b1e41004f82d9327d2ace06a2f4efc6ba3b4efbb4"
+    },
+    {
+      "file": ".scratch/campaign-ship-final.log",
+      "bytes": 2567,
+      "sha256": "7361b70772b02cdf08fe7eef792dc6b3b76f2a85c4bcdce170fe965f56d84dac"
+    }
+  ],
+  "limits": [
+    "Raw runner artifacts remain private; public summaries are in test logs.",
+    "Runtime startup acceptance is BLOCKED, despite successful bootstrap.",
+    "No native, Production or inference acceptance is implied."
+  ],
+  "changedFiles": [
+    {
+      "file": "apps/api/package.json",
+      "sha256": "335a5b40f90f827b86446a0056401b0a3994c2eedfc01c18223f3c9fe62ba1ea"
+    },
+    {
+      "file": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-chat-create-intake-pillar.test.ts",
+      "sha256": "0c958a57cb5af0bef87a7c5a2a17e0276e9abbce8ef075208cd8ad4e95c0358e"
+    },
+    {
+      "file": "apps/mobile/components/admin/__tests__/admin-team-system-workspaces-pillar-test.tsx",
+      "sha256": "572be8448267c50d786fb91a231ab58bfc51459bed4ba98fb8f9c42ca8066088"
+    },
+    {
+      "file": "apps/mobile/components/admin/admin-system-health-workspace.tsx",
+      "sha256": "234d6ae5eac8d4546497741472695f5826a85449c1412abdc282a144c2b0327b"
+    },
+    {
+      "file": "docker/INDEX.md",
+      "sha256": "3fb0b0ecee2b61ad66c3c01fc5ef661a026b81647f5689486b2926097fd75e15"
+    },
+    {
+      "file": "docker/scripts/doctor.ps1",
+      "sha256": "ff9c707c6ae05c1e3ccf0010ff453738c3bb2e39be838b001314e9e197388d36"
+    },
+    {
+      "file": "docker/scripts/doctor.sh",
+      "sha256": "07f33d83b301908b10613479fc627367501801739f6f0d8b22b357dd2b5f9ff9"
+    },
+    {
+      "file": "docker/scripts/down.ps1",
+      "sha256": "2e0d65fc6ca8a01c8aa0ef7579d57eb89a15d624a65e8d926a1a81a6d70cae49"
+    },
+    {
+      "file": "docker/scripts/down.sh",
+      "sha256": "58f4b7fe4b1bd1e686f3979b883f9f9166f5fc0aec3847c22ac92b5bf4de9702"
+    },
+    {
+      "file": "docker/scripts/up.ps1",
+      "sha256": "96f5706f282bd4b7a632a4d0e8138e65a0036a0b3fb286714afa7e4f4e167415"
+    },
+    {
+      "file": "docker/scripts/up.sh",
+      "sha256": "3498f935c3665fc24e4fbed574bd19b0f84f8eaa6f3c89944cec9040571c01d5"
+    },
+    {
+      "file": "docs/test-logs/2026-10-16_admin-independent-health-loading.md",
+      "sha256": "4063e90df1baa2a4ee15d1462a4f6e9e51abe77042739983e28a734c2d4c3c91"
+    },
+    {
+      "file": "docs/test-logs/2026-10-16_isolated-qa-runtime.md",
+      "sha256": "63e0c248b6eb3a9346840de2a020fdc9f4e02b9126b01f89a8ed3b75bd48d826"
+    },
+    {
+      "file": "docs/test-logs/2026-10-16_kael-six-service-intake-boundary.md",
+      "sha256": "7d6dd8ca5c35608aa7ae7bfa04bafc67bf84dd0504c7ac1d150caddb4567bf65"
+    },
+    {
+      "file": "docs/test-logs/INDEX.md",
+      "sha256": "3a08163a59895e488c63e0bfabfde9a9d37fc8d6ac38d90562c2baee3731d049"
+    },
+    {
+      "file": "pnpm-lock.yaml",
+      "sha256": "301bcb741b88321b129a05b6b4db315dc55cde9ddfa101484a48e2aee282a5e7"
+    },
+    {
+      "file": "scripts/check-docker-contracts.test.mjs",
+      "sha256": "f9162e0d6841e1930803d47114472f0d96c58ce580569d4981ecd954b65fa2d1"
+    },
+    {
+      "file": "scripts/harness/local-qa-network.mjs",
+      "sha256": "82c9a133e876b108474c65a8ab54582034e91fe3af87f9c352e431492977f7fa"
+    },
+    {
+      "file": "scripts/harness/local-qa-network.test.mjs",
+      "sha256": "50dc5944bb587bb06ff83d0539f8ec37e152fe05e4abf8f7fdf3f33def123af7"
+    },
+    {
+      "file": "scripts/harness/prepare-migration-workdir.mjs",
+      "sha256": "86b6e43b230472de513c429d49346d59c7b36de5820eef4bd666504ca1443314"
+    },
+    {
+      "file": "scripts/harness/prepare-migration-workdir.test.mjs",
+      "sha256": "615debd69a78d23b4445cb31bfd42818ffdb84094651ad94457abfbefa7433d1"
+    }
+  ],
+  "diffScope": "tracked diff hash plus complete changed-file hashes; manifest excludes its own hash",
+  "shipCheck": {
+    "exitCode": 1,
+    "sourceGatesPassed": 10,
+    "blocker": "Uncommitted local work; publication outside campaign scope",
+    "exitCodeScope": "Verifier-reported exit 1 (ELIFECYCLE); outer shell later terminated after no verifier children remained",
+    "outerShellExitCode": -1
+  }
+}

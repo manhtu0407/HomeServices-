@@ -5,7 +5,7 @@ import { useFocusEffect } from 'expo-router'
 import { KaelTextField } from '@/components/ui/kael-primitives'
 import { color, spacing } from '@/design/theme'
 import type { AdminSystemHealthResponse, AdminSystemIncidentDetailResponse, AdminSystemIncidentFilters } from '@/lib/api-types/system-health'
-import type { SystemHealthCheck, SystemIncidentPacket, SystemHealthStatus } from '@nestscout/shared'
+import { evaluateSystemHealth, type SystemHealthCheck, type SystemIncidentPacket, type SystemHealthStatus } from '@nestscout/shared'
 import type { AdminViewActor } from '@/lib/api-types/admin'
 import type { AppLanguage } from '@/lib/app-language'
 import { adminControlService } from '@/lib/services'
@@ -90,7 +90,7 @@ function healthWorkspaceReducer(state: HealthWorkspaceState, action: HealthWorks
       return { ...state, loading: !hasData }
     }
     case 'healthSucceeded':
-      return { ...state, health: action.health, loaded: true, healthError: null, now: action.now }
+      return { ...state, health: action.health, healthError: null, now: action.now }
     case 'healthFailed':
       return { ...state, healthError: action.message }
     case 'incidentsSucceeded':
@@ -184,22 +184,27 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
       loadLock.current = true
       const requestSequence = loadSequence.current
       dispatch({ type: 'loadStarted' })
-      void Promise.allSettled([
-        adminControlService.getSystemHealth(),
-        adminControlService.listSystemIncidents(filters),
-      ]).then(([healthSettled, incidentSettled]) => {
+      const healthRequest = Promise.resolve().then(() => adminControlService.getSystemHealth()).then((result) => {
         if (!focused || requestSequence !== loadSequence.current) return
-        if (healthSettled.status === 'fulfilled' && healthSettled.value.success) {
-          dispatch({ type: 'healthSucceeded', health: healthSettled.value.data, now: Date.now() })
+        if (result.success) {
+          dispatch({ type: 'healthSucceeded', health: result.data, now: Date.now() })
         } else {
           dispatch({ type: 'healthFailed', message: labels.loadError })
         }
-        if (incidentSettled.status === 'fulfilled' && incidentSettled.value.success) {
-          dispatch({ type: 'incidentsSucceeded', incidents: incidentSettled.value.data.records, dataQuality: incidentSettled.value.data.data_quality })
+      }).catch(() => {
+        if (focused && requestSequence === loadSequence.current) dispatch({ type: 'healthFailed', message: labels.loadError })
+      })
+      const incidentsRequest = Promise.resolve().then(() => adminControlService.listSystemIncidents(filters)).then((result) => {
+        if (!focused || requestSequence !== loadSequence.current) return
+        if (result.success) {
+          dispatch({ type: 'incidentsSucceeded', incidents: result.data.records, dataQuality: result.data.data_quality })
         } else {
           dispatch({ type: 'incidentsFailed', message: labels.loadError })
         }
-      }).finally(() => {
+      }).catch(() => {
+        if (focused && requestSequence === loadSequence.current) dispatch({ type: 'incidentsFailed', message: labels.loadError })
+      })
+      void Promise.allSettled([healthRequest, incidentsRequest]).finally(() => {
         loadLock.current = false
         if (focused && requestSequence === loadSequence.current) {
           dispatch({ type: 'loadFinished' })
@@ -296,7 +301,7 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
     {loading && !hasData ? <AdminSystemState label={labels.loading} loading /> : null}
     <View style={styles.sectionHeading}>
       <AdminText accessibilityRole="header" textRole="headline" style={styles.strong}>{labels.incidents}</AdminText>
-      <AdminText textRole="caption1" style={styles.secondary}>{qualityLabel(dataQuality, language)} · {incidents.length} {labels.records}</AdminText>
+      <AdminText textRole="caption1" style={styles.secondary}>{loaded && dataQuality !== 'unavailable' ? `${qualityLabel(dataQuality, language)} · ${incidents.length} ${labels.records}` : qualityLabel(dataQuality, language)}</AdminText>
     </View>
     {incidentsError ? <AdminSystemState compact label={incidentsError} /> : null}
     <View style={styles.filterGroup}>
@@ -316,7 +321,7 @@ export function AdminSystemHealthWorkspace({ actor, language }: { actor: AdminVi
     contentContainerStyle={adminSystemStyles.listContent}
     data={incidents}
     keyExtractor={(item) => item.incident_id}
-    ListEmptyComponent={loading && !hasData ? null : <AdminSystemState compact label={incidentsError && incidents.length === 0 ? labels.noDataAfterError : labels.noIncidents} />}
+    ListEmptyComponent={!loaded && !incidentsError ? null : <AdminSystemState compact label={incidentsError || dataQuality === 'unavailable' ? labels.noDataAfterError : labels.noIncidents} />}
     ListHeaderComponent={listHeader}
     renderItem={row}
     showsVerticalScrollIndicator={false}
@@ -360,12 +365,13 @@ function effectiveOverallStatus(snapshot: NonNullable<AdminSystemHealthResponse[
   if (snapshot.schema_version !== 2) return 'gray'
 
   const expiresAt = Date.parse(snapshot.expires_at)
-  const snapshotStale = !Number.isFinite(expiresAt) || expiresAt <= now
-  const checkEvidenceStale = snapshot.checks.some((check) => isSystemHealthCheckStale(check, now))
-  const observedIds = new Set(snapshot.checks.map((check) => check.check_id))
-  const missingRequired = snapshot.required_check_ids.some((checkId) => !observedIds.has(checkId))
-  if (snapshotStale || checkEvidenceStale || missingRequired) return 'gray'
-  return snapshot.overall_status
+  if (!Number.isFinite(expiresAt) || expiresAt <= now) return 'gray'
+  const requiredIds = new Set(snapshot.required_check_ids)
+  const checks = snapshot.checks.filter((check) => requiredIds.has(check.check_id)).map((check) => ({
+    check_id: check.check_id,
+    status: isSystemHealthCheckStale(check, now) ? 'gray' as const : check.status,
+  }))
+  return evaluateSystemHealth(checks, snapshot.required_check_ids)
 }
 
 function coverageGapLabel(source: string, language: AppLanguage) {

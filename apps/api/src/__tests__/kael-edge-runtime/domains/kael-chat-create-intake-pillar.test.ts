@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { createEdgeServices } from '../../../../../../supabase/functions/mobile-api/_shared/domains'
 import { createMobileApiHandler } from '../../../../../../supabase/functions/mobile-api/_shared/http'
@@ -57,14 +57,16 @@ function session(overrides: Record<string, unknown> = {}) {
   }
 }
 
-  it('customer Kael intake create public HTTP route persists the owner-bound session and first customer turn', async () => {
+async function verifyDeferredIntake(serviceType: 'electrical' | 'plumbing' | 'cleaning' | 'hvac' | 'upholstery' | 'handyman', message: string) {
+  const network = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => { throw new Error('QA_NETWORK_FORBIDDEN') })
+  try {
     const createdTurn = {
       id: TURN_ID,
       session_id: SESSION_ID,
       turn_index: 1,
       role: 'customer',
       content_type: 'text',
-      text_content: 'Vòi nước nhà tôi bị rò rỉ',
+      text_content: message,
       media_refs: [],
       safe_metadata: {},
       created_at: '2026-10-08T00:00:00.000Z',
@@ -74,9 +76,9 @@ function session(overrides: Record<string, unknown> = {}) {
     }, {
       kael_chat_sessions: [
         { data: null, error: null },
-        { data: session({ total_turns: 0 }), error: null },
+        { data: session({ total_turns: 0, service_type: serviceType }), error: null },
         { data: { id: SESSION_ID }, error: null },
-        { data: session(), error: null },
+        { data: session({ service_type: serviceType }), error: null },
       ],
       kael_customer_conversations: [{ data: { id: SESSION_ID }, error: null }],
       kael_chat_turns: [
@@ -100,8 +102,8 @@ function session(overrides: Record<string, unknown> = {}) {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        service_type: 'plumbing',
-        message: 'Vòi nước nhà tôi bị rò rỉ',
+        service_type: serviceType,
+        message,
         problem_chips: [],
         photo_urls: [],
         client_request_id: REQUEST_ID,
@@ -113,12 +115,12 @@ function session(overrides: Record<string, unknown> = {}) {
     expect(response.status, pillarWhy(PILLAR)).toBe(201)
     const payload = await response.json()
     expect(payload).toMatchObject({
-      session: { id: SESSION_ID, customer_id: CUSTOMER_ID },
+      session: { id: SESSION_ID, customer_id: CUSTOMER_ID, service_type: serviceType },
       turns: [{
         id: TURN_ID,
         session_id: SESSION_ID,
         role: 'customer',
-        text_content: 'Vòi nước nhà tôi bị rò rỉ',
+        text_content: message,
       }],
     })
     const sessionInsert = client.calls.find((call) =>
@@ -127,7 +129,7 @@ function session(overrides: Record<string, unknown> = {}) {
     )
     expect(sessionInsert?.operations).toContainEqual([
       'insert',
-      expect.objectContaining({ customer_id: CUSTOMER_ID, client_request_id: REQUEST_ID }),
+      expect.objectContaining({ customer_id: CUSTOMER_ID, client_request_id: REQUEST_ID, service_type: serviceType }),
     ])
     const turnInsert = client.calls.find((call) =>
       call.table === 'kael_chat_turns' &&
@@ -137,6 +139,24 @@ function session(overrides: Record<string, unknown> = {}) {
       'insert',
       expect.objectContaining({ session_id: SESSION_ID, role: 'customer', turn_index: 1 }),
     ])
+    expect(network).not.toHaveBeenCalled()
+  } finally {
+    network.mockRestore()
+  }
+}
+
+  it('customer Kael intake create public HTTP route persists the owner-bound session and first customer turn', async () => {
+    await verifyDeferredIntake('plumbing', 'Vòi nước nhà tôi bị rò rỉ')
+  })
+
+  it.each([
+    ['electrical', 'Ổ cắm trong bếp bị hỏng'],
+    ['cleaning', 'Cần dọn vệ sinh căn hộ'],
+    ['hvac', 'Máy lạnh chạy nhưng không mát'],
+    ['upholstery', 'Cần vệ sinh ghế sofa vải'],
+    ['handyman', 'Cánh tủ bếp bị lệch bản lề'],
+  ] as const)('persists a deferred %s intake through the public handler without inference', async (serviceType, message) => {
+    await verifyDeferredIntake(serviceType, message)
   })
 
   it('customer Kael intake create public HTTP route rejects a non-customer actor before data access', async () => {

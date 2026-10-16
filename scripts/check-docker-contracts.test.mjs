@@ -550,7 +550,17 @@ test('invalid invocations exit 2 before Docker can run', () => {
     ['docker/scripts/ensure-version', '--wat'],
     ['docker/scripts/up', '--skip-doctor'],
     ['docker/scripts/up', '--min-ram-gb', '2'],
+    ['docker/scripts/up', '--instance', 'journey56'],
+    ['docker/scripts/up', '--port-base', '58320'],
+    ['docker/scripts/up', '--instance', '../production', '--port-base', '58320'],
+    ['docker/scripts/up', '--instance', 'production', '--port-base', '58320'],
+    ['docker/scripts/up', '--instance', '', '--port-base', ''],
+    ['docker/scripts/up', '--instance', 'journey56', '--port-base', '65530'],
+    ['docker/scripts/doctor', '--port-base', 'NaN'],
+    ['docker/scripts/doctor', '--port-base', '0'],
     ['docker/scripts/down', '--purge'],
+    ['docker/scripts/down', '--instance', '../nestscout'],
+    ['docker/scripts/down', '--instance', 'production'],
     ['docker/scripts/edge-check', '--only', 'not-a-function'],
     ['docker/scripts/gen-types', '--wat'],
     ['docker/scripts/run-sql-tests', '--wat'],
@@ -561,6 +571,67 @@ test('invalid invocations exit 2 before Docker can run', () => {
     const result = runRunner(args)
     assert.equal(result.status, 2, `${args.join(' ')}\n${combinedOutput(result)}`)
   }
+})
+
+test('isolated startup forwards the same target to doctor, migration preparation and the CLI', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'nestscout-isolated-runner-'))
+  const dockerScripts = join(directory, 'docker/scripts')
+  const scripts = join(directory, 'scripts')
+  mkdirSync(dockerScripts, { recursive: true })
+  mkdirSync(scripts, { recursive: true })
+  const windows = process.platform === 'win32'
+  const extension = windows ? 'ps1' : 'sh'
+  writeFileSync(join(dockerScripts, `up.${extension}`), readFileSync(join(ROOT, `docker/scripts/up.${extension}`)))
+  const stub = (label) => windows
+    ? `Write-Output ('${label} ' + ($args -join '|'))\nexit 0\n`
+    : `printf '${label}'; printf ' %s' "$@"; printf '\\n'; exit 0\n`
+  writeFileSync(join(dockerScripts, `doctor.${extension}`), stub('QA_DOCTOR'))
+  writeFileSync(join(scripts, `run-node.${extension}`), stub('QA_PREPARE'))
+  writeFileSync(join(scripts, `run-supabase.${extension}`), stub('QA_CLI'))
+  const command = windows ? 'powershell' : 'bash'
+  const prefix = windows ? ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File'] : []
+  const result = spawnSync(command, [...prefix, join(dockerScripts, `up.${extension}`), '--profile', 'lean', '--instance', 'journey56', '--port-base', '58320'], { cwd: directory, encoding: 'utf8', timeout: 30_000 })
+  assert.equal(result.status, 0, combinedOutput(result))
+  const output = combinedOutput(result)
+  assert.match(output, /QA_DOCTOR[^\n]*58320/u)
+  assert.match(output, /QA_PREPARE[^\n]*local-migrations-qa-journey56[^\n]*--instance[^\n]*journey56[^\n]*--port-base[^\n]*58320/u)
+  assert.match(output, /QA_CLI[^\n]*start[^\n]*--workdir[^\n]*local-migrations-qa-journey56/u)
+  assert.match(output, /QA_CLI[^\n]*--network-id[^\n]*nestscout-qa-fixture-journey56/u)
+  assert.ok(output.indexOf('QA_DOCTOR') < output.indexOf('QA_PREPARE'))
+  assert.ok(output.indexOf('QA_PREPARE') < output.indexOf('QA_CLI'))
+  writeFileSync(join(scripts, `run-node.${extension}`), windows
+    ? "if ($args -contains '--verify-instance') { exit 1 }; Write-Output ('QA_PREPARE ' + ($args -join '|')); exit 0\n"
+    : "case \" $* \" in *' --verify-instance '*) exit 1 ;; esac; printf 'QA_PREPARE'; printf ' %s' \"$@\"; printf '\\n'; exit 0\n")
+  const bindingRefused = spawnSync(command, [...prefix, join(dockerScripts, `up.${extension}`), '--instance', 'journey56', '--port-base', '58320'], { cwd: directory, encoding: 'utf8', timeout: 30_000 })
+  assert.equal(bindingRefused.status, 1, combinedOutput(bindingRefused))
+  assert.match(combinedOutput(bindingRefused), /QA_CLI[^\n]*stop[^\n]*--workdir[^\n]*local-migrations-qa-journey56/u)
+  writeFileSync(join(dockerScripts, `doctor.${extension}`), windows ? 'exit 1\n' : 'exit 1\n')
+  const refused = spawnSync(command, [...prefix, join(dockerScripts, `up.${extension}`), '--instance', 'journey56', '--port-base', '58320'], { cwd: directory, encoding: 'utf8', timeout: 30_000 })
+  assert.equal(refused.status, 1, combinedOutput(refused))
+  assert.doesNotMatch(combinedOutput(refused), /QA_PREPARE|QA_CLI/u)
+})
+
+test('isolated down refuses a mismatched project and forwards only the named local workdir', () => {
+  const directory = mkdtempSync(join(tmpdir(), 'nestscout-isolated-down-'))
+  const dockerScripts = join(directory, 'docker/scripts')
+  const scripts = join(directory, 'scripts')
+  const supabase = join(directory, '.scratch/local-migrations-qa-journey56/supabase')
+  for (const path of [dockerScripts, scripts, supabase]) mkdirSync(path, { recursive: true })
+  const windows = process.platform === 'win32'
+  const extension = windows ? 'ps1' : 'sh'
+  writeFileSync(join(dockerScripts, `down.${extension}`), readFileSync(join(ROOT, `docker/scripts/down.${extension}`)))
+  writeFileSync(join(scripts, `run-supabase.${extension}`), windows ? "Write-Output ('QA_CLI ' + ($args -join '|'))\nexit 0\n" : "printf 'QA_CLI'; printf ' %s' \"$@\"; printf '\\n'; exit 0\n")
+  const command = windows ? 'powershell' : 'bash'
+  const prefix = windows ? ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File'] : []
+  const run = () => spawnSync(command, [...prefix, join(dockerScripts, `down.${extension}`), '--instance', 'journey56'], { cwd: directory, encoding: 'utf8', timeout: 30_000 })
+  writeFileSync(join(supabase, 'config.toml'), 'project_id = "nestscout"\n')
+  const refused = run()
+  assert.equal(refused.status, 2, combinedOutput(refused))
+  assert.doesNotMatch(combinedOutput(refused), /QA_CLI/u)
+  writeFileSync(join(supabase, 'config.toml'), 'project_id = "nestscout-qa-journey56"\n')
+  const accepted = run()
+  assert.equal(accepted.status, 0, combinedOutput(accepted))
+  assert.match(combinedOutput(accepted), /QA_CLI[^\n]*stop[^\n]*--workdir[^\n]*local-migrations-qa-journey56/u)
 })
 
 test('Desktop stable update is attempted exactly once before capability proof', () => {

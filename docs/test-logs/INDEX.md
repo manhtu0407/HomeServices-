@@ -4,6 +4,8 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
+| 2026-10-16 | [Six-service intake boundary](2026-10-16_kael-six-service-intake-boundary.md) | Public-handler fixture 9/9; API 2174 PASS, 2 skipped; types PASS | None found at this deferred-intake boundary; service mutation caught 5 failures | Auth/DB boundary injected; zero network; not complete live journeys |
+| 2026-10-16 | [Independent Admin health loading](2026-10-16_admin-independent-health-loading.md) | FIXED_LOCAL; Mobile 2605/2605, types and changed Doctor pass | A slow/failed health or incident request withheld its peer; unavailable looked empty | Exact e8 baseline, no deploy; native QA belongs to Tu |
 | 2026-10-14 | [Kael natural respond (Plan §61)](2026-10-14_kael-natural-respond.md) | guard before/after table and scripted scenarios pass; no Production or real-model evidence | none diagnosed | Sentence ceiling, loanwords, guided rewrite, turn understanding, loop breaker, reply composer, per-turn telemetry |
 | 2026-10-09 | [Customer Matching live recovery](2026-10-09_customer-matching-live-recovery.md) | API 1,809 / mobile 2,451 / shared 140 PASS, types and inventory gates pass; DB/runtime proof pending | Concurrent hydration, retry/stop recovery, duplicate Matching summary | Authenticated Preview matches source marker; live recovery route still 404 on v284, no real invitation or native proof claimed |
 | 2026-10-03 | [Kael Chat starters, ghost suggestions, and send states](2026-10-03_kael-chat-suggestions.md) | Mobile/shared/API gates and SQL pass; Customer/Worker starter rails verified in Preview; acceptance remains partial | Edge check stopped on Docker unexpected EOF; authenticated local HTTP, live DeepSeek, native, and mutation proof not run | OCR: original 49 files / 15 batches plus three reviewed incremental snapshots; 34 React Doctor diagnostics are outside changed Kael composer/starter files; work-plan lint has pre-existing `.scratch` violations |
@@ -46,3 +48,5 @@ Newest test reports first.
 | 2026-05-26 | [P16 Pre-Launch Verification](2026-05-26_p16-prelaunch-verification.md) | passed | 0 product bugs; 1 existing Supabase Auth warning | Security/review/manual audit, full gates, advisors |
 | 2026-05-26 | [P15 Staging E2E](2026-05-26_p15-staging-e2e.md) | passed | 0 product bugs; harness sequencing fixed before final run | 5-case staging matrix, realtime, p95/cost, cleanup |
 | 2026-05-11 | [PR#3 Schema Tests](2026-05-11_pr3-schema-tests.md) | 177/177 passed | 1 fixed (database.types.ts artifact) | 4 tiers: types, business rules, relationships, SQL migration |
+
+- [Isolated QA runtime: guarded startup, acceptance blocked](2026-10-16_isolated-qa-runtime.md)

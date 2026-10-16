@@ -4,16 +4,28 @@
 set -uo pipefail
 
 profile="lean"
+port_base=55320
+seen_profile=0
+seen_port_base=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --profile)
+      [ "$seen_profile" -eq 0 ] || exit 2
+      seen_profile=1
       [ $# -ge 2 ] || { echo "doctor: --profile requires lean or full" >&2; exit 2; }
       profile="$2"
+      shift 2
+      ;;
+    --port-base)
+      [ "$seen_port_base" -eq 0 ] && [ $# -ge 2 ] && [[ "$2" =~ ^[0-9]{1,5}$ ]] || exit 2
+      seen_port_base=1
+      port_base=$((10#$2))
       shift 2
       ;;
     *) echo "doctor: expected only --profile lean|full" >&2; exit 2 ;;
   esac
 done
+[ "$port_base" -ge 1024 ] && [ "$port_base" -le 65520 ] || exit 2
 
 case "$profile" in
   lean|full) ;;
@@ -131,7 +143,9 @@ port_listening() {
   (exec 3<>"/dev/tcp/127.0.0.1/$1") >/dev/null 2>&1
 }
 
-for spec in "55321 supabase api gateway" "55322 supabase db" "55323 supabase studio" "55324 supabase mailpit"; do
+port_specs=("$((port_base + 1)) supabase api gateway" "$((port_base + 2)) supabase db" "$((port_base + 3)) supabase studio" "$((port_base + 4)) supabase mailpit")
+[ "$port_base" -eq 55320 ] || port_specs+=("$((port_base + 8)) supabase Edge inspector")
+for spec in "${port_specs[@]}"; do
   port="${spec%% *}"
   name="${spec#* }"
   if ! port_listening "$port"; then
@@ -141,7 +155,7 @@ for spec in "55321 supabase api gateway" "55322 supabase db" "55323 supabase stu
 
   owner=$(port_owner "$port")
   value="unavailable ($name; $owner)"
-  if [ "$profile" = "lean" ] && { [ "$port" = 55323 ] || [ "$port" = 55324 ]; }; then
+  if [ "$profile" = "lean" ] && { [ "$port" -eq "$((port_base + 3))" ] || [ "$port" -eq "$((port_base + 4))" ]; }; then
     add_line "port $port" "$value" "WARN"
   else
     add_line "port $port" "$value" "FAIL"

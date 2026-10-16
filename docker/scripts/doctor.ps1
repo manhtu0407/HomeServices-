@@ -4,14 +4,22 @@
 
 $ErrorActionPreference = "Stop"
 $Profile = "lean"
+$PortBase = 55320
+$seenOptions = @{}
 
-if ($args.Count -gt 0) {
-  if ($args.Count -ne 2 -or $args[0] -notin "-Profile", "--profile") {
-    [Console]::Error.WriteLine("doctor: expected only -Profile lean|full")
+for ($index = 0; $index -lt $args.Count; $index += 2) {
+  $option = $args[$index]
+  if ($index + 1 -ge $args.Count -or $option -notin "-Profile", "--profile", "--port-base" -or $seenOptions.ContainsKey($option)) {
+    [Console]::Error.WriteLine("doctor: expected --profile lean|full and optional --port-base integer")
     exit 2
   }
-  $Profile = $args[1]
+  $seenOptions[$option] = $true
+  if ($option -eq "--port-base") {
+    if ($args[$index + 1] -notmatch '^[0-9]{1,5}$') { exit 2 }
+    $PortBase = [int]$args[$index + 1]
+  } else { $Profile = $args[$index + 1] }
 }
+if ($PortBase -lt 1024 -or $PortBase -gt 65520) { exit 2 }
 
 if ($Profile -notin @('lean', 'full')) {
   [Console]::Error.WriteLine("doctor: profile must be lean or full")
@@ -164,6 +172,8 @@ $ports = @(
   @{ Port = 55323; Name = "supabase studio" },
   @{ Port = 55324; Name = "supabase mailpit" }
 )
+foreach ($portSpec in $ports) { $portSpec.Port += $PortBase - 55320 }
+if ($PortBase -ne 55320) { $ports += @{ Port = $PortBase + 8; Name = "supabase Edge inspector" } }
 foreach ($portSpec in $ports) {
   $bindable = Test-PortBindable -Port $portSpec.Port
   if ($bindable) {
@@ -173,7 +183,7 @@ foreach ($portSpec in $ports) {
 
   $owner = Get-PortOwner -Port $portSpec.Port
   $value = "unavailable ($($portSpec.Name); $owner)"
-  if ($Profile -eq "lean" -and $portSpec.Port -notin 55321, 55322) {
+  if ($Profile -eq "lean" -and $portSpec.Port -in @(($PortBase + 3), ($PortBase + 4))) {
     Add-Line "port $($portSpec.Port)" $value "WARN"
   } else {
     Add-Line "port $($portSpec.Port)" $value "FAIL"

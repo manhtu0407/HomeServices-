@@ -366,6 +366,103 @@ describe('Admin Team and System focused workspaces', () => {
     expect(screen.queryByText('Thử lại')).toBeNull()
   })
 
+  it.each(['health', 'incidents'] as const)('renders completed %s evidence while its peer is still pending', async (ready) => {
+    const now = Date.now()
+    const health = { success: true as const, status: 200, data: {
+      generated_at: new Date(now).toISOString(), observer: null,
+      snapshot: cloudflareProfileSnapshot({ completedAt: now, expiresAt: now + 180_000, overallStatus: 'green', checks: [healthCheck({ observedAt: now })] }),
+    } }
+    const incidents = { success: true as const, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available' as const, records: [], has_more: false, next_cursor: null } }
+    let finishHealth!: (value: typeof health) => void
+    let finishIncidents!: (value: typeof incidents) => void
+    const pendingHealth = new Promise<typeof health>((resolve) => { finishHealth = resolve })
+    const pendingIncidents = new Promise<typeof incidents>((resolve) => { finishIncidents = resolve })
+    jest.mocked(adminControlService.getSystemHealth).mockReturnValue(ready === 'health' ? Promise.resolve(health) : pendingHealth)
+    jest.mocked(adminControlService.listSystemIncidents).mockReturnValue(ready === 'incidents' ? Promise.resolve(incidents) : pendingIncidents)
+    const view = render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+    try {
+      if (ready === 'health') {
+        expect(await screen.findByLabelText('Tổng thể: Xanh')).toBeTruthy()
+        expect(screen.queryByText('Không có sự cố phù hợp với bộ lọc.')).toBeNull()
+        expect(screen.queryByText(/0 mục/u)).toBeNull()
+      } else {
+        expect(await screen.findByText('Có dữ liệu · 0 mục')).toBeTruthy()
+        expect(screen.getByText('Không có sự cố phù hợp với bộ lọc.')).toBeTruthy()
+        expect(screen.getByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
+      }
+    } finally {
+      await act(async () => { finishHealth(health); finishIncidents(incidents) })
+      view.unmount()
+    }
+  })
+
+  it.each(['health', 'incidents'] as const)('shows a failed %s source without waiting for the other source', async (failed) => {
+    let finish!: () => void
+    const pending = new Promise<never>((_resolve, reject) => { finish = () => reject(new Error('QA_PEER_FINISHED')) })
+    jest.mocked(adminControlService.getSystemHealth).mockReturnValue(failed === 'health' ? Promise.reject(new Error('QA_HEALTH_FAILED')) : pending)
+    jest.mocked(adminControlService.listSystemIncidents).mockReturnValue(failed === 'incidents' ? Promise.reject(new Error('QA_INCIDENTS_FAILED')) : pending)
+    const view = render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+    try {
+      expect(await screen.findByText('Không thể tải bằng chứng hệ thống.')).toBeTruthy()
+      expect(screen.queryByText('Không có sự cố phù hợp với bộ lọc.')).toBeNull()
+      expect(screen.queryByText(/0 mục/u)).toBeNull()
+    } finally {
+      await act(async () => { finish() })
+      view.unmount()
+    }
+  })
+
+  it('does not present an unavailable incident projection as an empty successful query', async () => {
+    const now = new Date().toISOString()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: { generated_at: now, observer: null, snapshot: null } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: now, data_quality: 'unavailable', records: [], has_more: false, next_cursor: null } })
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+    await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve() })
+    expect(screen.queryByText(/0 mục/u)).toBeNull()
+    expect(screen.queryByText('Không có sự cố phù hợp với bộ lọc.')).toBeNull()
+  })
+
+  it('pauses minute polling in background, reads immediately on foreground and cleans up on unmount', async () => {
+    jest.useFakeTimers()
+    const previousState = ReactNative.AppState.currentState
+    ReactNative.AppState.currentState = 'active'
+    const previousListener = ReactNative.AppState.addEventListener
+    let onStateChange: ((state: ReactNative.AppStateStatus) => void) | undefined
+    const remove = jest.fn()
+    ReactNative.AppState.addEventListener = (_event, listener) => {
+      onStateChange = listener
+      return { remove }
+    }
+    const now = new Date().toISOString()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: { generated_at: now, observer: null, snapshot: null } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: now, data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+    const flush = async () => { await act(async () => { for (let index = 0; index < 10; index += 1) await Promise.resolve() }) }
+    const view = render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+    try {
+      await flush()
+      expect(adminControlService.getSystemHealth).toHaveBeenCalledTimes(1)
+      await act(async () => { jest.advanceTimersByTime(60_000) })
+      await flush()
+      expect(adminControlService.getSystemHealth).toHaveBeenCalledTimes(2)
+      act(() => onStateChange?.('background'))
+      await act(async () => { jest.advanceTimersByTime(120_000) })
+      expect(adminControlService.getSystemHealth).toHaveBeenCalledTimes(2)
+      act(() => onStateChange?.('active'))
+      await flush()
+      expect(adminControlService.getSystemHealth).toHaveBeenCalledTimes(3)
+      view.unmount()
+      expect(remove).toHaveBeenCalledTimes(1)
+      await act(async () => { jest.advanceTimersByTime(120_000) })
+      expect(adminControlService.getSystemHealth).toHaveBeenCalledTimes(3)
+      expect(adminControlService.refreshSystemHealth).not.toHaveBeenCalled()
+    } finally {
+      view.unmount()
+      ReactNative.AppState.addEventListener = previousListener
+      ReactNative.AppState.currentState = previousState
+      jest.useRealTimers()
+    }
+  })
+
   it('passes component filters and shows native connectivity separately from deferred crash coverage', async () => {
     const now = Date.now()
     jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
@@ -399,6 +496,46 @@ describe('Admin Team and System focused workspaces', () => {
     render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
 
     expect(await screen.findByLabelText('Tổng thể: Chưa xác minh')).toBeTruthy()
+  })
+
+  it.each([
+    ['red', 'Đỏ'],
+    ['yellow', 'Vàng'],
+  ] as const)('retains a fresh %s failure when another required source is unknown', async (status, label) => {
+    const now = Date.now()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: new Date(now).toISOString(), observer: null,
+      snapshot: cloudflareProfileSnapshot({ completedAt: now, expiresAt: now + 180_000, overallStatus: status, checks: [
+        healthCheck({ observedAt: now, status, reasonCode: 'EDGE_UNAVAILABLE' }),
+        healthCheck({ checkId: 'app-native-connectivity', observedAt: null, status: 'gray', reasonCode: 'NATIVE_SESSION_EVIDENCE_MISSING' }),
+      ] }),
+    } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+
+    expect(await screen.findByLabelText(`Tổng thể: ${label}`)).toBeTruthy()
+    expect(screen.getByTestId('admin-system-health-check-app-native-connectivity').props.accessibilityLabel).toContain('Chưa xác minh')
+  })
+
+  it.each([
+    ['red', 'Đỏ', ['backend-core', 'observer-heartbeat']],
+    ['yellow', 'Vàng', ['backend-core', 'observer-heartbeat']],
+    ['green', 'Xanh', ['backend-core']],
+  ] as const)('evaluates %s required evidence without allowing optional unknown to hide it', async (status, label, requiredCheckIds) => {
+    const now = Date.now()
+    jest.mocked(adminControlService.getSystemHealth).mockResolvedValue({ success: true, status: 200, data: {
+      generated_at: new Date(now).toISOString(), observer: null,
+      snapshot: cloudflareProfileSnapshot({ completedAt: now, expiresAt: now + 180_000, overallStatus: status, requiredCheckIds: [...requiredCheckIds], checks: [
+        healthCheck({ observedAt: now, status }),
+        healthCheck({ checkId: 'app-native-connectivity', observedAt: null, status: 'gray' }),
+      ] }),
+    } })
+    jest.mocked(adminControlService.listSystemIncidents).mockResolvedValue({ success: true, status: 200, data: { generated_at: new Date(now).toISOString(), data_quality: 'available', records: [], has_more: false, next_cursor: null } })
+
+    render(<AdminSystemWorkspace actor={{ access_level: 'operator', capabilities: ['system.read'] }} capability="system-health-monitor" language="vi" />)
+
+    expect(await screen.findByLabelText(`Tổng thể: ${label}`)).toBeTruthy()
   })
 
   it('labels incidents closed because crash coverage was deferred without implying recovery', async () => {
