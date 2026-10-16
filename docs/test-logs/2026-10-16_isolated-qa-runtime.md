@@ -1,4 +1,7 @@
-# Isolated local QA runtime — guarded startup, acceptance blocked
+# Isolated local QA runtime — guarded startup and HTTP evidence
+
+The initial attempts below were blocked. The continuation checkpoint at the end
+records a successful guarded startup and limited HTTP-to-database evidence.
 
 ## Target and scope
 
@@ -100,3 +103,101 @@ Runner note: after ship verifier reported its exit-1 Git-state failure, the oute
 PowerShell remained alive with no verifier child. Only that exact task-owned
 shell was stopped; tool session exit was -1 from this cleanup. The source
 verifier result and outer-shell termination are distinct evidence.
+
+## Continuation — explicit binding and real HTTP intake
+
+Continuation baseline: published branch commit `bc5ed76807ab7223631fec44e8440a1674f05f72`
+plus the uncommitted QA adapter. Production and the frozen Build 56 Previews
+were not modified. No additional commit, push, merge or deployment was performed.
+
+A disposable Alpine control reproduced the binding discrepancy: publishing
+`58329:8080` on the owned bridge produced `0.0.0.0` and `::`; explicitly publishing
+`127.0.0.1:58329:8080` produced loopback only. The first control used an absent
+`httpd` executable; the corrected sleeping control exercised publication without
+serving data. Every control container was stopped and removed by its recorded ID.
+
+A Node-only adapter passed its control but did not affect Supabase's compiled
+binary. The resulting startup was rejected by the unchanged binding guard and
+the exact named QA stop retained its backup. Inspection established that the npm
+entry point launches a Bun executable. The adapter now uses the runtime's
+documented [standalone preload support](https://bun.com/docs/bundler/executables),
+scoped to this CLI child. It validates the QA name, project label, network and
+port range, refuses foreign publication and publish-all, and preserves unrelated
+commands. A real Bun/Docker control passed before another diagnosed start.
+
+Guarded startup then exited 0. Actual DB and Kong bindings were respectively
+`127.0.0.1:58322` and `127.0.0.1:58321`. Auth health returned 200. The first Edge
+request exposed the CLI's internal `http://kong:8000` URL being treated as a
+remote target by the App environment guard. The dedicated QA adapter now routes
+that Edge container through `http://host.docker.internal:58321` and forces the
+existing AI kill switch on. No product environment guard or handler was changed.
+After an exact named stop/restart, startup and the binding guard again exited 0.
+Auth and Edge health returned 200. Edge correctly reports local, unregistered and
+degraded; this is not a fabricated Production release identity.
+
+Three diagnosed Supabase starts occurred in this continuation: the Node-only
+attempt failed the binding gate; native preload passed binding but exposed the
+Edge environment issue; the local-gateway configuration passed startup and HTTP.
+Each used one doctor and one CLI start, with a successful version check. There
+was no identical blind retry, shared reset, host repair or paid service setup.
+
+### HTTP and PostgreSQL evidence
+
+The local-only script `.scratch/qa-http-deferred.mjs` uses actual Auth sign-in,
+Edge handlers and PostgreSQL. It created two Customer fixtures for the final
+run and exercised all six supported services with `defer_analysis=true`:
+create 201, owner read 200, request-ID replay 201 with the same session ID, and
+foreign-owner access denied. It uses the documented web-preview identity and
+allowed localhost origin; no iOS identity was fabricated.
+
+An initial missing-header request returned 426 as designed. A first six-service
+run reached the five-per-minute creation limit and returned 429 on the sixth;
+the final run uses the second fixture actor for that independent scenario.
+Neither compatibility nor rate-limit enforcement was weakened. Earlier local
+fixture accounts and the five earlier sessions are retained, not hard-deleted.
+
+Independent `psql` readback for the final two actors found exactly six sessions,
+six turns, zero linked jobs, total recorded AI cost zero and zero provider-log
+rows since the run began. The Edge container had no inference provider keys and
+its kill switch was verified true. This is evidence for deferred persistence,
+read/replay and ownership only. Pricing, model responses, matching, scope change,
+completion and settlement remain outside this checkpoint's HTTP proof.
+
+Safe private results: `.scratch/qa-http-deferred-result.json`, the two retained
+426/429 result files, `.scratch/qa-gateway-up-result.json`, and
+`.scratch/qa-native-loopback-tests.log`. Do not publish runtime keys or fixture
+credentials. The script's ephemeral execution is not a registered integration
+pillar and must not be represented as full campaign runner acceptance.
+
+Current targeted tooling suite: 42/42 before the final gateway test; the final
+network suite is 12/12. Docker contracts checked 22 files; Node syntax and comment
+discipline passed. Structure, baseline, test collection and pillar registry each
+exited 0. Full tooling rerun and final lifecycle cleanup are recorded next.
+
+Final full Node tooling runner (`node --test scripts/*.test.mjs
+scripts/harness/*.test.mjs`): 641 executed, 641 passed, zero failures or skips,
+exit 0. Comment discipline, diff whitespace, and workplan each exited 0; the
+workplan contains seven closed slices and nine declared changed files. The
+exact named QA stop exited 0 and preserved its backup. The temporary control
+containers were removed. No shared instance was stopped.
+
+Review fixed point is `git diff bc5ed76807ab7223631fec44e8440a1674f05f72`
+plus the two new preload/launcher files. Spec: the formerly blocked loopback
+startup and initial HTTP persistence now have real runtime evidence. Rules:
+no global Docker change, guard bypass, provider credential or hosted mutation.
+Maintainability: the existing QA network helper and startup/down ownership are
+reused; the explicit CLI version check refuses an unsupported launcher rather
+than silently accepting a changed upstream runtime. Other CLI versions and
+non-Windows runtime behavior remain unverified. These local adapter changes
+have not been committed or pushed.
+
+Final `node scripts/harness/verify.mjs` exited 0. Its static transaction catalog
+still prints historical release-gap strings; they are not fresh hosted facts
+and were not used as current Production acceptance evidence. The final workplan
+also records the approved memory checkpoint: eight closed slices, eleven changed
+files. No new test/build claim is inferred from the memory write.
+
+The campaign remains IN_PROGRESS. Next: promote the limited HTTP runner into
+registered integration coverage, then verify quote/matching/scope/completion/
+payment/recovery with provider fixtures. Live model spend enforcement and real
+payment settlement are still separate open items. Native device QA belongs to Tu.

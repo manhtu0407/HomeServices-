@@ -80,7 +80,11 @@ if [ -n "$instance" ]; then
 fi
 [ "$profile" = "lean" ] && args+=(-x "$lean_exclude")
 echo "starting supabase ($profile): supabase ${args[*]}"
-bash "$repo_root/scripts/run-supabase.sh" "${args[@]}"
+if [ -n "$instance" ]; then
+  bash "$repo_root/scripts/run-node.sh" scripts/harness/run-local-qa-cli.mjs --instance "$instance" --port-base "$port_base" -- "${args[@]}"
+else
+  bash "$repo_root/scripts/run-supabase.sh" "${args[@]}"
+fi
 code=$?
 if [ "$code" -ne 0 ]; then
   echo "supabase start failed with exit code $code; no automatic retry will run"

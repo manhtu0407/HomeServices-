@@ -99,6 +99,19 @@ successfully while this acceptance gate fails. An internal
 bridge was tested but did not publish ports on the current Engine, preventing the
 CLI host from initializing PostgreSQL.
 
+On Docker Desktop, the bridge default can still publish on all interfaces. Named
+QA startup therefore runs the pinned official CLI with a process-scoped Bun preload
+that adds an explicit `127.0.0.1` to published ports for the exact QA project,
+network and selected port range. It refuses foreign publication and publish-all.
+The post-start inspection remains mandatory. No Docker binary, daemon setting,
+global PATH or shared stack is replaced. The preload does not apply to normal
+startup or hosted CLI commands.
+
+The same QA Edge container uses `host.docker.internal:<QA API port>` as its
+Supabase URL, which satisfies the App's existing local-target guard. Its AI kill
+switch is forced on. Provider fixtures and deliberate fault tests still need
+their own network assertions; successful startup does not prove a full workflow.
+
 Empty-reset snapshots include checksummed tracked Edge sources and the Shared
 worker-capability data imported by Edge. Reuse detects changed source or copied
 bytes; refresh archives the previous snapshot. Untracked files and environment

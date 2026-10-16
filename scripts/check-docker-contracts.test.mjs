@@ -586,7 +586,10 @@ test('isolated startup forwards the same target to doctor, migration preparation
     ? `Write-Output ('${label} ' + ($args -join '|'))\nexit 0\n`
     : `printf '${label}'; printf ' %s' "$@"; printf '\\n'; exit 0\n`
   writeFileSync(join(dockerScripts, `doctor.${extension}`), stub('QA_DOCTOR'))
-  writeFileSync(join(scripts, `run-node.${extension}`), stub('QA_PREPARE'))
+  const nodeStub = windows
+    ? "if ($args -contains 'scripts/harness/run-local-qa-cli.mjs') { Write-Output ('QA_CLI ' + ($args -join '|')); exit 0 }; Write-Output ('QA_PREPARE ' + ($args -join '|')); exit 0\n"
+    : "case \" $* \" in *' scripts/harness/run-local-qa-cli.mjs '*) printf 'QA_CLI' ;; *) printf 'QA_PREPARE' ;; esac; printf ' %s' \"$@\"; printf '\\n'; exit 0\n"
+  writeFileSync(join(scripts, `run-node.${extension}`), nodeStub)
   writeFileSync(join(scripts, `run-supabase.${extension}`), stub('QA_CLI'))
   const command = windows ? 'powershell' : 'bash'
   const prefix = windows ? ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File'] : []
@@ -597,11 +600,12 @@ test('isolated startup forwards the same target to doctor, migration preparation
   assert.match(output, /QA_PREPARE[^\n]*local-migrations-qa-journey56[^\n]*--instance[^\n]*journey56[^\n]*--port-base[^\n]*58320/u)
   assert.match(output, /QA_CLI[^\n]*start[^\n]*--workdir[^\n]*local-migrations-qa-journey56/u)
   assert.match(output, /QA_CLI[^\n]*--network-id[^\n]*nestscout-qa-fixture-journey56/u)
+  assert.match(output, /QA_CLI[^\n]*run-local-qa-cli\.mjs[^\n]*--instance[^\n]*journey56[^\n]*--port-base[^\n]*58320/u)
   assert.ok(output.indexOf('QA_DOCTOR') < output.indexOf('QA_PREPARE'))
   assert.ok(output.indexOf('QA_PREPARE') < output.indexOf('QA_CLI'))
   writeFileSync(join(scripts, `run-node.${extension}`), windows
-    ? "if ($args -contains '--verify-instance') { exit 1 }; Write-Output ('QA_PREPARE ' + ($args -join '|')); exit 0\n"
-    : "case \" $* \" in *' --verify-instance '*) exit 1 ;; esac; printf 'QA_PREPARE'; printf ' %s' \"$@\"; printf '\\n'; exit 0\n")
+    ? "if ($args -contains '--verify-instance') { exit 1 }; " + nodeStub
+    : "case \" $* \" in *' --verify-instance '*) exit 1 ;; esac; " + nodeStub)
   const bindingRefused = spawnSync(command, [...prefix, join(dockerScripts, `up.${extension}`), '--instance', 'journey56', '--port-base', '58320'], { cwd: directory, encoding: 'utf8', timeout: 30_000 })
   assert.equal(bindingRefused.status, 1, combinedOutput(bindingRefused))
   assert.match(combinedOutput(bindingRefused), /QA_CLI[^\n]*stop[^\n]*--workdir[^\n]*local-migrations-qa-journey56/u)

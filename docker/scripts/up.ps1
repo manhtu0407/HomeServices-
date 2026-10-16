@@ -66,7 +66,11 @@ try {
   if ($Profile -eq "lean") { $supabaseArgs += @("-x", ($leanExclude -join ",")) }
 
   Write-Output "starting supabase ($Profile): supabase $($supabaseArgs -join ' ')"
-  & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\run-supabase.ps1") @supabaseArgs
+  if ($Instance) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $nodeRunner "scripts/harness/run-local-qa-cli.mjs" --instance $Instance --port-base $PortBase -- @supabaseArgs
+  } else {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot "scripts\run-supabase.ps1") @supabaseArgs
+  }
   $code = $LASTEXITCODE
   if ($code -ne 0) {
     Write-Output "supabase start failed with exit code $code; no automatic retry will run"

@@ -1,6 +1,64 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { assertLocalQaBindings, ensureLocalQaNetwork } from './local-qa-network.mjs'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+import { assertLocalQaBindings, ensureLocalQaNetwork, loopbackQaDockerArgs } from './local-qa-network.mjs'
+
+const qaCreate = ['create', '--name', 'supabase_kong_nestscout-qa-journey56', '--label', 'com.supabase.cli.project=nestscout-qa-journey56', '--network', 'nestscout-qa-fixture-journey56', '-p', '58321:8000', 'supabase/kong:fixture']
+
+test('QA CLI publication adds an explicit loopback address without mutating its input', () => {
+  const result = loopbackQaDockerArgs('journey56', 58320, 'docker', qaCreate)
+  assert.equal(result[result.indexOf('-p') + 1], '127.0.0.1:58321:8000')
+  assert.equal(qaCreate[qaCreate.indexOf('-p') + 1], '58321:8000')
+})
+
+test('the dedicated QA Edge runtime uses its verified local gateway with inference disabled', () => {
+  const args = qaCreate.map(value => value.replace('supabase_kong_', 'supabase_edge_runtime_')).filter((value, index, all) => value !== '-p' && all[index - 1] !== '-p')
+  args.splice(1, 0, '-e', 'SUPABASE_URL=http://kong:8000')
+  const result = loopbackQaDockerArgs('journey56', 58320, 'docker', args)
+  assert.ok(result.includes('SUPABASE_URL=http://host.docker.internal:58321'))
+  assert.ok(result.includes('KAEL_AI_KILL_SWITCH=true'))
+  assert.ok(!result.includes('SUPABASE_URL=http://kong:8000'))
+  assert.ok(args.includes('SUPABASE_URL=http://kong:8000'))
+})
+
+test('the loopback adapter refuses foreign projects, networks, ports and publish-all', () => {
+  for (const args of [
+    qaCreate.map(value => value.replace('com.supabase.cli.project=nestscout-qa-journey56', 'com.supabase.cli.project=nestscout')),
+    qaCreate.map(value => value.replace('nestscout-qa-fixture-journey56', 'bridge')),
+    qaCreate.map(value => value.replace('58321:8000', '54321:8000')),
+    qaCreate.map(value => value.replace('58321:8000', '0.0.0.0:58321:8000')),
+    [...qaCreate.slice(0, -1), '-P', qaCreate.at(-1)],
+  ]) assert.throws(() => loopbackQaDockerArgs('journey56', 58320, 'docker', args), /QA Docker publication/u)
+})
+
+test('read-only Docker calls and unrelated executable arguments stay unchanged', () => {
+  assert.deepEqual(loopbackQaDockerArgs('journey56', 58320, 'docker', ['inspect', 'owned-id']), ['inspect', 'owned-id'])
+  assert.deepEqual(loopbackQaDockerArgs('journey56', 58320, 'node', ['-p', '1+1']), ['-p', '1+1'])
+})
+
+test('the preload changes only Docker creation inside its own Node process', () => {
+  const preload = new URL('./local-qa-loopback-preload.mjs', import.meta.url).href
+  const result = spawnSync(process.execPath, ['--import', preload, '-e', "require('node:child_process').spawn(process.execPath,['-p','1+1'],{stdio:'inherit'})"], {
+    encoding: 'utf8', timeout: 10_000,
+    env: { ...process.env, NESTSCOUT_LOCAL_QA_INSTANCE: 'journey56', NESTSCOUT_LOCAL_QA_PORT_BASE: '58320' },
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout.trim(), '2')
+})
+
+test('the QA launcher rejects hosted instances and arbitrary CLI commands before startup', () => {
+  const launcher = new URL('./run-local-qa-cli.mjs', import.meta.url)
+  for (const args of [
+    ['--instance', 'production', '--port-base', '58320', '--', 'start'],
+    ['--instance', 'journey56', '--port-base', '58320', '--', 'functions', 'deploy'],
+    ['--instance', 'journey56', '--port-base', '58320', '--', 'start', '--workdir', '../other'],
+  ]) {
+    const result = spawnSync(process.execPath, [fileURLToPath(launcher), ...args], { encoding: 'utf8', timeout: 10_000 })
+    assert.equal(result.status, 2, result.stderr)
+    assert.doesNotMatch(result.stderr, /Starting database/u)
+  }
+})
 
 const identity = { Internal: false, Driver: 'bridge', Scope: 'local', Options: { 'com.docker.network.bridge.host_binding_ipv4': '127.0.0.1' }, Labels: { 'nestscout.qa.instance': 'journey56' } }
 

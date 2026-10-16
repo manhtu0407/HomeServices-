@@ -9,6 +9,54 @@ function validateInstance(instance) {
   }
 }
 
+export function loopbackQaDockerArgs(instance, portBase, command, args) {
+  validateInstance(instance)
+  if (!Number.isInteger(portBase) || portBase < 1024 || portBase > 65520) throw new Error('invalid QA port base')
+  const executable = command.split(/[\\/]/u).at(-1).toLowerCase()
+  if (!['docker', 'docker.exe', 'podman', 'podman.exe'].includes(executable) || args[0] !== 'create') return args
+  const invalid = () => { throw new Error('QA Docker publication refused') }
+  if (args.some(value => ['-P', '--publish-all'].includes(value))) invalid()
+  const indexes = args.flatMap((value, index) => ['-p', '--publish'].includes(value) ? [index] : [])
+  const project = `nestscout-qa-${instance}`
+  const edgeRuntime = args[args.indexOf('--name') + 1] === `supabase_edge_runtime_${project}`
+  if (indexes.length === 0 && !edgeRuntime) return args
+  const valueFor = flag => {
+    const matches = args.flatMap((value, index) => value === flag ? [args[index + 1]] : [])
+    if (matches.length !== 1) invalid()
+    return matches[0]
+  }
+  if (!valueFor('--name')?.startsWith('supabase_') || !valueFor('--name')?.endsWith(`_${project}`) ||
+      valueFor('--network') !== `nestscout-qa-fixture-${instance}` ||
+      !args.some((value, index) => value === '--label' && args[index + 1] === `com.supabase.cli.project=${project}`)) invalid()
+  const result = [...args]
+  for (const index of indexes) {
+    const match = /^(?:127\.0\.0\.1:)?([0-9]{1,5}):([0-9]{1,5})(\/(?:tcp|udp))?$/u.exec(args[index + 1] ?? '')
+    if (!match || Number(match[1]) <= portBase || Number(match[1]) > portBase + 15 ||
+        Number(match[2]) < 1 || Number(match[2]) > 65535) invalid()
+    result[index + 1] = `127.0.0.1:${match[1]}:${match[2]}${match[3] ?? ''}`
+  }
+  if (edgeRuntime) {
+    // The internal Kong alias is not a loopback target under the App environment guard.
+    const localEnv = new Map([
+      ['SUPABASE_URL', `http://host.docker.internal:${portBase + 1}`],
+      ['KAEL_AI_KILL_SWITCH', 'true'],
+    ])
+    const seen = new Set()
+    for (let index = 0; index < result.length - 1; index += 1) {
+      if (!['-e', '--env'].includes(result[index])) continue
+      const key = result[index + 1].split('=')[0]
+      if (localEnv.has(key)) {
+        result[index + 1] = `${key}=${localEnv.get(key)}`
+        seen.add(key)
+      }
+    }
+    for (const [key, value] of localEnv) {
+      if (!seen.has(key)) result.splice(1, 0, '-e', `${key}=${value}`)
+    }
+  }
+  return result
+}
+
 function dockerOutput(run, args) {
   const result = run('docker', args, { encoding: 'utf8', timeout: 15_000, windowsHide: true })
   if (result.error || result.status !== 0) throw new Error('QA network command failed')
