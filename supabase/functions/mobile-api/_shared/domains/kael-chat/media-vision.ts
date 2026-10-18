@@ -87,7 +87,7 @@ export async function createSignedVisionUrls(
         503,
       );
     }
-    const trusted = await inspectTrustedKaelVisionImage(signed.data.signedUrl);
+    const trusted = await inspectTrustedKaelVisionImage(signed.data.signedUrl, { boundRangeToObjectSize: true });
     if (trusted === "invalid") {
       apiFailure("INVALID_MEDIA_CONTENT", "Tệp gửi cho Kael không phải ảnh hợp lệ", 400);
     }
@@ -320,12 +320,22 @@ const VISION_IMAGE_HEAD_BYTES = 256 * 1024;
 
 export async function inspectTrustedKaelVisionImage(
   signedUrl: string,
+  options: { boundRangeToObjectSize?: boolean } = {},
 ): Promise<"valid" | "invalid" | "unavailable"> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
+    let headBytes = VISION_IMAGE_HEAD_BYTES;
+    if (options.boundRangeToObjectSize) {
+      // Storage can stall on a range beyond EOF; use server metadata, never a client size claim.
+      const metadata = await fetch(signedUrl, { method: "HEAD", redirect: "error", signal: controller.signal });
+      await metadata.body?.cancel().catch(() => undefined);
+      const objectBytes = Number(metadata.headers.get("content-length"));
+      if (!metadata.ok || !Number.isSafeInteger(objectBytes) || objectBytes <= 0) return "unavailable";
+      headBytes = Math.min(headBytes, objectBytes);
+    }
     const response = await fetch(signedUrl, {
-      headers: { Range: `bytes=0-${VISION_IMAGE_HEAD_BYTES - 1}` },
+      headers: { Range: `bytes=0-${headBytes - 1}` },
       redirect: "error",
       signal: controller.signal,
     });

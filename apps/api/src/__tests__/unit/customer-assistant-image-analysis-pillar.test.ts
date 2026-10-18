@@ -72,6 +72,10 @@ describe('P217 Customer assistant image analysis', () => {
     })
     expect(requests, pillarWhy(PILLAR, 'vision and answer generation are separate provider calls')).toHaveLength(2)
     expect(requests[0]).toMatchObject({ purpose: 'normal_chat_vision', provider: 'anthropic', model: 'claude-sonnet-5-5' })
+    const visionInstructions = requests[0]?.messages.find((message) => message.role === 'system')?.content
+    for (const field of ['summary', 'observations', 'readable_text', 'uncertainties']) {
+      expect(visionInstructions, pillarWhy(PILLAR, `the vision provider must receive its required ${field} output contract, not an unspecified schema reference`)).toContain(`"${field}"`)
+    }
     expect(requests[1]).toMatchObject({ purpose: 'normal_chat_response', provider: 'deepseek' })
     expect(requests[1]?.messages.flatMap((message) => typeof message.content === 'string' ? [message.content] : []))
       .toEqual(expect.arrayContaining([expect.stringContaining('wall-mounted air conditioner')]))

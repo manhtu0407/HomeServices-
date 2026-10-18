@@ -59,6 +59,7 @@ import { scrubSensitiveForLLM } from "../pipeline/utils.ts";
 import { sanitizeCustomerCaseEvidenceText } from "../evidence/untrusted-evidence.ts";
 import { createRuntimeKaelSpendGate, type SpendGateClient } from "../kael-guardrails/spend-gate.ts";
 import { normalizeKaelResponseBrand } from "../language/user-facing-copy.ts";
+import { resolveCustomerAssistantTurnContext } from "./customer-assistant-turn-context.ts";
 import {
   buildCustomerWorkflowAssistantAnswer,
   buildFallbackCustomerAssistantAnswer,
@@ -77,7 +78,6 @@ import {
   assistantSafeText,
   buildCustomerAssistantNoProviderTrace,
   buildCustomerAssistantProviderTrace,
-  classifyAssistantTopic,
   inferAssistantServiceType,
   normalizeActions,
   normalizeCitations,
@@ -178,11 +178,13 @@ export async function runCustomerAssistant(
   const {
     boundary,
     cleanQuestion,
+    clarificationRequired,
     language,
     registerHint,
     serviceType,
     surface,
     topic,
+    unsafeRequest,
     workflowQuestion,
   } = buildCustomerAssistantRunContext(input);
   const trace: KaelSafeTraceEvent[] = [];
@@ -194,6 +196,14 @@ export async function runCustomerAssistant(
       true,
       deterministicSafetyNotes(language, topic),
       trace,
+    );
+  }
+  if (unsafeRequest) {
+    return buildFallbackCustomerAssistantAnswer(
+      language === "vi"
+        ? "Kael không hướng dẫn vô hiệu hóa thiết bị bảo vệ hoặc gây hại. Nếu thiết bị có dấu hiệu nguy hiểm, hãy ngừng sử dụng và nhờ thợ đủ chuyên môn kiểm tra."
+        : "Kael cannot guide disabling safety devices or causing harm. Stop using equipment that shows signs of danger and ask a qualified worker to check it.",
+      topic, "unsupported", true, [], trace,
     );
   }
   reportKaelPublicExecutionStep(input.reasoning, {
@@ -246,6 +256,15 @@ export async function runCustomerAssistant(
     );
   }
 
+  if (clarificationRequired) {
+    return {
+      answer: language === "vi"
+        ? "Bạn muốn Kael hỗ trợ vấn đề nào trong nhà, hay thao tác nào trong NestScout?"
+        : "Which problem at home or action in NestScout would you like help with?",
+      safety_notes: [], citations: [], suggested_actions: [], boundary: "redirect", fallback_used: false,
+    };
+  }
+
   let normalChatImageAnalysis: NormalChatImageAnalysis | null = input.normalChatImageAnalysis ?? null;
   if (hasImages && surface === "customer_normal") {
     const vision = await analyzeNormalChatImages(
@@ -273,7 +292,7 @@ export async function runCustomerAssistant(
   }
   const boundedLifecycleAnswer = hasImages
     ? null
-    : resolveBoundedServiceLifecycleAnswer(topic, cleanQuestion, language);
+    : resolveBoundedServiceLifecycleAnswer(topic, cleanQuestion, language, surface);
   if (boundedLifecycleAnswer) {
     return buildCustomerWorkflowAssistantAnswer(
       boundedLifecycleAnswer,
@@ -370,8 +389,7 @@ function buildCustomerAssistantRunContext(input: CustomerAssistantInput) {
       : scrubSensitiveForLLM(sourceMessage)
   ).slice(0, 2000);
   const workflowQuestion = scrubSensitiveForLLM(sourceMessage).slice(0, 2000);
-  const serviceType = input.serviceType ?? inferAssistantServiceType(cleanQuestion, input.job);
-  const topic = classifyAssistantTopic(cleanQuestion, serviceType, surface, hasImages);
+  const { serviceType, topic, clarificationRequired, unsafeRequest } = resolveCustomerAssistantTurnContext(input, cleanQuestion);
   const boundary = evaluateMessageBoundary(cleanQuestion, serviceType, {
     actorId: input.actorId,
     semanticInjectionClassifierEnabled: true,
@@ -382,11 +400,13 @@ function buildCustomerAssistantRunContext(input: CustomerAssistantInput) {
   return {
     boundary,
     cleanQuestion,
+    clarificationRequired,
     language,
     registerHint,
     serviceType,
     surface,
     topic,
+    unsafeRequest,
     workflowQuestion,
   };
 }
@@ -656,6 +676,8 @@ function buildSuccessfulCustomerAssistantAnswer(input: {
   latencyMs: number;
   costUsd: number;
 }): CustomerAssistantAnswer {
+  const usageHelp = input.surface === "customer_normal" &&
+    (input.topic === "app_usage_help" || input.topic === "support_redirect");
   input.trace.push(buildCustomerAssistantProviderTrace(input.surface, input.route, "success", {
     latencyMs: input.latencyMs,
     costUsd: input.costUsd,
@@ -670,8 +692,8 @@ function buildSuccessfulCustomerAssistantAnswer(input: {
     answer: normalizeKaelResponseBrand(input.answer),
     safety_notes: deterministicSafetyNotes(input.language, input.topic),
     citations: customerAssistantCitations(input.knowledge, input.data.citations),
-    suggested_actions: normalizeActions(input.data.suggested_actions, input.surface, input.topic),
-    service_intent: input.surface === "customer_normal" ? input.data.service_intent : null,
+    suggested_actions: normalizeActions(usageHelp ? [] : input.data.suggested_actions, input.surface, input.topic),
+    service_intent: input.surface === "customer_normal" && !usageHelp ? input.data.service_intent : null,
     boundary: input.data.boundary,
     fallback_used: false,
     regenerated: input.regenerated,
