@@ -10,7 +10,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 let stage = 'arguments'
 try {
   const args = process.argv.slice(2)
-  const selection = args.length === 6 && args[4] === '--only' && args[5] === 'cancellation' ? 'cancellation' : null
+  const selection = args.length === 6 && args[4] === '--only' && ['cancellation', 'dispute'].includes(args[5]) ? args[5] : null
   if ((args.length !== 4 && !selection) || args[0] !== '--instance' || args[2] !== '--port-base') throw new Error('invalid arguments')
   const instance = args[1]
   const portBase = Number(args[3])
@@ -76,9 +76,10 @@ try {
     'src/__tests__/integration/kael-local-http-fulfillment-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-payment-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-cancellation-pillar.test.ts',
+    'src/__tests__/integration/kael-local-http-dispute-pillar.test.ts',
   ]
-  const selectedFiles = selection ? files.filter(file => file.endsWith('kael-local-http-cancellation-pillar.test.ts')) : files
-  const reportFile = selection ? '.scratch/kael-local-http-cancellation-results.json' : '.scratch/kael-local-http-results.json'
+  const selectedFiles = selection ? files.filter(file => file.endsWith(`kael-local-http-${selection}-pillar.test.ts`)) : files
+  const reportFile = selection ? `.scratch/kael-local-http-${selection}-results.json` : '.scratch/kael-local-http-results.json'
   console.log(JSON.stringify({ selection: selection ?? 'all', files: selectedFiles.length, reportFile }))
   const result = spawnSync(process.execPath, [
     resolve(root, 'apps/api/node_modules/vitest/vitest.mjs'), 'run', '--no-file-parallelism', ...selectedFiles,

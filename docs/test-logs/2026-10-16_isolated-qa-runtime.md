@@ -880,3 +880,84 @@ Next: bounded QA attribution/cleanup-budget diagnosis, then public dispute/postc
 | `cancellation-tooling-final.log` | `aa3ce1f08b1729bcc8be64d3bb147ab06c65e4bfcd38f01fdb7307132d192361` |
 | `cancellation-rpc-verdict.log` | `4e44a75812264305b88c52d12644296f0466b81129a35d8708aff8cbf00a6576` |
 | `cancellation-final-proof.json` | `92641948c4bb89e873ac5fcfac1bea00fdd8e3a73d56b507a3f8ace7e32dad8f` |
+
+
+## October 18 bounded QA cleanup and safe failure attribution
+
+**FIXED_LOCAL for the test cleanup budget; old gateway/Edge timing cause remains UNVERIFIED.** Source HEAD b7e76cc279b71ce96c73131020e55af88fff1c7e plus test-only delta. That HEAD was committed/pushed by Tu's explicit request, without merge. These new changes are uncommitted; no Production/Preview/native mutation.
+
+The pinned Vitest4.1.6 onTestFinished API accepts a per-hook budget. Actual old hook could read persisted job, optionally cancel owned unfinished matching, then attempt parallel Worker availability writes: three serial HTTP windows against its default single10s window. P400 invokes the real fixture callback with mocked transport boundaries; three9s stages produced two hook_timeout failures before the fix. The registered hook now budgets3×10s=30s. Every individual fetch and Storage upload remains10s; unknown fixture counters remain null and fail the zero-inference/egress assertion. No global timeout, state/permission/pricing policy or product code changed.
+
+Safe diagnostics now include only HTTP status, run ID and elapsed milliseconds in fixture-attribution failures. A simulated503 with a private sentinel response proves those fields are useful while payload stays out of the message: attribution regression red1fail/2pass, then3/3green. Restoring the default10s hook mutation gave1pass/2fail with hook_timeout; exact bytes restored and3/3green. The first mutation wrapper mistakenly inspected stdout only; the combined log and real JSON confirm the two expected failures, and a separate verdict checks them plus byte-exact restoration.
+
+Owned local runtime was inspected through the existing loopback/binding/AI guard, not restarted manually. Container running, OOMKilled=false, RestartCount0. Three endpoints first observed at200 in4656/3939/3518ms, then200 in15/13/14ms. Recent bounded log window had no wall-clock/early-termination/CPU-limit markers; this observation cannot explain earlier failed containers or establish a general failure rate. Source config still policy=per_worker. Cold-start/resource/lifetime causes remain hypotheses, not fixed defects.
+
+Executed commands and results:
+
+- Guarded default HTTP runner:8files,25/25,0skip,180.86s,exit0. Fresh JSON start time checked against this run log before accepting evidence. Canonical and both fixture journeys remain included.
+- Read-only own-actor SQL:16/16 controlled Workers found,0available,0nonfixture. No cleanup deletes or forced business transitions.
+- P400 focused via actual API Vitest config:3/3 after restoration. Registry394unique with manifest twins identical; real runner collection14/14.
+- API package test:176passed/10skipped files,2189passed/27explicit skipped cases; Node114passed/1skip of115; exit0. Named HTTP cases executed separately, not converted from skips into pass.
+- API type-check exit0. Next support build1/1 exit0,15.656s; not native build.
+- Comment discipline, structure (1442 source files, baseline unchanged), diff checks pass.
+
+Review fixed point: uncommitted test-only diff against b7e76cc2; approved journey plan requires bounded requests, controlled actors, zero inference and honest evidence. Spec compliance: separates cleanup orchestration budget from request SLA and preserves all failure assertions. Rules compliance: no live integrations, financial/learning/history edits or hosted mutation. Maintainability: one shared10s constant, one local derived hook budget, no global runner config change. Remaining product/runtime timing limitation is explicitly retained.
+
+Next tracer: public dispute/postcompletion HTTP chain. FullK01-K42/Preview role/live-AI scope is stillIN_PROGRESS; live inference remains blocked by the reliable1USD pre-call cap. Native QA and actual bank transfer belong to Tu.
+
+| Retained private artifact | SHA256 |
+|---|---|
+| `cleanup-budget-red.json` | `7c1a6ec130755d48969c697b9ea9989cbe3f98733648bf330bf251d64c208208` |
+| `cleanup-attribution-red.json` | `582f5aec9c92e6fd8fb81f4e887e66b6e9870f48f25f90ab46060e6ce79d5776` |
+| `cleanup-restored.json` | `5e382d867fe27cc30b5f4d611b92519c2b49c4c049671f653234c3376189dc44` |
+| `cleanup-hook-mutation.json` | `8fc3a38a241ae280257df3136421cfd82dc5dc6466faf248a5f691ca3361628f` |
+| `cleanup-hook-mutation-verdict.json` | `806d46ae9e7d91f2ddd9218f461b05849f701a585163d7b069f78c9ac970e516` |
+| `qa-attribution-runtime-observation.json` | `96b6b7a66131b02a67ea08c61acebe5eab7f0c6c80459efd9156e3916d5da7b5` |
+| `cleanup-budget-http.json` | `960c47b4988fbf04921cc27d32565cc0ff0e71865198dcd0c90e8a0a1963facd` |
+| `cleanup-budget-final-proof.json` | `ba31958c794f7159a3d70b4a24513a5d448da86081f441b767942ea39e431f3f` |
+| `cleanup-api-types.log` | `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643` |
+| `cleanup-final-api.log` | `258de7a64130aef7a8adfebdd712fdf0a17c1437327b6213d8d4402606531d44` |
+| `cleanup-final-build.log` | `05c94e2e37c8f8bdb1c839279abcbdc4b4dd39bcde43e38048e669d29b8fc6bb` |
+
+
+## October 18 actual postcompletion dispute chain and App wiring gaps
+
+**PASS at the named local HTTP/PostgreSQL layer, not complete Preview/native proof.** Sourceb7e76cc2 plus uncommitted test-only cleanup/coverage delta. P401 starts with the same actual RFQ confirmation, matching, Customer assignment, Storage/check-in, price consent and completion prefix. Only the initial saved RFQ diagnosis is a declared fixture; no lifecycle SQL jump after it, live inference or banking. Both Customer and Worker dispute initiators execute against real Auth/Edge/PostgreSQL.
+
+- Initial focused2/2 passed; extended focused3/3 includes matched-phase refusal for both participants without assignment changes, and concurrent Admin decisions.
+- Concurrent openings return201/409 ALREADY_OPEN by the existing contract, one durable dispute, evidence snapshot, review queue item and opening event. Counter-party statements return200/409; only the counterpart is allowed. Duplicate Admin decisions return200/409; later replay preserves the stored decision and returns ALREADY_DECIDED. These are conflict semantics, not recovered success receipts. Lost-response UX is not proven by them.
+- Foreign account cannot open or respond. Real authenticated participant SELECT succeeds; foreign SELECT returns empty under RLS. Non-Admin cannot decide. Unpaid-service dispute remains explicit DEFERRED_PHASE0; attempting refund on unpaid work returns REFUND_PAYMENT_UNVERIFIED. Nonmonetary Admin resolution leaves completed_by_worker, agreed350000, no payment order or synthetic paid status. No AI job logs.
+- Mutation replaces the positive Admin decision actor with the initiating participant: actual runner1pass/2fail/0skip, exit1. Exact source bytes restored. Default guarded9-file runner then28/28/0skip,222.16s,exit0 with fresh start-time-validated JSON.
+- Own-actor catalog check:25controlled fixture Workers,0available,0nonfixture. History/receipts/training/prices retained; no manual host/server restart or Production change.
+
+Verification: API test176passed/11skipped files;2189passed/30explicit skips, plus Node114passed/1skip/115,exit0. The named HTTP tests are run separately; default runtime skips are not pass. API type-check0; Next support build1/1,15.258s,exit0. Tooling17/17; collection14/14, comment/diff/structure gates pass. Registry395unique; manifest twins identical. No mobile code, schema, Edge source or generated database type changed; native QA remains Tu's scope. Whole-campaign final gates remain required after later fixes.
+
+### Source-proven App gaps (rendered behavior still pending)
+
+The inspected services.ts, customer history surface and Admin section copy match frozen Build56 sourcee8b95d21 after newline normalization, with hashes retained.
+
+1. Customer history support calls jobService.openDispute through the existing confirmation Alert. Every unsuccessful result uses the generic not-opened/try-later notice. Actual Backend ALREADY_OPEN is409. This is a suspected misleading recovery/error mapping; reproduce with RNTL before any fix. It does not establish a rendered Preview failure yet.
+2. submitDisputeCounterStatement and decideDispute exist in the service adapter but have no application caller in current mobile source. Worker opening also has no UI caller. Admin copy explicitly says review/preparation only, no adjudication, consistent with STRUCTURES partial status. Record API-not-connected/missing UI coverage; do not silently add new dispute workflow, decision powers or operator permissions.
+3. No direct Preview dispute action, device render, lost-response UI rehydration, paid refund or external banking was verified by these local tests. No claim of App/Backend100percent match.
+
+Review fixed point: uncommitted tests/runner plus already reviewed cleanup delta againstb7e76cc2. Spec: existing workflow through public handlers with actors, concurrency, persistence and no invented payment. Rules: existing conflict/state/permission rules preserved. Maintainability: reuses actual fulfillment prefix; runner accepts only enumerated cancellation/dispute selections, default includes both, distinct report paths. Required future work: existing Customer conflict feedback regression, other42-scenario gaps and current final gates. No product fix was needed for the tested dispute Backend chain.
+
+| Retained private artifact | SHA256 |
+|---|---|
+| `dispute-first-http.log` | `808f7dd7c9d2242f884be78afa5d99d7225d912570e9985e2280c4e3f99de124` |
+| `dispute-complete-http.json` | `febe866565312312f976b81aa9932c4ff82ce6b9a6e1c4caad9a57ca268128b5` |
+| `dispute-role-mutation.json` | `851ace721d536a0950c61a83281070ac9541f93ad4244db19f7ac4a7faff7177` |
+| `dispute-role-mutation.log` | `1f1815a9a1d1e366d8bdc3dbc3ba661c8874f39cd847c45993e384b9a92f66e0` |
+| `dispute-full-http.json` | `e0e91945dfe42e96d80ddbee554fbb0e9b0989339eedb22b8ac5ad9d42eb1d71` |
+| `dispute-final-proof.json` | `46ce24f2e1a9244dcb63538948d5653c5baa9a1a64415fd58f4ed22f0ed97085` |
+| `dispute-mobile-wiring-source-proof.json` | `79bf1cb943575e21df3f2af267043882a9f35eee7b6f08e34722efdfab47ea33` |
+| `dispute-final-api.log` | `45d3fffebf8d4e4f28c40df2cc309cb6e43b645086c7e2f9e72077b9121103cd` |
+| `dispute-final-types.log` | `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643` |
+| `dispute-final-build.log` | `3987a4232030202fefba9599b5020690297470000db5e09dc6662e31ffc4cec2` |
+| `dispute-tooling.log` | `7827f93d10d6417b32bde99a22270de47911b19f2149016e33d09774760e731b` |
+| `dispute-registry.log` | `8ba4f1ccd1d9a26e2a10458d06578db20f273e2139ea55d95b2630af99837bfe` |
+
+
+## October 18 Customer support feedback
+
+Native RNTL conflict feedback FIXED_LOCAL: observed red→matrix14/14, status-only mutation12pass2fail→restored full Mobile280suites/2621tests,types/changedDoctor0issues. Next support build cached1/1. Direct frozen Preview Support control failed to open confirmation, consistent with empty web Alert implementation; no submission, Profile restored. This web limitation remains unresolved, separately from the native notice fix. [Detailed evidence](2026-10-18_customer-support-conflict-feedback.md). No new publication/deploy.

@@ -5,6 +5,7 @@ import { assertLocalQaBindings } from '../../../../../scripts/harness/local-qa-n
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 
 export type LocalQaActor = { id: string; token: string }
+export const LOCAL_QA_REQUEST_TIMEOUT_MS = 10_000
 
 export function localQaRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('QA response must be an object')
@@ -29,7 +30,7 @@ export function createLocalQaHttpHarness(pillar: PillarManifest) {
     }
     const startedAt = Date.now()
     const response = await fetch(url, {
-      method: options.method ?? 'GET', redirect: 'error', signal: AbortSignal.timeout(10_000),
+      method: options.method ?? 'GET', redirect: 'error', signal: AbortSignal.timeout(LOCAL_QA_REQUEST_TIMEOUT_MS),
       headers: {
         apikey: options.key ?? target.serviceRoleKey ?? '',
         authorization: `Bearer ${options.token ?? target.serviceRoleKey ?? ''}`,
@@ -48,7 +49,7 @@ export function createLocalQaHttpHarness(pillar: PillarManifest) {
     const body = await response.text()
     const payload: unknown = body ? JSON.parse(body) : null
     return {
-      status: response.status, payload, runId: response.headers.get('x-run-id'),
+      status: response.status, payload, runId: response.headers.get('x-run-id'), elapsedMs: Date.now() - startedAt,
       fixtureProviderCalls: response.headers.has('x-qa-provider-fixture-calls') ? Number(response.headers.get('x-qa-provider-fixture-calls')) : null,
       fixtureDeniedCalls: response.headers.has('x-qa-denied-calls') ? Number(response.headers.get('x-qa-denied-calls')) : null,
     }

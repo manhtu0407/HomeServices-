@@ -10,6 +10,12 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-18** Support notice —red→14/14, mutation12/2, full Mobile2621/types/Doctor PASS; nine-line native fix local. Frozen Preview Support confirmation is web Alert no-op; no submission, Profile restored. Next cross-platform reuse, no deploy.
+
+- **2026-10-18** Dispute HTTP —3/3, Admin mutation1pass2fail→full28/28;25ownWorkers offline,API2189/types/build PASS. Build56 lacks counter/Admin/Worker UI callers; next Customer duplicate notice regression; uncommitted, no deploy.
+
+- **2026-10-18** QA cleanup — P400red→3/3 +10s-hook mutation; scoped30s cleanup, requests10s; HTTP25/25,16ownWorkers offline,API2189/types/build PASS. Timing root UNVERIFIED; next dispute tracer, new delta uncommitted.
+
 - **2026-10-18** Actual cancellation/replacement —HTTP25/25, same actor approved receipt recovers concurrent Worker201/409; P83red→21/21 +role/approval mutations; API2186/harness472/build/Edge pass. Uncommitted, no deploy; QA timing/cleanup budget and full campaign still open.
 
 - **2026-10-18** Frozen Preview rehydration — Work draft survives mode/Home/reload, samee8identity; RN2610/2610/types0 on local5dff;42-row campaign matrix explicit, English-copy decision conflict recorded; cancellation/replacement HTTP next, no new publication.

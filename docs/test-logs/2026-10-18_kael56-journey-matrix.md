@@ -2,9 +2,9 @@
 
 ## Identity and verdict scope
 
-- Audit HEAD:5dff503b0751d37c2c1359af597dc73d07542c95 plus the uncommitted Worker cancellation receipt fix, local/unreleased. Frozen Preview web source:e8b95d2122a8ce802c5504630a778f6e51daa72f/HEAD, built2026-10-18T02:12:30.144Z. These are separate sources.
+- Audit HEAD:b7e76cc279b71ce96c73131020e55af88fff1c7e plus cleanup/coverage and Customer support notice delta, local/unreleased. Frozen Preview web source:e8b95d2122a8ce802c5504630a778f6e51daa72f/HEAD, built2026-10-18T02:12:30.144Z. These are separate sources.
 - Production public health returned200, registered production projectiwevizmsedyqozxlawwl, releaseharness-e8b95d2122a8-53817ce22f48, sourcee8b95d21, epoch3/iOS56/runtime0.3.2. No compatibility binding changed. Preview writes still use its explicit epoch2 previous-behavior lane.
-- Exact local evidence: eight HTTP files25/25, fresh454/454 canonical migration ledger, full SQL139/139,265 RPC names/0residue. No SQL count or MAPPED count substitutes for UI end-to-end proof. Details, commands, mutations and artifact hashes: [runtime report](2026-10-16_isolated-qa-runtime.md).
+- Exact local evidence: nine HTTP files28/28, fresh454/454 canonical migration ledger, full SQL139/139,265 RPC names/0residue. No SQL count or MAPPED count substitutes for UI end-to-end proof. Details, commands, mutations and artifact hashes: [runtime report](2026-10-16_isolated-qa-runtime.md).
 - **Overall campaign: IN_PROGRESS.** A PASS below applies only to its named layer/scenario. Every unexecuted portion remains UNVERIFIED; native QA belongs to Tu. Live AI is BLOCKED by the missing reliable campaign-wide1USD pre-call bound. No live payment was prepared, so WAITING_USER_TRANSFER is not yet applicable.
 
 ## K01–K42
@@ -49,7 +49,7 @@
 | K36 | Chưa nhận tiền không hiện paid | P397 Customer claim giữ payment_pending/unverified, chỉ Admin hợp lệ mới paid | UI receipt và actual banking rail chưa kiểm |
 | K37 | Customer/Worker cancellation | P399 focused2/2 actual HTTP; SQL durability/notifications đạt; Worker duplicate receipt bug FIXED_LOCAL | Default25/25 and role/receipt mutations observed; other cancellation phases and direct Preview still missing |
 | K38 | Reassignment | P399 actual new-Worker offer→Customer re-confirmation→old-Worker replay passed focused; SQL lease/recovery đạt | Default25/25 restored; Preview UI and other replacement timing/origin cases still required |
-| K39 | Dispute | SQL fixtures trong matrix đạt; chưa chạy dispute HTTP/Preview mới | Public complaint/decision/replay/effects theo đúng phase |
+| K39 | Dispute | P401 actual HTTP3/3: phase/actor/RLS/evidence/concurrent open/counter/Admin/refund denial; mutation1pass2fail→default28/28 | Preview chưa chạy; Worker/counter/Admin UI chưa nối; Customer ALREADY_OPEN feedback cần RNTL; paid refund chưa kiểm HTTP |
 | K40 | Admin Owner/Operator | Existing RNTL/SQL role and health tests; Mobile trên5dff503b đạt2610/2610 | Owner/Operator trực tiếp trên Preview source phù hợp chưa đủ |
 | K41 | Health stale/partial/export | Bản sửa local trước đó có regression tests; SQL monitor profile/lifecycle đạt | Hosted Admin render/API failure/export privacy cần đối chiếu runtime |
 | K42 | Restart/reconciliation | Fresh replay454/454, SQL139/139; HTTP replay/payment receipt đạt ở lớp đã nêu | Crash/restart process giữa commit/response và UI recovery xuyên suốt chưa hoàn tất |
@@ -77,3 +77,15 @@ Mobile validation on5dff503b: node scripts/run.mjs run-package-script @nestscout
 ## Next tracer
 
 Bounded QA attribution/cleanup-budget diagnosis, then public dispute/postcompletion exception and remaining UI cases, preserving the existing policy, state gates, immutable price/learning/receipts and controlled local actors. SQL proves its assertions; handler/RPC/UI connection still needs direct evidence. No merge, deploy or new Build56 binary is authorized by this campaign.
+
+## QA cleanup checkpoint
+
+P400 observes old10s hook failure, scoped30s orchestration budget, safe status/run/timing diagnostics and mutation/restored3/3. Individual request deadline remains10s; counters missing remain red. Current HTTP25/25 (180.86s),16ownedWorkers offline,API2189pass/27skip+Node114pass/1skip,types/build pass. Old502/timeouts cause remainsUNVERIFIED. Public dispute/postcompletion tracer is next; no new publication/deploy.
+
+## Postcompletion dispute checkpoint
+
+Current default9files28/28/0skip222.16s after actual Admin-role mutation and exact restoration;25ownedWorkers offline. API2189pass/30skip+Node114pass/1skip,types/build0. Existing conflict responses409 are preserved; no recovered receipt or UI success is inferred. Three inspected mobile owners match Build56 normalized source. Source-only missing callers for Worker opening/counter-statement/Admin adjudication are recorded, with Admin intentionally read-only. Customer duplicate-open notice is a suspected UI mapping bug pending RNTL reproduction. No Production/native/merge/deploy changes; live AI budget remains blocked.
+
+## Customer support UI feedback checkpoint
+
+P297 observed wrong duplicate-open failure notice; FIXED_LOCAL with exact409/ALREADY_OPEN, VI/EN, unrelated-error/privacy/confirmation/pending tests14/14 and mutation12pass2fail. Full Mobile280/280,2621/2621,types0,changedDoctor2files0issues; cached support build1/1. Frozen Preview Profile→History→Support produces no confirmation, consistent with web Alert no-op; no support submission, original Profile restored. This is a real Preview limitation, not native proof. Cross-platform confirmation/notice reuse is the next scoped investigation. [Detailed report](2026-10-18_customer-support-conflict-feedback.md).

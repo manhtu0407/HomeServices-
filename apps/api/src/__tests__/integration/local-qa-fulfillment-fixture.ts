@@ -1,17 +1,18 @@
 import { randomUUID } from 'node:crypto'
 import { expect, type TestContext } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
-import { createLocalQaHttpHarness, localQaRecord as record, type LocalQaActor } from './local-qa-http-harness'
+import { createLocalQaHttpHarness, LOCAL_QA_REQUEST_TIMEOUT_MS, localQaRecord as record, type LocalQaActor } from './local-qa-http-harness'
 
 export function createLocalFulfillmentFixture(pillar: PillarManifest) {
   const { target, request, customer, seedRows, dispatchMatching } = createLocalQaHttpHarness(pillar)
   const why = (detail?: string) => pillarWhy(pillar, detail)
   async function prepareAssigned(context: TestContext, options: { apiRoot?: string; paymentRail?: 'platform_bank_manual' } = {}) {
     const base = options.apiRoot ?? '/functions/v1/mobile-api'
-    const observe = <T extends { fixtureProviderCalls: number | null; fixtureDeniedCalls: number | null }>(result: T): T => {
+    const observe = (result: Awaited<ReturnType<typeof request>>) => {
       if (options.apiRoot) {
-        expect(result.fixtureProviderCalls, why('payment fixture cannot invoke inference')).toBe(0)
-        expect(result.fixtureDeniedCalls, why('payment fixture cannot contact a remote integration')).toBe(0)
+        const diagnostic = JSON.stringify({ status: result.status, run_id: result.runId, elapsed_ms: result.elapsedMs })
+        expect(result.fixtureProviderCalls, why(`fixture must attest zero inference: ${diagnostic}`)).toBe(0)
+        expect(result.fixtureDeniedCalls, why(`fixture must attest zero remote integration attempts: ${diagnostic}`)).toBe(0)
       }
       return result
     }
@@ -32,7 +33,7 @@ export function createLocalFulfillmentFixture(pillar: PillarManifest) {
       }
       const local = new URL(signed.pathname + signed.search, target.url)
       const uploaded = await fetch(local, { method: 'PUT', body: bytes, redirect: 'error',
-        signal: AbortSignal.timeout(10_000), headers: { 'content-type': 'image/png', 'x-upsert': 'false' } })
+        signal: AbortSignal.timeout(LOCAL_QA_REQUEST_TIMEOUT_MS), headers: { 'content-type': 'image/png', 'x-upsert': 'false' } })
       expect(uploaded.status, why('upload real PNG bytes to the named local Storage')).toBe(200)
       await uploaded.arrayBuffer()
       const attached = await command(`/jobs/${jobId}/media`, actor, { assets: [{
@@ -46,6 +47,7 @@ export function createLocalFulfillmentFixture(pillar: PillarManifest) {
     const foreign = await customer()
     const workers = await Promise.all([customer('worker'), customer('worker'), customer('worker')])
     let ownedJobId: string | null = null
+    // Retirement can read and cancel before the parallel availability writes settle.
     context.onTestFinished(async () => {
       const retired = await Promise.allSettled([(async () => {
         if (!ownedJobId) return
@@ -64,7 +66,7 @@ export function createLocalFulfillmentFixture(pillar: PillarManifest) {
       }))
       const failed = [...retired, ...cleanup].filter(item => item.status === 'rejected')
       expect(failed, why('all owned actors are attempted even if one cleanup request fails')).toEqual([])
-    })
+    }, LOCAL_QA_REQUEST_TIMEOUT_MS * 3)
     const worker = workers[0]
     const sessionId = randomUUID()
     const journey = { sessionId, ownerId: owner.id, workerIds: workers.map(item => item.id), source: 'saved_rfq_intake_fixture', inference: 'disabled' }

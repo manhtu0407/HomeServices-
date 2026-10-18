@@ -36,6 +36,8 @@ import { ActiveWorkEntry, type ActiveWorkSummary } from '../report/worker-report
 import { WorkerReportSheet } from '../report/worker-report-sheet'
 import { ServiceHistoryFilterRail, type HistoryFilter } from './service-history-filter-rail'
 import { HistoryCardAura, HistoryEmptyCard } from './service-history-state-cards'
+import { ServiceHistorySupportDialog } from './service-history-support-dialog'
+import { useServiceHistorySupportAlert, type HistorySupportPresenter } from './use-service-history-support-alert'
 import { V21Card, V21Screen, useCustomerV21SurfaceTheme } from '../ui/shared-surfaces'
 import { customerV21ServiceHistoryStyles as styles } from './service-history-styles'
 import { stableImageSource } from '@/lib/stable-image-source'
@@ -84,6 +86,7 @@ type HistoryAction =
   | { type: 'favorite_change'; workerId: string; isFavorite: boolean }
   | { type: 'favorite_finish'; workerId: string }
   | { type: 'supporting'; jobId: string | null }
+  | { type: 'support_finished'; jobId: string }
 
 const initialHistoryState: HistoryState = {
   favoriteWorkerIdsInFlight: new Set(),
@@ -136,6 +139,8 @@ function historyReducer(state: HistoryState, action: HistoryAction): HistoryStat
     }
     case 'supporting':
       return { ...state, supportingJobId: action.jobId }
+    case 'support_finished':
+      return state.supportingJobId === action.jobId ? { ...state, supportingJobId: null } : state
   }
 }
 
@@ -214,6 +219,7 @@ export function CustomerServiceHistorySurface({
   const localVisualAuditSession = session?.user.app_metadata?.provider === 'local-visual-audit'
 
   const ownerId = session?.user.id ?? null
+  const supportAlert = useServiceHistorySupportAlert(ownerId, language)
   // Re-entering the tab renders the last list at once; the server is asked only once it is stale.
   const history = useCachedResource({
     enabled: !localVisualAuditSession,
@@ -261,7 +267,7 @@ export function CustomerServiceHistorySurface({
     }
   }
 
-  const submitSupport = async (item: CustomerServiceHistoryItem) => {
+  const submitSupport = async (item: CustomerServiceHistoryItem, present: HistorySupportPresenter) => {
     dispatch({ type: 'supporting', jobId: item.id })
     try {
       const result = await jobService.openDispute(item.id, {
@@ -270,37 +276,47 @@ export function CustomerServiceHistorySurface({
         initiator_statement: 'Khách hàng cần hỗ trợ sau dịch vụ.',
       })
       if (!result.success) {
-        Alert.alert(
+        if (result.status === 409 && result.code === 'ALREADY_OPEN') {
+          present(
+            language === 'vi' ? 'Đã có yêu cầu hỗ trợ' : 'Support request already open',
+            language === 'vi'
+              ? 'Yêu cầu hỗ trợ cho công việc này đã được mở. Bạn không cần gửi lại.'
+              : 'A support request for this job is already open. You do not need to submit it again.',
+          )
+          return
+        }
+        present(
           language === 'vi' ? 'Chưa mở được yêu cầu' : 'Support request not opened',
           language === 'vi' ? 'Vui lòng thử lại sau.' : 'Please try again later.',
         )
         return
       }
-      Alert.alert(
+      present(
         language === 'vi' ? 'Đã gửi yêu cầu hỗ trợ' : 'Support request sent',
         language === 'vi'
           ? 'NestScout sẽ lưu bằng chứng hiện có để đội ngũ xem xét. Chưa có thay đổi nào với thanh toán.'
           : 'NestScout will preserve the current evidence for review. No payment has changed.',
       )
     } catch {
-      Alert.alert(
+      present(
         language === 'vi' ? 'Chưa mở được yêu cầu' : 'Support request not opened',
         language === 'vi' ? 'Vui lòng thử lại sau.' : 'Please try again later.',
       )
     } finally {
-      dispatch({ type: 'supporting', jobId: null })
+      dispatch({ type: 'support_finished', jobId: item.id })
     }
   }
 
   const confirmSupport = (item: CustomerServiceHistoryItem) => {
-    Alert.alert(
+    const present = supportAlert.createPresentation()
+    present(
       language === 'vi' ? 'Hỗ trợ sau dịch vụ' : 'After-service support',
       language === 'vi'
         ? 'NestScout sẽ mở yêu cầu để đội ngũ xem lại công việc này. Chưa có thay đổi nào với thanh toán.'
         : 'NestScout will open a request for this job to be reviewed. No payment has changed.',
       [
         { text: language === 'vi' ? 'Để sau' : 'Not now', style: 'cancel' },
-        { text: language === 'vi' ? 'Mở yêu cầu hỗ trợ' : 'Open support request', onPress: () => void submitSupport(item) },
+        { text: language === 'vi' ? 'Mở yêu cầu hỗ trợ' : 'Open support request', onPress: () => void submitSupport(item, present) },
         { text: language === 'vi' ? 'Báo cáo thợ vi phạm' : 'Report the worker', onPress: () => setReportJobId(item.id) },
       ],
     )
@@ -433,6 +449,7 @@ export function CustomerServiceHistorySurface({
         </View>
       )}
       </View>
+      <ServiceHistorySupportDialog dialog={supportAlert.dialog} tokens={tokens} />
       {reportJobId ? (
         <WorkerReportSheet jobId={reportJobId} language={language} onClose={() => setReportJobId(null)} visible />
       ) : null}
