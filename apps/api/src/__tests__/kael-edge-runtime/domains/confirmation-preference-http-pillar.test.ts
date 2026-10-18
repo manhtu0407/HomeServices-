@@ -26,13 +26,13 @@ const receipt = {
   terminal: false, retry_after_ms: null, trace_finalized: true,
 }
 
-function setup(role: 'customer' | 'worker' | 'admin' = 'customer', pending = true, confirmationReceipt = receipt) {
+function setup(role: 'customer' | 'worker' | 'admin' = 'customer', pending = true, confirmationReceipt = receipt, rpcError: { code: string; message: string } | null = null) {
   const client = makeSequenceClient([], {
     begin_harness_authorized_request: [{ data: true, error: null }],
-    confirm_kael_chat_durable_atomic_v3: [{ data: [confirmationReceipt], error: null }],
-    confirm_kael_chat_durable_atomic_v4: [{ data: [confirmationReceipt], error: null }],
-    confirm_kael_chat_durable_authorized_v5: [{ data: [confirmationReceipt], error: null }],
-    confirm_kael_chat_durable_authorized_v6: [{ data: [confirmationReceipt], error: null }],
+    confirm_kael_chat_durable_atomic_v3: [{ data: rpcError ? null : [confirmationReceipt], error: rpcError }],
+    confirm_kael_chat_durable_atomic_v4: [{ data: rpcError ? null : [confirmationReceipt], error: rpcError }],
+    confirm_kael_chat_durable_authorized_v5: [{ data: rpcError ? null : [confirmationReceipt], error: rpcError }],
+    confirm_kael_chat_durable_authorized_v6: [{ data: rpcError ? null : [confirmationReceipt], error: rpcError }],
   }, {
     job_matching_preferences: [{ data: { strategy: pending ? 'pending' : 'general', auto_general: false, fallback_at: null }, error: null }],
     job_broadcasts: [{ data: [], error: null }],
@@ -51,6 +51,26 @@ function setup(role: 'customer' | 'worker' | 'admin' = 'customer', pending = tru
 
 describe('Customer confirmation matching intent', () => {
   installEdgeRuntimeTestHooks()
+
+  it.each([
+    ['42501', 'CONFIRMATION_NOT_OWNED', 404, 'NOT_FOUND'],
+    ['42501', 'permission denied for function private_confirmation', 500, 'DB_ERROR'],
+    ['42501', 'CONFIRMATION_NOT_OWNED extra private detail', 500, 'DB_ERROR'],
+    ['08006', 'private database connection details', 500, 'DB_ERROR'],
+  ])('maps only the exact ownership failure %s/%s safely', async (code, message, status, safeCode) => {
+    const { client, run } = setup('customer', false, receipt, { code, message })
+    const response = await run({ confirmation_kind: 'rfq_request' })
+    expect(response.status, pillarWhy(PILLAR)).toBe(status)
+    const body = await response.json()
+    expect(body).toMatchObject({ code: safeCode })
+    expect(JSON.stringify(body)).not.toContain(message)
+    if (status === 404) {
+      const technicalFailures = client.calls.flatMap(call => call.operations).filter(operation =>
+        operation[0] === 'rpc' && operation[1] === 'append_harness_event' &&
+        (operation[2] as Record<string, unknown>).p_event_class === 'kael.confirm.rpc_failed')
+      expect(technicalFailures.length, pillarWhy(PILLAR, 'permission denial is not a server outage')).toBe(0)
+    }
+  })
 
   it('persists prompt intent through one atomic command and returns the actual pending choice', async () => {
     const { client, run } = setup()

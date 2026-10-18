@@ -10,6 +10,8 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-18** Build56 public matching checkpoint — local HTTP20/20, confirmation ownership500/false RPC event FIXED_LOCAL, build/Edge PASS and clean-source Work Preview restored; actual dispatcher-to-assignment chain20/20 with local maintainer degradation; financial journeys and SDK test intervals remain open.
+
 - **2026-10-16** Registered QA HTTP intake/scope — 15 real Auth/Edge/DB cases pass with observed mutations; fixture receipt/grant guards preserved; full journeys still open, QA stopped, no hosted changes.
 - **2026-10-16** Isolated QA loopback + six-service HTTP — native Bun preload and local Edge gateway pass; six deferred sessions/replay/ownership verified against DB, 641 tooling tests pass; full journeys/live AI remain open, no hosted changes.
 - **2026-10-14** Kael natural respond (Plan §61) — guard ceiling 35 + loanwords + one guided rewrite, turn understanding (district names, answer-to-slot, loop limit 2), reply composer, per-turn telemetry; P382–P387, charter p12; UNCOMMITTED, edge:check BLOCKED, Production still v297 (no §60).

@@ -492,3 +492,142 @@ Private JSON reports retain safe fixture IDs and per-request counters in
 Campaign status remains IN_PROGRESS. This closes a local quote/proposal defect
 and extends scope journey evidence; it does not prove the entire K01–K42 plan,
 matching, completion/payment, native QA, live model quality or Production release.
+
+
+## October 18 checkpoint — public matching and restored Build 56 Preview
+
+**Status: IN_PROGRESS; matching evidence is local, not a Production journey verdict.**
+
+Baseline for this continuation is pushed commit `d0da20294369121f4b0ad33339d73ec9de0e996d` on `codex/kael56-admin-partial-loading-20261016`. The later P394/helper/runner/registry/evidence changes remain uncommitted. No merge, deployment or native build was performed.
+
+### Matching evidence
+
+P394 starts from a newly created, cohort-isolated broadcast fixture. Real Auth accounts, PostgreSQL constraints, gateway, Deno public handler and RPCs remain in the path. Only the initial broadcast/setup is a fixture; it does not prove intake analysis or the first offer-confirmation request.
+
+- Both `inspection_only` and `rfq` execute Worker opportunity read, public Worker proposal, exact replay, Customer candidate read, foreign-Customer denial, Worker-role denial, concurrent owning-Customer confirmations and reopened decision/job views. The App service uses the same public paths.
+- Before Customer confirmation, the job has no assigned Worker/final price and Worker job access returns404. The opportunity projection contains neither synthetic apartment marker. Customer confirmation assigns only the exact stored candidate.
+- Two concurrent confirmations produce200/200 with one fresh and one already-applied result. Exactly one Customer audit and two participant notices persist; both operation states become `official_match` and no held/offered capacity reservation remains. Inspection/RFQ assignment does not itself lock a final price.
+- The final guarded run passes19/19 across intake, scope and matching, with zero skips. The exact named target is `nestscout-qa-journey56-20261016`, loopback API58321. Canonical AI remains disabled; no live inference was called.
+- Ownership mutation swaps the foreign Customer token for the owner token. Both denial assertions become red:17 pass/2 fail, exit1. Restoring the test gives19/19, exit0. This mutates only local test input, not the product permission check.
+- Initial setup errors were fixture corrections: cohort binding intentionally requires reserved `@example.test` identities; activation expiry must equal sent time plus exactly five minutes. The guard was preserved. Test assumptions were corrected against the existing public contract: masked access404, candidate path `/candidate`, and Worker summary `worker.id`. These were not product defects.
+
+### Executed gates
+
+| Command / evidence | Actual result |
+|---|---|
+| Guarded named QA HTTP runner | 19 pass/0 fail/0 skip in final run |
+| Canonical `test:api` runner | Vitest2179 pass/20 explicit skips; Node114 pass/1 skip; exit0 |
+| Canonical `type-check:api` runner | exit0 on final test source |
+| Focused jest-expo App candidate service | 3/3, exit0; mocked transport verifies typed public paths, not full UI interaction |
+| Network/CLI/installer fixture suites | 21/21, exit0 |
+| Pillar registry | 388 unique; copies identical |
+| Test collection | 14/14 CI filters resolve |
+| RPC scan plus real local catalog query | 265 names exist:227 literal +38 local-const;0 unresolved call sites |
+| Comments / structure / whitespace | clean; no product source changed in this continuation |
+| Canonical Turbo build via process-local pinned pnpm10.16.1 | exit0; Next build1/1 |
+
+The default API skips are not passes; explicit-target intake/scope/matching cases were executed separately above. RPC names alone do not prove every signature, permission or behavior, or Production schema parity. Full Mobile suite/native validation was not rerun in this continuation; native QA belongs to Tu.
+
+### Runtime interruption and recovery
+
+The original QA function-server handle ended with `unexpected EOF`; the Edge container disappeared while the named DB remained healthy. Other QA containers showed newer start times. The cause of their restart is unverified; no Docker Desktop/WSL restart was issued in this continuation. A narrow official `functions serve` restored only the owned Edge runtime.
+
+Afterwards all host-loopback gateway paths closed their sockets, while Auth through Kong inside the container returned200. One ownership-checked restart of only the named QA Kong container restored host Auth200. The first cold Edge health request timed out; a later request returned200/local/AI disabled on the same server. Final19/19 was run after that readiness proof. The interrupted result is retained privately as `matching-http-runtime-interrupted.json`; it is not counted as a pass. No DB reset, volume deletion, shared-stack or hosted mutation occurred.
+
+### Preview and hosted identity
+
+Live Production health returned200 for project `iwevizmsedyqozxlawwl`, release `harness-e8b95d2122a8-53817ce22f48`, SHA `e8b95d2122a8ce802c5504630a778f6e51daa72f`, epoch3, minimum iOS build56/runtime0.3.2. This is read-only identity evidence.
+
+The existing8085 process belongs to a different worktree (PID29628) and was preserved. Port8086 was free. The frozen checkout stayed clean at the Build56 SHA; its existing public-only env file was used through the validated launcher. Default app/root env files were absent; those failed launches did not start a server.
+
+Starting without a cache clear rendered the expected SHA with another Preview's stale branch/timestamp. Direct Expo configuration evaluation returned HEAD/current time. Clearing the newly owned8086 Metro cache corrected the visible marker to SHAe8b95d2122a8 / BranchHEAD / Built2026-10-18T02:12:30.144Z. The process command points to the frozen checkout. CUA opened Kael, selected Work and observed the preserved unsent draft. Nothing was sent to Kael.
+
+![Build56 Work Preview, unsent draft preserved](../assets/test-evidence/2026-10-18_build56-work-preview.png)
+
+This is web Preview evidence, not an iOS binary/device result. A source inspection also shows Production epoch2 Preview selects previous runtime behavior while epoch3 native selects governed release behavior. Full governed local HTTP evidence must not be relabeled as a completed Production Preview journey; verify the relevant release lane for each later scenario.
+
+### Artifact checksums
+
+Private raw artifacts remain under `.scratch/`; no credential values or full bank/customer information are published.
+
+| Artifact | SHA256 |
+|---|---|
+| `matching-http-complete.json` | `819df8faf4119e98b259ba6389f5904622feb4df0d5495c899a3146ad248e779` |
+| `matching-http-mutation.json` | `86f1390afe980d923619c6115d1f968085d1c2b8dee006c76b246e2e1e0c9488` |
+| `matching-http-restored.json` | `6249a137499b658121e9f1026482ad10652957f362d989b7b4b85ba609a6096a` |
+| `matching-full-api.log` | `29b9eb2d3d1e82decc60b14302183fc11a39ba93f53cab2d9489917587d21b43` |
+| `matching-api-types-final.log` | `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643` |
+| `matching-tooling.log` | `e55ca420980c21fb26accd158d91bbd31c7bc668097af1c81577442e4812ef10` |
+| `matching-mobile-boundary.log` | `9d04f02093efaa3cc526fc3503164fde5a823286cadd8bdf202d68eb01171d62` |
+| `continuation-d0da-build.log` | `6568ddff4dbe59ba3fa190b247cd9460cf1057fa958c4f4b14ddcfbd2698583e` |
+| `matching-rpc-functions.json` | `1d2b2bd4a650b2f1ba129c2a825688df249190ae2fa86c677a6092d87649fc23` |
+
+Remaining work includes first public offer confirmation into delivery, rejection/expiry paths, execution/completion/payment/recovery, remaining Preview roles and full K01–K42 coverage. Live AI remains blocked until a reliable campaign-wide1USD cap exists; actual bank transfer remains Tu's action. These limitations do not erase the local evidence or close the full campaign.
+
+
+## October 18 continuation — initial confirmation and ownership error classification
+
+**FIXED_LOCAL; full campaign remains IN_PROGRESS.** No additional commit/push, merge, hosted mutation or native build.
+
+P395 now runs the initial public `POST /kael/chat/:id/confirm` against real Auth/Deno/PostgreSQL. The saved RFQ diagnosis is a fixture; existing active plumbing policy is read without modifying policy, prices or learning data. Before consent there is no job. Two concurrent owning-Customer commands return202 and the same job/operation; a lost-response replay and GET operation recover the same receipt. One matching-requested outbox row is queued, with no assigned Worker/final price. Foreign Customer and Worker attempts are denied, with no partial operation. This proves enqueueing, not completed dispatcher delivery or the full UI/model journey.
+
+### Reproduced defect and minimal fix
+
+- Actual public foreign-Customer confirmation returned500. SQL correctly rejects with `42501 / CONFIRMATION_NOT_OWNED`; Edge treated the exception as a technical failure.
+- Public-handler P107 regression:8 pass/1 fail before;9/9 after mapping only that exact SQL error to privacy-preserving404. Other42501 permission failures, similarly prefixed messages and connection errors remain500 with safe bodies. No SQL/RLS/authorization guard was relaxed.
+- A real local event query then showed a404 still emitted `KAEL_CONFIRM_RPC_FAILED`. A second regression was observed8 pass/1 fail. Moving the exact ownership check before technical-error reporting returns9/9 and records normal request denial without that false RPC event.
+- The runtime fix is three lines in `confirm.service.ts`. Actual P395 correlates the response run ID with a count query to prove no false technical event. Service-role SELECT on append-only harness events is intentionally forbidden; the test reads only a count via an ownership-checked local PostgreSQL connection. No grant changed.
+- The named QA source copy was updated explicitly, with before/after hashes retained. The official live function server watches the copy and replaces its Edge container. A guard refusal during that replacement was retained, then the same server's new container and health200 were verified. Neither Production nor frozen Build56 Preview was replaced.
+
+### Final executed results
+
+| Evidence | Result |
+|---|---|
+| Named QA public HTTP suite | 20/20, zero skipped, serial-file run57.26s |
+| Ownership/error-classification P107 | red8/1, then green9/9 for each regression cycle |
+| Full canonical API runner on final runtime fix | Vitest2182 pass/22 explicit skips; Node114 pass/1 skip; exit0 |
+| API type-check | exit0 |
+| Canonical Turbo build with pinned pnpm10.16.1 |1/1, exit0 |
+| Pinned Deno Edge check | discovered7/selected1/checked1/failed0; runtime compatibility4/4 |
+| Actual local RPC scan/query |265 names,0 residue; no migration delta |
+| App relaunch/reconciliation suites |38/38; exit0, mocked transport/AsyncStorage boundaries |
+| Network/CLI/installer fixtures |21/21 |
+| Pillar registry / collection |389 unique, identical copies;14/14 filters resolve |
+
+A previous parallel-file run had a10-second timeout in the scope approve case. Its JSON is retained privately as `confirmation-http-transient-timeout.json`. The dedicated QA runner now serializes test files while preserving explicit concurrent commands inside the cases, and retains the10-second request timeout. The later full20/20 is real evidence; one serial run does not prove all timing flakiness eliminated. No request deadline or business requirement was relaxed.
+
+`--detectOpenHandles` repeats the App suites38/38 but identifies two intervals originating from SDK Sentry's AsyncExpiringMap import through `sentry-runtime.ts`. This is an open test-process finding, not a proven native timer leak or permission to enable Sentry. No SDK setup/integration was added.
+
+### Review and remaining work
+
+Spec: exact ownership/privacy and normal-denial semantics restored. Rules: fail-closed SQL and distinct technical errors preserved; no secrets/PII or raw upstream data added. Maintainability: reuse the existing confirmation boundary and three-line guard; test-only SQL reads are exact-target, UUID-validated and count-only. No contract twins, generated types or migration changed. Runtime ownership stays in Edge; apps/api only owns verification.
+
+Next proof is actual outbox dispatcher delivery into the Worker opportunity and onward assignment in one local journey. The canonical maintainer uses its existing database-owned local Vault credential; inspect/configure only that named QA boundary and do not invent hosted attestation. Its push branch rejects unregistered local release identity, so any later partial/degraded status must stay explicit. Completion/payment, recovery, remaining K01–K42/Preview work, reliable1USD live-AI cap and Tu's transfer remain open.
+
+Private artifact checksums:
+
+| Artifact under root scratch | SHA256 |
+|---|---|
+| `confirmation-http-initial.json` | `37253d00a31bcb25c703f9d052694a1d0ef1804c3e1604e7a16d1351e19ca823` |
+| `confirmation-http-serial.json` | `e31e478fd3cc4d784d7f501966e9578446066cc5748e37907b67826f429a346b` |
+| `confirmation-ownership-red.json` | `15af3e19c68a942261a0c4e0f96aa9121896beca31ee8c811f3209399162d625` |
+| `confirmation-ownership-green.json` | `7fc88db1626d8f1064ddcf61e2b95c9f143a6becd049084200717cf3f137f7fd` |
+| `confirmation-denial-event-red.json` | `a58b73161856e2125f5a94ddf7eb6479995317beb98cfcfd489d23f02917a2be` |
+| `confirmation-final-green.json` | `908de9ec3a217d6d96c1eadebe0aba05884075aa8f878d97cea3d01654b37f32` |
+| `confirmation-final-api.log` | `db8704dd7011661fc7d6e4d46614f79c3751e5f491ffb24e94a06a1bf6a9f0fd` |
+| `confirmation-final-build.log` | `4967826fd7eaf86949fac6d848bbcac67c783fff5596137aaf501d661866c6a4` |
+| `confirmation-final-types-checked.log` | `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643` |
+| `confirmation-edge-final.log` | `a8c07d0a4b7ddf53e8e9a44f4956883f87cad3c766b326b52f068ce944a727f2` |
+| `confirmation-mobile-recovery.log` | `bb547bc49316fbcc8ad441e4b6e498bab494815f37ace9df93cc1939e979a788` |
+| `confirmation-mobile-handles.log` | `7ef8d292a5b182ec7ab4fe07b05870b1ce1290e6b4f46c9f0fa75677288122c0` |
+| `confirmation-final-rpc-functions.json` | `1d2b2bd4a650b2f1ba129c2a825688df249190ae2fa86c677a6092d87649fc23` |
+| `confirmation-ownership-final-source-override.json` | `471415076e747bc2812ea15cd3fc015a2c016245ded7fc3e33496f5e2839961c` |
+
+
+## October 18 dispatcher chain checkpoint before branch publication
+
+The latest guarded named-QA run completed all five HTTP files:20/20 passed, zero failed/skipped,59.53s. P395 now continues the same confirmed job through the actual protected matching maintainer, Worker opportunity/proposal and owning-Customer assignment. Missing maintainer credential returns401; the helper refuses a credential at any other destination before fetch. A repeated maintainer run preserves the same broadcast and one Customer-confirmation event; the job-scoped inference log remains empty. No hosted service was mutated.
+
+The maintainer may return500 because local release/push validation is unavailable. Matching persistence is proven independently; this is not a maintainer-health PASS. The original saved RFQ diagnosis remains a fixture; execution/completion/payment, remaining Preview scenarios and the full K01-K42 campaign remain open.
+
+Retained private runner artifact: `dispatcher-chain-auth-replay.json`, SHA256 `47e8e1f97c442f9c5efa2491d8d108988ac6dae9717b3fec791ad8fd505b4f76`. Existing API type-check evidence: `dispatcher-types.log`, SHA256 `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643`. Branch publication is authorized separately by Tu; no merge, deploy or build submission is authorized by this checkpoint.

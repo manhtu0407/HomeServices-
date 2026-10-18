@@ -106,6 +106,9 @@ async function confirmGovernedKaelChat(input: {
     const cause = error instanceof Error && "cause" in error
       ? (error as Error & { cause?: { code?: unknown; message?: unknown } }).cause
       : undefined;
+    if (cause?.code === "42501" && cause.message === "CONFIRMATION_NOT_OWNED") {
+      apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
+    }
     await recordHarnessEvent(input.ctx.traceContext, {
       eventClass: "kael.confirm.rpc_failed",
       stage: "kael.chat.confirm",

@@ -53,10 +53,12 @@ try {
   stage = 'Vitest integration execution'
   mkdirSync(resolve(root, '.scratch'), { recursive: true })
   const result = spawnSync(process.execPath, [
-    resolve(root, 'apps/api/node_modules/vitest/vitest.mjs'), 'run',
+    resolve(root, 'apps/api/node_modules/vitest/vitest.mjs'), 'run', '--no-file-parallelism',
     'src/__tests__/integration/kael-local-http-intake-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-scope-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-scope-proposal-pillar.test.ts',
+    'src/__tests__/integration/kael-local-http-matching-pillar.test.ts',
+    'src/__tests__/integration/kael-local-http-confirmation-pillar.test.ts',
     '--reporter=json', '--reporter=default', '--outputFile', resolve(root, '.scratch/kael-local-http-results.json'),
   ], { cwd: resolve(root, 'apps/api'), env, stdio: 'inherit', timeout: 300_000, windowsHide: true })
   process.exitCode = result.status ?? 1
