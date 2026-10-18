@@ -1,4 +1,5 @@
 import { useMemo, useRef, type ReactNode } from 'react'
+import { Platform, View } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
 
 import { motionTokens } from '@/components/ui/motion-tokens'
@@ -12,6 +13,8 @@ const RISE_PX = 10
 const RISE_MS = motionTokens.stateChange.durationMs
 
 export function KaelFreshRow({ children }: { children: ReactNode }) {
+  // Web entering animations detach the row from FlatList flow and can overlap the next receipt.
+  if (Platform.OS === 'web') return <View>{children}</View>
   return (
     <Animated.View
       entering={FadeInDown.duration(RISE_MS).withInitialValues({ opacity: 0, transform: [{ translateY: RISE_PX }] })}

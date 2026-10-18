@@ -119,10 +119,10 @@ export function inferAssistantServiceType(
   if (/\b(khoan tuong|lap ke|lap thanh rem|ban le|tay nam|treo tv|lap tv|sua vat|handyman|mount shelf|hang tv|door hinge|cabinet handle)\b/.test(normalized)) {
     return "handyman";
   }
-  if (/\b(dien|day dien|o cam|o dien|cong tac|cau dao|aptomat|mat dien|den|chap|electrical|wire|wiring|outlet|socket|circuit breaker|power outage|light switch)\b/.test(normalized)) {
+  if (/\b(dien|day dien|o cam|o dien|cong tac|cau dao|aptomat|mat dien|bong den|den led|chap|electrical|wire|wiring|outlet|socket|circuit breaker|power outage|light switch)\b/.test(normalized) || /(?:^|[^\p{L}])đèn(?=$|[^\p{L}])/iu.test(text)) {
     return "electrical";
   }
-  if (/\b(nuoc|ong|voi|lavabo|bon|toilet|ro|ri|tac|ap nuoc|plumbing|pipe|pipes|faucet|leak|clog|water pressure)\b/.test(normalized)) {
+  if (/\b(nuoc|ong nuoc|duong ong|voi nuoc|voi sen|lavabo|bon cau|bon rua|bon tam|chau rua|toilet|ro ri|ri nuoc|tac cong|nghet cong|ap nuoc|plumbing|pipe|pipes|faucet|leak|clog|water pressure)\b/.test(normalized) || /(?:^|[^\p{L}])(?:vòi|ống|bồn|rò|rỉ|tắc)(?=$|[^\p{L}])/iu.test(text)) {
     return "plumbing";
   }
   if (/\b(don dep|ve sinh|lau don|bep|phong tam|cua kinh|sau sua chua|rac|bui|cleaning|housekeeping|kitchen|bathroom|dust|trash)\b/.test(normalized)) {
@@ -134,6 +134,23 @@ export function inferAssistantServiceType(
 // Everyday words about a home, so normal chat can take an unnamed question about the apartment.
 const HOME_CONTEXT = /\b(nha cua|nha minh|trong nha|ngoi nha|can nha|can ho|chung cu|phong ngu|phong khach|phong tam|nha tam|nha bep|ban cong|bon cau|ve sinh|tuong nha|tran nha|san nha|cua so|cua chinh|o cam|cong tac|bong den|day dien|voi nuoc|ong nuoc|lavabo|may lanh|dieu hoa|quat tran|giuong|nem|rem cua|tham trai san|sofa|am moc|nam moc|tham nuoc|ro ri|hu hong|don dep|mui hoi|home|house|apartment|bedroom|kitchen|bathroom|ceiling|socket|wiring|faucet|toilet|aircon|air conditioner|mattress|curtain|carpet|mold|damp)\b/;
 
+function isPhotoHelp(text: string) {
+  return /\b(gui|chup|dinh kem|tai len|chon|dua)\b.{0,50}\b(anh|hinh)\b|\b(send|upload|attach|take|choose|share|show)\b.{0,50}\b(photo|image|picture)\b/.test(text);
+}
+
+function isAssistantUsageQuestion(text: string) {
+  return isPhotoHelp(text) ||
+    /\b(kael|ban|cau)\b.{0,35}\b(giup|ho tro|lam)\b.{0,25}\bgi\b|\bwhat can (you|kael)\b|\bwhat do (you|kael) do\b|\bhow can (you|kael) help\b/.test(text) ||
+    /\b(huong dan|giup|lam sao|cach)\b.{0,30}\b(mo ta|dien dat)\b|\bhelp\b.{0,30}\bdescribe\b/.test(text) ||
+    /\b(tim thong tin|find information)\b.{0,60}\b(nestscout|dich vu|services)\b/.test(text);
+}
+
+function isUnsupportedDeviceRequest(text: string, surface: CustomerAssistantSurface) {
+  if (!/\b(camera|internet|wifi)\b/.test(text)) return false;
+  if (surface !== "customer_normal" || !isPhotoHelp(text)) return true;
+  return /\b(sua|lap|cai dat|repair|install)\b.{0,25}\b(camera|internet|wifi)\b|\b(camera|internet|wifi)\b.{0,30}\b(can sua|can lap|bi hong|repair|install)\b/.test(text);
+}
+
 export function classifyAssistantTopic(
   text: string,
   serviceType: ServiceType | null,
@@ -144,7 +161,8 @@ export function classifyAssistantTopic(
   if (/\b(lua dao|scam|fraud|gia mao|mao danh|otp|ma xac nhan|duong dan la|link la|qr la|dat coc|chuyen khoan truoc|ngoai ung dung|ngoai luong|tai khoan ca nhan|tai khoan khac|ep thanh toan|doi gia|thu them phi|giu giay to|xin can cuoc|chup can cuoc)\b/.test(normalized)) {
     return "service_trust_safety";
   }
-  if (/\b(son nha|khoa cua|chuyen nha|diet con trung|internet|camera|tu lanh|house painting|locksmith|moving service|pest control|refrigerator)\b/.test(normalized)) {
+  if (/\b(son nha|khoa cua|chuyen nha|diet con trung|tu lanh|house painting|locksmith|moving service|pest control|refrigerator)\b/.test(normalized) ||
+    isUnsupportedDeviceRequest(normalized, surface)) {
     return "out_of_scope_services_anything";
   }
   if (/\b(co phieu|chung khoan|dau tu|tien ao|crypto|forex|lai suat|stock|investment|cryptocurrency)\b/.test(normalized)) {
@@ -155,6 +173,9 @@ export function classifyAssistantTopic(
   }
   if (/\b(chinh tri|bau cu|ung cu vien|dang phai|politics|election|political party)\b/.test(normalized)) {
     return "political_opinion";
+  }
+  if (surface === "customer_normal" && /\b(cuon sach|sach hay|viet tho|bai tho|bong da|du lich|cong thuc nau|viet code|lap trinh|book recommendations|novel|poem|football|travel itinerary|recipe|write code)\b/.test(normalized)) {
+    return "out_of_scope_services_anything";
   }
   if (/\b(truoc khi tho den|truoc luc tho den|cho tho toi|sau khi tho xong|nghiem thu voi tho|tho lam co an toan|before the worker visits|before a worker visits|after the worker finishes|worker visit|service visit)\b/.test(normalized)) {
     return "service_trust_safety";
@@ -175,6 +196,7 @@ export function classifyAssistantTopic(
   ) {
     return "worker_qualification_explain";
   }
+  if (surface === "customer_normal" && isAssistantUsageQuestion(normalized)) return "app_usage_help";
   if (serviceType === "electrical") return "electrical_repair";
   if (serviceType === "plumbing") return "plumbing_repair";
   if (serviceType === "cleaning") return "home_cleaning";
@@ -190,7 +212,7 @@ export function classifyAssistantTopic(
   // Normal chat looks at any attached photo and answers unnamed questions about the home; an
   // unrelated text-only request is declined like everywhere else (RULES.md #6).
   if (surface === "customer_normal" && (hasImages || HOME_CONTEXT.test(normalized))) return "normal_chat_general";
-  return "out_of_scope_services_anything";
+  return surface === "customer_normal" ? "support_redirect" : "out_of_scope_services_anything";
 }
 
 export function normalizeText(text: string) {

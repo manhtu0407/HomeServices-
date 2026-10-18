@@ -15,7 +15,7 @@ import { CustomerWorkerCandidateNode } from './customer-worker-candidate-node'
 import { CustomerKaelSessionMenu } from './kael-session-menu'
 import { KaelProcessLines } from './kael-process-line-view'
 import { customerKaelInlineError } from './customer-kael-error-display'
-import { bookingRouteForService, normalChatStartCaseActions, type ComposerQuickAction } from './normal-chat-quick-actions'
+import type { ComposerQuickAction } from './normal-chat-quick-actions'
 import {
   readCustomerKaelSessionEphemeralSummary,
   summarizeCustomerKaelEphemeralSession,
@@ -74,20 +74,9 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
     sessionId: activeSuggestionSessionId,
     sourceTurnId: suggestionSourceTurnId,
   })
-  // Normal chat offers at most four one-tap next steps: starting the service Kael noticed, then
-  // the suggested follow-up messages. Starting only opens booking with the service preselected.
-  const startCaseActions = mode === 'normal' ? normalChatStartCaseActions(conversations.turns) : []
   const suggestionList = normalChatSuggestions?.status === 'ready' ? normalChatSuggestions.suggestions : []
   const quickActions: ComposerQuickAction[] = mode === 'normal' && !conversation.streamingReply
     ? [
-        ...startCaseActions.map((action) => ({
-          id: action.id,
-          label: action.label,
-          primary: true,
-          onPress: () => {
-            if (action.service_type) router.push(bookingRouteForService(action.service_type) as never)
-          },
-        })),
         ...suggestionList.map((suggestion) => ({
           id: suggestion.id,
           label: suggestion.text.length > 60 ? `${suggestion.text.slice(0, 57)}...` : suggestion.text,

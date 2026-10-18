@@ -133,6 +133,28 @@ describe('Kael model-vision image privacy without Storage transforms', () => {
     expect(createSignedUrl.mock.calls[0]?.[2], pillarWhy(PILLAR, 'Free plan refuses transformed URLs, so the model never saw the image')).toBeUndefined()
   })
 
+  it('bounds Customer metadata reads to the actual small object length', async () => {
+    const bytes = jpeg()
+    const client = makeSequenceClient([], {}, { kael_chat_media_upload_intents: [{ data: [RETAINED_INTENT], error: null }] })
+    Object.assign(client, { storage: { from: () => ({ createSignedUrl: async () => ({ data: { signedUrl: 'https://storage.example.test/object' }, error: null }) }) } })
+    const fetchSpy = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'HEAD') return new Response(null, { headers: { 'content-length': String(bytes.length) } })
+      if (new Headers(init?.headers).get('range') !== `bytes=0-${bytes.length - 1}`) throw new Error('Storage cannot serve a range beyond EOF')
+      return new Response(bytes.buffer as ArrayBuffer, { headers: { 'content-type': 'image/jpeg', 'content-length': String(bytes.length) } })
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+    await expect(createSignedVisionUrls(context(client), VISION_EVIDENCE, CUSTOMER), pillarWhy(PILLAR, 'a valid small image must not time out before model analysis')).resolves.toEqual(['https://storage.example.test/object'])
+  })
+
+  it.each([null, '0', '-1', 'NaN', '3.5'])('fails closed when Customer Storage size is %s', async (length) => {
+    const client = makeSequenceClient([], {}, { kael_chat_media_upload_intents: [{ data: [RETAINED_INTENT], error: null }] })
+    Object.assign(client, { storage: { from: () => ({ createSignedUrl: async () => ({ data: { signedUrl: 'https://storage.example.test/object' }, error: null }) }) } })
+    const fetchSpy = vi.fn(async () => new Response(null, { headers: length === null ? {} : { 'content-length': length } }))
+    vi.stubGlobal('fetch', fetchSpy)
+    await expect(createSignedVisionUrls(context(client), VISION_EVIDENCE, CUSTOMER), pillarWhy(PILLAR, 'unverified object size must not produce an unbounded image read')).rejects.toMatchObject({ code: 'MEDIA_VALIDATION_UNAVAILABLE' })
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
   it('refuses a Kael chat image that still carries GPS', async () => {
     const client = makeSequenceClient([], {}, { kael_chat_media_upload_intents: [{ data: [RETAINED_INTENT], error: null }] })
     Object.assign(client, { storage: { from: vi.fn(() => ({ createSignedUrl: async () => ({ data: { signedUrl: 'https://storage.example.test/object' }, error: null }) })) } })
