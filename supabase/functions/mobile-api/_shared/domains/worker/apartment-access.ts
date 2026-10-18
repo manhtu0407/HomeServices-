@@ -410,7 +410,7 @@ export async function authorizeApartmentAccess(
   if (!intent.success) {
     apiFailure("CLIENT_UPDATE_REQUIRED", "Hãy cập nhật ứng dụng và tải lại yêu cầu trước khi cho phép thợ lên.", 409);
   }
-  await requireJobAccess(db(ctx), jobId, ctx, { requiredRole: "customer", select: "id, customer_id" });
+  await requireJobAccess(db(ctx), jobId, ctx, { requiredRole: "customer", select: "id, status, customer_id" });
   const result = await dbQuery<Array<Record<string, unknown>>>(
     workflowDb(ctx).rpc("authorize_apartment_access_atomic", {
       p_job_id: jobId, p_customer_id: ctx.user.id,

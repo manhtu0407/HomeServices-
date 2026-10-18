@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 463,
+  "migrationCount": 464,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "6d8bd736479115c6b85f8b6e40ee61070c6988c9d1544cfbcc21a5a69fcdcfe7",
+  "migrationsSha256": "e3ba7a23b0ffaff744928eed3c98138c5ca56c82d495645664fc1bb67ab4d961",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e91abb2c693df49897a6652798f230ed94e32cad54732be7471069a5f1bb857f"
@@ -3348,6 +3348,13 @@
       "file": "supabase/migrations/20261015120000_backend_promotion_monitor_evidence.sql",
       "sha256": "c6316352f3e4c21310062822d563044536137b34ce94f65fbe098013c2bfd262",
       "bytes": 19984
+    },
+    {
+      "version": "20261018110000",
+      "name": "manual_bank_mismatch_recovery",
+      "file": "supabase/migrations/20261018110000_manual_bank_mismatch_recovery.sql",
+      "sha256": "74f0b0c4c62bbe5b463a41f681d97e36d195942be1b7e546db16abc27f643f28",
+      "bytes": 12448
     }
   ]
 }

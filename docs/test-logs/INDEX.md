@@ -4,7 +4,7 @@ Newest test reports first.
 
 | Date | Report | Result | Bugs | Notes |
 |------|--------|--------|------|-------|
-| 2026-10-18 | [Isolated QA matching checkpoint](2026-10-16_isolated-qa-runtime.md) | HTTP20/20; ownership regression9/9; App recovery38/38 | Confirmation ownership500/false RPC failure FIXED_LOCAL; Preview metadata recovered | Build56 web Work restored; full journey campaign remains IN_PROGRESS |
+| 2026-10-18 | [Isolated QA fulfillment/payment checkpoint](2026-10-16_isolated-qa-runtime.md) | HTTP23/23; SQL recovery/mutations; API2183+Node114; build/Edge/harness PASS | Apartment authorization500 and mismatch recovery409 FIXED_LOCAL | No hosted release; full journey campaign IN_PROGRESS; migration replay/timing gaps retained |
 | 2026-10-16 | [Six-service intake boundary](2026-10-16_kael-six-service-intake-boundary.md) | Public-handler fixture 9/9; API 2174 PASS, 2 skipped; types PASS | None found at this deferred-intake boundary; service mutation caught 5 failures | Auth/DB boundary injected; zero network; not complete live journeys |
 | 2026-10-16 | [Independent Admin health loading](2026-10-16_admin-independent-health-loading.md) | FIXED_LOCAL; Mobile 2605/2605, types and changed Doctor pass | A slow/failed health or incident request withheld its peer; unavailable looked empty | Exact e8 baseline, no deploy; native QA belongs to Tu |
 | 2026-10-14 | [Kael natural respond (Plan §61)](2026-10-14_kael-natural-respond.md) | guard before/after table and scripted scenarios pass; no Production or real-model evidence | none diagnosed | Sentence ceiling, loanwords, guided rewrite, turn understanding, loop breaker, reply composer, per-turn telemetry |

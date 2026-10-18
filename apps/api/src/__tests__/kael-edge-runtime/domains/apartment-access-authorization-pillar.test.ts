@@ -24,17 +24,26 @@ const intent = { expected_worker_id: WORKER, expected_check_in_at: CHECK_IN }
 const receipt = { ok: true, error_code: null, job_id: JOB, worker_id: WORKER,
   checked_in_at: CHECK_IN, authorized_at: '2026-09-08T01:01:00.000Z', already_authorized: false }
 
-function setup(result: unknown = [receipt], role: 'customer' | 'worker' | 'admin' = 'customer', error = false, jobStatus: typeof RPC_AUTHORIZED_STATUSES[number] = 'arrived') {
+function setup(result: unknown = [receipt], role: 'customer' | 'worker' | 'admin' = 'customer', error = false, jobStatus: typeof RPC_AUTHORIZED_STATUSES[number] = 'arrived', actorId = CUSTOMER) {
+  let selectedFields = (): string[] => []
   const client = makeSequenceClient([], {
     authorize_apartment_access_atomic: [error
       ? { data: null, error: { code: 'DB_TIMEOUT', message: 'SECRET_DATABASE_DETAILS' } }
       : { data: result, error: null }],
-  }, { jobs: [{ data: { id: JOB, customer_id: CUSTOMER, worker_id: WORKER, status: jobStatus,
+  }, { jobs: [{ get data() {
+    const row: Record<string, unknown> = { id: JOB, customer_id: CUSTOMER, worker_id: WORKER, status: jobStatus,
     apartment_access_state: { worker_checked_in: true,
-      check_in: { worker_id: WORKER, checked_in_at: CHECK_IN } } }, error: null },
+      check_in: { worker_id: WORKER, checked_in_at: CHECK_IN } } }
+    return Object.fromEntries(selectedFields().map(key => [key, row[key]]))
+  }, error: null },
     { data: { id: JOB }, error: null }] })
+  selectedFields = () => {
+    const columns = client.calls.find(call => call.table === 'jobs')?.operations.find(operation => operation[0] === 'select')?.[1]
+    if (typeof columns !== 'string') throw new Error('Job projection missing')
+    return columns.split(',').map(key => key.trim())
+  }
   const handler = createMobileApiHandler({ authenticate: async () => ({ success: true,
-    role, user: { id: role === 'worker' ? WORKER : CUSTOMER }, supabase: client,
+    role, user: { id: role === 'worker' ? WORKER : actorId }, supabase: client,
     userSupabase: client, privilegedSupabase: client }), services: createEdgeServices({}) })
   return { client, run: (body: unknown = intent) => handler(new Request(`https://edge.test/jobs/${JOB}/access/authorize`, {
     method: 'POST', headers: { 'content-type': 'application/json' },
@@ -55,6 +64,13 @@ describe('Customer apartment authorization intent and receipt', () => {
       { table: 'rpc:authorize_apartment_access_atomic', operations: [['rpc', 'authorize_apartment_access_atomic', {
         p_job_id: JOB, p_customer_id: CUSTOMER, p_expected_worker_id: WORKER, p_expected_check_in_at: CHECK_IN }]] }])
     expect(client.calls.some(call => call.operations.some(op => ['insert', 'update'].includes(String(op[0]))))).toBe(false)
+  })
+
+  it('denies a foreign Customer after reading only the selected database columns', async () => {
+    const { client, run } = setup([receipt], 'customer', false, 'arrived', 'c1280000-0000-4000-8000-000000000004')
+    const response = await run()
+    expect(response.status, pillarWhy(PILLAR)).toBe(404)
+    expect(client.calls.some(call => call.table === 'rpc:authorize_apartment_access_atomic')).toBe(false)
   })
 
   it('routes each RPC-authorized job state through one atomic command', async () => {

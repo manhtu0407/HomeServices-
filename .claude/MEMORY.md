@@ -10,6 +10,10 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-18** Configured local payment/recovery — same-jobHTTP23/23; mismatch409 fixed by tightly bound forward migration, SQL mutation proof; API/build/Edge/harness pass; source-only access metadata updated; Tu requests branch commit/push without merge; full campaign/replay/timing still open.
+
+- **2026-10-18** Noncohort fulfillment — HTTP21/21, actual Storage/check-in/RFQ/completion; apartment authorization500 fixed locally (projection22/22), API/build/Edge PASS; configured payment and full campaign remain open.
+
 - **2026-10-18** Build56 public matching checkpoint — local HTTP20/20, confirmation ownership500/false RPC event FIXED_LOCAL, build/Edge PASS and clean-source Work Preview restored; actual dispatcher-to-assignment chain20/20 with local maintainer degradation; financial journeys and SDK test intervals remain open.
 
 - **2026-10-16** Registered QA HTTP intake/scope — 15 real Auth/Edge/DB cases pass with observed mutations; fixture receipt/grant guards preserved; full journeys still open, QA stopped, no hosted changes.

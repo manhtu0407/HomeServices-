@@ -31,7 +31,7 @@ try {
   if (localEnv.KAEL_AI_KILL_SWITCH !== 'true' || localEnv.SUPABASE_URL !== `http://host.docker.internal:${portBase + 1}` ||
       Object.entries(localEnv).some(([key, value]) => /^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI)_/u.test(key) && value)) throw new Error('unsafe inference configuration')
   for (const key of Object.keys(env)) {
-    if (/^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI|SEPAY|VIETMAP|SENTRY|TELEGRAM|SUPABASE|NESTSCOUT_QA_HTTP|NESTSCOUT_QA_SCOPE)_/u.test(key) || ['NODE_OPTIONS', 'BUN_OPTIONS', 'BUN_BE_BUN'].includes(key)) delete env[key]
+    if (/^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI|SEPAY|VIETMAP|SENTRY|TELEGRAM|SUPABASE|NESTSCOUT_QA_HTTP|NESTSCOUT_QA_SCOPE|NESTSCOUT_QA_PAYMENT)_/u.test(key) || ['NODE_OPTIONS', 'BUN_OPTIONS', 'BUN_BE_BUN'].includes(key)) delete env[key]
   }
   Object.assign(env, {
     NESTSCOUT_QA_HTTP_INSTANCE: instance,
@@ -50,6 +50,13 @@ try {
     if (fixture.instance !== instance || fixture.mode !== 'provider-fixture' || !/^qa-scope-fixture-[a-f0-9]{12}$/u.test(fixture.functionName)) throw new Error('invalid fixture identity')
     env.NESTSCOUT_QA_SCOPE_FIXTURE_NAME = fixture.functionName
   }
+  const paymentFile = resolve(root, `.scratch/local-migrations-qa-${instance}/qa-payment-fixture.json`)
+  if (existsSync(paymentFile)) {
+    stage = 'payment fixture identity'
+    const fixture = JSON.parse(readFileSync(paymentFile, 'utf8'))
+    if (fixture.instance !== instance || fixture.mode !== 'payment-fixture' || !/^qa-payment-fixture-[a-f0-9]{12}$/u.test(fixture.functionName)) throw new Error('invalid payment fixture identity')
+    env.NESTSCOUT_QA_PAYMENT_FIXTURE_NAME = fixture.functionName
+  }
   stage = 'Vitest integration execution'
   mkdirSync(resolve(root, '.scratch'), { recursive: true })
   const result = spawnSync(process.execPath, [
@@ -59,6 +66,8 @@ try {
     'src/__tests__/integration/kael-local-http-scope-proposal-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-matching-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-confirmation-pillar.test.ts',
+    'src/__tests__/integration/kael-local-http-fulfillment-pillar.test.ts',
+    'src/__tests__/integration/kael-local-http-payment-pillar.test.ts',
     '--reporter=json', '--reporter=default', '--outputFile', resolve(root, '.scratch/kael-local-http-results.json'),
   ], { cwd: resolve(root, 'apps/api'), env, stdio: 'inherit', timeout: 300_000, windowsHide: true })
   process.exitCode = result.status ?? 1

@@ -631,3 +631,133 @@ The latest guarded named-QA run completed all five HTTP files:20/20 passed, zero
 The maintainer may return500 because local release/push validation is unavailable. Matching persistence is proven independently; this is not a maintainer-health PASS. The original saved RFQ diagnosis remains a fixture; execution/completion/payment, remaining Preview scenarios and the full K01-K42 campaign remain open.
 
 Retained private runner artifact: `dispatcher-chain-auth-replay.json`, SHA256 `47e8e1f97c442f9c5efa2491d8d108988ac6dae9717b3fec791ad8fd505b4f76`. Existing API type-check evidence: `dispatcher-types.log`, SHA256 `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643`. Branch publication is authorized separately by Tu; no merge, deploy or build submission is authorized by this checkpoint.
+
+
+## October 18 continuation — actual noncohort fulfillment and apartment authorization
+
+**FIXED_LOCAL / campaign IN_PROGRESS.** Baseline branch commit:92fdef1fc02d04a016bfabbc656a83080905b05b. New implementation and evidence remain uncommitted. No further push, merge, hosted deploy or native build.
+
+### Workflow and reproduced defect
+
+P396 starts with an explicitly saved RFQ intake fixture and newly generated local Auth actors. Three approved/reachable controlled Workers satisfy public capacity without synthetic membership. The same public confirmation creates a job, the real protected maintainer dispatches it, a Worker proposes and the owning Customer assigns. Subsequent requests run on the real local Edge/PostgreSQL/Storage stack: Worker on-way, actual PNG upload/reservation/attachment, lobby check-in, Customer unit authorization, inspection, immutable RFQ quote, Customer price approval, repairing, verified completion photo and worker completion. There are no SQL job-state jumps in this chain.
+
+Real HTTP exposed authorization500 for a foreign Customer. The existing apartment authorization owner selected only id/customer_id while requireJobAccess validates status before ownership. The owning path was affected too. The prior owner bytes match the frozen Build56 source (SHA256 3f96a966c58e556174c86848068c41f9dbffd718eb8e673c362380835f145d56). A one-line select adds status, preserving the ownership and atomic RPC gates.
+
+P128 now returns only columns the service actually selects, instead of an overcomplete mock row. Before the fix:8 pass/14 fail; after:22/22, including owning success, foreign404/no authorization RPC, stale intent, malformed receipt, unknown outcome and replay. The reviewed one-line delta was copied only into the named QA snapshot with prior/new hashes; the official CLI watcher rotated Edge and health returned200. The canonical source fix is not deployed.
+
+### Financial and inference honesty
+
+- Worker attempts to repair before Customer price consent return409. Removing the real approval call makes the later repairing assertion fail:20 pass/1 fail. Restoring the original test returns21/21.
+- Forged same-job completion refs are refused before completion; real Storage bytes are reserved, uploaded and attached. A fresh Customer read and SQL/REST readback retain the agreed350000VND and verified completion ref. This amount is a local worker-quote fixture, not a change to price baselines or Production.
+- The noncohort job remains completed_by_worker when confirm-completion returns409/PAYMENT_NOT_ENABLED. Job detail advertises payment_rail_available=false/provider=null; the unavailable call leaves job/payment fields unchanged. This is PASS for honest unavailability, **not** proof of configured payment, receipt, settlement, callback or commission behavior.
+- Canonical local Edge remains AI-killed and provider credentials absent; the job-scoped inference log is empty. No live AI or transfer was performed. This does not lift the campaign1USD live-AI-cap prerequisite.
+- Local maintainer still returns500 because release/push validation is unavailable. Matching effects are checked independently; maintainer health is not PASS.
+
+### Fixture corrections and preserved evidence
+
+An initial409 was a fixture error: q9 normalizes to thu_duc, while the seeded Worker profile used q9 literally. The canonical district fixture fixes that mismatch without weakening eligibility. Another early fixture expected root-level address_access instead of job.address_access and assumed null payment status instead of not_started; these were test corrections, not product defects.
+
+Repeated failed cases left their own Workers online and eligible for later jobs. Exactly nine actor IDs recovered from these private runner reports were verified against the fixture legal-name/email marker on the owned local database, then taken offline through set_worker_availability_atomic. No row/job/history was deleted or forced to another lifecycle state. The test now takes only its own actors offline through each authenticated availability API in onTestFinished; cleanup is asserted.
+
+One of seven full HTTP runs in this continuation hit the unchanged10-second timeout in the scope approval/rejection race; the other six scope runs passed. Its original red JSON is retained. Root cause remains UNVERIFIED; neither file serialization nor later green runs proves the timing issue fixed. No timeout was increased.
+
+### Executed gates on this source
+
+All commands ran from the current dedicated worktree at HEAD92fdef1f plus the uncommitted one-line runtime fix/tests.
+
+| Command or runtime | Actual result | Scope |
+|---|---|---|
+| node scripts/harness/run-local-qa-http.mjs --instance journey56-20261016 --port-base 58320 | final21/21,6 files,0 skipped,74.67s | actual local Auth/Edge/PostgreSQL/Storage |
+| focused Vitest apartment-access-authorization pillar | red8/14 then green22/22 | public handler with projection-aware DB boundary |
+| same HTTP runner with approval-call mutation, then restoration |20pass/1fail, then21/21 | actual SQL consent gate |
+| node scripts/run.mjs run-package-script @nestscout/api test |2183pass/23 explicit skips; Node114pass/1skip; exit0 | default suite; named local21 run separately |
+| node scripts/run.mjs run-package-script @nestscout/api type-check | exit0 | API/types |
+| node scripts/run.mjs run-turbo build, pinned pnpm10.16.1 via ignored local shim |1/1, exit0,14.954s | canonical Next support build, not native |
+| node scripts/run.mjs docker/scripts/edge-check --only mobile-api | discovered7/selected1/checked1/failed0, compatibility4/4; exit0 | pinned Deno2.9.4 toolbox, current source |
+| emitted RPC scan, actual owned PostgreSQL catalog query, --functions verdict |265names (227literal/38const),0residue | names only; not complete signature/behavior or hosted parity |
+| comment discipline / structure / baseline / capability / access / privileged gates | each exit0 | no baseline or permission weakening |
+| pillar registry / test collection |390unique, twins identical; exit0 | runner collection |
+
+### Preview, review and remaining work
+
+Codex In-app Browser still visibly shows Work, unsent draft and SHAe8b95d2122a8/HEAD on localhost8086. No UI state was submitted; the frozen source and unrelated8085 process were preserved. Production Preview epoch2 selects previous behavior, while local QA uses governed behavior. Neither local HTTP nor this read-only Preview observation proves the complete Production UI or native journey. Native QA remains Tu's scope.
+
+Review: existing domains/worker/apartment-access owns the fix; apps/api owns tests. No contract twin, generated type, RPC signature, schema, pricing, learning policy, access decision or migration changed. The exact select projection is the sole runtime delta. Security retains Customer ownership and check-in binding. Tests use synthetic local actors/media, no real private or bank data.
+
+Next: test configured manual-bank completion/payment/claim/reconciliation at an isolated local external boundary, then remaining recovery/cancellation/dispute/UI scenarios. A configured fixture must stay separate from live transfers and must not enable a Production rail or synthesize hosted attestation. Remaining K01-K42, reliable live-AI campaign cap, scope timing investigation, full Admin/Preview proof and prior SDK test-interval finding remain open.
+
+Private artifact hashes (root scratch, not published raw):
+
+| Artifact | SHA256 |
+|---|---|
+| `authorization-projection-red.json` | `f9398ecc77bd8fc093cb7dee8f50e0381876d267313f2b32fb22a26834feb726` |
+| `authorization-projection-green.json` | `c6f2aa14840ba9e3ce501697028dbee78814e848138df7ef68276c1c24042469` |
+| `fulfillment-http-initial.json` | `7c1d20a91f9e03b4809bacc08ac3aedca4b3f0b7a8b31514317f2e0a8e264b94` |
+| `fulfillment-http-final.json` | `05d28c5ee7ecd0aa0b75e1b89694193054c37e75a57d3f0416da458650c6af79` |
+| `fulfillment-consent-mutation.json` | `c91c7f15c2abafa26ccd1ca16ec776775df2a96560c66c762cea2d033f4e4c75` |
+| `authorization-projection-source-override.json` | `266289a923f5e8ba0bdd71f652a3ce4876ac149c12c5d7e1c1db12d0d7706f11` |
+| `fulfillment-final-api.log` | `237e7c1310057595c3c488a406066e9f4a2a162f74cf708c8057d4b947dde9d9` |
+| `fulfillment-final-types.log` | `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643` |
+| `fulfillment-final-edge.log` | `79cbe8ce7ff5d6ca9fdb154b06cf0f4d82420f4c563015ad921d14068905f4ee` |
+| `fulfillment-final-build.log` | `c6e828a250b5149745ee6e3a6d3d14b46844e8c6ee840ee225a00bf57967878c` |
+| `fulfillment-rpc-functions.json` | `057341ee11d92b3ec6183c24febd23e65c4f60e06970bcb29ffe3b8c5d342043` |
+
+
+## October 18 configured payment and publication checkpoint
+
+**FIXED_LOCAL / campaign IN_PROGRESS.** Reviewed against HEAD92fdef1fc02d04a016bfabbc656a83080905b05b plus the owned working diff. Tu requests commit and branch push only; no merge, deploy, native build or Production mutation. This section supersedes the earlier uncommitted status once its containing commit is published.
+
+### Same-job payment evidence and defect
+
+P397 reuses the actual noncohort P396 fulfillment chain through Auth, Edge, PostgreSQL and private Storage. A dedicated local-only payment function enables the existing manual-bank services with explicit dummy QA/QAONLY receiver metadata. Neither QR image nor bank endpoint is fetched. The canonical local function retains its disabled rail; no hosted configuration changes. Existing provider-fixture transport permits only the named local Supabase boundary; payment responses assert zero provider and denied requests. AI kill remains enabled and provider credentials absent.
+
+Customer completion concurrency produces one payment/operation, repeated payment-order and transfer claims preserve identity, and a claim remains unverified. Public actor guards and versioned Admin claim/decision gates precede settlement. Fresh Customer and Worker reads agree on paid, one receipt/event, frozen350000 gross,52500 fee and297500 net; review replay retains one review. These are local fixtures, not bank-transfer or Production payment proof.
+
+The initial configured journey reproduced a real409: amount mismatch reverses provisional credit to reversed/admin_rejected, but the existing reconciliation function accepted only pending ledger credit. Forward migration20261018110000 restores only that mismatched order's unchanged ledger: job/order state, Worker, gross/fee/net and frozen commission must agree. Existing Admin, version, bank reference,24-hour hold and access restrictions remain. Function signature is unchanged. Historical named worker_cash_commission_ledger_job_id_key conflict hardening is retained; no previous migration is edited.
+
+P398 rollback-only real PostgreSQL verification covers mismatch, Customer denial, stale version, unrelated reversed-state denial, corrected reconciliation, exact receipt/event replay, frozen amounts/hold and execute privileges. Replacing the function with its pending-only guard makes the test red; transaction rollback restores the reviewed function and the test returns green.
+
+### Executed evidence
+
+| Command / artifact | Actual result | Limit |
+|---|---|---|
+| node scripts/harness/run-local-qa-http.mjs --instance journey56-20261016 --port-base 58320 | initial21pass/2fail, corrected23/23 across7 files,0 skipped; final98.09s | local fixture boundaries, not UI or hosted proof |
+| same HTTP runner with Customer substituted for Admin claim |21pass/2fail; restored23/23 | role mutation observed |
+| guarded psql migration delta and P398 SQL | original red WORKER_LEDGER_INVALID; migration applied; green; guard mutation red; restored green/ROLLBACK | named QA only |
+| node --test scripts/harness/local-payment-fixture.test.mjs scripts/harness/local-provider-fixture.test.mjs |9/9; binding-guard mutation separately red2pass/1fail | installer and network boundary |
+| node scripts/run.mjs run-package-script @nestscout/api test |2183 Vitest pass/25 explicit skips;114 Node pass/1 skip; exit0 | named local23 executed separately |
+| node scripts/run.mjs run-package-script @nestscout/api type-check | exit0 | API |
+| node scripts/run.mjs run-turbo build with pinned local pnpm shim |1/1, exit0,18.397s | Next support build, not iOS |
+| node scripts/run.mjs docker/scripts/edge-check --only mobile-api | selected1/checked1/failed0; compatibility4/4 | pinned local Deno |
+| actual PostgreSQL catalog + emitted RPC scan |265 names,0 residue, all present | names, not all behavior or Production parity |
+| node scripts/harness/verify.mjs | exit0 after metadata update;470 fixture tests pass | retains declared release gaps; no hosted promotion |
+| access matrix / migration inventory / pillar registry |210 tables/380 functions;464 physical/454 canonical migrations;392 unique pillars | static source metadata |
+
+Access matrix's only changed section is source: migration count463 to464 and its source digest. All actors, tables, views, functions, buckets and realtime permission data are identical. The initial harness failure was metadata drift, not a reason to widen grants. Publication runs ship:check again on the committed clean tree before push; it does not replace the runtime evidence above.
+
+### Known gaps and provenance
+
+Named QA ledger still contains453 canonical entries through20261015120000. The new migration is an explicitly applied local verification delta, not an invented ledger entry or proof of full empty-database replay. Current file SHA256:74f0b0c4c62bbe5b463a41f681d97e36d195942be1b7e546db16abc27f643f28. Full isolated replay and Production migration/identity proof remain UNVERIFIED.
+
+One initial payment-era run also hit the unchanged10-second HTTP test deadline during inspection matching. The earlier scope-race timeout remains recorded. Later green runs do not establish either root cause or fix; both timing findings remain UNVERIFIED. No timeout, permission, pricing, financial policy or release gate was relaxed.
+
+Review: apartment authorization owns the SELECT fix; the existing financial RPC owns mismatch recovery; apps/api and guarded scripts own fixtures. Tests share the same fulfillment helper to keep configured/unavailable rail checks consistent. No contract signature, client transport, frozen Build56 Preview or new integration changed. Full K01-K42, remaining recovery/cancellation/dispute/UI evidence, reliable campaign1USD live-inference cap, real payment with Tu transfer and native QA by Tu remain open. No inference or transfer was performed in this continuation.
+
+Private artifact hashes (raw reports remain ignored; no credentials or real bank data published):
+
+| Artifact | SHA256 |
+|---|---|
+| `payment-http-initial.json` | `fc3d7a61adc9282d268f2d7f681dc603873d9104bfe4ae956db0d54d7f3ce1ee` |
+| `payment-http-final.json` | `a31becc8c15bd15cda70a164a9adf2992ff8587182528fc6c467ed4f5fe1aa47` |
+| `payment-admin-role-mutation.json` | `fcc10e5f67a80c9da003bf3466c17655b1481d426370872c89e3fad2fda9ecb7` |
+| `payment-mismatch-sql-red.log` | `b30eba8b4f08b1969a0df052d3b81ac19dd463eaa6362ca3285846dcf7a71848` |
+| `payment-mismatch-sql-green.log` | `c89d01c471802471c5c2cfa76ee319700345555322b93a109ae9cc827695fbd9` |
+| `payment-mismatch-sql-mutation.log` | `159d27968eceb70eb3c4407d32a86811183d7a50bb201c657e8c27b2f443b4a3` |
+| `payment-mismatch-sql-restored.log` | `c89d01c471802471c5c2cfa76ee319700345555322b93a109ae9cc827695fbd9` |
+| `payment-mismatch-local-delta.json` | `775315ba92caaef1508c14af2f9a25e01317b4a5e2f7eb8217a60e50cc63ccb4` |
+| `payment-network-tooling.log` | `80aa172643c0f804779b8a0dc39af482940e2c083407d0be796794a3a2866185` |
+| `payment-final-api.log` | `d74de35285c4c7e642ca7750eab31912dae504ab872b944dfea8a3adcef2e388` |
+| `payment-final-types.log` | `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643` |
+| `payment-final-edge.log` | `44dacea733df7eb97a24679cdcbfdd53944d7e5bfd5c259b0576059ae40836dc` |
+| `payment-final-build.log` | `1854b4505cb9d2beeb18bcd045a96fd85aa2e183799870bbf0ba29f2e990b895` |
+| `publication-harness.log` | `29b8d5326c6207d2a38a00c41b013a4e7e71a1ddca11f71ac5565b5dc6d7f776` |

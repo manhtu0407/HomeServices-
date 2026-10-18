@@ -27,6 +27,7 @@ export function createLocalQaHttpHarness(pillar: PillarManifest) {
     if (options.maintainerSecret && (url.pathname !== '/functions/v1/kael-matching-maintainer' || options.method !== 'POST')) {
       throw new Error(pillarWhy(pillar, 'maintainer credential destination refused'))
     }
+    const startedAt = Date.now()
     const response = await fetch(url, {
       method: options.method ?? 'GET', redirect: 'error', signal: AbortSignal.timeout(10_000),
       headers: {
@@ -41,6 +42,8 @@ export function createLocalQaHttpHarness(pillar: PillarManifest) {
         }),
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    }).catch(error => {
+      throw new Error(pillarWhy(pillar, `${options.method ?? 'GET'} ${url.pathname} failed after ${Date.now() - startedAt}ms`), { cause: error })
     })
     const body = await response.text()
     const payload: unknown = body ? JSON.parse(body) : null
@@ -50,7 +53,7 @@ export function createLocalQaHttpHarness(pillar: PillarManifest) {
       fixtureDeniedCalls: response.headers.has('x-qa-denied-calls') ? Number(response.headers.get('x-qa-denied-calls')) : null,
     }
   }
-  async function customer(role: 'customer' | 'worker' = 'customer'): Promise<LocalQaActor> {
+  async function customer(role: 'customer' | 'worker' | 'admin' = 'customer'): Promise<LocalQaActor> {
     const email = `qa-http-${randomUUID()}@example.test`
     const password = `Qa!${randomBytes(24).toString('hex')}`
     const created = await request('/auth/v1/admin/users', {
@@ -58,7 +61,7 @@ export function createLocalQaHttpHarness(pillar: PillarManifest) {
     })
     if (created.status !== 200) throw new Error(pillarWhy(pillar, 'local Auth fixture creation failed'))
     const id = requiredText(localQaRecord(created.payload).id)
-    if (role === 'worker') {
+    if (role !== 'customer') {
       const changed = await request(`/rest/v1/profiles?id=eq.${id}`, { method: 'PATCH', body: { role } })
       if (changed.status !== 204) throw new Error(pillarWhy(pillar, 'local fixture role setup failed'))
     }
