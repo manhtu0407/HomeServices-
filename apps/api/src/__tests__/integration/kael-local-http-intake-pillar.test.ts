@@ -1,6 +1,6 @@
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { resolveLocalQaHttpTarget } from '../../../../../scripts/harness/local-qa-http-target.mjs'
+import { createLocalQaHttpHarness, localQaRecord as record, type LocalQaActor as Actor } from './local-qa-http-harness'
 import { pillarPrerequisite, pillarWhy, type PillarManifest } from '../pillar-manifest'
 
 export const PILLAR = {
@@ -13,56 +13,16 @@ export const PILLAR = {
   mutation: 'replace the replay client_request_id with a fresh UUID; the real HTTP replay identity assertion must fail, then pass after restoration',
 } as const satisfies PillarManifest
 
-const target = resolveLocalQaHttpTarget(process.env)
+const { target, request, customer } = createLocalQaHttpHarness(PILLAR)
 const available = pillarPrerequisite(PILLAR, {
   available: target !== null,
   hint: 'Run scripts/harness/run-local-qa-http.mjs against an explicitly named, loopback-bound QA stack with inference disabled.',
 })
 const integration = available ? describe.sequential : describe.skip
-type JsonRecord = Record<string, unknown>
-type Actor = { id: string; token: string }
-
-function record(value: unknown): JsonRecord {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(pillarWhy(PILLAR, 'expected a JSON object'))
-  return value as JsonRecord
-}
 
 function text(value: unknown): string {
   if (typeof value !== 'string' || !value) throw new Error(pillarWhy(PILLAR, 'required response field missing'))
   return value
-}
-
-async function request(path: string, options: { method?: string; token?: string; key?: string; body?: unknown; compatible?: boolean } = {}) {
-  if (!target) throw new Error(pillarWhy(PILLAR, 'named target absent'))
-  const url = new URL(path, target.url)
-  if (url.origin !== target.url) throw new Error(pillarWhy(PILLAR, 'cross-origin QA request refused'))
-  const response = await fetch(url, {
-    method: options.method ?? 'GET', redirect: 'error', signal: AbortSignal.timeout(10_000),
-    headers: {
-      apikey: options.key ?? target.serviceRoleKey ?? '',
-      authorization: `Bearer ${options.token ?? target.serviceRoleKey ?? ''}`,
-      'content-type': 'application/json',
-      ...(options.compatible === false ? {} : {
-        origin: 'http://localhost:8086',
-        'x-client-platform': 'web-preview',
-        'x-client-contract-epoch': '2',
-        'x-client-application-id': 'com.phanmanhtu.nestscout.web-preview',
-      }),
-    },
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-  })
-  const payload: unknown = await response.json()
-  return { status: response.status, payload }
-}
-
-async function customer(): Promise<Actor> {
-  const email = `qa-http-${randomUUID()}@example.invalid`
-  const password = `Qa!${randomBytes(24).toString('hex')}`
-  const created = await request('/auth/v1/admin/users', { method: 'POST', body: { email, password, email_confirm: true, user_metadata: { full_name: 'QA HTTP fixture' } } })
-  expect(created.status, pillarWhy(PILLAR, 'local Auth fixture creation')).toBe(200)
-  const signedIn = await request('/auth/v1/token?grant_type=password', { method: 'POST', key: target?.anonKey, body: { email, password } })
-  expect(signedIn.status, pillarWhy(PILLAR, 'actual password sign-in')).toBe(200)
-  return { id: text(record(created.payload).id), token: text(record(signedIn.payload).access_token) }
 }
 
 integration('Kael deferred intake through actual local HTTP services', () => {
@@ -131,8 +91,8 @@ integration('Kael deferred intake through actual local HTTP services', () => {
     const turns = await request(`/rest/v1/kael_chat_turns?select=id&session_id=in.(${sessions.join(',')})`)
     expect(turns.status, pillarWhy(PILLAR)).toBe(200)
     expect(turns.payload, pillarWhy(PILLAR, 'initial turns must not duplicate on replay')).toHaveLength(6)
-    const logs = await request(`/rest/v1/api_logs?select=id&created_at=gte.${startedAt}&limit=1`)
+    const logs = await request(`/rest/v1/api_logs?select=id&created_at=gte.${startedAt}&job_id=is.null&limit=1`)
     expect(logs.status, pillarWhy(PILLAR)).toBe(200)
-    expect(logs.payload, pillarWhy(PILLAR, 'no provider request must be recorded')).toEqual([])
+    expect(logs.payload, pillarWhy(PILLAR, 'deferred sessions have no job and must not record a provider call')).toEqual([])
   })
 })

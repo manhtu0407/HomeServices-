@@ -1,0 +1,106 @@
+import { createHash } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { prepareRunnerEnv } from '../run.mjs'
+import { assertLocalQaBindings, loopbackQaDockerArgs } from './local-qa-network.mjs'
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const digest = text => createHash('sha256').update(text).digest('hex')
+const reply = {
+  problem_slug: 'replace_cabinet_hinges', complexity_assessment: 'small', confidence: 0.88,
+  confirmed_facts: ['Đúng hai bản lề', 'Gỗ và cánh tủ còn nguyên', 'Lối tiếp cận bình thường'],
+  unknowns: [], pricing_factors: { quantity: 2, access_condition: 'normal', secondary_damage: 'none_confirmed', material_tier: 'standard' },
+  problem_summary: 'Hai bản lề nứt cần thay đúng loại tương thích.',
+  advisory: 'Giữ nguyên gỗ và căn chỉnh lại cánh tủ sau khi thay.',
+}
+
+function bootstrap({ instance, portBase }) {
+  return `import { createLocalProviderFixtureFetch } from './fixture-network.mjs';
+const localOrigin = ${JSON.stringify(`http://host.docker.internal:${portBase + 1}`)};
+if (Deno.env.get('SUPABASE_URL') !== localOrigin || Deno.env.get('KAEL_AI_KILL_SWITCH') !== 'true') throw new Error('QA fixture runtime refused');
+for (const key of ['ANTHROPIC_API_KEY','DEEPSEEK_API_KEY','PERPLEXITY_API_KEY','OPENAI_API_KEY']) {
+  if (Deno.env.get(key)) throw new Error('QA fixture credential refused');
+}
+const fixture = createLocalProviderFixtureFetch({ localOrigin, reply: ${JSON.stringify(reply)}, fetch: globalThis.fetch.bind(globalThis) });
+globalThis.fetch = fixture.fetch;
+const readEnv = Deno.env.get.bind(Deno.env);
+const fixtureConfig = { ANTHROPIC_API_KEY: 'qa-fixture-only', KAEL_AI_KILL_SWITCH: 'false', KAEL_SOURCE_TRUST_HIGH_VALUE_VND: '1000000' };
+Deno.env.get = name => Object.hasOwn(fixtureConfig, name) ? fixtureConfig[name] : readEnv(name);
+const { createEdgeAuthenticator } = await import('../mobile-api/_shared/platform/auth.ts');
+const { readEdgeEnv, assertProductionReleaseRegistered } = await import('../_shared/platform/env.ts');
+const { createMobileApiHandler } = await import('../mobile-api/_shared/http.ts');
+const { createEdgeServices } = await import('../mobile-api/_shared/domains.ts');
+const env = readEdgeEnv(name => Deno.env.get(name) ?? undefined);
+if (env.harnessEnvironment.name !== 'local') throw new Error('QA fixture environment refused');
+assertProductionReleaseRegistered(env);
+const handler = createMobileApiHandler({ authenticate: createEdgeAuthenticator(env), services: createEdgeServices(env), releaseId: env.releaseId, environment: env.harnessEnvironment.name, minimumClientBuildNumber: env.minimumClientBuildNumber, clientCompatibility: env.clientCompatibility });
+Deno.serve(async request => {
+  const url = new URL(request.url);
+  if (request.method === 'GET' && url.pathname.endsWith('/__qa_fixture')) return Response.json({ mode: 'provider-fixture', instance: ${JSON.stringify(instance)}, counts: fixture.counts() }, { headers: { 'cache-control': 'no-store' } });
+  url.pathname = url.pathname.replace(new RegExp('/qa-scope-fixture-[a-f0-9]{12}(?=/|$)', 'u'), '/mobile-api');
+  const before = fixture.counts();
+  const response = await handler(new Request(url, request));
+  const after = fixture.counts();
+  const headers = new Headers(response.headers);
+  headers.set('x-qa-provider-fixture-calls', String(after.providerFixture - before.providerFixture));
+  headers.set('x-qa-denied-calls', String(after.denied - before.denied));
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+});
+`
+}
+
+export function installLocalScopeFixture({ instance, portBase, root = repoRoot, run = spawnSync }) {
+  try {
+    loopbackQaDockerArgs(instance, portBase, 'node', [])
+    const project = `nestscout-qa-${instance}`
+    const workdir = join(root, `.scratch/local-migrations-qa-${instance}`)
+    const config = readFileSync(join(workdir, 'supabase/config.toml'), 'utf8')
+    const plan = JSON.parse(readFileSync(join(workdir, 'apply-plan.json'), 'utf8'))
+    if (!config.includes(`project_id = "${project}"`) || plan.environment !== 'local' || plan.mode !== 'empty-reset' ||
+        plan.projectRef !== project || plan.localRuntime?.name !== instance || plan.localRuntime?.portBase !== portBase) throw new Error('target mismatch')
+    const canonical = join(root, 'supabase/functions/mobile-api')
+    const copied = join(workdir, 'supabase/functions/mobile-api')
+    const index = readFileSync(join(copied, 'index.ts'), 'utf8')
+    const deno = readFileSync(join(copied, 'deno.json'), 'utf8')
+    if (index !== readFileSync(join(canonical, 'index.ts'), 'utf8') || deno !== readFileSync(join(canonical, 'deno.json'), 'utf8')) throw new Error('source mismatch')
+    assertLocalQaBindings(instance, run)
+    const inspected = run('docker', ['inspect', '--type', 'container', `supabase_edge_runtime_${project}`, '--format', '{{json .}}'], { encoding: 'utf8', timeout: 15_000, windowsHide: true })
+    if (inspected.error || inspected.status !== 0) throw new Error('runtime missing')
+    const container = JSON.parse(inspected.stdout)
+    const env = Object.fromEntries(container.Config.Env.map(value => { const n = value.indexOf('='); return [value.slice(0, n), value.slice(n + 1)] }))
+    if (container.Config.Labels?.['com.supabase.cli.project'] !== project || env.KAEL_AI_KILL_SWITCH !== 'true' ||
+        env.SUPABASE_URL !== `http://host.docker.internal:${portBase + 1}` ||
+        Object.entries(env).some(([key, value]) => /^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI)_/u.test(key) && value)) throw new Error('unsafe runtime')
+    const network = readFileSync(new URL('./local-provider-fixture.mjs', import.meta.url), 'utf8')
+    const entry = bootstrap({ instance, portBase })
+    const fixtureDigest = digest(entry + network + deno + index)
+    const functionName = `qa-scope-fixture-${fixtureDigest.slice(0, 12)}`
+    const directory = join(workdir, 'supabase/functions', functionName)
+    const identity = { mode: 'provider-fixture', instance, fixtureDigest, canonicalEntrySha256: digest(index) }
+    const files = { 'index.ts': entry, 'fixture-network.mjs': network, 'deno.json': deno, 'fixture-identity.json': JSON.stringify(identity, null, 2) + '\n' }
+    if (existsSync(directory)) {
+      if (Object.entries(files).some(([name, value]) => readFileSync(join(directory, name), 'utf8') !== value)) throw new Error('fixture collision')
+    } else {
+      mkdirSync(directory)
+      for (const [name, value] of Object.entries(files)) writeFileSync(join(directory, name), value)
+    }
+    const envFile = join(workdir, 'qa-fixture.env')
+    if (existsSync(envFile) && readFileSync(envFile, 'utf8') !== '') throw new Error('fixture environment collision')
+    if (!existsSync(envFile)) writeFileSync(envFile, '')
+    const section = `[functions.${functionName}]\nverify_jwt = false\n`
+    if (!config.includes(`[functions.${functionName}]`)) writeFileSync(join(workdir, 'supabase/config.toml'), `${config}\n${section}`)
+    writeFileSync(join(workdir, 'qa-scope-fixture.json'), JSON.stringify({ ...identity, functionName }) + '\n')
+    return { ...identity, functionName }
+  } catch { throw new Error('QA scope fixture target refused') }
+}
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    if (process.argv.length !== 6 || process.argv[2] !== '--instance' || process.argv[4] !== '--port-base') throw new Error('arguments refused')
+    const env = prepareRunnerEnv()
+    const run = (command, args, options) => spawnSync(command, args, { ...options, env })
+    console.log(JSON.stringify(installLocalScopeFixture({ instance: process.argv[3], portBase: Number(process.argv[5]), run })))
+  } catch { console.error('QA scope fixture target refused'); process.exitCode = 2 }
+}

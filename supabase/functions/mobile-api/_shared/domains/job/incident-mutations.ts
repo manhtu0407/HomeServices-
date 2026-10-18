@@ -177,15 +177,17 @@ export async function proposeScopeChangeFromJobIncident(
   const quote = parseScopeChangeWorkerQuote(incident.scope_price_quote);
   const confirmedAt = asString(incident.scope_price_quote_confirmed_at);
   const quoteExpiresAt = asString(quoteBasis?.expires_at);
+  const quoteExpiryTime = Date.parse(quote?.expires_at ?? "");
+  const basisExpiryTime = Date.parse(quoteExpiresAt);
   const analysis = originalPriceMax !== null && quoteBasis &&
       asString(quoteBasis.incident_id) === incidentId &&
       asNumber(quoteBasis.incident_revision) + 1 === asNumber(incident.revision) &&
       asString(incident.scope_price_quote_id) === input.quote_id &&
       asNumber(incident.scope_price_quote_revision) === asNumber(incident.revision) &&
       quote?.quote_id === input.quote_id &&
-      quote.expires_at === quoteExpiresAt &&
+      Number.isFinite(quoteExpiryTime) && quoteExpiryTime === basisExpiryTime &&
       Number.isFinite(Date.parse(confirmedAt)) &&
-      Date.parse(confirmedAt) <= Date.parse(quoteExpiresAt)
+      Date.parse(confirmedAt) <= basisExpiryTime
     ? parseSavedScopeChangeAnalysis(quoteBasis.analysis, job, originalPriceMax)
     : null;
   if (!analysis) {

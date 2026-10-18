@@ -1,10 +1,10 @@
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { prepareRunnerEnv } from '../run.mjs'
-import { loopbackQaDockerArgs } from './local-qa-network.mjs'
+import { assertLocalQaBindings, loopbackQaDockerArgs } from './local-qa-network.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 try {
@@ -16,12 +16,23 @@ try {
   const cliArgs = args.slice(5)
   const workdir = `.scratch/local-migrations-qa-${instance}`
   const expected = ['start', '--workdir', workdir, '--network-id', `nestscout-qa-fixture-${instance}`]
-  if (expected.some((value, index) => cliArgs[index] !== value) ||
-      (cliArgs.length !== 5 && (cliArgs.length !== 7 || cliArgs[5] !== '-x' || !/^[a-z,-]+$/u.test(cliArgs[6])))) {
+  const validStart = expected.every((value, index) => cliArgs[index] === value) &&
+    (cliArgs.length === 5 || (cliArgs.length === 7 && cliArgs[5] === '-x' && /^[a-z,-]+$/u.test(cliArgs[6])))
+  const serveArgs = ['functions', 'serve', '--workdir', workdir, '--network-id', `nestscout-qa-fixture-${instance}`, '--env-file', `${workdir}/qa-fixture.env`]
+  const validServe = cliArgs.length === serveArgs.length && serveArgs.every((value, index) => cliArgs[index] === value)
+  if (!validStart && !validServe) {
     throw new Error('QA CLI invocation refused')
   }
   const config = readFileSync(resolve(root, workdir, 'supabase/config.toml'), 'utf8')
   if (!new RegExp(`^project_id = "nestscout-qa-${instance}"$`, 'mu').test(config)) throw new Error('QA project identity mismatch')
+  if (validServe) {
+    const fixture = JSON.parse(readFileSync(resolve(root, workdir, 'qa-scope-fixture.json'), 'utf8'))
+    if (fixture.mode !== 'provider-fixture' || fixture.instance !== instance ||
+        !/^qa-scope-fixture-[a-f0-9]{12}$/u.test(fixture.functionName) ||
+        !config.includes(`[functions.${fixture.functionName}]`) || readFileSync(resolve(root, workdir, 'qa-fixture.env'), 'utf8') !== '') throw new Error('QA fixture configuration mismatch')
+    const guardEnv = prepareRunnerEnv()
+    assertLocalQaBindings(instance, (command, args, options) => spawnSync(command, args, { ...options, env: guardEnv }))
+  }
   const require = createRequire(resolve(root, 'apps/api/package.json'))
   const packageFile = require.resolve('supabase/package.json')
   const pkg = JSON.parse(readFileSync(packageFile, 'utf8'))

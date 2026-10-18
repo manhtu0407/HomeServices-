@@ -34,6 +34,7 @@ function setup(input: {
   jobStatus?: string
   resumeJobStatus?: string
   requestTiming?: 'pre_arrival' | 'on_site'
+  quoteBasisExpiresAt?: string
 } = {}) {
   let role = input.role ?? 'worker'
   let actorId = input.actorId ?? (role === 'worker' ? WORKER : CUSTOMER)
@@ -85,7 +86,7 @@ function setup(input: {
     if (name === 'load_job_incident_scope_quote_basis') {
       rpcResults[name] = quoteAnalysis ? [{ data: [{
         incident_id: INCIDENT, incident_revision: 4,
-        expires_at: incident.scope_price_quote_expires_at, analysis: quoteAnalysis,
+        expires_at: input.quoteBasisExpiresAt ?? incident.scope_price_quote_expires_at, analysis: quoteAnalysis,
       }], error: null }] : [{ data: [], error: null }]
     }
     if (name === 'claim_job_incident_scope_proposal_atomic') {
@@ -223,6 +224,26 @@ describe('Scope change at the public HTTP boundary', () => {
     const fixture = setup({ role })
     expect((await fixture.propose()).status, pillarWhy(PILLAR)).toBe(403)
     expect(calls(fixture.client, 'claim_job_incident_scope_proposal_atomic')).toEqual([])
+  })
+
+  it.each(['2026-08-14T08:15:00.000+00:00', '2026-08-14T15:15:00.000+07:00'])('accepts the saved quote expiry serialized as %s', async quoteBasisExpiresAt => {
+    const provider = scriptedProvider()
+    const fixture = setup({ quoteBasisExpiresAt })
+    expect((await fixture.preview()).status, pillarWhy(PILLAR)).toBe(200)
+    const proposed = await fixture.proposeOnDirectRoute()
+    expect(proposed.status, pillarWhy(PILLAR, 'timestamp serialization must preserve the same expiry instant')).toBe(201)
+    expect(calls(fixture.client, 'request_job_incident_scope_change_atomic'), pillarWhy(PILLAR)).toHaveLength(1)
+    expect(provider, pillarWhy(PILLAR, 'proposal must reuse the server analysis')).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['2026-08-14T08:16:00.000+00:00', 'not-a-date'])('refuses a different or invalid saved quote expiry %s', async quoteBasisExpiresAt => {
+    scriptedProvider()
+    const fixture = setup({ quoteBasisExpiresAt })
+    expect((await fixture.preview()).status, pillarWhy(PILLAR)).toBe(200)
+    const proposed = await fixture.proposeOnDirectRoute()
+    expect(proposed.status, pillarWhy(PILLAR)).toBe(409)
+    expect(await proposed.json(), pillarWhy(PILLAR)).toMatchObject({ code: 'QUOTE_CHANGED' })
+    expect(calls(fixture.client, 'request_job_incident_scope_change_atomic'), pillarWhy(PILLAR)).toHaveLength(0)
   })
 
   it('conceals the job from an unassigned Worker before proposal', async () => {

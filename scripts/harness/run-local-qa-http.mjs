@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { prepareRunnerEnv } from '../run.mjs'
@@ -31,7 +31,7 @@ try {
   if (localEnv.KAEL_AI_KILL_SWITCH !== 'true' || localEnv.SUPABASE_URL !== `http://host.docker.internal:${portBase + 1}` ||
       Object.entries(localEnv).some(([key, value]) => /^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI)_/u.test(key) && value)) throw new Error('unsafe inference configuration')
   for (const key of Object.keys(env)) {
-    if (/^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI|SEPAY|VIETMAP|SENTRY|TELEGRAM|SUPABASE|NESTSCOUT_QA_HTTP)_/u.test(key) || ['NODE_OPTIONS', 'BUN_OPTIONS', 'BUN_BE_BUN'].includes(key)) delete env[key]
+    if (/^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI|SEPAY|VIETMAP|SENTRY|TELEGRAM|SUPABASE|NESTSCOUT_QA_HTTP|NESTSCOUT_QA_SCOPE)_/u.test(key) || ['NODE_OPTIONS', 'BUN_OPTIONS', 'BUN_BE_BUN'].includes(key)) delete env[key]
   }
   Object.assign(env, {
     NESTSCOUT_QA_HTTP_INSTANCE: instance,
@@ -43,12 +43,21 @@ try {
   })
   stage = 'local key classification'
   resolveLocalQaHttpTarget(env)
+  const fixtureFile = resolve(root, `.scratch/local-migrations-qa-${instance}/qa-scope-fixture.json`)
+  if (existsSync(fixtureFile)) {
+    stage = 'scope fixture identity'
+    const fixture = JSON.parse(readFileSync(fixtureFile, 'utf8'))
+    if (fixture.instance !== instance || fixture.mode !== 'provider-fixture' || !/^qa-scope-fixture-[a-f0-9]{12}$/u.test(fixture.functionName)) throw new Error('invalid fixture identity')
+    env.NESTSCOUT_QA_SCOPE_FIXTURE_NAME = fixture.functionName
+  }
   stage = 'Vitest integration execution'
   mkdirSync(resolve(root, '.scratch'), { recursive: true })
   const result = spawnSync(process.execPath, [
     resolve(root, 'apps/api/node_modules/vitest/vitest.mjs'), 'run',
     'src/__tests__/integration/kael-local-http-intake-pillar.test.ts',
-    '--reporter=json', '--outputFile', resolve(root, '.scratch/kael-local-http-results.json'),
+    'src/__tests__/integration/kael-local-http-scope-pillar.test.ts',
+    'src/__tests__/integration/kael-local-http-scope-proposal-pillar.test.ts',
+    '--reporter=json', '--reporter=default', '--outputFile', resolve(root, '.scratch/kael-local-http-results.json'),
   ], { cwd: resolve(root, 'apps/api'), env, stdio: 'inherit', timeout: 300_000, windowsHide: true })
   process.exitCode = result.status ?? 1
 } catch {

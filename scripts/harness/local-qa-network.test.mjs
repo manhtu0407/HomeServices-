@@ -53,6 +53,8 @@ test('the QA launcher rejects hosted instances and arbitrary CLI commands before
     ['--instance', 'production', '--port-base', '58320', '--', 'start'],
     ['--instance', 'journey56', '--port-base', '58320', '--', 'functions', 'deploy'],
     ['--instance', 'journey56', '--port-base', '58320', '--', 'start', '--workdir', '../other'],
+    ['--instance', 'journey56', '--port-base', '58320', '--', 'functions', 'serve', '--workdir', '../other'],
+    ['--instance', 'journey56', '--port-base', '58320', '--', 'functions', 'serve', '--env-file', '.env.local'],
   ]) {
     const result = spawnSync(process.execPath, [fileURLToPath(launcher), ...args], { encoding: 'utf8', timeout: 10_000 })
     assert.equal(result.status, 2, result.stderr)
