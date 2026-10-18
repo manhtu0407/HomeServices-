@@ -92,6 +92,29 @@ describe('Worker cancellation recovery runtime', () => {
     await expect(requestWorkerCancellation(context(client), 'job-1', input)).rejects.toMatchObject({ code: 'DB_ERROR' })
     expect(client.calls.some((call) => call.table === 'rpc:request_worker_cancellation_atomic')).toBe(false)
   })
+
+  it.each(['approved', 'reviewing_by_kael', null])('recovers a concurrent INVALID_STATUS only with an existing approved receipt=%s', async existingStatus => {
+    const client = makeSequenceClient([], {
+      request_worker_cancellation_atomic: [{ data: [{ ok: false, error_code: 'INVALID_STATUS', job_status: 'broadcasting' }], error: null }],
+      recover_worker_cancellation_replacement: [{ data: [receipt], error: null }],
+      record_worker_cancellation_memory_atomic: [{ data: [{ applied: false }], error: null }],
+    }, {
+      jobs: [{ data: { id: 'job-1', status: 'worker_on_way', customer_id: 'customer-1', worker_id: 'worker-1' }, error: null }],
+      worker_cancellation_requests: [{ data: null, error: null }, { data: existingStatus ? { ...approved, status: existingStatus } : null, error: null }],
+    })
+    const result = requestWorkerCancellation(context(client), 'job-1', input)
+    if (existingStatus === 'approved') {
+      await expect(result, pillarWhy(PILLAR)).resolves.toMatchObject({ cancellation_id: approved.id, status: 'approved', job_status: 'broadcasting' })
+      const lookups = client.calls.filter(call => call.table === 'worker_cancellation_requests')
+      expect(lookups).toHaveLength(2)
+      for (const lookup of lookups) expect(lookup.operations).toContainEqual(['eq', 'worker_id', 'worker-1'])
+    } else {
+      await expect(result, pillarWhy(PILLAR)).rejects.toMatchObject({ code: 'INVALID_STATUS', status: 409 })
+      expect(client.calls.some(call => call.table === 'rpc:recover_worker_cancellation_replacement')).toBe(false)
+    }
+    expect(client.calls.filter(call => call.table === 'rpc:request_worker_cancellation_atomic')).toHaveLength(1)
+    expect(client.calls.some(call => call.table === 'job_events')).toBe(false)
+  })
 })
 
 const claim = { outbox_id: 'outbox-1', lease_token: 'lease-1' }

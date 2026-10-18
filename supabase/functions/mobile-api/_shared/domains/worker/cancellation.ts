@@ -76,14 +76,14 @@ export async function requestWorkerCancellation(
   if (!row) apiFailure("DB_ERROR", "Không thể gửi yêu cầu hủy việc", 500);
   if (!row.ok) {
     const errorCode = nullableString(row.error_code);
-    if (errorCode === "ALREADY_REQUESTED") {
+    if (errorCode === "ALREADY_REQUESTED" || errorCode === "INVALID_STATUS") {
       const existing = await readExistingWorkerCancellation({
         client,
         ctx,
         jobId,
         jobStatus: asJobStatus(row.job_status ?? job.status),
       });
-      if (existing) return existing;
+      if (existing && (errorCode === "ALREADY_REQUESTED" || existing.status === "approved")) return existing;
     }
     mapWorkerCancellationRequestError(errorCode);
   }

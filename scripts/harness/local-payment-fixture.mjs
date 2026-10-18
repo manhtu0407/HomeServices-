@@ -9,7 +9,7 @@ import { assertLocalQaBindings, loopbackQaDockerArgs } from './local-qa-network.
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const digest = text => createHash('sha256').update(text).digest('hex')
 
-function bootstrap({ instance, portBase }) {
+function bootstrap({ instance, portBase, profile }) {
   return `import { createLocalProviderFixtureFetch } from './fixture-network.mjs';
 const localOrigin = ${JSON.stringify(`http://host.docker.internal:${portBase + 1}`)};
 if (Deno.env.get('SUPABASE_URL') !== localOrigin || Deno.env.get('KAEL_AI_KILL_SWITCH') !== 'true') throw new Error('QA payment runtime refused');
@@ -25,12 +25,13 @@ const { createEdgeServices } = await import('../mobile-api/_shared/domains.ts');
 const env = readEdgeEnv(name => Deno.env.get(name) ?? undefined);
 if (env.harnessEnvironment.name !== 'local' || !env.aiKillSwitch) throw new Error('QA payment environment refused');
 assertProductionReleaseRegistered(env);
-const services = createEdgeServices({ ...env, manualBank: { enabled: true, bankCode: 'QA', accountNumber: 'QAONLY', accountHolder: 'QA FIXTURE DO NOT TRANSFER' } });
+${profile === 'cancellation' ? "const readRuntimeEnv = Deno.env.get.bind(Deno.env); Deno.env.get = name => name === 'KAEL_AUTONOMY_FULL_ENABLED' ? 'true' : readRuntimeEnv(name); if (Deno.env.get('KAEL_AI_KILL_SWITCH') !== 'true') throw new Error('QA cancellation inference guard refused');" : ''}
+const services = createEdgeServices(${profile === 'payment' ? "{ ...env, manualBank: { enabled: true, bankCode: 'QA', accountNumber: 'QAONLY', accountHolder: 'QA FIXTURE DO NOT TRANSFER' } }" : 'env'});
 const handler = createMobileApiHandler({ authenticate: createEdgeAuthenticator(env), services, releaseId: env.releaseId, environment: env.harnessEnvironment.name, minimumClientBuildNumber: env.minimumClientBuildNumber, clientCompatibility: env.clientCompatibility });
 Deno.serve(async request => {
   const url = new URL(request.url);
-  if (request.method === 'GET' && url.pathname.endsWith('/__qa_fixture')) return Response.json({ mode: 'payment-fixture', instance: ${JSON.stringify(instance)}, counts: fixture.counts() }, { headers: { 'cache-control': 'no-store' } });
-  url.pathname = url.pathname.replace(new RegExp('/qa-payment-fixture-[a-f0-9]{12}(?=/|$)', 'u'), '/mobile-api');
+  if (request.method === 'GET' && url.pathname.endsWith('/__qa_fixture')) return Response.json({ mode: '${profile}-fixture', instance: ${JSON.stringify(instance)}, counts: fixture.counts() }, { headers: { 'cache-control': 'no-store' } });
+  url.pathname = url.pathname.replace(new RegExp('/qa-${profile}-fixture-[a-f0-9]{12}(?=/|$)', 'u'), '/mobile-api');
   const before = fixture.counts();
   const response = await handler(new Request(url, request));
   const after = fixture.counts();
@@ -42,7 +43,15 @@ Deno.serve(async request => {
 `
 }
 
-export function installLocalPaymentFixture({ instance, portBase, root = repoRoot, run = spawnSync }) {
+export function installLocalPaymentFixture(options) {
+  return installLocalWorkflowFixture({ ...options, profile: 'payment' })
+}
+
+export function installLocalCancellationFixture(options) {
+  return installLocalWorkflowFixture({ ...options, profile: 'cancellation' })
+}
+
+function installLocalWorkflowFixture({ instance, portBase, profile, root = repoRoot, run = spawnSync }) {
   let stage = 'arguments'
   try {
     loopbackQaDockerArgs(instance, portBase, 'node', [])
@@ -73,11 +82,11 @@ export function installLocalPaymentFixture({ instance, portBase, root = repoRoot
     const envFile = join(workdir, 'qa-fixture.env')
     if (existsSync(envFile) && readFileSync(envFile, 'utf8') !== '') throw new Error('fixture environment collision')
     const network = readFileSync(new URL('./local-provider-fixture.mjs', import.meta.url), 'utf8')
-    const entry = bootstrap({ instance, portBase })
+    const entry = bootstrap({ instance, portBase, profile })
     const fixtureDigest = digest(entry + network + deno + index)
-    const functionName = `qa-payment-fixture-${fixtureDigest.slice(0, 12)}`
+    const functionName = `qa-${profile}-fixture-${fixtureDigest.slice(0, 12)}`
     const directory = join(workdir, 'supabase/functions', functionName)
-    const identity = { mode: 'payment-fixture', instance, fixtureDigest, canonicalEntrySha256: digest(index) }
+    const identity = { mode: `${profile}-fixture`, instance, fixtureDigest, canonicalEntrySha256: digest(index) }
     const files = { 'index.ts': entry, 'fixture-network.mjs': network, 'deno.json': deno, 'fixture-identity.json': JSON.stringify(identity, null, 2) + '\n' }
     stage = 'fixture files'
     if (existsSync(directory)) {
@@ -90,7 +99,7 @@ export function installLocalPaymentFixture({ instance, portBase, root = repoRoot
     if (!existsSync(envFile)) writeFileSync(envFile, '')
     const section = `[functions.${functionName}]\nverify_jwt = false\n`
     if (!config.includes(`[functions.${functionName}]`)) writeFileSync(join(workdir, 'supabase/config.toml'), `${config}\n${section}`)
-    writeFileSync(join(workdir, 'qa-payment-fixture.json'), JSON.stringify({ ...identity, functionName }) + '\n')
+    writeFileSync(join(workdir, `qa-${profile}-fixture.json`), JSON.stringify({ ...identity, functionName }) + '\n')
     return { ...identity, functionName }
   } catch { throw new Error('QA payment fixture target refused', { cause: stage }) }
 }

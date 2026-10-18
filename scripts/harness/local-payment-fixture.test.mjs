@@ -4,7 +4,8 @@ import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { installLocalPaymentFixture } from './local-payment-fixture.mjs'
+import { fileURLToPath } from 'node:url'
+import { installLocalCancellationFixture, installLocalPaymentFixture } from './local-payment-fixture.mjs'
 
 function workspace() {
   const root = mkdtempSync(join(tmpdir(), 'ns-payment-fixture-'))
@@ -70,5 +71,31 @@ test('unsafe binding or existing inference credential refuses the fixture safely
       assert.equal(error.message, 'QA payment fixture target refused')
       return true
     })
+  }
+})
+
+test('cancellation profile is a separate local function and preserves the payment fixture', () => {
+  const { root, work } = workspace()
+  const options = { root, instance: 'journey56', portBase: 58320, run: dockerRun() }
+  const payment = installLocalPaymentFixture(options)
+  const cancellation = installLocalCancellationFixture(options)
+  assert.match(cancellation.functionName, /^qa-cancellation-fixture-[a-f0-9]{12}$/u)
+  assert.equal(cancellation.mode, 'cancellation-fixture')
+  assert.notEqual(payment.functionName, cancellation.functionName)
+  assert.equal(JSON.parse(readFileSync(join(work, '..', 'qa-payment-fixture.json'), 'utf8')).functionName, payment.functionName)
+  assert.equal(JSON.parse(readFileSync(join(work, '..', 'qa-cancellation-fixture.json'), 'utf8')).functionName, cancellation.functionName)
+  const entry = readFileSync(join(work, 'functions', cancellation.functionName, 'index.ts'), 'utf8')
+  const syntax = spawnSync(process.execPath, ['--check', '--input-type=module'], { input: entry, encoding: 'utf8', timeout: 10_000 })
+  assert.equal(syntax.status, 0, syntax.stderr)
+  assert.throws(() => installLocalCancellationFixture({ ...options, run: dockerRun({ foreignBinding: true }) }))
+})
+
+test('QA HTTP selection rejects unknown or ambiguous filters before runtime access', () => {
+  const runner = fileURLToPath(new URL('./run-local-qa-http.mjs', import.meta.url))
+  const base = ['--instance', 'journey56', '--port-base', '58320']
+  for (const suffix of [['--only', 'unknown'], ['--only', 'cancellation', 'unexpected'], ['--only']]) {
+    const result = spawnSync(process.execPath, [runner, ...base, ...suffix], { encoding: 'utf8', timeout: 10_000, windowsHide: true })
+    assert.equal(result.status, 2)
+    assert.match(result.stderr, /QA HTTP runner refused at arguments/u)
   }
 })

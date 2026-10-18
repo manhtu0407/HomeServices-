@@ -10,6 +10,12 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-18** Actual cancellation/replacement —HTTP25/25, same actor approved receipt recovers concurrent Worker201/409; P83red→21/21 +role/approval mutations; API2186/harness472/build/Edge pass. Uncommitted, no deploy; QA timing/cleanup budget and full campaign still open.
+
+- **2026-10-18** Frozen Preview rehydration — Work draft survives mode/Home/reload, samee8identity; RN2610/2610/types0 on local5dff;42-row campaign matrix explicit, English-copy decision conflict recorded; cancellation/replacement HTTP next, no new publication.
+
+- **2026-10-18** Fresh5dff503b replay —454/454 canonical migrations,139/139 SQL,265RPCnames0residue; isolated59420stack stopped with volumes preserved; prior local replay gap closed, full UI/live campaign remains open.
+
 - **2026-10-18** Configured local payment/recovery — same-jobHTTP23/23; mismatch409 fixed by tightly bound forward migration, SQL mutation proof; API/build/Edge/harness pass; source-only access metadata updated; Tu requests branch commit/push without merge; full campaign/replay/timing still open.
 
 - **2026-10-18** Noncohort fulfillment — HTTP21/21, actual Storage/check-in/RFQ/completion; apartment authorization500 fixed locally (projection22/22), API/build/Edge PASS; configured payment and full campaign remain open.

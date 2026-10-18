@@ -10,7 +10,8 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 let stage = 'arguments'
 try {
   const args = process.argv.slice(2)
-  if (args.length !== 4 || args[0] !== '--instance' || args[2] !== '--port-base') throw new Error('invalid arguments')
+  const selection = args.length === 6 && args[4] === '--only' && args[5] === 'cancellation' ? 'cancellation' : null
+  if ((args.length !== 4 && !selection) || args[0] !== '--instance' || args[2] !== '--port-base') throw new Error('invalid arguments')
   const instance = args[1]
   const portBase = Number(args[3])
   loopbackQaDockerArgs(instance, portBase, 'node', [])
@@ -31,7 +32,7 @@ try {
   if (localEnv.KAEL_AI_KILL_SWITCH !== 'true' || localEnv.SUPABASE_URL !== `http://host.docker.internal:${portBase + 1}` ||
       Object.entries(localEnv).some(([key, value]) => /^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI)_/u.test(key) && value)) throw new Error('unsafe inference configuration')
   for (const key of Object.keys(env)) {
-    if (/^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI|SEPAY|VIETMAP|SENTRY|TELEGRAM|SUPABASE|NESTSCOUT_QA_HTTP|NESTSCOUT_QA_SCOPE|NESTSCOUT_QA_PAYMENT)_/u.test(key) || ['NODE_OPTIONS', 'BUN_OPTIONS', 'BUN_BE_BUN'].includes(key)) delete env[key]
+    if (/^(ANTHROPIC|DEEPSEEK|PERPLEXITY|OPENAI|SEPAY|VIETMAP|SENTRY|TELEGRAM|SUPABASE|NESTSCOUT_QA_HTTP|NESTSCOUT_QA_SCOPE|NESTSCOUT_QA_PAYMENT|NESTSCOUT_QA_CANCELLATION)_/u.test(key) || ['NODE_OPTIONS', 'BUN_OPTIONS', 'BUN_BE_BUN'].includes(key)) delete env[key]
   }
   Object.assign(env, {
     NESTSCOUT_QA_HTTP_INSTANCE: instance,
@@ -57,10 +58,16 @@ try {
     if (fixture.instance !== instance || fixture.mode !== 'payment-fixture' || !/^qa-payment-fixture-[a-f0-9]{12}$/u.test(fixture.functionName)) throw new Error('invalid payment fixture identity')
     env.NESTSCOUT_QA_PAYMENT_FIXTURE_NAME = fixture.functionName
   }
+  const cancellationFile = resolve(root, `.scratch/local-migrations-qa-${instance}/qa-cancellation-fixture.json`)
+  if (existsSync(cancellationFile)) {
+    stage = 'cancellation fixture identity'
+    const fixture = JSON.parse(readFileSync(cancellationFile, 'utf8'))
+    if (fixture.instance !== instance || fixture.mode !== 'cancellation-fixture' || !/^qa-cancellation-fixture-[a-f0-9]{12}$/u.test(fixture.functionName)) throw new Error('invalid fixture identity')
+    env.NESTSCOUT_QA_CANCELLATION_FIXTURE_NAME = fixture.functionName
+  }
   stage = 'Vitest integration execution'
   mkdirSync(resolve(root, '.scratch'), { recursive: true })
-  const result = spawnSync(process.execPath, [
-    resolve(root, 'apps/api/node_modules/vitest/vitest.mjs'), 'run', '--no-file-parallelism',
+  const files = [
     'src/__tests__/integration/kael-local-http-intake-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-scope-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-scope-proposal-pillar.test.ts',
@@ -68,7 +75,14 @@ try {
     'src/__tests__/integration/kael-local-http-confirmation-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-fulfillment-pillar.test.ts',
     'src/__tests__/integration/kael-local-http-payment-pillar.test.ts',
-    '--reporter=json', '--reporter=default', '--outputFile', resolve(root, '.scratch/kael-local-http-results.json'),
+    'src/__tests__/integration/kael-local-http-cancellation-pillar.test.ts',
+  ]
+  const selectedFiles = selection ? files.filter(file => file.endsWith('kael-local-http-cancellation-pillar.test.ts')) : files
+  const reportFile = selection ? '.scratch/kael-local-http-cancellation-results.json' : '.scratch/kael-local-http-results.json'
+  console.log(JSON.stringify({ selection: selection ?? 'all', files: selectedFiles.length, reportFile }))
+  const result = spawnSync(process.execPath, [
+    resolve(root, 'apps/api/node_modules/vitest/vitest.mjs'), 'run', '--no-file-parallelism', ...selectedFiles,
+    '--reporter=json', '--reporter=default', '--outputFile', resolve(root, reportFile),
   ], { cwd: resolve(root, 'apps/api'), env, stdio: 'inherit', timeout: 300_000, windowsHide: true })
   process.exitCode = result.status ?? 1
 } catch {

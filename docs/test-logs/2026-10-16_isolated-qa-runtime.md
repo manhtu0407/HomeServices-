@@ -761,3 +761,122 @@ Private artifact hashes (raw reports remain ignored; no credentials or real bank
 | `payment-final-edge.log` | `44dacea733df7eb97a24679cdcbfdd53944d7e5bfd5c259b0576059ae40836dc` |
 | `payment-final-build.log` | `1854b4505cb9d2beeb18bcd045a96fd85aa2e183799870bbf0ba29f2e990b895` |
 | `publication-harness.log` | `29b8d5326c6207d2a38a00c41b013a4e7e71a1ddca11f71ac5565b5dc6d7f776` |
+
+
+## October 18 fresh migration replay and complete SQL matrix
+
+**PASS at local database layer / full campaign IN_PROGRESS.** Exact source5dff503b0751d37c2c1359af597dc73d07542c95, branch already pushed; no new commit/push/merge/deploy in this continuation. This closes the previously missing fresh replay evidence for that source, without converting it into hosted or native evidence.
+
+- Created only the fresh named local instance replay56-20261018. Initial portbase58420 was refused before startup because Windows reserves58387-58486. Read-only excluded-port inventory and bind checks identified free59420; no reservation/host/process configuration was changed. Second up preflight passed: daemon29.8.2,2.56GB informational RAM,84.49GB free disk; API59421/DB59422/inspector59428 free. Existing version-policy evidence already records Docker29.8.2/Compose5.6.0 stable update/current; no Desktop launch or restart.
+- Official pinned CLI empty-start snapshot applied all454 canonical migrations and seed. Real supabase_migrations.schema_migrations ledger matches apply-plan pendingVersions exactly, including latest20261018110000. No migration ledger was manually rewritten. This is stronger than the prior explicit delta on journey56.
+- Actual published bindings are loopback; Edge local target/AI-kill true and zero live provider/integration credentials were checked without printing values. No inference, hosted mutation or banking occurred. CLI credential lines were redacted from the ignored startup log.
+- Command: node scripts/run.mjs docker/scripts/run-sql-tests --container supabase_db_nestscout-qa-replay56-20261018. Actual summary: discovered139/executed139/passed139/failed0/stopped_early=false. This includes P398 mismatch recovery, RLS/actor checks, scope-change, completion/payment, monitor and dblink concurrency files collected by the real runner. It proves those SQL assertions; it is not139 UI journeys.
+- Post-matrix catalog still contains454 migration rows. Reconciliation eight-argument signature unchanged; execute denied to anon/authenticated, allowed to service_role. Fresh actual RPC catalog scan:265 names,227 literal/38 resolved,0 residue, all present. Behavior claims remain limited to the executed SQL/HTTP tests.
+- Command: node scripts/run.mjs docker/scripts/down --instance replay56-20261018, exit0 with backup=true. Authoritative Docker inventory verifies no running replay instance containers, existing journey56 QA still running. Volumes/evidence retained; shared stacks and frozen Preview untouched.
+
+Review: no product code, migration, grant, contract, fixture or timeout was changed to obtain these results. This continuation adds evidence only. Remaining campaign work includes the explicit K01-K42 connection matrix, remaining Preview interactions/rehydration and orchestration/negative HTTP cases, reliable pre-call1USD live-AI bound, and real payment awaiting Tu where appropriate. Native QA remains Tu's scope.
+
+Private retained artifacts:
+
+| Artifact | SHA256 |
+|---|---|
+| `replay56-up.log` | `afba8d3d0c1f50e32a644af179852bd9111eed6c75754e4e96d02b5b4db009c1` |
+| `replay56-up-free-port.log` | `638c5f52a3cc36be71134b060d074f6834250a6184768c5ee6f250778d464876` |
+| `replay56-ledger-proof.json` | `8d2d8b67475082eb3f47aacfbdb316f8c6e8654a3e7b013ade2ce92b408fe25a` |
+| `replay56-runtime-guard.json` | `c70c25018a885627578ab7d27210c8bad51b3a72c9c96cc74b6e67e27259eb46` |
+| `replay56-sql-matrix.log` | `ae7b192fac3f13a247b2a5bc682368cdd57fc17e14566c8b95f60eef0b40eee1` |
+| `replay56-matrix-proof.json` | `74f70eb003032640608261f20fc624d1748577aefe4924c4b1341ea4292192cf` |
+| `replay56-rpc-verdict.log` | `4e44a75812264305b88c52d12644296f0466b81129a35d8708aff8cbf00a6576` |
+| `replay56-down.log` | `6181f00de5e24548af3be23f9c22c41e3fcfb7af146e42e3d36fe4ba6976540b` |
+| `replay56-cleanup-proof.json` | `b744393b5eb1fe5ac7c379fa1735a90502caff11f066b1b8b57d213c72a3d305` |
+
+
+## October 18 frozen Preview navigation and campaign matrix
+
+**PASS for the observed Preview interactions / overall IN_PROGRESS.** Public Production health was rechecked200/registered on projectiwevizmsedyqozxlawwl, sourcee8b95d2122a8ce802c5504630a778f6e51daa72f/releaseharness-e8b95d2122a8-53817ce22f48, epoch3/iOS56/runtime0.3.2. Codex IAB tab2 still renders frozen sourcee8b95d2122a8/HEAD/built2026-10-18T02:12:30.144Z at localhost8086. No source, binding, role or hosted state was changed.
+
+Direct actions: opened selected existing unsent test-session list; Work→Chat→Work; Back→Home→Kael→Work; explicit browser reload and observed loading then same Work route/draft/source marker. The original synthetic unsent draft is unchanged. No Send/upload/confirmation/payment control was submitted; no archived session restored. Screenshot [draft after reload](../assets/test-evidence/build56-preview-draft-rehydration-20261018.png) is safe synthetic content; the Home view containing private details was not retained as an image. Tab marked for handoff and8085 preserved.
+
+Source review found intentional English empty-hero/Home greeting comments and assertions that conflict with the general language rule. This remains a decision item, not an unauthorized localization edit. No visual/material/motion implementation changed.
+
+Executed current-source RN gates: node scripts/run.mjs run-package-script @nestscout/mobile type-check exit0; corresponding test command exit0,280suites/2610tests passed,272.439s. No native visual proof is claimed; native QA belongs to Tu. Current test source5dff503b includes unreleased Admin fixes and is not equated with the frozen baseline UI.
+
+[Full K01-K42 matrix](2026-10-18_kael56-journey-matrix.md) retains every scenario and its missing layer. Next public HTTP tracer is cancellation/replacement; live AI remains blocked by the campaign pre-call1USD bound. Read-only Preview navigation does not prove complete Production intake→payment or resolve the prior timing findings.
+
+| Artifact | SHA256 |
+|---|---|
+| `preview56-current-mobile-types.log` | `704288413d0b8f641fce0fe2c676eab956c160d01a8da6e0b8d6dc488cfadd2e` |
+| `preview56-current-mobile-tests.log` | `1bbaf9749467a745a6c28f6ae6960f281fcdaa5a896f941faf105659cc3087cc` |
+| `docs/assets/test-evidence/build56-preview-draft-rehydration-20261018.png` | `0a54181536e1975355344a54ad9006869c60d3723fbbc4ffc18fc7a59353469c` |
+
+
+## October 18 public cancellation/replacement tracer — runtime findings
+
+**FIXED_LOCAL for Worker duplicate receipt recovery; final full-run evidence pending below.** Same branch HEAD5dff503b plus uncommitted two-line Worker cancellation owner fix, P83 regressions and local test tooling. No Production mutation, further publication or native build.
+
+The helper now exposes the existing actual initial confirmation→dispatcher→Customer assignment prefix, reusing its Auth/Storage/database setup. P399 continues that same job through Customer or Worker cancellation. The canonical local environment deliberately keeps full-autonomy flag off: actual requests returned409/AUTONOMY_FULL_FLAG_OFF with rejected audits. That is a valid configuration gate, not a product bug.
+
+A dedicated loopback-only cancellation fixture simulates exactly the full-autonomy configuration read while retaining AI kill=true, no live provider keys, original handler/RPC/ownership/state logic, and the existing egress allowlist/counters. Supabase rejects Deno.env.set with NotSupported, so this fixture overrides only KAEL_AUTONOMY_FULL_ENABLED at the env-read boundary; it does not mutate the canonical environment or inject approval decisions. Actual tests still assert the canonical off-profile refusal and unchanged job before the on-profile action. Local payment and cancellation fixtures share installer guards but remain separate named functions; no manual bank is enabled in the cancellation profile.
+
+### Reproduced race and correction
+
+Configured actual HTTP reproduced concurrent Worker201/409 after both autonomy audits allowed. One cancellation had committed approved and detached Worker; the losing RPC returnedINVALID_STATUS and the Edge owner only recovered ALREADY_REQUESTED. Two-line fix reads the existing same-job/same-Worker receipt for INVALID_STATUS and returns it only when approved. Without that receipt, or with a merely reviewing receipt, the original409 remains. SQL gates and permissions are unchanged.
+
+P83 regression observed19pass/1fail before the owner fix;21/21 after adding absent/reviewing/approved cases. Removing the approved-only restriction produced20pass/1fail; byte restoration returned21/21. The exact reviewed owner delta was copied only into the already owned QA snapshot; official CLI hot reload replaced its Edge container automatically. One immediate runner invocation refused before Vitest during that rotation; its accidentally copied prior JSON was renamed NOT-EXECUTED and explicitly marked invalid. No manual process restart or gate bypass occurred. Canonical and fixture readiness subsequently returned200/local with AI disabled, and actual HTTP recovered201/201 with one cancellation ID.
+
+### Fixture findings and minimization
+
+- Initial full attempt:13pass/4fail/8skipped due setup health timeout; the skipped scenarios are not PASS. Cleanup502 stopped an old sequential cleanup loop after its first actor, leaving two owned Workers online and contaminating a later recipient assertion. Cleanup now attempts every owned Worker even when one fails, reports failures, and retires only unfinished unassigned matching through the owning Customer cancel command. Exactly3 proven fixture actors were taken offline by existingRPC;7 proven fixture jobs were checked and only eligible unassigned matching retired. No data/history/price/training/receipt was deleted.
+- Broadcast has sent_at, not created_at; corrected the test query after catalog inspection. Existing replacement policy excludes Workers already offered this job. A fresh controlled eligible Worker is therefore added only after the original assignment, before cancellation/dispatch. No eligibility policy or quota changed.
+- Focused guarded runner --only cancellation preserves every identity/loopback/AI/credential guard and writes a distinct cancellation-results JSON; default still runs all8 files/25 cases. Unknown/ambiguous selections refuse before runtime access, exercised by real child-process tests.
+- Focused two-case journey finally passed2/2: Customer concurrent cancellation retires matching to stopped without payment; Worker cancellation queues one outbox, actual maintainer creates the new controlled offer, Worker proposal remains unassigned until Customer confirmation, and old Worker receipt replay preserves the new assignment. Foreign-actor mutation produced0pass/2fail/0skip; original test bytes restored before the full default run.
+
+Known local maintainer500 remains explicit: its matching effects are independently checked, and replacement outboxes show completed/attempt1/no error. No claim that the maintainer itself is healthy is inferred from those effects. Intermittent10s local health/detail timeouts and gateway502 remain unverified causes; no deadline was increased.
+
+
+### Cancellation tracer final checkpoint
+
+**PASS for the named local pre-work RFQ cancellation/replacement journey; FIXED_LOCAL/unreleased owner patch.** Final default guarded run with current generated payment fixture4d393541ab77 and cancellation fixturef6dc97de720a:8 files,25/25 pass,0 skipped,195.73s. Both payment cases and both cancellation cases execute. The complete original initial-confirmation/intake/scope/matching/fulfillment scenarios remain collected. API setup health and fixture endpoints were200 before this run; concurrent cold readiness took8.15–8.55s locally, with global AI disabled. This is a development-runtime observation, not a Production latency measurement.
+
+Post-run catalog proves all16 owned noncohort test Workers are offline. All557 tracked Edge/dependency source files compare equal to the reviewed working source after newline normalization; the sole product diff against HEAD is the two-line Worker receipt fix. No SQL function, schema, price, financial policy, learning policy or client runtime was changed in this tracer. Fresh454-migration/139-SQL proof remains the unchanged database-layer evidence.
+
+| Executed command / seam | Actual verdict | Scope |
+|---|---|---|
+| guarded HTTP runner, default8 files |25/25,0skip; exit0 | actual local Auth/Edge/PostgreSQL/Storage; no real banking |
+| guarded --only cancellation |2/2; separate report; then foreign-actor mutation0pass/2fail and restored bytes | focused public actors/receipts/new assignment |
+| P83 focused regression |19pass/1fail before fix;21/21 after and restored; approved-guard mutation20pass/1fail | absent/unapproved receipt remains409 |
+| node scripts/run.mjs run-package-script @nestscout/api test |2186pass/27 explicit skipped; Node114pass/1skip; exit0 | default suite; named runtime cases executed separately |
+| corresponding API type-check | exit0 | final helper/owner/test types |
+| node scripts/run.mjs run-turbo build, pinned local pnpm shim |1/1, exit0,18.315s | Next support build only |
+| node scripts/run.mjs docker/scripts/edge-check --only mobile-api | discovered7/selected1/checked1/failed0; compatibility4/4; exit0 | current pinned Deno |
+| node scripts/harness/verify.mjs |472 script fixtures pass and assurance exit0 | keeps declared release gaps |
+| installer/network/selection Node tests |11/11; unknown/ambiguous --only rejected before runtime | no arbitrary test paths or guard bypass |
+| actual RPC catalog query + current scan |265 names,0residue, all present | no new signature or object |
+| registry/comment/structure/collection/diff |393 unique; clean/static gates0 | no baseline or grant weakened |
+
+The earlier 24/25 run remains red evidence: payment fixture attribution was missing and its cleanup exceeded the framework's10-second hook timeout. Each request deadline remains10 seconds. Cleanup can perform a persisted read, an optional cancellation, then parallel availability writes, so its total orchestration budget deserves a separate explicit check; no timeout was raised in this checkpoint. Old gateway502/health/detail timeouts and isolate wall-clock warnings are retained with root causeUNVERIFIED. Installing the current default payment fixture was required to verify the shared installer implementation; a subsequent green run does not establish that it fixed those timing issues.
+
+Next: bounded QA attribution/cleanup-budget diagnosis, then public dispute/postcompletion exceptions and remaining Preview/account-state cases. Native QA is Tu's scope. Reliable1USD pre-call live-AI enforcement remains absent, so no live AI or bank transfer was attempted. FullK01-K42 campaign remainsIN_PROGRESS. No new commit/push/merge/deploy.
+
+| Retained private artifact | SHA256 |
+|---|---|
+| `cancellation-http-initial.json` | `f74e728116ffaa5bd240a8b0a858783887fe7253ebfc33870c2a2b1bf820adad` |
+| `cancellation-http-configured.json` | `e81d7d4588b541db31c4da8de4815d1b7e244ab66fe316845786c3e2629767f4` |
+| `cancellation-http-race-fixed-retry.json` | `20f8bc62d063cbd8667172e016c74c2ad6847e6be2ac19eff658c00f0b7708c0` |
+| `cancellation-http-query-fixed.json` | `ddb3da7c3b81d935a7611e7fd7c1284539b58f333d10bca7a001e87372216922` |
+| `cancellation-focused-fresh-worker.json` | `db071354988e451ece820faf7506f2d8ed0726edf995d5fe33dec6124c3ebe9f` |
+| `cancellation-role-mutation.json` | `c6eeed1772bed68888d24ca5bb34838717f977a8ef5f1318324b45c15c9f2326` |
+| `cancellation-http-final.json` | `ab5327e5c03637119f3ce7f1ada01b205d933cbc307bf8fd20418fcc99d86392` |
+| `cancellation-current-profiles-full.json` | `5c118e4bf4cb259539f687c0740967033faf8472ae030bb0eb0c9f676a571259` |
+| `cancellation-race-unit-red.json` | `a65319bff189ae4c38873352633dab50957122d20a4a0dbd45e5e3fb44080694` |
+| `cancellation-race-unit-restored.json` | `1d8f86ab21a09b5e04898797e7dab91078c372a130c04740aa36aa69d115b0c1` |
+| `cancellation-approved-guard-mutation.json` | `0cd2b69dd93178842c14b3dc7b4544f09082ac54b994bcdade3a5dbc234bf709` |
+| `cancellation-race-source-override.json` | `d765c6cb53497bf4b2ac793a694a3e4f860635028bc1cdfe9322190b1983c6d4` |
+| `cancellation-current-api.log` | `ea394460cf0a417f6af943064206603a4853141bb16636e2da663052e019a4c3` |
+| `cancellation-final-types.log` | `52b89cc35c6cc5a1d53fcd0af045577e893f5a9fe7db562a37234f75f10c0643` |
+| `cancellation-final-build.log` | `ea46fd23ea11c10c7dd6382cb1c4f10befadae33c5942606d298e98eea53155e` |
+| `cancellation-current-edge.log` | `19a546bb236510f603b50ca8833c50e3badb4f19696408bba6c4b657021a2b9f` |
+| `cancellation-final-harness.log` | `e415673ad5725da3e021028cb0d6ac57124cfd12bdda34580d1cbff22c303fee` |
+| `cancellation-tooling-final.log` | `aa3ce1f08b1729bcc8be64d3bb147ab06c65e4bfcd38f01fdb7307132d192361` |
+| `cancellation-rpc-verdict.log` | `4e44a75812264305b88c52d12644296f0466b81129a35d8708aff8cbf00a6576` |
+| `cancellation-final-proof.json` | `92641948c4bb89e873ac5fcfac1bea00fdd8e3a73d56b507a3f8ace7e32dad8f` |

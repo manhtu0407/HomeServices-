@@ -6,7 +6,7 @@ import { createLocalQaHttpHarness, localQaRecord as record, type LocalQaActor } 
 export function createLocalFulfillmentFixture(pillar: PillarManifest) {
   const { target, request, customer, seedRows, dispatchMatching } = createLocalQaHttpHarness(pillar)
   const why = (detail?: string) => pillarWhy(pillar, detail)
-  async function prepare(context: TestContext, options: { apiRoot?: string; paymentRail?: 'platform_bank_manual' } = {}) {
+  async function prepareAssigned(context: TestContext, options: { apiRoot?: string; paymentRail?: 'platform_bank_manual' } = {}) {
     const base = options.apiRoot ?? '/functions/v1/mobile-api'
     const observe = <T extends { fixtureProviderCalls: number | null; fixtureDeniedCalls: number | null }>(result: T): T => {
       if (options.apiRoot) {
@@ -45,20 +45,43 @@ export function createLocalFulfillmentFixture(pillar: PillarManifest) {
     const owner = await customer()
     const foreign = await customer()
     const workers = await Promise.all([customer('worker'), customer('worker'), customer('worker')])
+    let ownedJobId: string | null = null
     context.onTestFinished(async () => {
-      for (const actor of workers) {
+      const retired = await Promise.allSettled([(async () => {
+        if (!ownedJobId) return
+        const saved = await request(`/rest/v1/jobs?id=eq.${ownedJobId}&select=status,worker_id`)
+        expect(saved.status, why('cleanup reads only its owned persisted job')).toBe(200)
+        if (!Array.isArray(saved.payload) || saved.payload.length !== 1) throw new Error(why('owned cleanup job missing'))
+        const job = record(saved.payload[0])
+        if (job.worker_id === null && ['broadcasting', 'worker_candidate_pending', 'awaiting_customer_confirm'].includes(String(job.status))) {
+          const closed = await command(`/jobs/${ownedJobId}/cancel`, owner)
+          expect(closed.status, why('unfinished fixture matching is retired through the owning Customer command')).toBe(200)
+        }
+      })()])
+      const cleanup = await Promise.allSettled(workers.map(async actor => {
         const unavailable = await command('/workers/me/availability', actor, { is_available: false }, 'PATCH')
         expect(unavailable.status, why('only this test actor is taken offline; history is retained')).toBe(200)
-      }
+      }))
+      const failed = [...retired, ...cleanup].filter(item => item.status === 'rejected')
+      expect(failed, why('all owned actors are attempted even if one cleanup request fails')).toEqual([])
     })
     const worker = workers[0]
     const sessionId = randomUUID()
     const journey = { sessionId, ownerId: owner.id, workerIds: workers.map(item => item.id), source: 'saved_rfq_intake_fixture', inference: 'disabled' }
     Object.assign(context.task.meta, { qaJourney: journey })
-    seedRows(workers.map(actor => ['worker_profiles', { id: actor.id, legal_name: 'QA Fulfillment Worker', date_of_birth: '1990-01-01',
+    const seedWorkers = (actors: LocalQaActor[]) => seedRows(actors.map(actor => ['worker_profiles', { id: actor.id, legal_name: 'QA Fulfillment Worker', date_of_birth: '1990-01-01',
       service_types: ['plumbing'], selected_service_types: ['plumbing'], active_service_types: ['plumbing'],
       problem_specializations: ['leak_and_flow_diagnosis', 'pipe_and_fixture_repair'],
       districts: ['thu_duc'], years_experience: 5, is_approved: true, is_available: true, verification_status: 'approved' }] as const))
+    seedWorkers(workers)
+    const addMatchingWorker = async () => {
+      const actor = await customer('worker')
+      workers.push(actor)
+      Object.assign(journey, { workerIds: workers.map(item => item.id), replacementWorkerId: actor.id })
+      seedWorkers([actor])
+      expect((await command('/workers/me/matching-heartbeat', actor)).status, why()).toBe(200)
+      return actor
+    }
     for (const actor of workers) expect((await command('/workers/me/matching-heartbeat', actor)).status, why()).toBe(200)
     const problem = await request('/rest/v1/service_problems?service_type=eq.plumbing&slug=eq.plumbing-general&select=id')
     expect(problem.payload, why()).toHaveLength(1)
@@ -77,6 +100,7 @@ export function createLocalFulfillmentFixture(pillar: PillarManifest) {
     Object.assign(journey, { confirmationStatus: accepted.status, confirmationCode: record(accepted.payload).code ?? null })
     expect(accepted.status, why('three actual reachable local Workers satisfy public capacity without a synthetic exemption')).toBe(202)
     const jobId = String(record(accepted.payload).job_id)
+    ownedJobId = jobId
     Object.assign(journey, { jobId })
     const dispatched = await dispatchMatching()
     Object.assign(journey, { maintainerHttpStatus: dispatched.status })
@@ -91,6 +115,10 @@ export function createLocalFulfillmentFixture(pillar: PillarManifest) {
     expect(proposed.status, why()).toBe(201)
     const candidateId = record(proposed.payload).candidate_id
     expect((await command(`/jobs/${jobId}/candidates/${candidateId}/confirm`, owner)).status, why()).toBe(200)
+    return { owner, worker, workers, foreign, jobId, request, command, read, journey, customer, attachPhoto, dispatchMatching, addMatchingWorker }
+  }
+  async function prepare(context: TestContext, options: { apiRoot?: string; paymentRail?: 'platform_bank_manual' } = {}) {
+    const { owner, worker, foreign, jobId, request, command, read, journey, customer, attachPhoto } = await prepareAssigned(context, options)
     const status = (body: unknown, actor = worker) => command(`/jobs/${jobId}/status`, actor, body, 'PATCH')
     expect((await status({ status: 'worker_on_way' }, owner)).status, why('Customer cannot act as Worker')).toBe(403)
     expect((await status({ status: 'worker_on_way' })).status, why()).toBe(200)
@@ -126,5 +154,5 @@ export function createLocalFulfillmentFixture(pillar: PillarManifest) {
     }])
     return { owner, worker, foreign, jobId, request, command, read, stored, journey, customer }
   }
-  return { target, prepare }
+  return { target, prepare, prepareAssigned }
 }
