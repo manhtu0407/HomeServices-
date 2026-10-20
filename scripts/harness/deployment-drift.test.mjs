@@ -157,6 +157,23 @@ test('collects hosted health, migration, and deployed-function evidence from liv
             price_evidence_bundle_sha256: release.priceEvidenceBundleSha256,
             provider_readiness_fingerprint_sha256: release.providerReadinessFingerprintSha256,
             provider_readiness: release.providerReadiness,
+            client_compatibility: {
+              gitSha: release.gitSha,
+              releaseId: release.releaseId,
+              contractEpoch: 3,
+              ios: {
+                applicationId: 'com.phanmanhtu.homeservices',
+                minimumBuildNumber: 56,
+                easBuildId: null,
+                runtimeVersion: '0.3.2',
+              },
+              android: {
+                applicationId: 'com.phanmanhtu.nestscout',
+                minimumBuildNumber: 5,
+                easBuildId: null,
+                runtimeVersion: '0.3.2',
+              },
+            },
             registered: true,
           },
         })

@@ -141,7 +141,7 @@ where environment = 'production'`,
   const release = health?.release ?? {}
   const releaseControl = hostedReleaseControlState(normalizeRows(releaseControlResult))
   let clientCompatibility = release.client_compatibility ?? null
-  if (clientCompatibility === null && releaseControl.activeReleaseId !== null) {
+  if (releaseControl.activeReleaseId !== null) {
     const activeReleaseResult = await fetchJson(fetchImpl, `${managementOrigin}/database/query/read-only`, {
       method: 'POST',
       headers: managementHeaders,
@@ -167,9 +167,6 @@ where environment = 'production' and release_id = $1`,
   }
   return {
     environment: health?.environment?.name ?? input.environment,
-    // Unlike `environment`, this fell back to a bare null rather than the already-validated
-    // `input.projectRef` above, so a tolerated health-probe failure (fetchHealthOrNull) produced
-    // a hosted baseline that no caller could recognize as the Production target it actually is.
     // Unlike `environment`, this fell back to a bare null rather than the already-validated
     // `input.projectRef` above, so a tolerated health-probe failure (fetchHealthOrNull) produced
     // a hosted baseline that no caller could recognize as the Production target it actually is.
