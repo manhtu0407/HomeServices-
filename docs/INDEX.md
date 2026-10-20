@@ -61,7 +61,8 @@ Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated 
 
 ## Release operations references
 
-- [`ops/harness/verification-release.md`](ops/harness/verification-release.md) — the manual verification release lane: why the strict lane cannot pass, what the lane relaxes and still enforces, what it does not prove, how to dispatch it, and what closes the acknowledged transaction gaps.
+- [`ops/harness/local-production-release.md`](ops/harness/local-production-release.md) — local Production release preflight, scoped Supabase PAT setup, secret-store requirements, release evidence, Expo submission boundaries, and recovery.
+- [`ops/harness/verification-release.md`](ops/harness/verification-release.md) — retirement note for the former GitHub Actions verification release lane.
 - [`ops/system-health-monitor.md`](ops/system-health-monitor.md) — Cloudflare-only Admin monitoring profile, secret inventory, release order, D1 inspection queries, limits, and rollback.
 
 ## Load-bearing documents (do not move without care)

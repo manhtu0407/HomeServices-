@@ -34,20 +34,6 @@ const STANDARD_LINUX_RUNNER = /^ubuntu-(?:latest|\d{2}\.\d{2})$/u
 
 export const EXCEPTIONS = [
   {
-    workflow: 'release-production.yml',
-    job: 'production-release',
-    rule: 'timeout',
-    max: 240,
-    reason: 'waits on EAS store builds for both platforms before it can attest the exact binaries',
-  },
-  {
-    workflow: 'release-production-verification.yml',
-    job: 'production-release',
-    rule: 'timeout',
-    max: 240,
-    reason: 'the same job as the strict lane, derived from it: it waits on EAS builds for a platform that has no store build',
-  },
-  {
     workflow: 'plan55-production-canary-service.yml',
     job: 'canary',
     rule: 'timeout',

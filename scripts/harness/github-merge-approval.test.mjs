@@ -55,6 +55,25 @@ test('resolves one exact merged-main PR and separate approval on its current hea
   assert.deepEqual(verifyReviewedMainMergeReceipt(receipt), [])
 })
 
+test('bounds each GitHub merge and review lookup request', async () => {
+  const requestSignals = []
+  const fetch = githubFetch({ reviews: [{
+    id: 88,
+    state: 'APPROVED',
+    commit_id: headSha,
+    submitted_at: '2026-08-23T00:59:00Z',
+    user: { login: 'kouuuuuu', type: 'User' },
+  }] })
+  await resolveReviewedMainMerge({
+    repository: 'nestscout/app', mergeCommitSha: mergeSha, requiredReviewer: 'kouuuuuu', token: 't'.repeat(40),
+  }, async (url, init) => {
+    requestSignals.push(init.signal)
+    return fetch(url, init)
+  })
+  assert.ok(requestSignals.length >= 2)
+  assert.ok(requestSignals.every((signal) => signal instanceof AbortSignal))
+})
+
 test('rejects direct pushes, stale-head approvals, self-approval, and a later non-approval', async () => {
   const input = {
     repository: 'nestscout/app', mergeCommitSha: mergeSha, requiredReviewer: 'kouuuuuu', token: 't'.repeat(40),

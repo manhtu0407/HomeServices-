@@ -12,7 +12,7 @@ export const PILLAR = {
     'governance/RULES.md #5 (real runtime evidence cannot be replaced by a source claim)',
     'governance/RULES.md #7 (human authority remains explicit)',
   ],
-  target: '.github/workflows/release-production.yml',
+  target: 'scripts/harness/production-release-steps.yml',
   layer: 'security-negative',
   siblings: ['P37-ios-release-readiness', 'P57-stage1-provider-push-receipt'],
   mutation:
@@ -52,7 +52,7 @@ describe('native push and Production release readiness', () => {
 
   it('fails Production release construction unless APNs, FCM v1, and receipt reconciliation are proven', () => {
     const releaseBundle = rootFile('scripts/harness/release-bundle.mjs')
-    const releaseWorkflow = rootFile('.github/workflows/release-production.yml')
+    const releasePipeline = rootFile('scripts/harness/production-release-steps.yml')
 
     for (const readinessKey of ['android_fcm_v1', 'ios_apns', 'push_receipt_reconciler']) {
       expect(releaseBundle).toContain(readinessKey)
@@ -63,17 +63,20 @@ describe('native push and Production release readiness', () => {
       'NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY',
     ]) {
       expect(releaseBundle).toContain(flag)
-      expect(releaseWorkflow).toContain(`test \"$${flag}\" = \"true\"`)
+      const variableRef = '$' + '{{ vars.' + flag + ' }}'
+      expect(releasePipeline).toContain(`${flag}: ${variableRef}`)
     }
   })
 
-  it('keeps the Production lane reviewerless without weakening native readiness gates', () => {
+  it('requires the configured PR approval without weakening native readiness gates', () => {
     const releaseWorkflow = rootFile('.github/workflows/release-production.yml')
+    const releaseRunner = rootFile('scripts/harness/production-release-runner.mjs')
 
     expect(releaseWorkflow).toContain('branches: [main]')
-    expect(releaseWorkflow).not.toContain('github-merge-approval.mjs')
-    expect(releaseWorkflow).not.toMatch(/--reviewer\b/u)
     expect(releaseWorkflow).not.toContain('merge-approval')
-    expect(releaseWorkflow).toContain('main-branch-merge')
+    expect(releaseRunner).toContain('github-merge-approval.mjs')
+    expect(releaseRunner).toContain('kouuuuuuuuu')
+    expect(releaseRunner, pillarWhy(PILLAR, 'the local runner consumes fail-closed native readiness inputs'))
+      .toMatch(/'NESTSCOUT_ANDROID_FCM_V1_READY'[\s\S]*'NESTSCOUT_IOS_APNS_READY'[\s\S]*'NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY'/u)
   })
 })

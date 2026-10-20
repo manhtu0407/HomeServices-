@@ -2,18 +2,19 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
+import { parseProductionReleaseArgs } from '../../../../../scripts/harness/production-release-runner.mjs'
 
 export const PILLAR = {
   id: 'P56-stage1-production-release-workflow',
   invariant:
-    'only the immutable main release lane can run the production release; provider/source and normal-UI attestation gate a clean cohort canary, three full synthetic smokes, atomic promotion, Supabase Production acceptance note, and a full-closure downloaded-source rollback',
+    'the verified local runner is the only Production release authority; exact reviewed source and release gates precede the cohort canary, three full synthetic smokes, atomic promotion, acceptance note, and downloaded-source rollback',
   authority: [
     'approved Stage 1 implementation plan (post-merge release integrity)',
     'owner-authorized Production policy (no independent GitHub reviewer gate)',
     'governance/critical.md #3 (No False Completion)',
     'governance/RULES.md #1 and #8 (safe boundaries and no fake success)',
   ],
-  target: '.github/workflows/release-production.yml',
+  target: 'scripts/harness/production-release-runner.mjs',
   layer: 'security-negative',
   siblings: [
     'P53-stage1-release-integrity',
@@ -21,18 +22,22 @@ export const PILLAR = {
     'P66-stage1-synthetic-actor-provision',
   ],
   mutation:
-    'deploy before safe binding, skip full source-closure attestation, remove an exact canary/smoke/rollback gate, or add prune/delete — this pillar turns red',
+    'deploy without the local runner preflight, skip full source-closure attestation, remove an exact canary/smoke/rollback gate, or add prune/delete — this pillar turns red',
 } as const satisfies PillarManifest
 
 const root = resolve(import.meta.dirname, '../../../../..')
+const workflow = readFileSync(resolve(root, '.github/workflows/release-production.yml'), 'utf8').replace(/\r\n/gu, '\n')
+const pipeline = readFileSync(resolve(root, 'scripts/harness/production-release-steps.yml'), 'utf8').replace(/\r\n/gu, '\n')
+const runner = readFileSync(resolve(root, 'scripts/harness/production-release-runner.mjs'), 'utf8')
+const credentials = readFileSync(resolve(root, 'scripts/harness/production-release-credentials.mjs'), 'utf8')
+const smoke = readFileSync(resolve(root, 'apps/api/scripts/stage1-synthetic-release-smoke.mjs'), 'utf8')
 
 const NO_DEPLOYMENT_RECORD = /^ {4}environment:\n {6}name: production\n {6}deployment: false$/mu
 
-function jobBlocks(source: string): Map<string, string> {
-  const lf = source.replace(/\r\n/gu, '\n')
-  const start = lf.indexOf('\njobs:\n')
-  if (start < 0) throw new Error(pillarWhy(PILLAR, 'the release workflow has no jobs: section'))
-  const jobs = lf.slice(start + '\njobs:\n'.length)
+function workflowJobs(source: string): Map<string, string> {
+  const start = source.indexOf('\njobs:\n')
+  if (start < 0) throw new Error(pillarWhy(PILLAR, 'the workflow has no jobs: section'))
+  const jobs = source.slice(start + '\njobs:\n'.length)
   const headers = [...jobs.matchAll(/^ {2}([a-z][a-z0-9-]*):$/gmu)]
   return new Map(headers.map((header, index): [string, string] => [
     header[1] as string,
@@ -41,61 +46,32 @@ function jobBlocks(source: string): Map<string, string> {
 }
 
 describe('Stage 1 production release workflow', () => {
-  const workflow = readFileSync(resolve(root, '.github/workflows/release-production.yml'), 'utf8')
-  const smoke = readFileSync(resolve(root, 'apps/api/scripts/stage1-synthetic-release-smoke.mjs'), 'utf8')
-
   it('runs only from main and never from a pull request', () => {
-    expect(workflow, pillarWhy(PILLAR, 'main is the production release authority')).toContain('branches: [main]')
-    expect(workflow, pillarWhy(PILLAR, 'PR workflows only build and test')).not.toContain('pull_request:')
-    expect(workflow, pillarWhy(PILLAR, 'production job stays on main')).toContain("github.ref == 'refs/heads/main'")
-    expect(workflow, pillarWhy(PILLAR, 'manual dispatch cannot bypass the official release lane')).not.toContain('workflow_dispatch:')
-    expect(workflow, pillarWhy(PILLAR, 'the release lane is explicitly reviewerless')).not.toContain('github-merge-approval.mjs')
-    expect(workflow, pillarWhy(PILLAR, 'the release lane has no reviewer argument')).not.toMatch(/--reviewer\b/u)
-    expect(workflow, pillarWhy(PILLAR, 'reviewer evidence is not bound into promotion')).not.toContain('merge-approval')
-    expect(workflow, pillarWhy(PILLAR, 'the promotion packet records the main-branch gate')).toContain('main-branch-merge')
-  })
-
-  it('reruns quality, SQL, generated-type, and hosted expand-only gates before deploy', () => {
-    for (const gate of [
-      'pnpm type-check',
-      'pnpm test',
-      'pnpm build',
-      'pnpm lint:comments',
-      'pnpm lint:structure',
-      'pnpm lint:workplan',
-      'pnpm lint:production-ui-copy',
-      'pnpm harness:verify',
-      'run-sql-tests',
-      'assert-expand-only.mjs',
-      'prepare-migration-workdir.mjs',
-      'hosted-state.mjs',
-      'iwevizmsedyqozxlawwl',
-      '@nestscout/home-services',
-      'c2fd8ae7-a6fa-4b6e-a9a0-df85b52ac94b',
-      'eas-project.txt',
-    ]) expect(workflow, pillarWhy(PILLAR, `release gate ${gate}`)).toContain(gate)
-    expect(workflow, pillarWhy(PILLAR, 'token-authenticated CLI link does not depend on an unrecoverable DB password'))
-      .toContain('link --project-ref "$PRODUCTION_PROJECT_REF" --yes')
-    expect(workflow, pillarWhy(PILLAR, 'release has no undeclared DB-password dependency'))
-      .not.toContain('PRODUCTION_SUPABASE_DB_PASSWORD')
-    const productionJob = workflow.slice(workflow.indexOf('  production-release:'))
-    expect(productionJob, pillarWhy(PILLAR, 'native release and rollback have enough bounded execution time'))
-      .toContain('timeout-minutes: 240')
+    expect(workflow, pillarWhy(PILLAR, 'quality and scheduled reconciliation are the only GitHub release jobs'))
+      .toContain('branches: [main]')
+    expect(workflow, pillarWhy(PILLAR, 'the workflow has no PR or manual production trigger'))
+      .not.toMatch(/^\s*(?:pull_request|workflow_dispatch):/mu)
+    expect([...workflowJobs(workflow).keys()]).toEqual(['stale-canary-reconciler', 'quality'])
+    expect(workflow, pillarWhy(PILLAR, 'GitHub Actions cannot deploy or promote Production'))
+      .not.toMatch(/functions deploy|db push --linked|--action (?:configure|promote)|eas-cli@\S+ submit/u)
+    expect(runner, pillarWhy(PILLAR, 'the local runner checks the reviewed merge and its owner approval'))
+      .toContain('github-merge-approval.mjs')
+    expect(runner).toContain('kouuuuuuuuu')
   })
 
   it('binds before one candidate deploy and attests the exact redownloaded source before smoke', () => {
-    const configure = workflow.indexOf('--action configure')
-    const binding = workflow.indexOf('runtime-release-bindings.mjs')
-    const deploy = workflow.indexOf('functions deploy mobile-api')
-    const maintainerDeploy = workflow.indexOf('functions deploy kael-matching-maintainer', deploy)
-    const sourceDownload = workflow.indexOf('--workdir artifacts/candidate-source functions download mobile-api')
-    const sourceProof = workflow.indexOf('edge-source-proof.mjs', sourceDownload)
-    const attestation = workflow.indexOf('source-deployment-attestation.mjs')
-    const actorProvision = workflow.indexOf('stage1-synthetic-actor-provision.mjs')
-    const smoke = workflow.indexOf('stage1-synthetic-release-smoke.mjs')
-    const promote = workflow.indexOf('--action promote')
-    const finalCleanup = workflow.indexOf('final-cleanup.json')
-    const acceptanceNote = workflow.indexOf('production-acceptance-note.mjs')
+    const configure = pipeline.indexOf('--action configure')
+    const binding = pipeline.indexOf('runtime-release-bindings.mjs')
+    const deploy = pipeline.indexOf('functions deploy mobile-api')
+    const maintainerDeploy = pipeline.indexOf('functions deploy kael-matching-maintainer', deploy)
+    const sourceDownload = pipeline.indexOf('--workdir artifacts/candidate-source functions download mobile-api')
+    const sourceProof = pipeline.indexOf('edge-source-proof.mjs', sourceDownload)
+    const attestation = pipeline.indexOf('source-deployment-attestation.mjs')
+    const actorProvision = pipeline.indexOf('stage1-synthetic-actor-provision.mjs')
+    const smokeStep = pipeline.indexOf('stage1-synthetic-release-smoke.mjs')
+    const promote = pipeline.indexOf('--action promote')
+    const finalCleanup = pipeline.indexOf('final-cleanup.json')
+    const acceptanceNote = pipeline.indexOf('production-acceptance-note.mjs')
     expect(configure, pillarWhy(PILLAR, 'canary lane exists before candidate Edge code')).toBeGreaterThan(0)
     expect(binding, pillarWhy(PILLAR, 'old bytes see candidate secrets only through the attested fail-closed lane')).toBeGreaterThan(configure)
     expect(deploy, pillarWhy(PILLAR, 'candidate Edge deploy follows its safe runtime binding')).toBeGreaterThan(binding)
@@ -104,21 +80,20 @@ describe('Stage 1 production release workflow', () => {
     expect(sourceProof, pillarWhy(PILLAR, 'the hosted import closure is compared to the reviewed candidate')).toBeGreaterThan(sourceDownload)
     expect(attestation, pillarWhy(PILLAR, 'the exact provider deployment is bound only after byte proof')).toBeGreaterThan(sourceProof)
     expect(actorProvision, pillarWhy(PILLAR, 'dedicated actors are safely created and permanently classified after source proof')).toBeGreaterThan(attestation)
-    expect(smoke, pillarWhy(PILLAR, 'smoke begins only after actor classification proof')).toBeGreaterThan(actorProvision)
-    expect(smoke, pillarWhy(PILLAR, 'full synthetic workflow follows source attestation')).toBeGreaterThan(attestation)
-    expect(promote, pillarWhy(PILLAR, 'atomic promotion follows smoke evidence')).toBeGreaterThan(smoke)
-    expect(finalCleanup, pillarWhy(PILLAR, 'exact cohort cleanup is proven before real traffic promotion')).toBeGreaterThan(smoke)
+    expect(smokeStep, pillarWhy(PILLAR, 'smoke begins only after actor classification proof')).toBeGreaterThan(actorProvision)
+    expect(promote, pillarWhy(PILLAR, 'atomic promotion follows smoke evidence')).toBeGreaterThan(smokeStep)
+    expect(finalCleanup, pillarWhy(PILLAR, 'exact cohort cleanup is proven before real traffic promotion')).toBeGreaterThan(smokeStep)
     expect(promote, pillarWhy(PILLAR, 'promotion follows exact cleanup proof')).toBeGreaterThan(finalCleanup)
     expect(acceptanceNote, pillarWhy(PILLAR, 'final Dev-review evidence is written in Supabase Production')).toBeGreaterThan(promote)
-    expect(workflow, pillarWhy(PILLAR, 'exactly three sequential runs are requested')).toContain('for sequence in 1 2 3')
-    expect(workflow.slice(configure, smoke).match(/functions deploy mobile-api/gu)?.length,
+    expect(pipeline, pillarWhy(PILLAR, 'exactly three sequential runs are requested')).toContain('for sequence in 1 2 3')
+    expect(pipeline.slice(configure, smokeStep).match(/functions deploy mobile-api/gu)?.length,
       pillarWhy(PILLAR, 'candidate source is deployed exactly once before smoke')).toBe(1)
-    expect(workflow.slice(configure, smoke).match(/functions deploy kael-matching-maintainer/gu)?.length,
+    expect(pipeline.slice(configure, smokeStep).match(/functions deploy kael-matching-maintainer/gu)?.length,
       pillarWhy(PILLAR, 'candidate dispatcher is deployed exactly once before smoke')).toBe(1)
-    expect(workflow.slice(sourceDownload, smoke)).toContain('functions download kael-matching-maintainer')
-    expect(workflow.slice(sourceDownload, promote)).toContain('--maintainer-source-proof')
-    expect(workflow.slice(attestation, smoke)).toContain('STAGE1_ACTOR_PROVISION_APPROVAL=')
-    expect(workflow.slice(attestation, smoke)).toContain('synthetic-actor-provision.json')
+    expect(pipeline.slice(sourceDownload, smokeStep)).toContain('functions download kael-matching-maintainer')
+    expect(pipeline.slice(sourceDownload, promote)).toContain('--maintainer-source-proof')
+    expect(pipeline.slice(attestation, smokeStep)).toContain('STAGE1_ACTOR_PROVISION_APPROVAL=')
+    expect(pipeline.slice(attestation, smokeStep)).toContain('synthetic-actor-provision.json')
   })
 
   it('downloads the hosted rollback source and aborts plus redeploys it on failure', () => {
@@ -137,16 +112,16 @@ describe('Stage 1 production release workflow', () => {
       '--source-root artifacts/rollback',
       '--source-root artifacts/rollback-proof',
       '--digest-only',
-    ]) expect(workflow, pillarWhy(PILLAR, `rollback contract ${contract}`)).toContain(contract)
-    expect(workflow, pillarWhy(PILLAR, 'path-only hashes omit imported global shared source'))
+    ]) expect(pipeline, pillarWhy(PILLAR, `rollback contract ${contract}`)).toContain(contract)
+    expect(pipeline, pillarWhy(PILLAR, 'path-only hashes omit imported global shared source'))
       .not.toContain('path-digest.mjs')
-    expect(workflow, pillarWhy(PILLAR, 'rollback commands must be checked individually')).not.toContain('set +e')
-    expect(workflow, pillarWhy(PILLAR, 'a cancelled canary must enter the same recovery path')).toContain(
+    expect(pipeline, pillarWhy(PILLAR, 'rollback commands must be checked individually')).not.toContain('set +e')
+    expect(pipeline, pillarWhy(PILLAR, 'a cancelled canary must enter the same recovery path')).toContain(
       "if: always() && (failure() || cancelled()) && steps.configure.outcome != 'skipped'",
     )
-    expect(workflow, pillarWhy(PILLAR, 'release must not delete remote functions')).not.toContain('--prune')
-    expect(workflow, pillarWhy(PILLAR, 'release must not delete remote functions')).not.toContain('functions delete')
-    expect(workflow, pillarWhy(PILLAR, 'Codex and automation do not merge')).not.toMatch(/\bgh\s+pr\s+merge\b/u)
+    expect(pipeline, pillarWhy(PILLAR, 'release must not delete remote functions')).not.toContain('--prune')
+    expect(pipeline, pillarWhy(PILLAR, 'release must not delete remote functions')).not.toContain('functions delete')
+    expect(pipeline, pillarWhy(PILLAR, 'the runner never merges GitHub pull requests')).not.toMatch(/\bgh\s+pr\s+merge\b/u)
   })
 
   it('uses real release, authorization, and confirmation failures for safe-error proof', () => {
@@ -168,48 +143,60 @@ describe('Stage 1 production release workflow', () => {
     const confirmationGuard = smoke.indexOf('await this.assertConfirmationMismatch', readiness)
     const heartbeat = smoke.indexOf("'/workers/me/matching-heartbeat'", confirmationGuard)
     const confirmation = smoke.indexOf('`/kael/chat/${sessionId}/confirm`', confirmationGuard)
-    expect(readiness, pillarWhy(PILLAR, 'the potentially long intake precedes the final reachability proof'))
-      .toBeGreaterThan(0)
-    expect(confirmationGuard, pillarWhy(PILLAR, 'the rejected confirmation guard precedes the real mutation'))
-      .toBeGreaterThan(readiness)
-    expect(heartbeat, pillarWhy(PILLAR, 'Worker foreground proof is refreshed after intake completes'))
-      .toBeGreaterThan(confirmationGuard)
-    expect(confirmation, pillarWhy(PILLAR, 'Customer confirmation follows the fresh Worker heartbeat'))
-      .toBeGreaterThan(heartbeat)
+    expect(readiness, pillarWhy(PILLAR, 'the potentially long intake precedes the final reachability proof')).toBeGreaterThan(0)
+    expect(confirmationGuard, pillarWhy(PILLAR, 'the rejected confirmation guard precedes the real mutation')).toBeGreaterThan(readiness)
+    expect(heartbeat, pillarWhy(PILLAR, 'Worker foreground proof is refreshed after intake completes')).toBeGreaterThan(confirmationGuard)
+    expect(confirmation, pillarWhy(PILLAR, 'Customer confirmation follows the fresh Worker heartbeat')).toBeGreaterThan(heartbeat)
   })
 
-  it('records a Production deployment only for the job that can change Production', () => {
-    const jobs = jobBlocks(workflow)
-    const block = (id: string): string => {
-      const found = jobs.get(id)
-      if (found === undefined) throw new Error(pillarWhy(PILLAR, `job ${id} is missing from the release workflow`))
-      return found
-    }
-    const environmentJobs = [...jobs]
-      .filter(([, body]) => /^ {4}environment:/mu.test(body))
-      .map(([id]) => id)
-      .sort()
-    expect(environmentJobs, pillarWhy(PILLAR, 'a job that receives Production secrets must be added here on purpose'))
-      .toEqual(['production-release', 'release-config-gate', 'stale-canary-reconciler'])
-    for (const id of ['stale-canary-reconciler', 'release-config-gate']) {
-      expect(block(id), pillarWhy(PILLAR, `${id} never changes Production, so its failure must not flip the Production deployment status`))
-        .toMatch(NO_DEPLOYMENT_RECORD)
-    }
+  it('runs the local pipeline only after read-only identity, review, CI, project, and credential checks', () => {
+    const required = [
+      '--untracked-files=all',
+      'github-merge-approval.mjs',
+      'verifyExactMainQualityRun',
+      'SUPABASE_ACCESS_TOKEN',
+      'PRODUCTION_SUPABASE_SERVICE_ROLE_KEY',
+      'readProductionTargetLock',
+      'project:info',
+      'no-active-candidate',
+    ]
+    for (const contract of required) expect(runner, pillarWhy(PILLAR, `preflight contract ${contract}`)).toContain(contract)
+    expect(credentials).toContain('SUPABASE_DB_PASSWORD')
+    expect(runner.indexOf('evaluateProductionPreflight')).toBeGreaterThan(-1)
+    expect(runner.indexOf('!options.execute')).toBeGreaterThan(runner.indexOf('evaluateProductionPreflight'))
+    expect(runner, pillarWhy(PILLAR, 'missing preflight evidence stops before production commands'))
+      .toContain('preflight.status !== \'PASS\'')
+    expect(runner, pillarWhy(PILLAR, 'all CLI calls are passed through secret-redacted output handling'))
+      .toContain('redactSensitiveText')
+  })
 
-    const release = block('production-release')
-    expect(release, pillarWhy(PILLAR, 'the job that changes Production always leaves a deployment record'))
-      .toMatch(/^ {4}environment: production$/mu)
-    expect(release).not.toContain('deployment: false')
-    expect(release, pillarWhy(PILLAR, 'the release starts only after the quality gates and the configuration gate'))
-      .toMatch(/^ {4}needs: \[quality, release-config-gate\]$/mu)
-    expect(release, pillarWhy(PILLAR, 'configuration presence is proven before the release job exists, not inside it'))
-      .not.toContain('test -n "$SUPABASE_ACCESS_TOKEN"')
+  it('records a deployment only for the scheduled stale-canary reconciler', () => {
+    const jobs = workflowJobs(workflow)
+    expect([...jobs.keys()].sort(), pillarWhy(PILLAR, 'GitHub Actions has only read-only jobs'))
+      .toEqual(['quality', 'stale-canary-reconciler'])
+    expect(jobs.get('stale-canary-reconciler'), pillarWhy(PILLAR, 'the reconciler is explicitly not a deployment'))
+      .toMatch(NO_DEPLOYMENT_RECORD)
+    expect(workflow, pillarWhy(PILLAR, 'quality runs on main pushes'))
+      .toContain("if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'")
+  })
 
-    const gate = block('release-config-gate')
-    expect(gate).toContain('test -n "$SUPABASE_ACCESS_TOKEN"')
-    expect(gate).toContain('test -n "$PRODUCTION_SUPABASE_SERVICE_ROLE_KEY"')
-    expect(gate, pillarWhy(PILLAR, 'the gate holds every Production secret, so it runs no repository code and no third-party action'))
-      .not.toMatch(/\buses:|\b(?:pnpm|npm|npx|node|curl)\b/u)
-    expect(gate).toMatch(/^ {4}permissions: \{\}$/mu)
+  it('parses exact-source local execution and only explicit Expo platform selections', () => {
+    const sourceSha = 'a'.repeat(40)
+    expect(parseProductionReleaseArgs(['--source-sha', sourceSha]))
+      .toEqual({ sourceSha, submitPlatform: null, execute: false })
+    expect(parseProductionReleaseArgs(['--source-sha', sourceSha, '--submit-platform', 'ios']))
+      .toEqual({ sourceSha, submitPlatform: 'ios', execute: false })
+    expect(parseProductionReleaseArgs(['--source-sha', sourceSha, '--submit-platform', 'android']))
+      .toEqual({ sourceSha, submitPlatform: 'android', execute: false })
+    expect(parseProductionReleaseArgs(['--source-sha', sourceSha, '--submit-platform', 'all']))
+      .toEqual({ sourceSha, submitPlatform: 'all', execute: false })
+    expect(() => parseProductionReleaseArgs(['--source-sha', 'main']))
+      .toThrow(/40-character lowercase Git SHA/u)
+    expect(() => parseProductionReleaseArgs(['--source-sha', sourceSha, '--submit-platform', 'public']))
+      .toThrow(/ios, android, or all/u)
+    expect(() => parseProductionReleaseArgs(['--source-sha', sourceSha, '--source-sha', sourceSha]))
+      .toThrow(/may be specified once/u)
+    expect(() => parseProductionReleaseArgs(['--source-sha', sourceSha, '--execute', '--execute']))
+      .toThrow(/may be specified once/u)
   })
 })

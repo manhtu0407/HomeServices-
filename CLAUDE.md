@@ -93,8 +93,8 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
 
 | Class | Count | What it means for you |
 |---|---|---|
-| `autonomous` | 49 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
-| `gated` | 3 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
+| `autonomous` | 48 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `gated` | 4 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
 
 A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).
 
