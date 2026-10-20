@@ -115,6 +115,22 @@ jobs:
       - name: Comment discipline
         if: ${{ !cancelled() }}
         run: node scripts/check-comment-discipline.mjs
+      # Pull requests only: a push has no reviewed base to diff against.
+      - name: Test integrity ratchet
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-test-integrity.mjs --diff "$CI_BASE_SHA"
+      - name: Added-line hygiene ratchet
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-added-source-hygiene.mjs --diff "$CI_BASE_SHA"
+      - name: Zero-comment ratchet
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-comment-discipline.mjs --diff "$CI_BASE_SHA"
       - name: Skills single-source check
         if: ${{ !cancelled() }}
         run: node scripts/check-skills-sync.mjs

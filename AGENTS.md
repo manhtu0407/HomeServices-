@@ -13,6 +13,7 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 - `governance/RULES.md` — hard product / security / AI / data / runtime / language rules.
 - `governance/critical.md` — §5 preflight, §1 task-class index to choose Tier 2, §3 gates before reporting done.
 - `governance/protocols/code-hygiene.md` — every line written (skill `kael-core-hygiene`; enforced by `pnpm lint:comments` and CI for both agents, plus a Stop hook in Claude Code only — Codex runs the command by hand).
+- `governance/protocols/solve-conflict-maximize.md` — test integrity, added-line source hygiene, and evidence for final claims (skill `kael-solve-conflict-maximize`; enforced by `pnpm lint:test-integrity`, `pnpm lint:comments --diff`, and `pnpm lint:added-hygiene` in CI for both agents, plus a Stop hook in Claude Code only — Codex runs these commands by hand before reporting done).
 - `.claude/MEMORY.md` — read last, write back at session close (see the memory row below and §3 Session Memory Gate).
 
 ### Tier 2 - by task and difficulty
@@ -38,9 +39,9 @@ Same three tiers as `CLAUDE.md`, so Codex and Claude Code enter a task through o
 
 ### Tier 3 - skills
 
-Two groups, 51 total: **Everyday (24)** and **Design (27)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
+Two groups, 52 total: **Everyday (25)** and **Design (27)**. The canonical list is `CLAUDE.md` Tier 3 — this is a pointer, not a second copy, so the two files cannot drift. Design work always enters through `kael-design-preflight`.
 
-Each skill declares a readiness class in `config/harness/manifest.json` — 48 `autonomous`, 3 `gated`. Readiness picks a lane rather than switching the skill off: `autonomous` fires with no precondition check, and `gated` carries a `## Preconditions` block plus a `## Degraded lane` naming what it still does when the dependency is absent. Every skill also declares a `closeout` (`report` or `inline`) matching its `## Close` block. `pnpm skills:contracts` fails when body and declaration disagree. Classes and meanings: `CLAUDE.md` Tier 3.
+Each skill declares a readiness class in `config/harness/manifest.json` — 49 `autonomous`, 3 `gated`. Readiness picks a lane rather than switching the skill off: `autonomous` fires with no precondition check, and `gated` carries a `## Preconditions` block plus a `## Degraded lane` naming what it still does when the dependency is absent. Every skill also declares a `closeout` (`report` or `inline`) matching its `## Close` block. `pnpm skills:contracts` fails when body and declaration disagree. Classes and meanings: `CLAUDE.md` Tier 3.
 
 Codex reads the mirrored copies in `.agents/skills/`; `.claude/skills/` is canonical and `scripts/check-skills-sync.mjs` enforces parity.
 

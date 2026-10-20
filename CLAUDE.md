@@ -58,9 +58,9 @@ Each hub routes onward to its own spokes on demand. If two docs conflict, stop a
 
 ### Tier 3 - skills
 
-Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 51 total. Choose a skill only after Tier 2 has told you the task class.
+Skills live in `.claude/skills/` (canonical), mirrored to `.agents/skills/`; parity is enforced by `scripts/check-skills-sync.mjs`. Two groups, 52 total. Choose a skill only after Tier 2 has told you the task class.
 
-**Everyday (24).** Two always-on classes, then the rest.
+**Everyday (25).** Two always-on classes, then the rest.
 
 - **Always-on, every task:** `kael-work-router`, `kael-subagent-orchestration`, `kael-core-hygiene`, `karpathy-guidelines`. The router runs first and decides which of the others fire; `kael-subagent-orchestration` then forces one explicit `local` or `delegated` decision before any task is decomposed, and never requires spawning anything (`governance/critical.md` §0). `kael-core-hygiene` and `karpathy-guidelines` govern the artifact, the router governs how the effort reaching it is spent.
 - **Always-on by path:** `kael-backend-structure` and `kael-backend-parity` fire on any change set touching `supabase/functions/**`, `supabase/migrations/**`, `packages/shared/src/contracts/**`, or `packages/shared/src/types/database/**` — **at every reach, `T` included**, and neither may appear in a `dropped:` line (`governance/protocols/work-router.md` `## Lane — by backend path`). Always-on is not permission to be ceremonial: neither may close with "nothing to report".
@@ -73,6 +73,7 @@ kael-handoff  kael-doc-audit  kael-prototype  kael-research  kael-wayfinder
 kael-codebase-memory  react-doctor  supabase  supabase-postgres-best-practices
 kael-docker  source-command-kael-mem  kael-work-router
 kael-backend-structure  kael-backend-parity  kael-ship
+kael-solve-conflict-maximize
 ```
 
 **Design (27).** One entry point: `kael-design-preflight` loads `governance/design/runtime.md` and binds the token/runtime contract. Never open a design skill without it.
@@ -92,7 +93,7 @@ kael-design-preflight -> kael-design-direction  kael-design-intelligence  kael-d
 
 | Class | Count | What it means for you |
 |---|---|---|
-| `autonomous` | 48 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
+| `autonomous` | 49 | Needs only Read/Grep/Edit, or commands that run on every platform. Fire it on any matching task — no check first. |
 | `gated` | 3 | Needs something that can legitimately be absent. Run the one-line check in its `## Preconditions`; on failure run its `## Degraded lane`, which names the work that does not need the dependency and the artifact it produces. Say which check failed. |
 
 A degraded lane is real work, not a consolation: `kael-docker` without a daemon reconciles the database debt ledger against what is on disk, and `kael-visual-qa` without a device produces the capture matrix as a runnable checklist. It is never a verdict — a lane emits a debt record, and a gate that could not run is still not a gate that passed (`governance/critical.md` §3).

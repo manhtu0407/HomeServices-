@@ -86,6 +86,7 @@ These fire on state, not on where the code lives, so they are independent of dom
 | destination clear, path unclear, **across several sessions** | `kael-wayfinder` — hands back to this router when the map exists |
 | a change is going out — push, pull request, or handoff as delivered | `kael-ship` — `pnpm ship:check` for the machine half, then the judgment it cannot make |
 | session closing, context about to compact, or handing between agents | `kael-handoff` and `source-command-kael-mem` |
+| a diff touches a test file or a protected gate, a bugfix reaches Verify or Close, or the final message claims pass, done, fixed, or pre-existing | `kael-solve-conflict-maximize` — `pnpm lint:test-integrity --working` and `pnpm lint:added-hygiene --working` for the machine half, then its Claim→Evidence block |
 
 ## Always-on — exempt from routing
 

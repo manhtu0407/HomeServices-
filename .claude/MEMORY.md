@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- [kael-solve-conflict-maximize skill](docs/memory/2026-10.md) — zero comments on added production lines via `lint:comments --diff`/`--working`, watermarks, test-integrity Stop hook and PR-only CI ratchet, Claim→Evidence close; committed to its branch; calibrated on history (11/11 deletion sweeps blocked, 565 comment findings in 40 commits).
 - **2026-10-20** Quote blocker card (KAWA S05) — card now names scope / price-evidence / both / inspection / policy per structured server fields, VI+EN, hidden once confirmed; P397 25/25, full mobile 2626 green, mutation 12 red; no Edge/DTO/price change; UNCOMMITTED, no device/live proof, S02/03 own the wrong-decline.
 - **2026-10-20** Kael recurring incident S01 (HVAC identity) — in-Case questions now carry a typed server-built Case context (service, pending slot, scrubbed facts, blockers) instead of text-only memory; owner check first, corrupt state = repair turn; P392 23/23 + mutations, api 2261 pass, deno check ok; UNCOMMITTED, edge:check/live trace NOT run, screenshot path unproven.
 - **2026-10-14** Kael natural respond (Plan §61) — guard ceiling 35 + loanwords + one guided rewrite, turn understanding (district names, answer-to-slot, loop limit 2), reply composer, per-turn telemetry; P382–P387, charter p12; UNCOMMITTED, edge:check BLOCKED, Production still v297 (no §60).
