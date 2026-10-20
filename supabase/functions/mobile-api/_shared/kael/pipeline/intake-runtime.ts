@@ -13,6 +13,11 @@ import {
   isKaelPlaybookEnabled,
 } from "../learning/playbooks/registry.ts";
 import { kaelIntakeDiagnosisPromptVersion } from "../prompts/prompts.ts";
+import {
+  normalizeClarificationReply,
+  readClarificationReply,
+  UNKNOWN_REPLY_PATTERNS,
+} from "../language/clarification-reply.ts";
 import { intakeSlotQuestion } from "../language/intake-slot-questions.ts";
 import type { IntakeEvalObservation } from "../contracts/types.ts";
 import {
@@ -175,19 +180,8 @@ export function buildIntakeObservation(input: {
 }
 
 export function isClarificationExplanationRequest(message: string) {
-  const normalized = normalizeClarificationReply(message);
-  return [
-    "nghia la sao",
-    "la sao",
-    "la nhu nao",
-    "y la gi",
-    "giai thich",
-    "noi ro hon",
-    "what do you mean",
-    "what does that mean",
-    "explain",
-    "clarify",
-  ].some((pattern) => normalized.includes(pattern));
+  const reading = readClarificationReply(message);
+  return reading.asksQuestion && !reading.carriesFacts;
 }
 
 export function isGroundedClarificationAnswer(message: string) {
@@ -201,28 +195,17 @@ export function isGroundedClarificationAnswer(message: string) {
 }
 
 export function isUnknownClarificationAnswer(message: string) {
+  if (isClarificationExplanationRequest(message)) return false;
   const clauses = message
     .split(/(?:[.!?;,\r\n]+|\bnhưng\b|\bbut\b)/iu)
     .map(normalizeClarificationReply)
     .filter(Boolean);
-  const unknownPatterns = [
-    "khong biet",
-    "khong ro",
-    "chua ro",
-    "chua biet",
-    "khong chac",
-    "not sure",
-    "unsure",
-    "do not know",
-    "dont know",
-    "don't know",
-  ];
   const hasUnknownClause = clauses.some((clause) =>
-    unknownPatterns.some((pattern) => clause.includes(pattern))
+    UNKNOWN_REPLY_PATTERNS.some((pattern) => clause.includes(pattern))
   );
   if (!hasUnknownClause) return false;
   return !clauses.some((clause) =>
-    !unknownPatterns.some((pattern) => clause.includes(pattern)) &&
+    !UNKNOWN_REPLY_PATTERNS.some((pattern) => clause.includes(pattern)) &&
     clause.split(" ").filter(Boolean).length >= 3
   );
 }
@@ -240,13 +223,6 @@ export function buildClarificationExplanationQuestion(
   return language === "en"
     ? `Kael needs this detail to confirm the work scope. ${focusedQuestion}`
     : `Kael cần chi tiết này để xác định đúng phạm vi công việc. ${focusedQuestion}`;
-}
-
-function normalizeClarificationReply(value: string) {
-  return value.trim().toLowerCase().normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .replace(/\s+/g, " ");
 }
 
 export function buildFocusedClarificationQuestion(
