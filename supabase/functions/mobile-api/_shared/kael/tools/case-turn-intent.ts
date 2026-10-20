@@ -12,11 +12,28 @@ import { circuitAwareProviderCandidatesForPurpose } from "../kael-providers/rout
 import { maxTokensForPurpose } from "../kael-providers/routing.config.ts";
 import { callStructuredAI, type StructuredAIInvoker } from "../kael-providers/structured-call.ts";
 import { buildKaelSystemPrompt } from "../prompts/system-prompt.ts";
+import { isClarificationExplanationRequest } from "../pipeline/intake-runtime.ts";
 import { scrubSensitiveForLLM } from "../pipeline/utils.ts";
 import type { DbClient } from "../../platform/db.ts";
 
-// Below this the router keeps today's behaviour and treats the turn as new case information.
+// Below this the model's reading is discarded and the deterministic minimum-risk rules decide.
 export const CASE_TURN_INTENT_MIN_CONFIDENCE = 0.6;
+
+// Why the model's reading was not used.
+export type CaseTurnFallbackReason =
+  | "empty_message"
+  | "policy_denied"
+  | "route_unavailable"
+  | "provider_unavailable"
+  | "schema_invalid"
+  | "low_confidence";
+
+// How the deterministic rules read the message.
+export type CaseTurnFallbackBasis =
+  | "standalone_question"
+  | "pending_slot_reply"
+  | "case_information"
+  | "ambiguous";
 
 export type CaseSlotAnswerKind = "answered" | "unknown" | "asks_why" | "other";
 
@@ -57,6 +74,8 @@ export type CaseTurnIntentResult = {
   readonly intent: EdgeKaelTurnIntent;
   readonly confidence: number;
   readonly fallbackUsed: boolean;
+  readonly fallbackReason?: CaseTurnFallbackReason;
+  readonly fallbackBasis?: CaseTurnFallbackBasis;
   readonly slotUnderstanding?: CaseSlotUnderstanding;
   readonly telemetry?: {
     readonly provider: "deepseek";
@@ -66,11 +85,54 @@ export type CaseTurnIntentResult = {
   };
 };
 
-const FALLBACK: CaseTurnIntentResult = {
-  intent: "provide_information",
-  confidence: 0,
-  fallbackUsed: true,
-};
+// A fallback can only name an intent that changes nothing: a question is answered from the case as it
+// stands, case information goes to intake. It never names a confirmation, worker-quote or price intent.
+const WHY_ASK = /\b(?:tai sao|vi sao|sao lai|sao chua|sao khong|ly do|why|how come)\b/;
+const QUESTION_START = /^(?:sao|the nao|nhu the nao|bao nhieu|co phai|la gi|how|what|when|where)\b/;
+const ACKNOWLEDGEMENT =
+  /^(?:(?:ok|oke|okay|yes|u|uh|vang|da|duoc|dong y|xac nhan|dat|luon|di|nhe|nha|giup|cho|minh|toi|book|confirm|go ahead|proceed)\s*)+$/;
+
+function normalizeForRules(value: string): string {
+  return value.trim().toLowerCase().normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/\s+/g, " ");
+}
+
+export function deterministicTurnIntent(input: {
+  message: string;
+  hasPendingSlot: boolean;
+}): { readonly intent: EdgeKaelTurnIntent; readonly basis: CaseTurnFallbackBasis } {
+  const normalized = normalizeForRules(input.message);
+  if (!normalized) return { intent: "ask_question", basis: "ambiguous" };
+  const hasDigit = /\d/.test(normalized);
+  const questionMark = /[?？]/.test(input.message);
+  const explicitWhy = WHY_ASK.test(normalized) || isClarificationExplanationRequest(input.message);
+  if (explicitWhy && (questionMark || !hasDigit)) {
+    return { intent: "ask_question", basis: "standalone_question" };
+  }
+  if (!input.hasPendingSlot && !hasDigit && (questionMark || QUESTION_START.test(normalized))) {
+    return { intent: "ask_question", basis: "standalone_question" };
+  }
+  if (input.hasPendingSlot) return { intent: "provide_information", basis: "pending_slot_reply" };
+  if (!hasDigit && ACKNOWLEDGEMENT.test(normalized)) return { intent: "ask_question", basis: "ambiguous" };
+  return { intent: "provide_information", basis: "case_information" };
+}
+
+function fallbackResult(
+  input: { message: string; pendingSlot?: { readonly slot: string } | null },
+  reason: CaseTurnFallbackReason,
+  extra: Pick<CaseTurnIntentResult, "confidence" | "slotUnderstanding" | "telemetry"> = { confidence: 0 },
+): CaseTurnIntentResult {
+  const decided = deterministicTurnIntent({ message: input.message, hasPendingSlot: Boolean(input.pendingSlot) });
+  return {
+    intent: decided.intent,
+    fallbackUsed: true,
+    fallbackReason: reason,
+    fallbackBasis: decided.basis,
+    ...extra,
+  };
+}
 
 const INTENT_GUIDE = {
   provide_information: "adds or answers details about the problem, item, size, location, time or photo",
@@ -99,7 +161,7 @@ export async function classifyCaseTurnIntent(input: {
   invoke?: StructuredAIInvoker;
 }): Promise<CaseTurnIntentResult> {
   const message = scrubSensitiveForLLM(sanitizeForLLM(input.message)).slice(0, 1_000);
-  if (!message.trim()) return FALLBACK;
+  if (!message.trim()) return fallbackResult({ message, pendingSlot: input.pendingSlot }, "empty_message");
   const permission = evaluateKaelPermissionGate({
     purpose: "case_turn_intent",
     actor: "customer",
@@ -110,10 +172,11 @@ export async function classifyCaseTurnIntent(input: {
     topicSource: "deterministic_rule",
     boundarySignal: false,
   });
-  if (!permission.allowed) return FALLBACK;
+  const ruleInput = { message, pendingSlot: input.pendingSlot };
+  if (!permission.allowed) return fallbackResult(ruleInput, "policy_denied");
 
   const route = circuitAwareProviderCandidatesForPurpose("case_turn_intent")[0];
-  if (!route || route.provider !== "deepseek") return FALLBACK;
+  if (!route || route.provider !== "deepseek") return fallbackResult(ruleInput, "route_unavailable");
 
   const transcript = input.recentTurns
     .filter((turn) => turn.text?.trim())
@@ -188,7 +251,7 @@ export async function classifyCaseTurnIntent(input: {
     if (result) {
       console.warn("case turn intent unavailable", { purpose: request.purpose, code: result.code });
     }
-    return FALLBACK;
+    return fallbackResult(ruleInput, result?.code === "SCHEMA_INVALID" ? "schema_invalid" : "provider_unavailable");
   }
   const slotUnderstanding = input.pendingSlot
     ? understandSlotAnswer(result.data, input.pendingSlot.slot, input.openSlots ?? [])
@@ -200,7 +263,7 @@ export async function classifyCaseTurnIntent(input: {
     costUsd: result.usage.costUsd,
   };
   if (result.data.confidence < CASE_TURN_INTENT_MIN_CONFIDENCE) {
-    return { intent: "provide_information", confidence: result.data.confidence, fallbackUsed: true, slotUnderstanding, telemetry };
+    return fallbackResult(ruleInput, "low_confidence", { confidence: result.data.confidence, slotUnderstanding, telemetry });
   }
   return { intent: result.data.intent, confidence: result.data.confidence, fallbackUsed: false, slotUnderstanding, telemetry };
 }

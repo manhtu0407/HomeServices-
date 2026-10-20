@@ -7,7 +7,7 @@ import { prepareKaelChatPrePipeline } from '../../../../../../supabase/functions
 import { diagnosisScopeWithQuestion } from '../../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-artifact'
 
 export const PILLAR = {
-  id: 'P394-kael-clarification-why-flow',
+  id: 'P396-kael-clarification-why-flow',
   invariant:
     'with no model reading of the reply, a WHY question on a pending HVAC slot is explained and never stored as the unit answer, while a real unit answer is stored; neither path prices, creates a Job or a payment, or changes the service',
   authority: [
@@ -17,7 +17,7 @@ export const PILLAR = {
   ],
   target: 'supabase/functions/mobile-api/_shared/domains/kael-chat/clarification.service.ts',
   layer: 'integration',
-  siblings: ['P393-kael-clarification-reply-reading', 'P386-kael-clarification-loop-breaker'],
+  siblings: ['P395-kael-clarification-reply-reading', 'P386-kael-clarification-loop-breaker'],
   mutation:
     'make isClarificationExplanationRequest return false for "Tại sao chưa đủ dữ kiện?" — the question is stored as the unit answer and the explanation case turns red',
 } as const satisfies PillarManifest
