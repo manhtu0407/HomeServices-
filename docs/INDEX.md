@@ -49,6 +49,8 @@ Dated filename (`*-YYYYMMDD.md`) = a point-in-time contract/plan/audit. Undated 
 - [`ops/kael-model-health.md`](ops/kael-model-health.md) — routing audit and optional admin health probe.
 - [`ops/kael-incident-response.md`](ops/kael-incident-response.md) — kill-switch, provider, spend, unsafe-output, and escalation response.
 
+- [`ops/kael-release-provenance-runbook.md`](ops/kael-release-provenance-runbook.md) — read-only procedure to tie a refused or stalled Kael turn to its route, refusal stage, canonical service and release identity; the offline provenance report (`node scripts/harness/release-provenance.mjs`) and the evidence rubric.
+
 - [Kael Chat recovery handoff (2026-09-28)](ops/kael-chat-recovery-handoff-20260928.md) — Current implementation, verification, Production incident evidence, and safe continuation steps.
 
 ## Agent tooling

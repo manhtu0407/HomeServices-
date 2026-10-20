@@ -32,6 +32,13 @@ const SUPABASE_IMAGES = Object.freeze([
     tag: '2.8.1',
     digest: 'sha256:e21b0b793879ab96720ed4188f9441260273f4bf775bcbff8d435e019ffb759a',
   },
+  // Excluded from `supabase start`, but `gen types` and `db lint` pull it on demand from the
+  // rate-limited ECR mirror; priming from GHCR keeps those steps off that pull.
+  {
+    service: 'postgres-meta',
+    tag: 'v0.96.4',
+    digest: 'sha256:97c0d82ff90b54c04992ca1a5f2253acd89775fd288f67bdeac7db54ab6d5343',
+  },
   {
     service: 'edge-runtime',
     tag: 'v1.73.13',
