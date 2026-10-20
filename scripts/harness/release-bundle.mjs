@@ -284,6 +284,7 @@ export function assertCleanReleaseWorktree(rootInput = ROOT) {
 }
 
 export function checkHarnessRelease(release, options = {}) {
+  const verifySourceIdentity = options.verifySourceIdentity !== false
   if (!release || typeof release !== 'object' || Array.isArray(release)) return ['release artifact is invalid']
   const problems = []
   if (release.releaseLane === 'plan55-production-only') {
@@ -305,7 +306,14 @@ export function checkHarnessRelease(release, options = {}) {
       const baseline = release.backendHostedBaseline
       requireBackendHostedBaseline(baseline)
       const expected = deriveBackendActiveClientCompatibility(baseline)
-      if (canonicalJson(release.transactionCoverage) !== canonicalJson(backendTransactionCoverage(ROOT))) throw new Error('strict coverage identity mismatch')
+      const coverage = release.transactionCoverage
+      if (!coverage || Object.keys(coverage).sort().join(',') !== 'boundAssertionsRequired,entryCount,manifestSha256' ||
+          !/^[0-9a-f]{64}$/u.test(coverage.manifestSha256 ?? '') ||
+          !Number.isSafeInteger(coverage.entryCount) || coverage.entryCount < 1 ||
+          !Number.isSafeInteger(coverage.boundAssertionsRequired) || coverage.boundAssertionsRequired < 1) {
+        throw new Error('strict coverage evidence is invalid')
+      }
+      if (verifySourceIdentity && canonicalJson(coverage) !== canonicalJson(backendTransactionCoverage(ROOT))) throw new Error('strict coverage identity mismatch')
       if (canonicalJson(expected) !== canonicalJson(release.activeClientCompatibility)) throw new Error('client identity mismatch')
       if (!/^[0-9a-f]{64}$/u.test(release.backendHostedStateSha256 ?? '')) throw new Error('missing hosted digest')
       if (options.hostedBeforeBytes !== undefined) {
@@ -325,8 +333,10 @@ export function checkHarnessRelease(release, options = {}) {
             canonicalJson(expectedBaseline) !== canonicalJson(baseline)) throw new Error('hosted snapshot mismatch')
       }
       if (release.plan55AppliedMigrationSnapshot !== undefined) throw new Error('backend lane requires source migration inventory')
-      const source = JSON.parse(readFileSync(resolve(ROOT, 'config/harness/migration-inventory.json'), 'utf8'))
-      if (canonicalJson(source) !== canonicalJson(release.migrationInventory)) throw new Error('backend lane requires full source migrations')
+      if (verifySourceIdentity) {
+        const source = JSON.parse(readFileSync(resolve(ROOT, 'config/harness/migration-inventory.json'), 'utf8'))
+        if (canonicalJson(source) !== canonicalJson(release.migrationInventory)) throw new Error('backend lane requires full source migrations')
+      }
     } catch { problems.push('backend release does not preserve its hosted Production client baseline') }
   } else if (release.activeClientCompatibility !== undefined) {
     problems.push('active client compatibility is only valid for the Plan 55 release lane')
@@ -357,9 +367,11 @@ export function checkHarnessRelease(release, options = {}) {
   if (!['1.0.0', '1.1.0'].includes(release.schemaVersion)) problems.push('release schema version is invalid')
   if (release.schemaVersion === '1.1.0' && release.environment === 'production') {
     try {
-      if (JSON.stringify(canonicalize(release.systemHealthObserver)) !==
+      if (verifySourceIdentity && JSON.stringify(canonicalize(release.systemHealthObserver)) !==
           JSON.stringify(canonicalize(systemHealthObserverReleaseIdentity(ROOT)))) {
         problems.push('system health observer release identity does not match repository sources')
+      } else if (!validSystemHealthObserverIdentity(release.systemHealthObserver)) {
+        problems.push('system health observer release identity is invalid')
       }
     } catch {
       problems.push('system health observer release identity is invalid')
@@ -445,6 +457,22 @@ export function checkHarnessRelease(release, options = {}) {
   const expectedBundle = sha256(canonicalJson({ ...release, bundleSha256: undefined }))
   if (release.bundleSha256 !== expectedBundle) problems.push('release bundle checksum mismatch')
   return problems
+}
+
+function validSystemHealthObserverIdentity(observer) {
+  return observer?.schemaVersion === 'cloudflare-admin-observer.v1' &&
+    observer.profileId === 'cloudflare-admin-v1' && observer.environment === 'production' &&
+    observer.projectRef === 'iwevizmsedyqozxlawwl' &&
+    observer.supabaseUrl === 'https://iwevizmsedyqozxlawwl.supabase.co' &&
+    observer.cloudflareAccountId === '45dec251ed1c9627256f9b6ba24bcdff' &&
+    observer.workerName === 'nestscout-system-health-observer' &&
+    Array.isArray(observer.workerCronSchedules) && observer.workerCronSchedules.length > 0 &&
+    Array.isArray(observer.workerInputs) && observer.workerInputs.length > 0 &&
+    observer.d1Database?.binding === 'DB' && observer.d1Database.name === 'nestscout-system-health-observer' &&
+    observer.d1Database.id === '33d39ec6-73a4-44e6-b030-fb9ee3e4f281' &&
+    /^[0-9a-f]{64}$/u.test(observer.workerBundleSha256 ?? '') &&
+    /^[0-9a-f]{64}$/u.test(observer.d1MigrationsSha256 ?? '') &&
+    /^[0-9a-f]{64}$/u.test(observer.edgeFunction?.sha256 ?? '')
 }
 
 function backendTransactionCoverage(root) {

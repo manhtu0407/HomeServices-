@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { dirname, resolve } from 'node:path'
 import test from 'node:test'
+import { readHostedReleaseArtifact } from './hosted-release-artifact.mjs'
 import {
   assertCleanReleaseWorktree,
   buildHarnessRelease,
@@ -466,4 +467,37 @@ test('successive backend releases preserve the exact older mobile contract epoch
   assert.equal(release.activeClientCompatibility.gitSha, plan55ActiveClientCompatibility.gitSha)
   assert.equal(release.activeClientCompatibility.contractEpoch, 2)
   assert.deepEqual(checkHarnessRelease(release, { hostedBeforeBytes: bytes }), [])
+})
+
+test('hosted historical backend artifacts validate their stored source identities', async () => {
+  const release = structuredClone(buildHarnessRelease({ environment: 'production', lane: 'backend-system-health',
+    gitSha: 'f'.repeat(40), providerReadiness: pushUnready, requireCleanWorktree: false,
+    hostedBeforeBytes: hostedBeforeBytes() }))
+  release.transactionCoverage.manifestSha256 = 'b'.repeat(64)
+  release.migrationInventory.entries[0].sha256 = 'a'.repeat(64)
+  release.migrationInventory.migrationsSha256 = createHash('sha256').update(
+    release.migrationInventory.entries.map((entry) => `${entry.version}:${entry.name}:${entry.sha256}\n`).join(''),
+  ).digest('hex')
+  release.migrationInventorySha256 = createHash('sha256').update(`${JSON.stringify(release.migrationInventory, null, 2)}\n`).digest('hex')
+  release.systemHealthObserver.workerBundleSha256 = 'c'.repeat(64)
+  const rehash = () => {
+    const behaviorHash = createHash('sha256').update(canonicalJson({
+      ...release, releaseId: undefined, bundleSha256: undefined,
+    })).digest('hex')
+    release.releaseId = `harness-${release.gitSha.slice(0, 12)}-${behaviorHash.slice(0, 12)}`
+    release.bundleSha256 = createHash('sha256').update(canonicalJson({
+      ...release, bundleSha256: undefined,
+    })).digest('hex')
+  }
+  rehash()
+
+  assert.ok(checkHarnessRelease(release).includes('backend release does not preserve its hosted Production client baseline'))
+  assert.ok(checkHarnessRelease(release).includes('system health observer release identity does not match repository sources'))
+  assert.deepEqual(checkHarnessRelease(release, { verifySourceIdentity: false }), [])
+  const loaded = await readHostedReleaseArtifact({
+    environment: 'production', projectRef: 'iwevizmsedyqozxlawwl',
+    projectUrl: 'https://iwevizmsedyqozxlawwl.supabase.co', serviceRoleKey: 'test-key',
+    releaseId: release.releaseId,
+  }, async () => new Response(JSON.stringify([{ release_artifact: release }]), { status: 200 }))
+  assert.deepEqual(loaded, release)
 })
