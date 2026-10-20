@@ -15,6 +15,7 @@ import type { JobStatus, KaelAssistantInput } from "../../../../_shared/domain.t
 import type { NormalChatSearchResult } from "../../kael/tools/normal-chat-search.ts";
 import { asString, nullableString } from "../../platform/coercions.ts";
 import { db } from "../../platform/db.ts";
+import { traceAssistantTurn } from "../../kael/agents/customer-assistant-trace.ts";
 
 const CUSTOMER_CASE_ACTIVE_STATUSES: readonly JobStatus[] = [
   "awaiting_customer_confirm",
@@ -50,6 +51,8 @@ export async function answerKaelAssistant(
     response?: KaelResponseReporter;
     // Internal callers only: the trace names providers and policies and never belongs in a public response.
     includeTelemetry?: boolean;
+    // The caller records the trace itself, with case facts this function does not have.
+    traceHandledByCaller?: boolean;
   } = {},
 ) {
   const client = db(ctx);
@@ -130,6 +133,18 @@ export async function answerKaelAssistant(
   if (answer.normalChatImageAnalysis) {
     options.onNormalChatImageAnalysis?.(answer.normalChatImageAnalysis);
   }
+  if (!options.traceHandledByCaller) {
+    traceAssistantTurn(
+      input.surface === "customer_case" ? "assistant_case" : "assistant_normal",
+      ctx,
+      answer,
+      {
+        message: input.message,
+        canonicalService: nullableString(job?.service_type) ?? input.service_type ?? null,
+        surface: input.surface,
+      },
+    );
+  }
   return {
     answer: answer.answer,
     safety_notes: answer.safety_notes,
@@ -140,7 +155,7 @@ export async function answerKaelAssistant(
     fallback_used: answer.fallback_used,
     public_reasoning_summary: answer.public_reasoning_summary,
     ...(options.includeTelemetry
-      ? { trace: answer.trace, regenerated: answer.regenerated === true }
+      ? { trace: answer.trace, regenerated: answer.regenerated === true, decision: answer.decision }
       : {}),
   };
 }
