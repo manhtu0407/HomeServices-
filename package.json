@@ -68,6 +68,8 @@
     "harness:promotion:plan55:check": "node scripts/run.mjs run-node scripts/harness/promotion.mjs --check-plan55",
     "harness:verify": "node scripts/run.mjs run-node scripts/harness/verify.mjs",
     "ship:check": "node scripts/run.mjs run-node scripts/check-ship-ready.mjs",
+    "release:production": "node scripts/run.mjs run-node scripts/harness/production-release-runner.mjs",
+    "release:credentials:set": "node scripts/run.mjs run-node scripts/harness/production-release-credentials.mjs set",
     "design:intelligence": "node scripts/run.mjs run-node scripts/design/kael-design-intelligence.mjs",
     "design:direction": "node scripts/run.mjs run-node scripts/design/kael-design-direction.mjs",
     "design:preflight": "node scripts/run.mjs run-node scripts/design/kael-design-preflight.mjs",

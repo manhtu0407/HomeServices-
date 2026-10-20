@@ -1,0 +1,1 @@
+export const STALE_CANDIDATE_TIMEOUT_MS = 2 * 60 * 60 * 1_000

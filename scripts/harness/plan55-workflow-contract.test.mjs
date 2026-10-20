@@ -1000,7 +1000,6 @@ test('API JSON evidence is emitted by Vitest without dropping the Node contract 
 
   for (const path of [
     '.github/workflows/release-production.yml',
-    '.github/workflows/release-production-verification.yml',
   ]) {
     const workflow = readFileSync(path, 'utf8')
     assert.match(workflow, /pnpm test:api --reporter=default --reporter=json/u, path)

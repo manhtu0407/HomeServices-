@@ -14,6 +14,7 @@ import { verifyStage1PromotionPacket } from './stage1-promotion-packet.mjs'
 import { verifyEdgeSourceProof } from './edge-source-proof.mjs'
 import { verifyStage1StagingValidationPacket } from './stage1-staging-validation-packet.mjs'
 import { verifyBackendPromotionPacket } from './backend-system-health-promotion.mjs'
+import { STALE_CANDIDATE_TIMEOUT_MS } from './release-control-timing.mjs'
 import {
   loadPlan55ProductionOnlyPolicy,
   resolvePlan55PairedWavePreregistration,
@@ -244,7 +245,7 @@ async function reconcileStaleReleaseControl(client, now = Date.now()) {
   }
   const startedAt = Date.parse(before.candidate_started_at ?? '')
   if (!Number.isFinite(startedAt)) throw new Error('hosted candidate start time is invalid')
-  if (now - startedAt < 2 * 60 * 60 * 1_000) {
+  if (now - startedAt < STALE_CANDIDATE_TIMEOUT_MS) {
     return { action: 'reconcile-stale', mode: 'candidate_not_stale', before, after: before }
   }
   const evidenceSha256 = createHash('sha256').update([

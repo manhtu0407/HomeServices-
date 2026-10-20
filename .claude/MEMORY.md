@@ -4,6 +4,7 @@ This is the single canonical AI-agent memory file. Read it last after `critical.
 
 The active Recall Index is intentionally short. Full entry detail lives in `docs/memory/<YYYY-MM>.md`; fetch only the entry needed. Newest first.
 
+- 2026-10-20 Local Stage 1 release runner — `kael-ship` có preflight exact-source và local Stage 1/Expo lanes; scoped PAT nằm trong OS credential store, còn Production/EAS thật chưa chạy.
 - [Reuse-Before-Build Ladder + debt ledger + audit](docs/memory/2026-09.md) — Ponytail-inspired, folded into always-on `karpathy-guidelines` (no new skill); `verify-reuse-ladder.mjs` Stop hook, `docs/reuse-ladder-debt.md`, `pnpm audit:reuse-ladder`; first pass cited the source unread — fixed same day; no locked file touched.
 
 **Writing back is mandatory, not optional.** At session close, write the entry or state why the Session Memory Gate does not apply (`governance/critical.md` §3). Claude Code runs `/kael-mem`; Codex does the same steps by hand. One line here, full entry in the period file. Where things go and what belongs: [`docs/memory/INDEX.md`](../docs/memory/INDEX.md).

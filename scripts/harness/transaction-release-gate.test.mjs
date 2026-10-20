@@ -126,8 +126,8 @@ for (const [workflow, mode] of [
     assert.equal(hasRequiredGate(source.replace(mode, ''), mode), false)
     assert.equal(hasRequiredGate(source.replace('--reporter=json', ''), mode), false)
     if (workflow === 'release-production.yml') {
-      assert.ok(source.indexOf('--require-behavioral') < source.indexOf('  production-release:'))
-      assert.match(source, /production-release:[\s\S]*?needs: \[quality, release-config-gate\]/u)
+      assert.doesNotMatch(source, /^ {2}production-release:$/mu)
+      assert.doesNotMatch(source, /^ {2}release-config-gate:$/mu)
     }
   })
 }

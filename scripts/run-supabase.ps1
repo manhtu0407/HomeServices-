@@ -1,9 +1,28 @@
 $ErrorActionPreference = "Stop"
 $SupabaseArgs = $args
+if ($SupabaseArgs.Count -gt 0 -and [string]$SupabaseArgs[0] -eq "--") {
+  $SupabaseArgs = @($SupabaseArgs | Select-Object -Skip 1)
+}
 $ProductionProjectRef = "iwevizmsedyqozxlawwl"
 . (Join-Path $PSScriptRoot "resolve-workspace-pnpm.ps1")
 
 $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Path
+$linkedWorkdir = $repoRoot
+
+for ($index = 0; $index -lt $SupabaseArgs.Count; $index++) {
+  $argument = [string]$SupabaseArgs[$index]
+  if ($argument -eq "--workdir" -and $index + 1 -lt $SupabaseArgs.Count) {
+    $candidate = [string]$SupabaseArgs[$index + 1]
+    if (-not [string]::IsNullOrWhiteSpace($candidate) -and -not $candidate.StartsWith("--")) {
+      $candidatePath = if ([System.IO.Path]::IsPathRooted($candidate)) { $candidate } else { Join-Path $repoRoot $candidate }
+      if (Test-Path -LiteralPath $candidatePath) { $linkedWorkdir = (Resolve-Path -LiteralPath $candidatePath).Path }
+    }
+  } elseif ($argument -match '^--workdir=(.+)$') {
+    $candidate = $Matches[1]
+    $candidatePath = if ([System.IO.Path]::IsPathRooted($candidate)) { $candidate } else { Join-Path $repoRoot $candidate }
+    if (Test-Path -LiteralPath $candidatePath) { $linkedWorkdir = (Resolve-Path -LiteralPath $candidatePath).Path }
+  }
+}
 
 function Assert-ProductionSupabaseTarget {
   param([object[]]$Arguments)
@@ -42,7 +61,7 @@ function Assert-ProductionSupabaseTarget {
       throw "Supabase CLI database URL overrides are locked; use the registered Production project or --local."
     }
     if ($argument -eq "--linked") {
-      $linkedRefPath = Join-Path $repoRoot "supabase\.temp\project-ref"
+      $linkedRefPath = Join-Path $linkedWorkdir "supabase\.temp\project-ref"
       if (-not (Test-Path -LiteralPath $linkedRefPath)) {
         throw "Supabase linked target is locked until the exact Production project ref is recorded."
       }
