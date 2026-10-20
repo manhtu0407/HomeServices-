@@ -10,6 +10,7 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-20** Seed fixture + price-authority test — seed.sql failure was psql-autocommit vs deferred freeze trigger (CLI single-tx loads it) PLUS missing `commission_level` (job `...0010` left with INVALID_FROZEN_COMMISSION_TERMS); fixed, test split; price property HOLDS; UNCOMMITTED, 22 other SQL reds are env (permission/segfault), CI never runs full-chain seed.
 - **2026-10-20** Quote blocker card (KAWA S05) — card now names scope / price-evidence / both / inspection / policy per structured server fields, VI+EN, hidden once confirmed; P397 25/25, full mobile 2626 green, mutation 12 red; no Edge/DTO/price change; UNCOMMITTED, no device/live proof, S02/03 own the wrong-decline.
 - **2026-10-20** Kael recurring incident S01 (HVAC identity) — in-Case questions now carry a typed server-built Case context (service, pending slot, scrubbed facts, blockers) instead of text-only memory; owner check first, corrupt state = repair turn; P392 23/23 + mutations, api 2261 pass, deno check ok; UNCOMMITTED, edge:check/live trace NOT run, screenshot path unproven.
 - **2026-10-14** Kael natural respond (Plan §61) — guard ceiling 35 + loanwords + one guided rewrite, turn understanding (district names, answer-to-slot, loop limit 2), reply composer, per-turn telemetry; P382–P387, charter p12; UNCOMMITTED, edge:check BLOCKED, Production still v297 (no §60).
