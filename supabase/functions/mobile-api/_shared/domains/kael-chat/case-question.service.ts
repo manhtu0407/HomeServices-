@@ -18,6 +18,9 @@ import {
   latestQuoteReadinessTurn,
 } from "./evidence-gap-policy.ts";
 import { appendKaelSystemTurn } from "./session-store.ts";
+import { assistantTraceFields } from "../../kael/agents/customer-assistant-trace.ts";
+import { buildKaelTurnTrace, logKaelTurnTrace, type KaelTurnTrace, type KaelTurnTraceInput } from "../../platform/turn-trace.ts";
+import { pendingClarificationSlotOf, slotAskCountsOf } from "./case-work-artifact.ts";
 
 export type CaseTurnRouting = {
   readonly intent: EdgeKaelTurnIntent;
@@ -106,7 +109,7 @@ function unreadableCaseText(language: "vi" | "en") {
     : "Kael chưa đọc được thông tin yêu cầu đã lưu của bạn nên chưa thể trả lời câu hỏi này. Yêu cầu của bạn vẫn giữ nguyên. Bạn hãy mở lại yêu cầu hoặc liên hệ hỗ trợ để Kael kiểm tra.";
 }
 
-export async function answerKaelCaseQuestion(input: {
+type CaseQuestionInput = {
   ctx: MobileApiContext;
   client: DbClient;
   sessionId: string;
@@ -115,7 +118,39 @@ export async function answerKaelCaseQuestion(input: {
   language: "vi" | "en";
   secrets: EdgeAiSecrets;
   routing: CaseTurnRouting;
-}) {
+};
+
+// Observability only: a failure to build the trace leaves the customer's turn untouched.
+function caseTurnTrace(
+  input: CaseQuestionInput,
+  quoteTurn: Record<string, unknown> | null,
+  fields: Omit<KaelTurnTraceInput, "identity" | "route">,
+): KaelTurnTrace | null {
+  try {
+    const artifact = kaelDiagnosisScopeArtifactSchema.safeParse(input.session.diagnosis_scope);
+    const nextAction = artifact.success ? artifact.data.next_action : null;
+    return buildKaelTurnTrace({
+      identity: input.ctx,
+      route: "case_work_question",
+      canonicalService: input.session.service_type,
+      casePhase: input.session.case_phase,
+      pendingSlot: artifact.success
+        ? pendingClarificationSlotOf(artifact.data, slotAskCountsOf(input.session.safe_metadata))
+        : undefined,
+      missingFactCount: artifact.success ? artifact.data.missing_facts.length : undefined,
+      intent: input.routing.intent,
+      intentSource: input.routing.source,
+      quoteReadiness: quoteTurn?.quote_readiness,
+      priceGapReason: quoteTurn?.price_gap_reason,
+      nextActionReason: nextAction?.kind === "escalate" ? nextAction.reason : undefined,
+      ...fields,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function answerKaelCaseQuestion(input: CaseQuestionInput) {
   assertCaseContextOwner(input.ctx, input.sessionId, input.session);
   const quoteTurn = await latestQuoteReadinessTurn(input.client, input.sessionId);
   const caseContext = buildCaseAssistantContext({ session: input.session, quoteTurn });
@@ -126,6 +161,7 @@ export async function answerKaelCaseQuestion(input: {
   let text: string;
   let fallbackUsed = false;
   let telemetry = telemetryFromTrace(undefined, "template");
+  let traceFields: Omit<KaelTurnTraceInput, "identity" | "route"> = { stage: "answer_unavailable", fallbackUsed: true };
   try {
     const answer = await answerKaelAssistant(input.ctx, {
       language: input.language,
@@ -136,6 +172,12 @@ export async function answerKaelCaseQuestion(input: {
       memorySummary: caseSummaryForAnswer(input.session),
       previousTurns: await readCaseRecentTurns(input.client, input.sessionId),
       includeTelemetry: true,
+      traceHandledByCaller: true,
+    });
+    traceFields = assistantTraceFields(answer, {
+      message: input.message,
+      canonicalService: input.session.service_type,
+      surface: "customer_normal",
     });
     const notes = answer.safety_notes.filter((note) => note.trim().length > 0);
     text = notes.length > 0
@@ -161,6 +203,8 @@ export async function answerKaelCaseQuestion(input: {
     exclude: ["ask_question"],
   });
   const currentStatus = asKaelChatStatus(input.session.status);
+  const turnTrace = caseTurnTrace(input, quoteTurn, traceFields);
+  if (turnTrace) logKaelTurnTrace(turnTrace);
   await appendKaelSystemTurn(input.client, input.sessionId, {
     contentType: "clarification",
     text: text.slice(0, 4_000),
@@ -173,6 +217,7 @@ export async function answerKaelCaseQuestion(input: {
       ...(input.routing.fallbackReason ? { turn_intent_fallback_reason: input.routing.fallbackReason } : {}),
       next_actions: nextActions,
       fallback_used: fallbackUsed,
+      ...(turnTrace ? { turn_trace: turnTrace } : {}),
     },
   });
 }
