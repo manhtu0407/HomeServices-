@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
+import { parseProductionReleaseArgs } from '../../../../../scripts/harness/production-release-runner.mjs'
 
 export const PILLAR = {
   id: 'P56-stage1-production-release-workflow',
@@ -177,5 +178,25 @@ describe('Stage 1 production release workflow', () => {
       .toMatch(NO_DEPLOYMENT_RECORD)
     expect(workflow, pillarWhy(PILLAR, 'quality runs on main pushes'))
       .toContain("if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'")
+  })
+
+  it('parses exact-source local execution and only explicit Expo platform selections', () => {
+    const sourceSha = 'a'.repeat(40)
+    expect(parseProductionReleaseArgs(['--source-sha', sourceSha]))
+      .toEqual({ sourceSha, submitPlatform: null, execute: false })
+    expect(parseProductionReleaseArgs(['--source-sha', sourceSha, '--submit-platform', 'ios']))
+      .toEqual({ sourceSha, submitPlatform: 'ios', execute: false })
+    expect(parseProductionReleaseArgs(['--source-sha', sourceSha, '--submit-platform', 'android']))
+      .toEqual({ sourceSha, submitPlatform: 'android', execute: false })
+    expect(parseProductionReleaseArgs(['--source-sha', sourceSha, '--submit-platform', 'all']))
+      .toEqual({ sourceSha, submitPlatform: 'all', execute: false })
+    expect(() => parseProductionReleaseArgs(['--source-sha', 'main']))
+      .toThrow(/40-character lowercase Git SHA/u)
+    expect(() => parseProductionReleaseArgs(['--source-sha', sourceSha, '--submit-platform', 'public']))
+      .toThrow(/ios, android, or all/u)
+    expect(() => parseProductionReleaseArgs(['--source-sha', sourceSha, '--source-sha', sourceSha]))
+      .toThrow(/may be specified once/u)
+    expect(() => parseProductionReleaseArgs(['--source-sha', sourceSha, '--execute', '--execute']))
+      .toThrow(/may be specified once/u)
   })
 })

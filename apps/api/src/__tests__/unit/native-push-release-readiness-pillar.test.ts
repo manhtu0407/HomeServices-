@@ -76,5 +76,7 @@ describe('native push and Production release readiness', () => {
     expect(releaseWorkflow).not.toContain('merge-approval')
     expect(releaseRunner).toContain('github-merge-approval.mjs')
     expect(releaseRunner).toContain('kouuuuuuuuu')
+    expect(releaseRunner, pillarWhy(PILLAR, 'the local runner consumes fail-closed native readiness inputs'))
+      .toMatch(/'NESTSCOUT_ANDROID_FCM_V1_READY'[\s\S]*'NESTSCOUT_IOS_APNS_READY'[\s\S]*'NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY'/u)
   })
 })
