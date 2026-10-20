@@ -363,7 +363,7 @@ test('Backend lane keeps Build55 as a legacy client and binds the checked-in cur
   assert.equal(bindings.HARNESS_CLIENT_COMPAT_RELEASE_ID, release.releaseId)
   assert.equal(bindings.NESTSCOUT_STAGE1_CLIENT_CONTRACT_EPOCH, '3')
   assert.equal(bindings.NESTSCOUT_STAGE1_IOS_APPLICATION_ID, mobilePolicy.platforms.ios.applicationId)
-  assert.equal(bindings.NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER, '56')
+  assert.equal(bindings.NESTSCOUT_STAGE1_IOS_MINIMUM_BUILD_NUMBER, String(mobilePolicy.platforms.ios.buildNumber))
   assert.equal(bindings.NESTSCOUT_STAGE1_IOS_RUNTIME_VERSION, '0.3.2')
   assert.equal(bindings.NESTSCOUT_STAGE1_IOS_LEGACY_MINIMUM_BUILD_NUMBER, '55')
   assert.equal(bindings.NESTSCOUT_STAGE1_ANDROID_LEGACY_MINIMUM_BUILD_NUMBER, '5')
