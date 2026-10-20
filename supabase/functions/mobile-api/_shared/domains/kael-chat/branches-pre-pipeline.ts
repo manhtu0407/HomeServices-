@@ -9,8 +9,10 @@ import {
   type KaelDiagnosisScopeArtifact,
   type KaelProgressTarget,
 } from "../../kael/index.ts";
-import type { DbClient } from "../../platform/db.ts";
+import { apiFailure } from "../../platform/api-failure.ts";
+import { dbQuery, type DbClient } from "../../platform/db.ts";
 import {
+  correctableSlotsOf,
   diagnosisScopeWithGroundedAnswer,
   diagnosisScopeWithQuestion,
   loadKaelChatAnalysisState,
@@ -30,7 +32,7 @@ import { sanitizeCustomerCaseEvidenceText } from "../../kael/evidence/untrusted-
 import type { CaseSlotUnderstanding } from "../../kael/tools/case-turn-intent.ts";
 import { emitKaelChatStep } from "./emit-step.ts";
 import type { ReplyComposer } from "./reply-composer.ts";
-import type { KaelTurnTelemetry } from "./session-store.ts";
+import { updateKaelSession, type KaelTurnTelemetry } from "./session-store.ts";
 import { maybeApplyKaelBoundaryGuard } from "./guard.ts";
 
 type KaelChatPrePipelineInput = {
@@ -117,7 +119,7 @@ export async function prepareKaelChatPrePipeline(
   let artifact = initialArtifact;
   // Kael asks about the first missing detail, so that is the one the next reply answers.
   const pendingClarificationSlot = pendingClarificationSlotOf(artifact, slotAskCounts);
-  const withExtras = groundExtraSlots(artifact, slotUnderstanding);
+  const withExtras = groundCorrectedSlots(groundExtraSlots(artifact, slotUnderstanding), slotUnderstanding);
   if (withExtras !== artifact) {
     artifact = withExtras;
     await persistDiagnosisScopeArtifact(client, sessionId, artifact);
@@ -195,6 +197,20 @@ function groundExtraSlots(
   for (const extra of understanding?.answeredSlots ?? []) {
     if (!next.missing_facts.includes(extra.slot)) continue;
     next = diagnosisScopeWithGroundedAnswer(next, extra.slot, sanitizeCustomerCaseEvidenceText(extra.value));
+  }
+  return next;
+}
+
+// A correction replaces an answer the Case already holds; it never invents a slot the Case did not record.
+function groundCorrectedSlots(
+  artifact: KaelDiagnosisScopeArtifact,
+  understanding: CaseSlotUnderstanding | undefined,
+): KaelDiagnosisScopeArtifact {
+  let next = artifact;
+  const correctable = new Set(correctableSlotsOf(artifact));
+  for (const corrected of understanding?.correctedSlots ?? []) {
+    if (!correctable.has(corrected.slot)) continue;
+    next = diagnosisScopeWithGroundedAnswer(next, corrected.slot, sanitizeCustomerCaseEvidenceText(corrected.value));
   }
   return next;
 }
@@ -291,8 +307,21 @@ async function resolvePrePipelineIntake(
 ): Promise<{ handled: true } | { handled: false; district: string }> {
   // The answer to the district question lives in the artifact, in whatever words the customer used.
   const savedAnswer = artifact.facts.address_district;
-  const district = normalizeServiceAreaDistrict(input.address_district) ??
-    (typeof savedAnswer === "string" ? resolveKaelChatAddressDistrict(savedAnswer) : null);
+  const fromAnswer = typeof savedAnswer === "string" ? resolveKaelChatAddressDistrict(savedAnswer) : null;
+  const fromRequest = normalizeServiceAreaDistrict(input.address_district);
+  // A district the customer just corrected beats the one read from the same message's first mention.
+  const districtCorrected = input.slotUnderstanding?.correctedSlots?.some((item) => item.slot === "address_district") === true;
+  const district = districtCorrected && fromAnswer ? fromAnswer : fromRequest ?? fromAnswer;
+  if (districtCorrected && fromAnswer && fromAnswer !== fromRequest) {
+    const saved = await dbQuery<Record<string, unknown>>(
+      input.client.from("kael_chat_sessions").select("safe_metadata").eq("id", input.sessionId).single(),
+    );
+    if (saved.error || !saved.data) apiFailure("DB_ERROR", "Không thể cập nhật phiên Kael", 500);
+    const metadata = saved.data.safe_metadata && typeof saved.data.safe_metadata === "object"
+      ? saved.data.safe_metadata as Record<string, unknown>
+      : {};
+    await updateKaelSession(input.client, input.sessionId, { safe_metadata: { ...metadata, address_district: fromAnswer } });
+  }
   if (!district) {
     if (await breakRepeatedClarification(input.client, {
       artifact,
