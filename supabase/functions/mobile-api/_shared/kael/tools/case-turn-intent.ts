@@ -60,6 +60,8 @@ export type CaseSlotUnderstanding = {
   readonly slot: string | null;
   readonly value: string | null;
   readonly answeredSlots: readonly { readonly slot: string; readonly value: string }[];
+  // Details already on the Case that the customer says were wrong, with the value they now give.
+  readonly correctedSlots?: readonly { readonly slot: string; readonly value: string }[];
 };
 
 export type CaseTurnIntentState = {
@@ -154,6 +156,8 @@ export async function classifyCaseTurnIntent(input: {
   pendingSlot?: { readonly slot: string; readonly question: string | null } | null;
   // Other details still missing, so one message can answer several.
   openSlots?: readonly string[];
+  // Details already recorded, so a correction can name the one it replaces.
+  filledSlots?: readonly string[];
   recentTurns: readonly { role: string; text: string | null }[];
   state: CaseTurnIntentState;
   client: DbClient;
@@ -173,6 +177,7 @@ export async function classifyCaseTurnIntent(input: {
     boundarySignal: false,
   });
   const ruleInput = { message, pendingSlot: input.pendingSlot };
+  const filledSlots = (input.filledSlots ?? []).slice(0, 12);
   if (!permission.allowed) return fallbackResult(ruleInput, "policy_denied");
 
   const route = circuitAwareProviderCandidatesForPurpose("case_turn_intent")[0];
@@ -202,10 +207,15 @@ export async function classifyCaseTurnIntent(input: {
           language: input.language,
           permissionSummary: "Classify only. Never answer the customer, never quote a price, never trigger a workflow action.",
           contextSummary: `Return strict JSON {"intent": one of ${KAEL_TURN_INTENTS.join(", ")}, "confidence": 0..1${
-            input.pendingSlot ? ', "pending_slot_answer": {...}, "answered_slots": [...]' : ""
+            input.pendingSlot
+              ? ', "pending_slot_answer": {...}, "answered_slots": [...]'
+              : filledSlots.length > 0
+              ? ', "answered_slots": [...]'
+              : ""
           }}. ` +
             `Intent meanings: ${JSON.stringify(INTENT_GUIDE)}. The latest customer message decides the intent; earlier turns only give context.` +
-            (input.pendingSlot ? SLOT_ANSWER_GUIDE : ""),
+            (input.pendingSlot ? SLOT_ANSWER_GUIDE : "") +
+            (filledSlots.length > 0 ? CORRECTION_GUIDE : ""),
         }),
       },
       {
@@ -225,6 +235,7 @@ export async function classifyCaseTurnIntent(input: {
               open_slots: (input.openSlots ?? []).slice(0, 8),
             }
             : {}),
+          ...(filledSlots.length > 0 ? { filled_slots: filledSlots } : {}),
           recent_turns: transcript,
           latest_customer_message: message,
         }).slice(0, 8_000),
@@ -253,9 +264,15 @@ export async function classifyCaseTurnIntent(input: {
     }
     return fallbackResult(ruleInput, result?.code === "SCHEMA_INVALID" ? "schema_invalid" : "provider_unavailable");
   }
-  const slotUnderstanding = input.pendingSlot
+  const pendingUnderstanding = input.pendingSlot
     ? understandSlotAnswer(result.data, input.pendingSlot.slot, input.openSlots ?? [])
     : undefined;
+  const correctedSlots = result.data.confidence >= CASE_TURN_INTENT_MIN_CONFIDENCE
+    ? correctedSlotsOf(result.data, filledSlots)
+    : [];
+  const slotUnderstanding: CaseSlotUnderstanding | undefined = correctedSlots.length > 0
+    ? { kind: "other", slot: null, value: null, answeredSlots: [], ...pendingUnderstanding, correctedSlots }
+    : pendingUnderstanding;
   const telemetry = {
     provider: "deepseek" as const,
     model: route.model,
@@ -275,7 +292,20 @@ const SLOT_ANSWER_GUIDE = " pending_slot is the detail Kael just asked about (pe
   "other = the message does not address it. answered_slots lists any other open_slots the message also answers, " +
   "each with the customer's own words as value. Use only slot names from pending_slot and open_slots.";
 
+const CORRECTION_GUIDE = " filled_slots are details already recorded. When the intent is correction, answered_slots lists each " +
+  "filled_slots entry the customer says was wrong, with the corrected value in the customer's own words (200 characters at most). " +
+  "Use only slot names from filled_slots.";
+
 export const CASE_SLOT_ANSWER_MIN_CONFIDENCE = 0.6;
+
+function correctedSlotsOf(
+  data: z.infer<typeof intentOutputSchema>,
+  filledSlots: readonly string[],
+): readonly { readonly slot: string; readonly value: string }[] {
+  if (data.intent !== "correction") return [];
+  const allowed = new Set(filledSlots);
+  return (data.answered_slots ?? []).filter((item) => allowed.has(item.slot));
+}
 
 function understandSlotAnswer(
   data: z.infer<typeof intentOutputSchema>,

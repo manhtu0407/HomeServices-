@@ -115,7 +115,15 @@ insert into jobs (
 on conflict (id) do nothing;
 
 -- The paid fixture starts without a payable price. Apply the exact price only
--- after the bilateral, source-verified receipt exists.
+-- after the bilateral, source-verified receipt exists. The receipt and the price
+-- go in one statement: the approved-scope commission freeze is a deferred
+-- constraint trigger that needs jobs.final_price when the transaction ends, while
+-- the price guard needs the receipt at update time. A DO block keeps both writes
+-- together without opening or closing a transaction, so the seed still embeds
+-- inside a caller's rollback-only transaction.
+do $seed$
+begin
+
 insert into scope_change_requests (
   id, job_id, worker_id, status,
   original_summary, requested_description, reason,
@@ -143,9 +151,10 @@ insert into scope_change_requests (
     'reference_price_max', 250000,
     'stakeholder_balance', jsonb_build_object(
       'customer_total', 200000,
-      'platform_fee', 20000,
-      'worker_net', 180000,
-      'commission_rate_bps', 1000,
+      'platform_fee', 30000,
+      'worker_net', 170000,
+      'commission_level', 1,
+      'commission_rate_bps', 1500,
       'worker_confirmation_required', true,
       'customer_confirmation_required', true
     ),
@@ -163,6 +172,8 @@ update jobs
 set final_price = 200000
 where id = '00000000-0000-0000-0000-000000000010'
   and final_price is null;
+end
+$seed$;
 
 -- Sample review
 insert into reviews (id, job_id, customer_id, worker_id, rating, tags, comment) values

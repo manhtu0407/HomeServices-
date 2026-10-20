@@ -11,11 +11,18 @@ export type MemoryDb = {
   }
 }
 
-export function memoryDb(seed: Record<string, Row[]> = {}): MemoryDb {
+export type MemoryDbOptions = {
+  // PostgREST returns a JSON snapshot, not a live row. With this on, reads hand back JSON copies, so code that
+  // keeps a row from before a write does not see the write land in its variable.
+  isolateReads?: boolean
+}
+
+export function memoryDb(seed: Record<string, Row[]> = {}, options: MemoryDbOptions = {}): MemoryDb {
   const tables: Record<string, Row[]> = Object.fromEntries(
     Object.entries(seed).map(([name, rows]) => [name, rows.map((row) => ({ ...row }))]),
   )
   let nextId = 1
+  const snapshot = <T,>(value: T): T => (options.isolateReads ? (JSON.parse(JSON.stringify(value)) as T) : value)
 
   function from(table: string) {
     const filters: Array<(row: Row) => boolean> = []
@@ -78,7 +85,7 @@ export function memoryDb(seed: Record<string, Row[]> = {}): MemoryDb {
           ...row,
         }))
         rows.push(...inserted)
-        return { data: single ? inserted[0] : inserted, error: null }
+        return { data: snapshot(single ? inserted[0] : inserted), error: null }
       }
       let matched = rows.filter((row) => filters.every((keep) => keep(row)))
       if (mode === 'update') {
@@ -99,9 +106,9 @@ export function memoryDb(seed: Record<string, Row[]> = {}): MemoryDb {
             ? { data: null, error: { code: 'PGRST116', message: 'no rows' } }
             : { data: null, error: null }
         }
-        return { data: matched[0], error: null }
+        return { data: snapshot(matched[0]), error: null }
       }
-      return { data: matched, error: null }
+      return { data: snapshot(matched), error: null }
     }
 
     return query
