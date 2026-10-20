@@ -3,7 +3,7 @@
   "platforms": {
     "ios": {
       "applicationId": "com.phanmanhtu.homeservices",
-      "buildNumber": 56
+      "buildNumber": 57
     },
     "android": {
       "applicationId": "com.phanmanhtu.nestscout",
