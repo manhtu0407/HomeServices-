@@ -9,6 +9,8 @@ Auto-trigger wrapper. Full procedure is canonical in `governance/protocols/code-
 
 This skill is always on for code. It is not opt-in per task class; it runs on every code change, before you add any comment, header, or note. The standard: write source the way a senior developer hands it to a reviewer — the file is not your worklog, changelog, or a transcript of the session that produced it.
 
+Override for added production lines: `kael-solve-conflict-maximize` (Pillar B) supersedes the keep-list below for added lines under `apps/`, `packages/`, and `supabase/functions/` in `.ts`/`.tsx` files outside tests. There, no comment token and no watermark is allowed. Existing comments stay. Points 1 and 4 still govern the other code roots and existing comments.
+
 When this fires:
 
 1. A comment earns its place only if it states a non-obvious WHY, an invariant, or a trap. If it restates WHAT the code does, delete it.
