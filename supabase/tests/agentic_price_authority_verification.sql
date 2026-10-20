@@ -84,6 +84,15 @@ begin
       null;
   end;
 
+  if not exists (
+    select 1
+    from public.jobs as job
+    where job.id = '00000000-0000-0000-0000-000000000011'
+      and job.customer_id = '00000000-0000-0000-0000-000000000001'
+  ) then
+    raise exception 'fixture job 00000000-0000-0000-0000-000000000011 is missing; load supabase/seed.sql';
+  end if;
+
   delete from public.job_matching_preferences
   where job_id = '00000000-0000-0000-0000-000000000011';
 
@@ -102,13 +111,16 @@ begin
     '{"summary":"verified test brief"}'::jsonb
   );
 
-  if v_matching.ok is not true
-    or (
-      select job.final_price
-      from public.jobs as job
-      where job.id = '00000000-0000-0000-0000-000000000011'
-    ) is not null
-  then
+  if v_matching.ok is not true then
+    raise exception 'matching did not start for the estimate fixture: %',
+      coalesce(v_matching.error_code, 'no error_code');
+  end if;
+
+  if (
+    select job.final_price
+    from public.jobs as job
+    where job.id = '00000000-0000-0000-0000-000000000011'
+  ) is not null then
     raise exception 'matching promoted the estimate ceiling to final price';
   end if;
 
