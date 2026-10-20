@@ -102,6 +102,21 @@ export function diagnosisScopeWithQuestion(
   });
 }
 
+// Facts that describe the Case itself rather than one answered question, so a correction never targets them.
+export const CASE_FACT_NON_SLOTS: ReadonlySet<string> = new Set([
+  "customer_goal",
+  "latest_customer_detail",
+  "latest_voice_transcript",
+  "price_readiness",
+]);
+
+// The recorded answers a customer can correct: every fact that is a filled question slot.
+export function correctableSlotsOf(artifact: KaelDiagnosisScopeArtifact): string[] {
+  return Object.entries(artifact.facts).flatMap(([slot, value]) =>
+    !CASE_FACT_NON_SLOTS.has(slot) && typeof value === "string" && value.trim() ? [slot] : []
+  );
+}
+
 export function diagnosisScopeWithGroundedAnswer(
   artifact: KaelDiagnosisScopeArtifact,
   missingFact: string,

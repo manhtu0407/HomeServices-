@@ -1,0 +1,33 @@
+{
+  "status": "active",
+  "case_phase": "analysis",
+  "next_action": "await_input",
+  "intake_coverage": null,
+  "diagnosis_scope": {
+    "version": 1,
+    "service_type": "hvac",
+    "profile_id": "air_scope",
+    "case_phase": "analysis",
+    "facts": {
+      "customer_goal": "Vệ sinh hai máy lạnh",
+      "unit_type_count_and_capacity": "2 máy treo tường 1HP",
+      "latest_customer_detail": "2 máy treo tường 1HP.\n\nVệ sinh hai máy lạnh",
+      "price_readiness": "validated_price_evidence_unavailable"
+    },
+    "missing_facts": [],
+    "evidence": [],
+    "safety_flags": [],
+    "scope_summary": "2 máy treo tường 1HP.\n\nVệ sinh hai máy lạnh",
+    "quote_ready": false,
+    "quote_blockers": [
+      "validated_price_evidence"
+    ],
+    "worker_requirements": [],
+    "confidence": 0.45,
+    "next_action": {
+      "kind": "escalate",
+      "reason": "validated_price_evidence_unavailable"
+    },
+    "updated_at": "<time>"
+  }
+}
