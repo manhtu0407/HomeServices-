@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: production-release
+  group: ${{ github.event_name == 'schedule' && 'production-release' || 'stage1-release-quality' }}
   cancel-in-progress: false
 
 jobs:
