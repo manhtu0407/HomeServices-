@@ -174,6 +174,7 @@ describe('Stage 1 production release workflow', () => {
     const jobs = workflowJobs(workflow)
     expect([...jobs.keys()].sort(), pillarWhy(PILLAR, 'GitHub Actions has only read-only jobs'))
       .toEqual(['quality', 'stale-canary-reconciler'])
+    expect(workflow).toContain("group: ${{ github.event_name == 'schedule' && 'production-release' || 'stage1-release-quality' }}")
     expect(jobs.get('stale-canary-reconciler'), pillarWhy(PILLAR, 'the reconciler is explicitly not a deployment'))
       .toMatch(NO_DEPLOYMENT_RECORD)
     expect(workflow, pillarWhy(PILLAR, 'quality runs on main pushes'))
