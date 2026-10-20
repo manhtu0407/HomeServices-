@@ -40,6 +40,11 @@
           },
           {
             "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-test-integrity.mjs\"",
+            "timeout": 120
+          },
+          {
+            "type": "command",
             "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/run.mjs\" run-node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-work-plan.mjs\"",
             "timeout": 60
           },

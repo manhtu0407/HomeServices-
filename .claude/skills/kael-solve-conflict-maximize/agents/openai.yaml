@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kael Solve Conflict Maximize"
+  short_description: "Blocks test gaming, source residue, and unverified final claims"
+  default_prompt: "Use $kael-solve-conflict-maximize before reporting a code or test task done: check that no gate was weakened, no comment or watermark was added to production source, and every claim has an observed command result."

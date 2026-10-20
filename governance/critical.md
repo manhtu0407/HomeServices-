@@ -148,6 +148,7 @@ For UI, motion, glass, or other design tasks, route through `governance/design/r
 | Long session or tool handoff | `kael-handoff` |
 | Technical documentation | `kael-docs-execution` |
 | Agent context setup missing | no protocol exists for this yet — propose one to Tu instead of improvising |
+| Writing or changing a test, a gate or its config, or source comments; or a final message claiming pass, done, fixed, or pre-existing | `kael-solve-conflict-maximize`, then the relevant primary protocol, `kael-review` |
 
 
 ### Protocol Source Files
@@ -167,6 +168,7 @@ critical.md keeps `kael-preflight` (§5) and `kael-review` (§8) inline because 
 | `kael-backend-structure`, `kael-backend-parity` | `protocols/backend-structure.md` |
 | `kael-frontend-test` | `protocols/frontend-test.md` |
 | `kael-work-router` | `protocols/work-router.md` |
+| `kael-solve-conflict-maximize` | `protocols/solve-conflict-maximize.md` |
 | test pillars (the manifest and its diagnostic contract) | `protocols/test-pillars.md` |
 | dormant protocols | `protocols/dormant.md` |
 

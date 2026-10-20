@@ -15,6 +15,8 @@ Two failure modes this protocol kills:
 
 ## Comments: WHY only
 
+> Superseded for added production lines by `governance/protocols/solve-conflict-maximize.md` (Pillar B). No comment token may be added under `apps/`, `packages/`, or `supabase/functions/` in `.ts`/`.tsx` files outside tests, including authority citations and JSDoc. Existing comments are not touched. The keep-list below still governs existing comments and the other code roots (`scripts/`, `.claude/hooks/`). `pnpm lint:comments --diff` and `--working` enforce the zero rule on added lines; the full scan keeps the banner rules only.
+
 A comment earns its place only when it states something the code cannot: a non-obvious WHY, an invariant, or a trap. If a comment restates WHAT the line does, delete the comment.
 
 Keep (these are real WHY — do not strip):
