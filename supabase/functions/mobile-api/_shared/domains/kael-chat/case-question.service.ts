@@ -10,6 +10,7 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { asKaelChatStatus, asNumber, asRecord, nullableString } from "../../platform/coercions.ts";
 import { dbQuery, type DbClient } from "../../platform/db.ts";
 import { answerKaelAssistant } from "../customer/assistant.ts";
+import { assertCaseContextOwner, buildCaseAssistantContext, type CaseContextRefusal } from "./case-context.ts";
 import { buildEvidenceGapNextActions, firstMissingSlot } from "./evidence-gap-response.ts";
 import {
   EVIDENCE_GAP_QUOTE_READINESS,
@@ -84,23 +85,25 @@ export async function caseStateNextActions(input: {
   return actions.filter((action) => !exclude.has(action.kind)).slice(0, 4);
 }
 
+// Supplemental wording only: the service, phase, facts and blockers travel as the typed case context.
 function caseSummaryForAnswer(
   session: Record<string, unknown>,
-  quoteTurn: Record<string, unknown> | null,
 ): string {
   const artifact = kaelDiagnosisScopeArtifactSchema.safeParse(session.diagnosis_scope);
   const metadata = asRecord(session.safe_metadata);
   return JSON.stringify({
-    service_type: nullableString(session.service_type),
-    case_phase: nullableString(session.case_phase),
-    status: nullableString(session.status),
     scope_summary: artifact.success ? artifact.data.scope_summary ?? null : null,
-    missing_facts: artifact.success ? artifact.data.missing_facts.slice(0, 6) : [],
-    quote_readiness: nullableString(quoteTurn?.quote_readiness),
-    price_gap_reason: nullableString(quoteTurn?.price_gap_reason),
     quote_mode: nullableString(asRecord(metadata.intake_coverage).quote_mode),
     rules: "Kael never invents a price. A worker quote needs the customer's explicit confirmation.",
   }).slice(0, 3_000);
+}
+
+// The saved request could not be read, so Kael says that instead of guessing what it is. Nothing about
+// the case changes and no provider is called.
+function unreadableCaseText(language: "vi" | "en") {
+  return language === "en"
+    ? "Kael could not read your saved request, so it cannot answer this question yet. Your request is unchanged. Reopen it or contact support so the details can be checked."
+    : "Kael chưa đọc được thông tin yêu cầu đã lưu của bạn nên chưa thể trả lời câu hỏi này. Yêu cầu của bạn vẫn giữ nguyên. Bạn hãy mở lại yêu cầu hoặc liên hệ hỗ trợ để Kael kiểm tra.";
 }
 
 export async function answerKaelCaseQuestion(input: {
@@ -113,7 +116,13 @@ export async function answerKaelCaseQuestion(input: {
   secrets: EdgeAiSecrets;
   routing: CaseTurnRouting;
 }) {
+  assertCaseContextOwner(input.ctx, input.sessionId, input.session);
   const quoteTurn = await latestQuoteReadinessTurn(input.client, input.sessionId);
+  const caseContext = buildCaseAssistantContext({ session: input.session, quoteTurn });
+  if (!caseContext.ok) {
+    await appendUnreadableCaseTurn(input, caseContext.reason);
+    return;
+  }
   let text: string;
   let fallbackUsed = false;
   let telemetry = telemetryFromTrace(undefined, "template");
@@ -123,7 +132,8 @@ export async function answerKaelCaseQuestion(input: {
       message: input.message,
       surface: "customer_normal",
     }, input.secrets, {
-      memorySummary: caseSummaryForAnswer(input.session, quoteTurn),
+      caseContext: caseContext.context,
+      memorySummary: caseSummaryForAnswer(input.session),
       previousTurns: await readCaseRecentTurns(input.client, input.sessionId),
       includeTelemetry: true,
     });
@@ -163,6 +173,27 @@ export async function answerKaelCaseQuestion(input: {
       ...(input.routing.fallbackReason ? { turn_intent_fallback_reason: input.routing.fallbackReason } : {}),
       next_actions: nextActions,
       fallback_used: fallbackUsed,
+    },
+  });
+}
+
+async function appendUnreadableCaseTurn(
+  input: { client: DbClient; sessionId: string; session: Record<string, unknown>; language: "vi" | "en"; routing: CaseTurnRouting },
+  reason: CaseContextRefusal,
+) {
+  console.warn("kael case context unreadable", { sessionId: input.sessionId, reason });
+  await appendKaelSystemTurn(input.client, input.sessionId, {
+    contentType: "clarification",
+    text: unreadableCaseText(input.language),
+    nextStatus: asKaelChatStatus(input.session.status) === "estimate_ready" ? "estimate_ready" : "active",
+    telemetry: telemetryFromTrace(undefined, "fallback"),
+    metadata: {
+      answered_turn_intent: input.routing.intent,
+      turn_intent_source: input.routing.source,
+      turn_intent_confidence: input.routing.confidence,
+      next_actions: [],
+      fallback_used: true,
+      case_context_unreadable: reason,
     },
   });
 }
