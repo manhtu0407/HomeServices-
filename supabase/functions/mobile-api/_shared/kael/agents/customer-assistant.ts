@@ -84,6 +84,7 @@ import {
   normalizeCitations,
   normalizeText,
   shouldRetrieveGeneralKnowledge,
+  type CustomerAssistantCaseContext,
   type CustomerAssistantJobContext,
   type CustomerAssistantSurface,
 } from "./customer-assistant-policy.ts";
@@ -101,6 +102,7 @@ import { type KaelResponseReporter } from "../response-stream.ts";
 import { analyzeNormalChatImages, type NormalChatImageAnalysis } from "../tools/vision.ts";
 import type { NormalChatSearchResult } from "../tools/normal-chat-search.ts";
 export type {
+  CustomerAssistantCaseContext,
   CustomerAssistantJobContext,
   CustomerAssistantSurface,
 } from "./customer-assistant-policy.ts";
@@ -118,6 +120,7 @@ export type CustomerAssistantInput = {
   readonly serviceType?: ServiceType | null;
   readonly surface?: CustomerAssistantSurface;
   readonly job?: CustomerAssistantJobContext | null;
+  readonly caseContext?: CustomerAssistantCaseContext | null;
   readonly client?: AssistantClient | null;
   readonly memorySummary?: string | null;
   readonly previousTurns?: readonly {
@@ -470,6 +473,7 @@ async function resolveCustomerAssistantProviders(
       serviceType,
       topic,
       job: input.job ?? null,
+      caseContext: input.caseContext ?? null,
       knowledgePrompt: knowledge?.promptContext ?? null,
       memorySummary: input.memorySummary ?? null,
       registerHint,

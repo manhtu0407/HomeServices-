@@ -4,7 +4,7 @@ import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { memoryDb } from '../harness/memory-db'
 
 export const PILLAR = {
-  id: 'P392-kael-turn-trace',
+  id: 'P393-kael-turn-trace',
   invariant:
     'a refused or redirected Kael turn can be mapped to its route, failure stage, permission reason, canonical service and release identity from a bounded, allow-listed trace; the trace carries no message text, is optional for legacy clients, and never changes what the customer is told or what the case may do',
   authority: [
