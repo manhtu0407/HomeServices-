@@ -8,7 +8,7 @@ import {
 } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/intake-runtime'
 
 export const PILLAR = {
-  id: 'P392-kael-clarification-reply-reading',
+  id: 'P393-kael-clarification-reply-reading',
   invariant:
     'a reply to a pending Kael question is read as an explanation request only when it asks why or what is missing and carries no case fact; a fact in the same message always wins, and a service, unit or building name is never mistaken for the question',
   authority: [
