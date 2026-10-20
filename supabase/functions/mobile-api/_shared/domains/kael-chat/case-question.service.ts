@@ -26,6 +26,8 @@ export type CaseTurnRouting = {
   readonly intent: EdgeKaelTurnIntent;
   readonly source: "chip" | "ai" | "fallback";
   readonly confidence: number;
+  readonly fallbackReason?: CaseTurnIntentResult["fallbackReason"];
+  readonly fallbackBasis?: CaseTurnIntentResult["fallbackBasis"];
   readonly telemetry?: CaseTurnIntentResult["telemetry"];
   readonly slotUnderstanding?: CaseTurnIntentResult["slotUnderstanding"];
 };
@@ -212,6 +214,7 @@ export async function answerKaelCaseQuestion(input: CaseQuestionInput) {
       answered_turn_intent: input.routing.intent,
       turn_intent_source: input.routing.source,
       turn_intent_confidence: input.routing.confidence,
+      ...(input.routing.fallbackReason ? { turn_intent_fallback_reason: input.routing.fallbackReason } : {}),
       next_actions: nextActions,
       fallback_used: fallbackUsed,
       ...(turnTrace ? { turn_trace: turnTrace } : {}),

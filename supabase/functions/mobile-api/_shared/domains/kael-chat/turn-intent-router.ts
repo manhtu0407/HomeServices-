@@ -33,6 +33,10 @@ import { appendKaelSystemTurn, updateKaelSession, type KaelTurnTelemetry } from 
 // Only these may arrive as an explicit chip choice; anything else is classified from the text.
 const CHIP_INTENTS = new Set<EdgeKaelTurnIntent>(["request_reference_price", "request_worker_quote", "ask_question"]);
 
+// Intents that confirm or hand work onward. A deterministic fallback never names them, and the router
+// refuses them again here so a future fallback rule cannot cross a gate by accident.
+const GATED_INTENTS = new Set<EdgeKaelTurnIntent>(["proceed_or_confirm", "request_worker_quote"]);
+
 export async function resolveCaseTurnRouting(input: {
   ctx: MobileApiContext;
   client: DbClient;
@@ -82,6 +86,8 @@ export async function resolveCaseTurnRouting(input: {
       intent: classified.intent,
       source: classified.fallbackUsed ? "fallback" : "ai",
       confidence: classified.confidence,
+      fallbackReason: classified.fallbackReason,
+      fallbackBasis: classified.fallbackBasis,
       telemetry: classified.telemetry,
       slotUnderstanding: classified.slotUnderstanding,
     },
@@ -112,6 +118,8 @@ export async function routeKaelChatTurnIntent(input: {
         intent: routing.intent,
         source: routing.source,
         confidence: routing.confidence,
+        ...(routing.fallbackReason ? { fallback_reason: routing.fallbackReason } : {}),
+        ...(routing.fallbackBasis && routing.source === "fallback" ? { fallback_basis: routing.fallbackBasis } : {}),
         ...(routing.telemetry
           ? {
             provider: routing.telemetry.provider,
@@ -126,6 +134,14 @@ export async function routeKaelChatTurnIntent(input: {
   });
   const inGap = quoteTurn?.quote_readiness === EVIDENCE_GAP_QUOTE_READINESS;
   const offerReady = asKaelChatStatus(input.session.status) === "estimate_ready";
+  if (
+    routing.source === "fallback" &&
+    (routing.fallbackBasis === "ambiguous" || GATED_INTENTS.has(routing.intent))
+  ) {
+    await respondAmbiguous(input, routing, quoteTurn, offerReady);
+    await restoreReviewPhase(input);
+    return true;
+  }
   switch (routing.intent) {
     case "provide_information":
     case "correction":
@@ -177,6 +193,7 @@ async function appendRoutedReply(
       answered_turn_intent: routing.intent,
       turn_intent_source: routing.source,
       turn_intent_confidence: routing.confidence,
+      ...(routing.fallbackReason ? { turn_intent_fallback_reason: routing.fallbackReason } : {}),
       next_actions: nextActions,
       ...extra,
     },
@@ -294,4 +311,30 @@ async function respondWorkerQuote(
   const notice = await composeNotice(input, text, offerReady ? [vi ? "xác nhận" : "confirm"] : []);
   await appendRoutedReply(input, routing, notice.text, nextActions, { worker_quote_unavailable_reason: outcome.reason }, notice.telemetry);
   await restoreReviewPhase(input);
+}
+
+// Reached only when the classifier could not read the turn and the text is a bare acknowledgement, so
+// nothing is estimated, confirmed or sent; the customer is asked what they meant.
+async function respondAmbiguous(
+  input: Parameters<typeof routeKaelChatTurnIntent>[0],
+  routing: CaseTurnRouting,
+  quoteTurn: Record<string, unknown> | null,
+  offerReady: boolean,
+) {
+  const vi = input.language === "vi";
+  const nextActions = await caseStateNextActions({
+    client: input.client,
+    session: input.session,
+    quoteTurn,
+    language: input.language,
+  });
+  const text = offerReady
+    ? (vi
+      ? "Kael chưa chắc bạn muốn bổ sung thông tin, hỏi thêm hay xác nhận đề xuất. Nếu bạn đồng ý, hãy bấm nút xác nhận trên thẻ đề xuất; Kael không tự xác nhận hay gửi thợ thay bạn."
+      : "Kael is not sure whether you want to add details, ask something or confirm the offer. If you agree, press the confirm button on the offer card; Kael never confirms or sends a worker for you.")
+    : (vi
+      ? "Kael chưa chắc bạn muốn bổ sung thông tin hay hỏi thêm. Bạn nói rõ hơn giúp Kael nhé; Kael chưa xác nhận hay gửi yêu cầu cho thợ nào."
+      : "Kael is not sure whether you want to add details or ask something. Please say a bit more; Kael has not confirmed anything or sent your request to any worker.");
+  const notice = await composeNotice(input, text, [vi ? "xác nhận" : "confirm"]);
+  await appendRoutedReply(input, routing, notice.text, nextActions, {}, notice.telemetry);
 }
