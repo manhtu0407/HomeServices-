@@ -8,6 +8,7 @@ import { customerV21WebTextInputNoOutline } from '../ui/platform-styles'
 import type { useCustomerKaelSurfaceController } from './use-customer-kael-surface-controller'
 import { KaelNextActionChips } from './kael-next-action-chips'
 import { latestKaelNextActions, latestKaelReferencePrice } from './kael-next-actions-display-model'
+import { buildQuoteBlockerView } from './quote-blocker-view-model'
 import { ReferencePriceNote } from './reference-price-note'
 
 type Controller = ReturnType<typeof useCustomerKaelSurfaceController>
@@ -94,10 +95,15 @@ export function CustomerKaelAnalysisEvidenceNode({
     processing: Boolean(processController.processLines),
   })
   if (!presentation.serverPriceReviewBlocked && !unpricedRequestKind) return nextActionChips
+  if (presentation.agenticEstimateConfirmed && presentation.serverSafetyMessages.length === 0) return nextActionChips
   const referencePrice = latestKaelReferencePrice(conversation.turns)
   return (
     <>
       <QuoteReadinessReviewResponse
+        blocker={buildQuoteBlockerView({
+          diagnosisScope: presentation.diagnosisScope,
+          intakeCoverage: conversation.chat?.session.intake_coverage,
+        })}
         language={language}
         reduceMotion={reduceMotion}
         request={unpricedRequestKind ? {
@@ -105,9 +111,6 @@ export function CustomerKaelAnalysisEvidenceNode({
           kind: unpricedRequestKind,
           onSend: () => void decisionActions.confirmAgenticEstimate(),
         } : undefined}
-        reason={typeof presentation.artifactNextAction?.reason === 'string'
-          ? presentation.artifactNextAction.reason
-          : undefined}
         safetyMessages={presentation.serverSafetyMessages}
         tokens={tokens}
       />

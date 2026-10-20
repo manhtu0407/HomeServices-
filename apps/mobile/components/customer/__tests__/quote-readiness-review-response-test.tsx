@@ -20,11 +20,27 @@ describe('QuoteReadinessReviewResponse', () => {
     expect(screen.queryByTestId('customer-v21-quote-readiness-review-card')).not.toBeOnTheScreen()
   })
 
-  it('keeps the non-safety review explanation localized', () => {
+  it('names a structured scope reason without exposing its internal key', () => {
     render(
       <QuoteReadinessReviewResponse
         language="en"
         reason="missing_profile_fact:wall_surface_or_substrate"
+        reduceMotion
+        tokens={getCustomerThemeTokens('light')}
+      />,
+    )
+
+    expect(screen.getByText('More scope details needed')).toBeOnTheScreen()
+    expect(screen.getByText(/some scope details/i)).toBeOnTheScreen()
+    expect(screen.queryByText(/wall_surface_or_substrate/)).not.toBeOnTheScreen()
+    expect(screen.getByText(/no worker search or payment has started/i)).toBeOnTheScreen()
+  })
+
+  it('keeps the neutral review explanation localized for a reason it does not recognise', () => {
+    render(
+      <QuoteReadinessReviewResponse
+        language="en"
+        reason="manual_review_required"
         reduceMotion
         tokens={getCustomerThemeTokens('light')}
       />,
