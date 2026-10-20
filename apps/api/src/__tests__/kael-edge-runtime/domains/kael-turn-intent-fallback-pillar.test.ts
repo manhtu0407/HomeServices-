@@ -4,7 +4,7 @@ import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { memoryDb } from '../harness/memory-db'
 
 export const PILLAR = {
-  id: 'P392-kael-turn-intent-fallback',
+  id: 'P393-kael-turn-intent-fallback',
   invariant:
     'a classifier that is unavailable, slow, malformed, unsure or denied is a marked uncertainty, never a confident provide_information: a standalone WHY question is explained from the case as it stands, a real pending-slot answer still reaches intake, and no failure path re-estimates, confirms, requests a worker quote or creates a Job',
   authority: [
