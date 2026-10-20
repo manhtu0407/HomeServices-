@@ -20,6 +20,20 @@ export type CustomerAssistantJobContext = {
   readonly payment_status?: string | null;
 };
 
+// Built server-side from the persisted Case and never from client input; the service here outranks
+// anything inferred from the message or the recent turns.
+export type CustomerAssistantCaseContext = {
+  readonly serviceType: ServiceType;
+  readonly casePhase: string | null;
+  readonly status: string | null;
+  readonly serviceProblemId: string | null;
+  readonly pendingSlot: string | null;
+  readonly knownFacts: Readonly<Record<string, string>>;
+  readonly missingFacts: readonly string[];
+  readonly quoteReadiness: string | null;
+  readonly priceBlockerCodes: readonly string[];
+};
+
 export function shouldRetrieveGeneralKnowledge(topic: KaelTopic) {
   return topic === "worker_qualification_explain" ||
     topic === "service_trust_safety" ||

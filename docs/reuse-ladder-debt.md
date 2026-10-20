@@ -16,4 +16,9 @@ Entry shape:
 - Risk / follow-up: <what could make this worth collapsing later, or "none">
 ```
 
-No entries yet.
+## 2026-10-20 supabase/functions/mobile-api/_shared/domains/kael-chat/case-context.ts:assertCaseContextOwner
+
+- Found: `assertKaelSessionOwnership` in `domains/kael-chat/session-store.ts` (owner check on a session row).
+- Wrote new code because: it lets `ctx.role === "admin"` through, and this check guards what reaches a customer-facing prompt, where an admin must not read another customer's Case; it also has to bind the row to the addressed session id.
+- Risk / follow-up: two owner checks to keep in step; collapse into one if the admin pass-through is ever removed from the session store.
+

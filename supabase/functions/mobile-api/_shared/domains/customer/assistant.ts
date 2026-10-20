@@ -3,6 +3,7 @@ import { takeDurableKaelChatRateLimit } from "../../kael/kael-guardrails/durable
 import {
   buildKaelL2L3MemorySummary,
   runCustomerAssistant,
+  type CustomerAssistantCaseContext,
   type EdgeAiSecrets,
   type KaelReasoningReporter,
   type KaelResponseReporter,
@@ -42,6 +43,8 @@ export async function answerKaelAssistant(
   options: {
     imageUrls?: readonly string[];
     memorySummary?: string | null;
+    // Server-built from the persisted Case; the public request schema has no field that can reach it.
+    caseContext?: CustomerAssistantCaseContext | null;
     previousTurns?: readonly NormalChatPreviousTurn[];
     normalChatSearchResults?: readonly NormalChatSearchResult[] | null;
     normalChatSearchUnavailable?: boolean;
@@ -112,6 +115,7 @@ export async function answerKaelAssistant(
         payment_status: nullableString(job.payment_status),
       }
       : null,
+    caseContext: options.caseContext ?? null,
     serviceType: input.service_type ?? null,
     language: input.language,
     memorySummary,
