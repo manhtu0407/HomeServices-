@@ -109,22 +109,22 @@ const DECLINE_TEMPLATES: Record<"vi" | "en", Record<DeclineTemplateKey, string>>
     out_of_scope_service: "Kael hiểu nhu cầu này, nhưng hiện chưa có đủ chuyên môn và quy trình đã kiểm chứng cho hạng mục ngoài sáu dịch vụ đang hỗ trợ. Vì hướng dẫn thiếu chắc chắn có thể gây hỏng hóc hoặc mất an toàn, Kael xin không chẩn đoán hay hướng dẫn thao tác.",
     out_of_domain_question: "Kael hiểu điều bạn đang hỏi, nhưng chủ đề này nằm ngoài chuyên môn dịch vụ nhà ở. Trả lời thiếu chắc chắn có thể ảnh hưởng trực tiếp đến quyết định của bạn, nên Kael xin không suy đoán. Kael hỗ trợ toàn diện nhất với dịch vụ, an toàn, thợ, báo giá và giao dịch dịch vụ.",
     cannot_do_action: "Kael không có thẩm quyền thực hiện điều này. {alternative}",
-    unsafe_or_sensitive: "Kael không thể trả lời câu hỏi này. Nếu bạn cần hỗ trợ khẩn cấp, vui lòng gọi số 113.",
+    unsafe_or_sensitive: "Kael không thể trả lời câu hỏi này một cách an toàn. Nếu đang có tình huống khẩn cấp nhưng chưa rõ cần lực lượng nào, hãy gọi 112.",
     rate_limit_hit: "Bạn đã hỏi Kael quá nhiều lần trong thời gian ngắn. Vui lòng đợi {seconds} giây.",
     cost_cap_hit: "Bạn đã đạt giới hạn yêu cầu Kael cho tháng này. Vui lòng liên hệ hỗ trợ.",
     legal_advice_redirect: "Câu hỏi này cần tư vấn pháp lý chuyên môn. Kael có thể cảnh báo về an toàn nhưng không tư vấn pháp lý. Vui lòng tham vấn luật sư.",
-    emergency_redirect: "Kael nhận thấy tình huống này có vẻ khẩn cấp. Vui lòng gọi 113 hoặc 115 ngay lập tức.",
+    emergency_redirect: "Kael không thể chẩn đoán hoặc kê đơn. Nếu cần cấp cứu y tế, vui lòng gọi 115; nếu chưa rõ cần lực lượng nào, hãy gọi 112.",
     clarification_required: "Để Kael hỗ trợ đúng và an toàn, bạn vui lòng nêu rõ nhu cầu, bối cảnh và kết quả bạn muốn hỏi.",
   },
   en: {
     out_of_scope_service: "Kael understands the need, but does not yet have verified expertise and procedures for services outside the six supported categories. Uncertain instructions could cause damage or harm, so Kael will not diagnose or guide that work.",
     out_of_domain_question: "Kael understands the question, but it is outside home-service expertise. An uncertain answer could affect your decision, so Kael will not speculate. Kael is most reliable on services, safety, workers, quotes, and service transactions.",
     cannot_do_action: "Kael is not authorized to perform that action. {alternative}",
-    unsafe_or_sensitive: "Kael cannot answer that safely. If this is an emergency, call 113 or 115 now.",
+    unsafe_or_sensitive: "Kael cannot answer that safely. If there is an emergency and you are unsure which service is needed, call 112.",
     rate_limit_hit: "You have sent too many Kael requests in a short time. Please wait {seconds} seconds.",
     cost_cap_hit: "You have reached the current Kael request limit. Please contact support.",
     legal_advice_redirect: "This requires professional legal advice. Kael can provide general safety awareness, but not legal advice. Please consult a lawyer.",
-    emergency_redirect: "This may be an emergency. Please call 113 or 115 now.",
+    emergency_redirect: "Kael cannot diagnose or prescribe. For emergency medical care, call 115; if you are unsure which service is needed, call 112.",
     clarification_required: "To help safely, Kael needs a clearer request, context, and desired outcome.",
   },
 };
@@ -516,13 +516,11 @@ async function forbiddenTopicDecisionWithBoundaries(
       "emergency_redirect",
       client,
     );
-    return emergency.responseText
-      ? emergency
-      : {
-        reasonCode: "DENY_MEDICAL_ADVICE",
-        template: "unsafe_or_sensitive",
-        safeMetadata: emergency.safeMetadata,
-      };
+    return {
+      reasonCode: emergency.reasonCode,
+      template: "emergency_redirect",
+      safeMetadata: emergency.safeMetadata,
+    };
   }
   return forbiddenTopicDecision(topic);
 }

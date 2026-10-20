@@ -40,6 +40,7 @@ import {
   isCustomerKaelStreamResult,
   isKaelProgressStage,
   isKaelProgressStatus,
+  safeKaelProgressFailureReason,
   isWorkerKaelStreamResult,
   safeParseObject,
 } from './kael-stream-validation'
@@ -630,7 +631,7 @@ function stageEventToProgress(data: Record<string, unknown>): KaelChatProgress |
     current_stage: stage as KaelChatProgress['current_stage'],
     status,
     progress,
-    failure_reason: typeof data.failure_reason === 'string' ? data.failure_reason : null,
+    failure_reason: safeKaelProgressFailureReason(data.failure_reason),
     updated_at: updatedAt,
   }
 }

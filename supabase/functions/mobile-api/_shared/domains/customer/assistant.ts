@@ -138,7 +138,7 @@ export async function answerKaelAssistant(
     options.onNormalChatImageAnalysis?.(answer.normalChatImageAnalysis);
   }
   if (!options.traceHandledByCaller) {
-    traceAssistantTurn(
+    await traceAssistantTurn(
       input.surface === "customer_case" ? "assistant_case" : "assistant_normal",
       ctx,
       answer,

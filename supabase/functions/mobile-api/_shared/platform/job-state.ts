@@ -1,5 +1,6 @@
 import type { JobStatus } from "../../../_shared/domain.ts";
 import { kaelChatProgressSchema } from "../../../_shared/domain.ts";
+import { safeKaelProgressFailureReason } from "./kael-progress-safety.ts";
 import { nullableRecord } from "./coercions.ts";
 
 export const ACTIVE_WORKER_JOB_STATUSES: JobStatus[] = [
@@ -29,7 +30,10 @@ export const JOB_DETAIL_SELECT =
 export const DEFAULT_WORKER_CANDIDATE_POOL_SIZE = 50;
 
 export function parseKaelProgressSnapshot(raw: unknown, contextId: string) {
-  const rawProgress = nullableRecord(raw);
+  const rawRecord = nullableRecord(raw);
+  const rawProgress = rawRecord
+    ? { ...rawRecord, failure_reason: safeKaelProgressFailureReason(rawRecord.failure_reason) }
+    : null;
   const parsedProgress = rawProgress
     ? kaelChatProgressSchema.safeParse(rawProgress)
     : null;
@@ -39,7 +43,7 @@ export function parseKaelProgressSnapshot(raw: unknown, contextId: string) {
   return parsedProgress?.success
     ? {
       ...parsedProgress.data,
-      failure_reason: parsedProgress.data.failure_reason ?? null,
+      failure_reason: safeKaelProgressFailureReason(parsedProgress.data.failure_reason),
     }
     : null;
 }

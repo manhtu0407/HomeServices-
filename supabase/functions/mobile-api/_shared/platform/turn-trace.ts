@@ -9,6 +9,7 @@ export const KAEL_TURN_TRACE_SCHEMA = "kael_turn_trace.v1";
 export const KAEL_TURN_TRACE_KEYS: readonly string[] = [
   "schema",
   "correlation_id",
+  "actor_role_hash",
   "route",
   "stage",
   "outcome",
@@ -70,11 +71,16 @@ const QUOTE_BLOCKERS = [
 const LOWER_CODE = /^[a-z][a-z0-9_]{0,63}$/;
 const UPPER_CODE = /^[A-Z][A-Z0-9_]{2,63}$/;
 const TRACE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ACTOR_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/;
+const ACTOR_ROLES = ["admin", "admin_operator", "customer", "worker"] as const;
+const ACTOR_ROLE_HASH = /^[0-9a-f]{64}$/;
 const RELEASE_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const DEPLOYMENT_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const GIT_SHA = /^[0-9a-f]{7,40}$/;
 
 export type KaelTurnTraceIdentity = {
+  readonly user?: { readonly id?: unknown };
+  readonly role?: unknown;
   readonly traceId?: unknown;
   readonly releaseId?: unknown;
   readonly deploymentId?: unknown;
@@ -175,6 +181,25 @@ export function buildKaelTurnTrace(input: KaelTurnTraceInput): KaelTurnTrace {
   return Object.freeze(Object.fromEntries(entries.filter(([, value]) => value !== undefined))) as KaelTurnTrace;
 }
 
+export async function hashKaelActorRole(
+  actorId: unknown,
+  actorRole: unknown,
+): Promise<string | undefined> {
+  if (!matching(ACTOR_ID, actorId) || !member(ACTOR_ROLES, actorRole)) return undefined;
+  try {
+    const subtle = globalThis.crypto?.subtle;
+    if (!subtle) return undefined;
+    const digest = await subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(`${actorRole}:${actorId}`),
+    );
+    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+  } catch {
+    return undefined;
+  }
+}
+
 // Per isolate: enough to see a pattern, too little to flood the function logs on a burst.
 const LOG_ALLOWANCE: RateLimitConfig = { maxTokens: 20, refillRate: 20, refillIntervalMs: 60_000 };
 
@@ -183,10 +208,14 @@ const LOG_ALLOWANCE: RateLimitConfig = { maxTokens: 20, refillRate: 20, refillIn
 export function logKaelTurnTrace(
   trace: KaelTurnTrace,
   write: (...args: unknown[]) => void = console.warn,
+  actorRoleHash?: unknown,
 ): boolean {
   if (trace.stage === "answered") return false;
   const bucket = `kael_turn_trace_log:${trace.route}:${trace.stage}`;
   if (!checkRateLimit(bucket, LOG_ALLOWANCE).allowed) return false;
-  write("kael_turn_trace", trace);
+  const safeTrace = typeof actorRoleHash === "string" && ACTOR_ROLE_HASH.test(actorRoleHash)
+    ? Object.freeze({ ...trace, actor_role_hash: actorRoleHash })
+    : trace;
+  write("kael_turn_trace", safeTrace);
   return true;
 }

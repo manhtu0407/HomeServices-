@@ -61,6 +61,7 @@ import { createRuntimeKaelSpendGate, type SpendGateClient } from "../kael-guardr
 import { normalizeKaelResponseBrand } from "../language/user-facing-copy.ts";
 import { resolveCustomerAssistantTurnContext } from "./customer-assistant-turn-context.ts";
 import {
+  buildEmergencyCustomerAssistantAnswer,
   buildCustomerWorkflowAssistantAnswer,
   buildFallbackCustomerAssistantAnswer,
   type CustomerAssistantDecision,
@@ -193,6 +194,8 @@ export async function runCustomerAssistant(
     workflowQuestion,
   } = buildCustomerAssistantRunContext(input);
   const trace: KaelSafeTraceEvent[] = [];
+  const emergencyAnswer = buildEmergencyCustomerAssistantAnswer(cleanQuestion, topic, serviceType, unsafeRequest, language);
+  if (emergencyAnswer) return emergencyAnswer;
   if (!boundary.ok && boundary.reason === "prompt_injection") {
     return buildFallbackCustomerAssistantAnswer(
       boundary.declineText,

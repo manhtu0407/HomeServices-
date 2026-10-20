@@ -37,6 +37,7 @@ import {
   shouldSearchNormalChatQuestion,
 } from "../../kael/tools/normal-chat-search.ts";
 import { kaelChatProgressSchema, sanitizeForLLM } from "../../../../_shared/domain.ts";
+import { safeKaelProgressFailureReason } from "../../platform/kael-progress-safety.ts";
 import type { WorkerVisionFinding } from "../../kael/contracts/types.ts";
 import {
   buildSafeWorkerVisionFinding,
@@ -596,7 +597,13 @@ export async function readWorkerKaelSession(
 }
 
 export function serializeWorkerKaelSession(row: Record<string, unknown>) {
-  const rawProgress = nullableRecord(row.kael_progress);
+  const rawProgressValue = nullableRecord(row.kael_progress);
+  const rawProgress = rawProgressValue
+    ? {
+      ...rawProgressValue,
+      failure_reason: safeKaelProgressFailureReason(rawProgressValue.failure_reason),
+    }
+    : null;
   const parsedProgress = rawProgress
     ? kaelChatProgressSchema.safeParse(rawProgress)
     : null;
@@ -614,7 +621,7 @@ export function serializeWorkerKaelSession(row: Record<string, unknown>) {
     progress: parsedProgress?.success
       ? {
         ...parsedProgress.data,
-        failure_reason: parsedProgress.data.failure_reason ?? null,
+        failure_reason: safeKaelProgressFailureReason(parsedProgress.data.failure_reason),
       }
       : null,
   };

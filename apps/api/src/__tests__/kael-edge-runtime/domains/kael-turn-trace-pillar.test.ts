@@ -367,9 +367,9 @@ describe(`${PILLAR.id}: tracing never changes a decision`, () => {
 describe(`${PILLAR.id}: the direct assistant route is traced too`, () => {
   const refused = { boundary: 'unsupported', fallback_used: true, decision: REFUSAL_DECISION } as never
 
-  it('logs the case-surface refusal with the canonical service and a replay that exposes context loss', () => {
+  it('logs the case-surface refusal with the canonical service and a replay that exposes context loss', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    traceAssistantTurn('assistant_case', FULL_IDENTITY, refused, { message: 'Tại sao chưa đủ dữ kiện?', canonicalService: 'hvac', surface: 'customer_case' })
+    await traceAssistantTurn('assistant_case', { ...FULL_IDENTITY, user: { id: 'customer-1' }, role: 'customer' }, refused, { message: 'Tại sao chưa đủ dữ kiện?', canonicalService: 'hvac', surface: 'customer_case' })
     expect(warn, pillarWhy(PILLAR, 'the route that has no stored turn must still leave one line')).toHaveBeenCalledTimes(1)
     expect(warn.mock.calls[0][0]).toBe('kael_turn_trace')
     expect(warn.mock.calls[0][1]).toMatchObject({
@@ -380,20 +380,22 @@ describe(`${PILLAR.id}: the direct assistant route is traced too`, () => {
       permission_reason: 'DENY_OUT_OF_SCOPE_SERVICE',
       replay_topic: 'hvac_service',
       edge_release_id: RELEASE_ID,
+      actor_role_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
     })
     expect(JSON.stringify(warn.mock.calls[0])).not.toContain('dữ kiện')
+    expect(JSON.stringify(warn.mock.calls[0])).not.toContain('customer-1')
   })
 
-  it('keeps a real unsupported request visibly unsupported after the replay', () => {
+  it('keeps a real unsupported request visibly unsupported after the replay', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    traceAssistantTurn('assistant_case', FULL_IDENTITY, refused, { message: 'Sửa tủ lạnh giúp mình', canonicalService: 'hvac', surface: 'customer_case' })
+    await traceAssistantTurn('assistant_case', FULL_IDENTITY, refused, { message: 'Sửa tủ lạnh giúp mình', canonicalService: 'hvac', surface: 'customer_case' })
     expect(warn.mock.calls[0][1]).toMatchObject({ replay_topic: 'out_of_scope_services_anything' })
   })
 
-  it('never throws into the customer turn, even for a hostile identity', () => {
+  it('never throws into the customer turn, even for a hostile identity', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const hostile = Object.create({}, { releaseId: { get(): string { throw new Error('boom') } } })
-    expect(() => traceAssistantTurn('assistant_case', hostile, refused, { message: 'x', canonicalService: 'hvac', surface: 'customer_case' })).not.toThrow()
+    await expect(traceAssistantTurn('assistant_case', hostile, refused, { message: 'x', canonicalService: 'hvac', surface: 'customer_case' })).resolves.toBeUndefined()
   })
 })
 

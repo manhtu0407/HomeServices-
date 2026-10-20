@@ -26,6 +26,10 @@ const KAEL_PROGRESS_STAGES = new Set<KaelChatProgress['current_stage']>([
   'post_job_learning',
   'educational_response',
 ])
+const KAEL_PROGRESS_FAILURE_REASONS = new Set([
+  'TIMEOUT', 'UNKNOWN_ERROR', 'budget_exceeded', 'out_of_scope', 'pipeline_error',
+  'prompt_injection', 'service_mismatch', 'stage_failed', 'unsupported',
+])
 
 const SERVICE_TYPES = new Set<string>(CANONICAL_SERVICE_TYPES)
 const CUSTOMER_CONVERSATION_MODES = new Set(['normal', 'case'])
@@ -74,6 +78,10 @@ export function isKaelProgressStatus(status: string): status is KaelChatProgress
 
 export function isKaelProgressStage(stage: string): stage is KaelChatProgress['current_stage'] {
   return (KAEL_PROGRESS_STAGES as ReadonlySet<string>).has(stage)
+}
+
+export function safeKaelProgressFailureReason(value: unknown): string | null {
+  return typeof value === 'string' && KAEL_PROGRESS_FAILURE_REASONS.has(value) ? value : null
 }
 
 export function safeParseObject(text: string): Record<string, unknown> {
