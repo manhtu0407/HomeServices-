@@ -9,6 +9,7 @@ import {
 } from "../../../../_shared/contracts/kael-next-actions.ts";
 import { kaelDiagnosisScopeArtifactSchema, type EdgeAiSecrets } from "../../kael/index.ts";
 import { classifyCaseTurnIntent } from "../../kael/tools/case-turn-intent.ts";
+import { apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { asKaelChatStatus, asRecord, nullableString } from "../../platform/coercions.ts";
 import { compactMetadata } from "../../platform/domain-utils.ts";
@@ -194,7 +195,9 @@ async function restoreRecordedHold(input: { client: DbClient; sessionId: string;
   const current = await dbQuery<Record<string, unknown>>(
     input.client.from("kael_chat_sessions").select("diagnosis_scope").eq("id", input.sessionId).single(),
   );
-  const now = kaelDiagnosisScopeArtifactSchema.safeParse(current.data?.diagnosis_scope);
+  // A failed reload must not look like "nothing to restore": the incoming turn already cleared the hold.
+  if (current.error || !current.data) apiFailure("DB_ERROR", "Không thể cập nhật phiên Kael", 500);
+  const now = kaelDiagnosisScopeArtifactSchema.safeParse(current.data.diagnosis_scope);
   // Only a Case the incoming turn reset is restored; one a reply already moved on is left alone.
   if (!now.success || now.data.next_action.kind !== "wait" || now.data.quote_blockers.length > 0 || now.data.quote_ready) return;
   await persistDiagnosisScopeArtifact(input.client, input.sessionId, {

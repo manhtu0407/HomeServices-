@@ -207,7 +207,11 @@ export async function classifyCaseTurnIntent(input: {
           language: input.language,
           permissionSummary: "Classify only. Never answer the customer, never quote a price, never trigger a workflow action.",
           contextSummary: `Return strict JSON {"intent": one of ${KAEL_TURN_INTENTS.join(", ")}, "confidence": 0..1${
-            input.pendingSlot ? ', "pending_slot_answer": {...}, "answered_slots": [...]' : ""
+            input.pendingSlot
+              ? ', "pending_slot_answer": {...}, "answered_slots": [...]'
+              : filledSlots.length > 0
+              ? ', "answered_slots": [...]'
+              : ""
           }}. ` +
             `Intent meanings: ${JSON.stringify(INTENT_GUIDE)}. The latest customer message decides the intent; earlier turns only give context.` +
             (input.pendingSlot ? SLOT_ANSWER_GUIDE : "") +

@@ -3,6 +3,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
+import { diagnosisScopeWithGroundedAnswer } from '../../../../../../supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-artifact'
 import {
   CASE_ADMIN_ID,
   CASE_SESSION_ID,
@@ -13,6 +14,7 @@ import {
   assistantReply,
   classifierReply,
   createCaseWorld,
+  hvacPendingUnitArtifact,
   hvacPolicyRows,
   installEdgeRuntimeTestHooks,
   networkFailure,
@@ -62,6 +64,7 @@ const healthyModel: ModelReplyFn = (call) => {
       return classifierReply({ intent: 'ask_question', confidence: 0.92, pending_slot_answer: { kind: 'asks_why', slot: HVAC_UNIT_SLOT, value: null, confidence: 0.9 } })
     }
     if (said.includes('đặt luôn')) return classifierReply({ intent: 'proceed_or_confirm', confidence: 0.9 })
+    if (said.includes('quận 3')) return classifierReply({ intent: 'correction', confidence: 0.9, answered_slots: [{ slot: 'address_district', value: 'Quận 3' }] })
     if (said.includes('nhầm')) return classifierReply({ intent: 'correction', confidence: 0.9, answered_slots: [{ slot: HVAC_UNIT_SLOT, value: '2 máy treo tường 2HP' }] })
     return classifierReply({ intent: 'provide_information', confidence: 0.9, pending_slot_answer: unitAnswered('2 máy treo tường 1HP') })
   }
@@ -388,6 +391,52 @@ describe(`${PILLAR.id}: what the client receives`, () => {
     const second = await world.send(WHY)
     expect(second.body.session.diagnosis_scope.service_type, pillarWhy(PILLAR, 'turn 2 response')).toBe('hvac')
     matchesFixture('02-after-why-question', clientPayload(second.body))
+  })
+})
+
+describe(`${PILLAR.id}: review findings on the correction and restore paths`, () => {
+  it('R24 a correction names its slots in the contract the model is shown whenever details are recorded', async () => {
+    const world = createCaseWorld({ model: healthyModel })
+    await world.send(UNIT_ANSWER)
+    const second = await world.send(WHY)
+
+    const classifier = second.calls.find((call) => call.purpose === 'case_turn_intent')
+    const system = (classifier!.body.messages as Array<{ role: string; content: string }>).find((message) => message.role === 'system')!.content
+    const why = pillarWhy(PILLAR, 'no question is pending on turn 2, details are recorded')
+    expect(system, why).toContain('"answered_slots": [...]')
+    expect(classifier!.userContent, why).toContain('filled_slots')
+  })
+
+  it('R25 a failed reload of the Case after an answered turn is an error, not a silent loss of the blocker', async () => {
+    const world = createCaseWorld({ model: healthyModel, policies: hvacPolicyRows({ rfq: false }) })
+    await world.seedPriceEvidenceGap()
+    const from = world.db.client.from.bind(world.db.client)
+    world.db.client.from = (table: string) => {
+      const query = from(table) as Record<string, any>
+      const select = query.select.bind(query)
+      query.select = (columns?: string) => {
+        if (table === 'kael_chat_sessions' && columns === 'diagnosis_scope') {
+          return { eq: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'timeout' } }) }) }
+        }
+        return select(columns)
+      }
+      return query
+    }
+
+    const result = await world.send(WHY)
+    expect(result.status, pillarWhy(PILLAR, `status=${result.status}`)).toBe(500)
+  })
+
+  it('R26 a corrected district beats the first district named in the same message and is saved', async () => {
+    const artifact = diagnosisScopeWithGroundedAnswer(hvacPendingUnitArtifact(), 'address_district', 'Quận 7')
+    const world = createCaseWorld({ model: healthyModel, artifact })
+    const result = await world.send('Nhầm rồi, không phải quận 7 mà là quận 3')
+
+    const why = pillarWhy(PILLAR, `status=${result.status} metadata=${JSON.stringify(world.session().safe_metadata)} purposes=${result.purposes.join(',')}`)
+    expect(world.session().safe_metadata.address_district, why).toBe('q3')
+    expect(world.scope().facts.address_district, why).toContain('3')
+    const pipelinePrompts = result.calls.filter((call) => call.purpose === 'unknown').map((call) => call.userContent).join(' ')
+    expect(pipelinePrompts, why).not.toMatch(/District: q7/)
   })
 })
 
