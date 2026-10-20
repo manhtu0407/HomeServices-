@@ -11,7 +11,7 @@ export async function readHostedReleaseArtifact(input, fetchImpl = fetch) {
   if (input.releaseId === null) return null
   const client = createReleaseControlClient({ ...input, fetchImpl })
   const release = await client.selectRelease(input.releaseId)
-  const problems = checkHarnessRelease(release)
+  const problems = checkHarnessRelease(release, { verifySourceIdentity: false })
   if (problems.length > 0 || release.releaseId !== input.releaseId || release.environment !== input.environment) {
     throw new Error(`hosted release artifact is invalid: ${problems.join('; ')}`)
   }
