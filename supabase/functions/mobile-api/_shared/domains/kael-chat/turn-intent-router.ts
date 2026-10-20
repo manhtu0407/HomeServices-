@@ -12,14 +12,19 @@ import { classifyCaseTurnIntent } from "../../kael/tools/case-turn-intent.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { asKaelChatStatus, asRecord, nullableString } from "../../platform/coercions.ts";
 import { compactMetadata } from "../../platform/domain-utils.ts";
-import type { DbClient } from "../../platform/db.ts";
+import { dbQuery, type DbClient } from "../../platform/db.ts";
 import {
   answerKaelCaseQuestion,
   caseStateNextActions,
   readCaseRecentTurns,
   type CaseTurnRouting,
 } from "./case-question.service.ts";
-import { pendingClarificationSlotOf, slotAskCountsOf } from "./case-work-artifact.ts";
+import {
+  correctableSlotsOf,
+  pendingClarificationSlotOf,
+  persistDiagnosisScopeArtifact,
+  slotAskCountsOf,
+} from "./case-work-artifact.ts";
 import { applyEvidenceGapRfqFallback } from "./evidence-gap-fallback.ts";
 import {
   EVIDENCE_GAP_QUOTE_READINESS,
@@ -70,6 +75,7 @@ export async function resolveCaseTurnRouting(input: {
       ? { slot: pendingSlot, question: artifact.data.next_action.question }
       : null,
     openSlots: artifact.success ? artifact.data.missing_facts.filter((slot) => slot !== pendingSlot) : [],
+    filledSlots: artifact.success ? correctableSlotsOf(artifact.data) : [],
     recentTurns,
     state: {
       casePhase: nullableString(input.session.case_phase),
@@ -139,7 +145,7 @@ export async function routeKaelChatTurnIntent(input: {
     (routing.fallbackBasis === "ambiguous" || GATED_INTENTS.has(routing.intent))
   ) {
     await respondAmbiguous(input, routing, quoteTurn, offerReady);
-    await restoreReviewPhase(input);
+    await restoreAnsweredTurnState(input);
     return true;
   }
   switch (routing.intent) {
@@ -150,17 +156,17 @@ export async function routeKaelChatTurnIntent(input: {
     case "off_topic_or_smalltalk":
     case "request_human_or_complaint":
       await answerKaelCaseQuestion({ ...input, routing });
-      await restoreReviewPhase(input);
+      await restoreAnsweredTurnState(input);
       return true;
     case "request_reference_price":
       if (!inGap && !offerReady) return false;
       await respondReferencePrice(input, routing, quoteTurn, inGap);
-      await restoreReviewPhase(input);
+      await restoreAnsweredTurnState(input);
       return true;
     case "proceed_or_confirm":
       if (!inGap && !offerReady) return false;
       await respondProceed(input, routing, quoteTurn, inGap);
-      await restoreReviewPhase(input);
+      await restoreAnsweredTurnState(input);
       return true;
     case "request_worker_quote":
       await respondWorkerQuote(input, routing, quoteTurn, offerReady);
@@ -168,12 +174,36 @@ export async function routeKaelChatTurnIntent(input: {
   }
 }
 
-// An incoming turn always parks the session in analysis; a reply that did not re-analyse the case
-// puts an offer that was under review back where the customer left it.
-async function restoreReviewPhase(input: { client: DbClient; sessionId: string; session: Record<string, unknown> }) {
+// An incoming turn always parks the session in analysis and clears the recorded blocker and next step; a
+// reply that did not re-analyse the case puts an offer that was under review, and the reason Kael could
+// not quote, back where the customer left them.
+async function restoreAnsweredTurnState(input: { client: DbClient; sessionId: string; session: Record<string, unknown> }) {
   const casePhase = nullableString(input.session.case_phase);
-  if (asKaelChatStatus(input.session.status) !== "estimate_ready" || !casePhase || casePhase === "analysis") return;
-  await updateKaelSession(input.client, input.sessionId, { case_phase: casePhase });
+  if (asKaelChatStatus(input.session.status) === "estimate_ready" && casePhase && casePhase !== "analysis") {
+    await updateKaelSession(input.client, input.sessionId, { case_phase: casePhase });
+  }
+  await restoreRecordedHold(input);
+}
+
+async function restoreRecordedHold(input: { client: DbClient; sessionId: string; session: Record<string, unknown> }) {
+  const before = kaelDiagnosisScopeArtifactSchema.safeParse(input.session.diagnosis_scope);
+  if (!before.success) return;
+  const held = before.data.quote_blockers.length > 0 || before.data.quote_ready ||
+    before.data.next_action.kind !== "wait";
+  if (!held) return;
+  const current = await dbQuery<Record<string, unknown>>(
+    input.client.from("kael_chat_sessions").select("diagnosis_scope").eq("id", input.sessionId).single(),
+  );
+  const now = kaelDiagnosisScopeArtifactSchema.safeParse(current.data?.diagnosis_scope);
+  // Only a Case the incoming turn reset is restored; one a reply already moved on is left alone.
+  if (!now.success || now.data.next_action.kind !== "wait" || now.data.quote_blockers.length > 0 || now.data.quote_ready) return;
+  await persistDiagnosisScopeArtifact(input.client, input.sessionId, {
+    ...now.data,
+    case_phase: before.data.case_phase,
+    quote_ready: before.data.quote_ready,
+    quote_blockers: before.data.quote_blockers,
+    next_action: before.data.next_action,
+  });
 }
 
 async function appendRoutedReply(
@@ -310,7 +340,7 @@ async function respondWorkerQuote(
       : "Kael needs to finish analysing the request before sending it to workers. Add the missing details so Kael can continue.");
   const notice = await composeNotice(input, text, offerReady ? [vi ? "xác nhận" : "confirm"] : []);
   await appendRoutedReply(input, routing, notice.text, nextActions, { worker_quote_unavailable_reason: outcome.reason }, notice.telemetry);
-  await restoreReviewPhase(input);
+  await restoreAnsweredTurnState(input);
 }
 
 // Reached only when the classifier could not read the turn and the text is a bare acknowledgement, so

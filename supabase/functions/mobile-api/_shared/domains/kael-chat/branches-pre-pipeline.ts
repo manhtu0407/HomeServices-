@@ -11,6 +11,7 @@ import {
 } from "../../kael/index.ts";
 import type { DbClient } from "../../platform/db.ts";
 import {
+  correctableSlotsOf,
   diagnosisScopeWithGroundedAnswer,
   diagnosisScopeWithQuestion,
   loadKaelChatAnalysisState,
@@ -117,7 +118,7 @@ export async function prepareKaelChatPrePipeline(
   let artifact = initialArtifact;
   // Kael asks about the first missing detail, so that is the one the next reply answers.
   const pendingClarificationSlot = pendingClarificationSlotOf(artifact, slotAskCounts);
-  const withExtras = groundExtraSlots(artifact, slotUnderstanding);
+  const withExtras = groundCorrectedSlots(groundExtraSlots(artifact, slotUnderstanding), slotUnderstanding);
   if (withExtras !== artifact) {
     artifact = withExtras;
     await persistDiagnosisScopeArtifact(client, sessionId, artifact);
@@ -195,6 +196,20 @@ function groundExtraSlots(
   for (const extra of understanding?.answeredSlots ?? []) {
     if (!next.missing_facts.includes(extra.slot)) continue;
     next = diagnosisScopeWithGroundedAnswer(next, extra.slot, sanitizeCustomerCaseEvidenceText(extra.value));
+  }
+  return next;
+}
+
+// A correction replaces an answer the Case already holds; it never invents a slot the Case did not record.
+function groundCorrectedSlots(
+  artifact: KaelDiagnosisScopeArtifact,
+  understanding: CaseSlotUnderstanding | undefined,
+): KaelDiagnosisScopeArtifact {
+  let next = artifact;
+  const correctable = new Set(correctableSlotsOf(artifact));
+  for (const corrected of understanding?.correctedSlots ?? []) {
+    if (!correctable.has(corrected.slot)) continue;
+    next = diagnosisScopeWithGroundedAnswer(next, corrected.slot, sanitizeCustomerCaseEvidenceText(corrected.value));
   }
   return next;
 }
