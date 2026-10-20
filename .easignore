@@ -1,5 +1,6 @@
 # Full-source release identity includes tracked governance and tooling files.
 # Exclude private state, not the source directories that the workflow hashes.
+.git/
 .claude/worktrees/
 .claude/settings.local.json
 .claude/.mcp.json
