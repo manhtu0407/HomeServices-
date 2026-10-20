@@ -5,7 +5,8 @@ import type { CustomerThemeTokens } from '../customer-theme'
 import { CaseWorkResponse } from './case-work-response'
 import { KaelActionDock, kaelActionPrimaryStyle } from './kael-next-action-chips'
 import type { CaseWorkResponseModel } from './case-work-response-model'
-import { localizedQuoteReviewReason } from './case-work-localization'
+import { localizedQuoteBlockerCopy } from './case-work-localization'
+import { buildQuoteBlockerView, type QuoteBlockerView } from './quote-blocker-view-model'
 
 const EMPTY_SAFETY_MESSAGES: string[] = []
 
@@ -61,6 +62,7 @@ const REQUEST_COPY = {
 } as const
 
 export function QuoteReadinessReviewResponse({
+  blocker,
   language,
   reason,
   reduceMotion,
@@ -68,6 +70,7 @@ export function QuoteReadinessReviewResponse({
   safetyMessages = EMPTY_SAFETY_MESSAGES,
   tokens,
 }: {
+  blocker?: QuoteBlockerView
   language: AppLanguage
   reason?: string
   reduceMotion: boolean
@@ -77,29 +80,30 @@ export function QuoteReadinessReviewResponse({
 }) {
   const safetyBlocked = safetyMessages.length > 0
   const requestCopy = request && !safetyBlocked ? REQUEST_COPY[language] : null
+  const blockerCopy = localizedQuoteBlockerCopy(blocker ?? buildQuoteBlockerView({ reason }), language)
   const model: CaseWorkResponseModel = {
     actionKind: 'none',
     noteCopy: safetyBlocked
       ? safetyMessages.join(' ')
       : requestCopy && request
         ? requestCopy[request.kind].note
-        : localizedQuoteReviewReason(reason, language),
+        : blockerCopy.noteCopy,
     noteTitle: safetyBlocked
       ? (language === 'vi' ? 'Điều cần bảo đảm' : 'What must be secured')
       : requestCopy
         ? requestCopy.title
-        : (language === 'vi' ? 'Điều Kael đang kiểm tra' : 'What Kael is checking'),
+        : blockerCopy.noteTitle,
     phase: 'kael_estimating',
     status: safetyBlocked
       ? (language === 'vi' ? 'Đang giữ an toàn' : 'Safety hold')
       : requestCopy
         ? requestCopy.status
-        : (language === 'vi' ? 'Đang rà soát' : 'Under review'),
+        : blockerCopy.status,
     title: safetyBlocked
       ? (language === 'vi' ? 'Cần xử lý an toàn trước' : 'Safety review required')
       : requestCopy && request
         ? requestCopy.heading[request.kind]
-        : (language === 'vi' ? 'Báo giá cần rà soát' : 'Quote requires review'),
+        : blockerCopy.title,
   }
 
   return (
