@@ -11,7 +11,7 @@ import { CustomerKaelAnalysisEvidenceNode } from '../kael-chat/customer-kael-ana
 import { deriveCustomerKaelPresentation } from '../kael-chat/customer-kael-presentation'
 
 export const PILLAR = {
-  id: 'P394-quote-blocker-states',
+  id: 'P395-quote-blocker-states',
   invariant:
     'the quote review card names the blocker the server recorded - missing scope, missing validated price evidence, both, a safety hold, an inspection need or a closed policy - in the selected language, says what Kael recorded and what happens next, never asks for details the customer already gave, never invents a price, and shows the quote-request button only when the server offers it',
   authority: [

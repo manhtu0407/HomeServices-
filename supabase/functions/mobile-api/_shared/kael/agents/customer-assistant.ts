@@ -63,6 +63,7 @@ import { resolveCustomerAssistantTurnContext } from "./customer-assistant-turn-c
 import {
   buildCustomerWorkflowAssistantAnswer,
   buildFallbackCustomerAssistantAnswer,
+  type CustomerAssistantDecision,
 } from "./customer-assistant-answer.ts";
 import {
   deterministicSafetyNotes,
@@ -143,6 +144,7 @@ export type CustomerAssistantAnswer = {
   readonly regenerated?: boolean;
   readonly public_reasoning_summary?: readonly string[];
   readonly trace?: readonly KaelSafeTraceEvent[];
+  readonly decision?: CustomerAssistantDecision;
   readonly normalChatImageAnalysis?: NormalChatImageAnalysis | null;
 };
 
@@ -199,6 +201,7 @@ export async function runCustomerAssistant(
       true,
       deterministicSafetyNotes(language, topic),
       trace,
+      { stage: "prompt_injection", topic, service_resolved: serviceType, boundary_reason: boundary.reason },
     );
   }
   if (unsafeRequest) {
@@ -207,6 +210,7 @@ export async function runCustomerAssistant(
         ? "Kael không hướng dẫn vô hiệu hóa thiết bị bảo vệ hoặc gây hại. Nếu thiết bị có dấu hiệu nguy hiểm, hãy ngừng sử dụng và nhờ thợ đủ chuyên môn kiểm tra."
         : "Kael cannot guide disabling safety devices or causing harm. Stop using equipment that shows signs of danger and ask a qualified worker to check it.",
       topic, "unsupported", true, [], trace,
+      { stage: "unsafe_request", topic, service_resolved: serviceType },
     );
   }
   reportKaelPublicExecutionStep(input.reasoning, {
@@ -245,6 +249,13 @@ export async function runCustomerAssistant(
       true,
       deterministicSafetyNotes(language, topic),
       trace,
+      {
+        stage: "permission_gate",
+        topic,
+        service_resolved: serviceType,
+        reason_code: permission.reasonCode,
+        topic_source: permission.topicSource,
+      },
     );
   }
 
@@ -256,6 +267,7 @@ export async function runCustomerAssistant(
       true,
       deterministicSafetyNotes(language, topic),
       trace,
+      { stage: "boundary_guard", topic, service_resolved: serviceType, boundary_reason: boundary.reason },
     );
   }
 
@@ -265,6 +277,7 @@ export async function runCustomerAssistant(
         ? "Bạn muốn Kael hỗ trợ vấn đề nào trong nhà, hay thao tác nào trong NestScout?"
         : "Which problem at home or action in NestScout would you like help with?",
       safety_notes: [], citations: [], suggested_actions: [], boundary: "redirect", fallback_used: false,
+      decision: { stage: "clarification_required", topic, service_resolved: serviceType },
     };
   }
 
