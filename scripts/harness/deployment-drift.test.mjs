@@ -116,6 +116,23 @@ test('rejects incomplete and ambiguous remote identity evidence', () => {
 
 test('collects hosted health, migration, and deployed-function evidence from live APIs', async () => {
   const calls = []
+  const clientCompatibility = {
+    gitSha: 'a'.repeat(40),
+    releaseId: release.releaseId,
+    contractEpoch: 2,
+    ios: {
+      applicationId: 'com.phanmanhtu.homeservices',
+      minimumBuildNumber: 55,
+      easBuildId: '20000000-0000-4000-8000-000000000057',
+      runtimeVersion: '0.2.2',
+    },
+    android: {
+      applicationId: 'com.phanmanhtu.nestscout',
+      minimumBuildNumber: 5,
+      easBuildId: '20000000-0000-4000-8000-000000000058',
+      runtimeVersion: '0.2.2',
+    },
+  }
   const hosted = await collectHostedDeploymentState({
     environment: 'production',
     projectRef: 'iwevizmsedyqozxlawwl',
@@ -189,6 +206,13 @@ test('collects hosted health, migration, and deployed-function evidence from liv
       if (String(init.body ?? '').includes('stage1_release_controls')) {
         return jsonResponse({ result: [{ active_release_id: release.releaseId, revision: '7' }] })
       }
+      if (String(init.body ?? '').includes('activeClientCompatibility')) {
+        return jsonResponse({ result: [{
+          release_id: release.releaseId,
+          git_sha: release.gitSha,
+          client_compatibility: clientCompatibility,
+        }] })
+      }
       return jsonResponse({ result: inventory.entries })
     },
   })
@@ -199,6 +223,7 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   assert.equal(hosted.revision, 7)
   assert.equal(hosted.deploymentId, `iwevizmsedyqozxlawwl_${mobileFunctionId}_7`)
   assert.equal(hosted.manifestSha256, release.manifestSha256)
+  assert.deepEqual(hosted.clientCompatibility, clientCompatibility)
   assert.equal(hosted.bundleSha256, release.bundleSha256)
   assert.deepEqual(hosted.providerReadiness, release.providerReadiness)
   assert.equal(hosted.releaseLane, release.releaseLane ?? null)
@@ -215,7 +240,7 @@ test('collects hosted health, migration, and deployed-function evidence from liv
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].id, mobileFunctionId)
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].verify_jwt, false)
   assert.equal(hosted.managedEdgeFunctions['mobile-api'].entrypoint_path, 'index.ts')
-  assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'GET', 'GET', 'POST', 'POST', 'POST'])
+  assert.deepEqual(calls.map((call) => call.method), ['GET', 'GET', 'GET', 'GET', 'POST', 'POST', 'POST', 'POST'])
   assert.ok(calls.at(-1).signal instanceof AbortSignal)
   assert.ok(calls.every((call) => call.url.startsWith('https://')))
 })
@@ -247,6 +272,35 @@ test('rejects malformed or ambiguous hosted release-control evidence', async () 
       },
     }), /hosted release control evidence is (?:invalid|ambiguous)/u)
   }
+})
+
+test('rejects client compatibility from a release other than the active registered release', async () => {
+  await assert.rejects(() => collectHostedDeploymentState({
+    environment: 'production',
+    projectRef: 'iwevizmsedyqozxlawwl',
+    accessToken: 'test-management-token',
+    fetchImpl: async (url, init = {}) => {
+      if (String(url).includes('/functions/v1/mobile-api/harness/health')) {
+        return jsonResponse({
+          environment: { name: 'production', project_ref: 'iwevizmsedyqozxlawwl' },
+          release: { release_id: release.releaseId, git_sha: release.gitSha, registered: true },
+        })
+      }
+      if (String(url).endsWith('/functions')) return jsonResponse([])
+      if (String(url).includes('/functions/')) return jsonResponse({ status: 'ACTIVE' })
+      if (String(init.body ?? '').includes('stage1_release_controls')) {
+        return jsonResponse({ result: [{ active_release_id: release.releaseId, revision: '7' }] })
+      }
+      if (String(init.body ?? '').includes('activeClientCompatibility')) {
+        return jsonResponse({ result: [{
+          release_id: 'harness-ffffffffffff-bbbbbbbbbbbb',
+          git_sha: release.gitSha,
+          client_compatibility: {},
+        }] })
+      }
+      return jsonResponse({ result: [] })
+    },
+  }), /hosted active release client compatibility evidence is invalid/u)
 })
 
 test('collects a null-release baseline when the hosted health probe fails closed pre-release', async () => {
