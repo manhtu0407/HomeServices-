@@ -52,8 +52,10 @@ export function resolveCustomerAssistantTurnContext(input: CustomerAssistantInpu
   const affirmedQuestion = surface === "customer_normal"
     ? affirmedStatement(question)
     : question;
+  // An open Case outranks the recent turns: a short reply carries no service word of its own.
   let serviceType = surface === "customer_normal"
-    ? inferAssistantServiceType(affirmedQuestion) ?? (correction ? null : input.serviceType ?? null)
+    ? inferAssistantServiceType(affirmedQuestion) ??
+      input.caseContext?.serviceType ?? (correction ? null : input.serviceType ?? null)
     : input.serviceType ?? inferAssistantServiceType(question, input.job);
   let topic = classifyAssistantTopic(question, serviceType, surface, Boolean(input.imageUrls?.length));
   if (surface !== "customer_normal") return { serviceType, topic, clarificationRequired: false, unsafeRequest };
