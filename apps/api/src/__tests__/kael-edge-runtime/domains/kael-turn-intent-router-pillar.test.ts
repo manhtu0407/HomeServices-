@@ -142,10 +142,18 @@ describe(`${PILLAR.id}: Kael answers what was asked`, () => {
     expect(db.tables.jobs ?? []).toHaveLength(0)
   })
 
-  it('keeps today’s behaviour when the classifier is unavailable', async () => {
-    hooks.classify.mockResolvedValue({ intent: 'provide_information', confidence: 0, fallbackUsed: true })
+  it('sends case information to the pipeline and records the fallback when the classifier is unavailable', async () => {
+    hooks.classify.mockResolvedValue({
+      intent: 'provide_information',
+      confidence: 0,
+      fallbackUsed: true,
+      fallbackReason: 'provider_unavailable',
+      fallbackBasis: 'case_information',
+    })
     const { db, original } = seed({ quoteTurn: { quote_readiness: 'validated_price_evidence_unavailable' } })
-    expect(await route(db, original, 'Sao vậy?')).toBe(false)
-    expect(db.tables.kael_chat_sessions[0].safe_metadata).toMatchObject({ last_turn_intent: { source: 'fallback' } })
+    expect(await route(db, original, 'Kệ gỗ 30x20, nặng 1kg')).toBe(false)
+    expect(db.tables.kael_chat_sessions[0].safe_metadata).toMatchObject({
+      last_turn_intent: { source: 'fallback', fallback_reason: 'provider_unavailable', fallback_basis: 'case_information' },
+    })
   })
 })
