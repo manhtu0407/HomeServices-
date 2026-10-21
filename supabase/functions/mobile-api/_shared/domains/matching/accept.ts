@@ -13,6 +13,10 @@ export async function acceptBroadcast(
   jobId: string,
   quoteId: string,
 ) {
+  // Accepting an offer proposes the caller as the worker, so only a worker can do it.
+  if (ctx.role !== "worker") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ thợ mới được nhận yêu cầu.", 403);
+  }
   const client = db(ctx);
   const result = await dbQuery<Array<Record<string, unknown>>>(
     workflowDb(ctx).rpc("accept_priced_broadcast_durable_atomic", {

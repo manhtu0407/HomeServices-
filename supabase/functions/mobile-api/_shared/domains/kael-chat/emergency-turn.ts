@@ -241,6 +241,36 @@ export async function answerEmergencyOnOwnedSession(
   return true;
 }
 
+// A reported emergency on an open Case its caller owns, on a request the Case cannot take only because of an unrelated
+// field (an invalid schedule). The customer's words and one deterministic reply are recorded and the field is applied
+// nowhere, so the guidance arrives as an ordinary answer. A closed Case, or a request that reports nothing, returns false
+// and is refused exactly as before.
+export async function answerEmergencyOnOpenSession(
+  ctx: MobileApiContext,
+  sessionId: string,
+  session: Record<string, unknown>,
+  input: { readonly texts: readonly string[]; readonly language: "vi" | "en"; readonly entry: CaseEmergencyEntry },
+): Promise<boolean> {
+  if (CLOSED_STATUSES.has(asKaelChatStatus(session.status))) return false;
+  const emergency = resolveCaseEmergency({
+    message: input.texts,
+    language: input.language,
+    serviceType: session.service_type,
+    parked: true,
+  });
+  if (!emergency) return false;
+  await answerParkedEmergency({
+    client: db(ctx),
+    sessionId,
+    session,
+    texts: input.texts,
+    emergency,
+    entry: input.entry,
+    identity: ctx,
+  });
+  return true;
+}
+
 // A classified emergency whose reply could not be written: the failure is traced (route, entry, gate version and
 // correlation only, never a word of the customer's text) and the error the caller already raises keeps its code and
 // status but carries the guidance, so the customer is not left with a bare failure while the Case may be in danger.

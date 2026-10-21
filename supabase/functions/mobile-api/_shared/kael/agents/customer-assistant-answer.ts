@@ -1,4 +1,5 @@
-import type { CustomerAssistantAnswer } from "./customer-assistant.ts";
+import type { CustomerAssistantAnswer, CustomerAssistantInput } from "./customer-assistant.ts";
+import { assistantQuestion, resolveCustomerAssistantTurnContext } from "./customer-assistant-turn-context.ts";
 import type { CustomerAssistantBoundary } from "./customer-assistant-provider-output.ts";
 import type { KaelTopic } from "../kael-guardrails/permission-gate.ts";
 import type { BoundaryReason } from "../kael-guardrails/boundary-guard.ts";
@@ -68,6 +69,27 @@ export function buildEmergencyCustomerAssistantAnswer(
       reason_code: `EMERGENCY_${emergency.route.toUpperCase()}`,
     },
   };
+}
+
+// The emergency answer for a message, or null. It reads no database, calls no provider and takes no quota, so a
+// caller can place it ahead of everything that does.
+export function resolveCustomerAssistantEmergency(input: CustomerAssistantInput): CustomerAssistantAnswer | null {
+  const { cleanQuestion, language } = assistantQuestion(input);
+  const { serviceType, topic, unsafeRequest } = resolveCustomerAssistantTurnContext(input, cleanQuestion);
+  return buildEmergencyCustomerAssistantAnswer(cleanQuestion, topic, serviceType, unsafeRequest, language);
+}
+
+// What the message alone says, before the earlier conversation is read. "certain" is an emergency whatever the chat was
+// about, so nothing else is needed to answer it. "possible" depends on the service: a bare gas leak is refrigerant in an
+// air-conditioning chat, so only the stored conversation can settle it, but nothing paid is worth waiting for either way.
+export type EmergencyReading = "none" | "possible" | "certain";
+
+export function emergencyReadingWithoutContext(input: CustomerAssistantInput): EmergencyReading {
+  const { cleanQuestion, language } = assistantQuestion(input);
+  const unknown = resolveEmergencyGuidance(cleanQuestion, language, { serviceType: null });
+  if (unknown === null) return "none";
+  const airConditioning = resolveEmergencyGuidance(cleanQuestion, language, { serviceType: "hvac" });
+  return unknown.route === airConditioning?.route ? "certain" : "possible";
 }
 
 export function buildCustomerWorkflowAssistantAnswer(

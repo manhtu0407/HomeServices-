@@ -63,12 +63,13 @@ type InitialKaelChatMessageInput = {
 
 export async function createKaelChat(
   ctx: MobileApiContext,
-  input: KaelChatCreateInput,
+  received: KaelChatCreateInput,
   secrets: EdgeAiSecrets,
 ) {
   if (ctx.role !== "customer") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được tạo phiên Kael Xử lý công việc", 403);
   }
+  let input = received;
   const scheduleValidation = validateFutureHcmcSchedule(
     input.scheduled_at,
     input.schedule_window,
@@ -78,9 +79,8 @@ export async function createKaelChat(
     intakeDescription: input.intake_description,
     evidenceItems: input.evidence_items,
   });
-  const scheduleRefused = scheduleValidation !== null &&
-    input.intake_source !== "booking" &&
-    (!input.client_request_id || Boolean(input.session_id));
+  const scheduleInvalid = scheduleValidation !== null && input.intake_source !== "booking";
+  const scheduleRefused = scheduleInvalid && (!input.client_request_id || Boolean(input.session_id));
   if (input.session_id) {
     if (!input.message) {
       // Nothing here is a turn the Case takes, but a reported emergency in a voice transcript or note is still
@@ -108,7 +108,19 @@ export async function createKaelChat(
     }, secrets);
   }
 
-  if (scheduleRefused) refuseCreateSchedule(ctx, input, createTexts);
+  // A new Case whose schedule is invalid is refused, unless the request reports an emergency: that is answered, as an
+  // ordinary reply, with the schedule dropped and the analysis deferred so nothing else of the request is applied.
+  const emergencyOverSchedule = scheduleInvalid && resolveCaseEmergency({
+    message: createTexts,
+    language: input.language ?? "vi",
+    serviceType: input.service_type,
+    parked: true,
+  }) !== null;
+  if (emergencyOverSchedule) {
+    input = { ...input, scheduled_at: undefined, schedule_window: undefined, defer_analysis: true };
+  } else if (scheduleRefused) {
+    refuseCreateSchedule(ctx, input, createTexts);
+  }
   const client = db(ctx);
   const language = input.language ?? "vi";
   const safeProblemChips = sanitizeUntrustedEvidenceList(input.problem_chips);
@@ -147,7 +159,7 @@ export async function createKaelChat(
         409,
       );
     }
-    if (scheduleValidation !== null && input.intake_source !== "booking") {
+    if (scheduleInvalid && !emergencyOverSchedule) {
       refuseCreateSchedule(ctx, input, createTexts);
     }
   }

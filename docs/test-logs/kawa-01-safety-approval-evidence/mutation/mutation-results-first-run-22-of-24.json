@@ -1,0 +1,201 @@
+{
+  "schema": "kael_safety_approval_mutation.v1",
+  "mutants": [
+    {
+      "name": "M01 turn route no longer answers an emergency over an invalid schedule",
+      "status": "KILLED",
+      "failedTests": 22,
+      "files": [
+        "kael-case-emergency-closure-paths-pillar.test.ts",
+        "kael-emergency-delivery-pillar.test.ts",
+        "kael-emergency-sentinel-matrix-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M02 new Case create never answers over an invalid schedule",
+      "status": "KILLED",
+      "failedTests": 6,
+      "files": [
+        "kael-case-emergency-closure-paths-pillar.test.ts",
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M03 the dropped-schedule create still runs the analysis",
+      "status": "KILLED",
+      "failedTests": 1,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M04 the invalid schedule is kept on the created Case",
+      "status": "KILLED",
+      "failedTests": 5,
+      "files": [
+        "kael-case-emergency-closure-paths-pillar.test.ts",
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M05 a closed Case is written to by the open-session answer",
+      "status": "KILLED",
+      "failedTests": 3,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M06 ownership removed from the soft owner lookup",
+      "status": "KILLED",
+      "failedTests": 3,
+      "files": [
+        "kael-case-emergency-closure-paths-pillar.test.ts",
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M07 assistant: the quota stands before the emergency again",
+      "status": "KILLED",
+      "failedTests": 8,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M08 assistant: the job status refusal stands before the emergency again",
+      "status": "KILLED",
+      "failedTests": 2,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M09 assistant: the customer role is no longer required for the job",
+      "status": "SURVIVED",
+      "failedTests": 0,
+      "files": []
+    },
+    {
+      "name": "M10 normal chat: no early reading, the old order returns",
+      "status": "KILLED",
+      "failedTests": 7,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M11 normal chat: an emergency still consumes its image references",
+      "status": "KILLED",
+      "failedTests": 1,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M12 normal chat: a service-dependent report skips the stored conversation",
+      "status": "KILLED",
+      "failedTests": 1,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M13 reading: a service-dependent report is called certain",
+      "status": "KILLED",
+      "failedTests": 2,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M14 reading: nothing is ever reported",
+      "status": "KILLED",
+      "failedTests": 12,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M15 the early emergency answer is never produced",
+      "status": "KILLED",
+      "failedTests": 24,
+      "files": [
+        "kael-emergency-delivery-pillar.test.ts",
+        "kael-emergency-sentinel-matrix-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M16 intake decision: the customer-role guard removed",
+      "status": "KILLED",
+      "failedTests": 3,
+      "files": [
+        "kael-approval-boundary-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M17 evidence: the customer-role guard removed",
+      "status": "KILLED",
+      "failedTests": 3,
+      "files": [
+        "kael-approval-boundary-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M18 offer accept: the worker-role guard removed",
+      "status": "KILLED",
+      "failedTests": 1,
+      "files": [
+        "kael-approval-boundary-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M19 offer decline: the worker-role guard removed",
+      "status": "KILLED",
+      "failedTests": 1,
+      "files": [
+        "kael-approval-boundary-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M20 evidence route: the emergency is not answered",
+      "status": "KILLED",
+      "failedTests": 12,
+      "files": [
+        "kael-emergency-sentinel-matrix-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M21 blind eval: independence without the registered hash",
+      "status": "KILLED",
+      "failedTests": 1,
+      "files": [
+        "kael-emergency-blind-eval-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M22 blind eval: an empty denominator reports 0",
+      "status": "KILLED",
+      "failedTests": 1,
+      "files": [
+        "kael-emergency-blind-eval-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M23 blind eval: a miss carries the row text",
+      "status": "KILLED",
+      "failedTests": 2,
+      "files": [
+        "kael-emergency-blind-eval-pillar.test.ts"
+      ]
+    },
+    {
+      "name": "M24 blind eval: a small perfect set clears the gate",
+      "status": "SURVIVED",
+      "failedTests": 0,
+      "files": []
+    }
+  ],
+  "killed": 22,
+  "total": 24
+}

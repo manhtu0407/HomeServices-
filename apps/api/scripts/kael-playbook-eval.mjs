@@ -111,6 +111,7 @@ const SOURCE_FILES = [
   'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts',
   'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-policy.ts',
   'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-provider-output.ts',
+  'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts',
   'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-workflow.ts',
   'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant.ts',
   'supabase/functions/mobile-api/_shared/kael/contracts/artifact-contract.ts',

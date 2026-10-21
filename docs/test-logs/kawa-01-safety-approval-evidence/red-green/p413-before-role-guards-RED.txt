@@ -1,0 +1,25 @@
+ RUN  v4.1.6 <repo>/apps/api
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  1 failed (1)
+      Tests  8 failed | 59 passed (67)
+
+Files:
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts (67 tests | 8 failed)
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:125:34
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:125:34
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:139:34
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:139:34
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:158:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:158:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:170:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:206:26
+
+Failing tests (8):
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a customer approval is never recorded for the wrong role > as admin > confirm the booking intake is refused with no write, no function call and no provider call
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a customer approval is never recorded for the wrong role > as admin > submit evidence or skip it is refused with no write, no function call and no provider call
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a worker action is never taken for the wrong role > as admin > accept an offer is refused with no write, no function call and no provider call
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a worker action is never taken for the wrong role > as admin > decline an offer is refused with no write, no function call and no provider call
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: an admin cannot decide, confirm or abandon a customer's Case > refuses the booking-intake decision confirmed and leaves the confirmation pending
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: an admin cannot decide, confirm or abandon a customer's Case > refuses the booking-intake decision correction_requested and leaves the confirmation pending
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: an admin cannot decide, confirm or abandon a customer's Case > refuses to submit or skip evidence for the customer, so no customer turn is forged
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a Case stream refuses the wrong role before anything is written > the evidence stream refuses an admin

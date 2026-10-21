@@ -56,10 +56,9 @@ import {
 } from "./customer-assistant-workflow.ts";
 import { type KaelSafeTraceEvent } from "../learning/trace.ts";
 import { scrubSensitiveForLLM } from "../pipeline/utils.ts";
-import { sanitizeCustomerCaseEvidenceText } from "../evidence/untrusted-evidence.ts";
 import { createRuntimeKaelSpendGate, type SpendGateClient } from "../kael-guardrails/spend-gate.ts";
 import { normalizeKaelResponseBrand } from "../language/user-facing-copy.ts";
-import { resolveCustomerAssistantTurnContext } from "./customer-assistant-turn-context.ts";
+import { assistantQuestion, resolveCustomerAssistantTurnContext } from "./customer-assistant-turn-context.ts";
 import {
   buildEmergencyCustomerAssistantAnswer,
   buildCustomerWorkflowAssistantAnswer,
@@ -396,17 +395,7 @@ export async function runCustomerAssistant(
 }
 
 function buildCustomerAssistantRunContext(input: CustomerAssistantInput) {
-  const language = input.language ?? "vi";
-  const surface = input.surface ?? "customer_normal";
-  const hasImages = Boolean(input.imageUrls?.length);
-  const sourceMessage = input.message.trim() || (hasImages
-    ? language === "en" ? "Please analyze the attached image(s)." : "Hãy phân tích ảnh đính kèm."
-    : input.message);
-  const cleanQuestion = (
-    surface === "customer_case"
-      ? sanitizeCustomerCaseEvidenceText(sourceMessage)
-      : scrubSensitiveForLLM(sourceMessage)
-  ).slice(0, 2000);
+  const { language, surface, sourceMessage, cleanQuestion } = assistantQuestion(input);
   const workflowQuestion = scrubSensitiveForLLM(sourceMessage).slice(0, 2000);
   const { serviceType, topic, clarificationRequired, unsafeRequest } = resolveCustomerAssistantTurnContext(input, cleanQuestion);
   const boundary = evaluateMessageBoundary(cleanQuestion, serviceType, {

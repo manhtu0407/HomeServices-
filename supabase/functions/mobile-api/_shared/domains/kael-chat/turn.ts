@@ -46,6 +46,7 @@ import {
 } from "./intake.ts";
 import {
   answerCaseEmergency,
+  answerEmergencyOnOpenSession,
   answerParkedEmergency,
   customerAuthoredTexts,
   ownedSessionForRefusal,
@@ -88,16 +89,22 @@ export async function sendKaelChatTurn(
   secrets: EdgeAiSecrets,
 ) {
   if (validateFutureHcmcSchedule(input.scheduled_at, input.schedule_window) !== null) {
-    // The schedule is refused as before, but a reported emergency is not hidden behind that refusal: its owner gets
-    // the guidance in the same error. Anyone else gets the plain refusal.
+    // A reported emergency is not hidden behind that refusal. The owner of an open Case is answered as an ordinary
+    // reply that applies no schedule (a 4xx reaches the customer as generic copy); a closed Case keeps the refusal with
+    // the guidance in front of its message, and anyone else gets the plain refusal.
     const refused = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
     const owned = refused.length > 0 ? await ownedSessionForRefusal(ctx, sessionId) : null;
+    const refusedLanguage = input.language ?? (asRecord(owned?.safe_metadata).language === "en" ? "en" : "vi");
+    if (
+      owned &&
+      await answerEmergencyOnOpenSession(ctx, sessionId, owned, { texts: refused, language: refusedLanguage, entry: "turn" })
+    ) return getKaelChat(ctx, sessionId);
     refuseWithEmergencyGuidance(
       { code: "VALIDATION", message: HCMC_SCHEDULE_VALIDATION_MESSAGE, status: 400 },
       owned
         ? {
           texts: refused,
-          language: input.language ?? (asRecord(owned.safe_metadata).language === "en" ? "en" : "vi"),
+          language: refusedLanguage,
           serviceType: owned.service_type,
           entry: "turn",
           identity: ctx,

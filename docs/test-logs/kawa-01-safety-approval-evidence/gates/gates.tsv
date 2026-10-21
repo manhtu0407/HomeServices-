@@ -1,0 +1,25 @@
+type-check-api	0	13s	corepack pnpm type-check:api
+type-check-mobile	0	65s	corepack pnpm type-check:mobile
+edge-check	0	76s	corepack pnpm edge:check
+lint-structure	0	2s	corepack pnpm lint:structure
+lint-comments	0	1s	corepack pnpm lint:comments --working
+lint-playbooks	0	1s	corepack pnpm lint:playbooks
+lint-test-collection	0	2s	corepack pnpm lint:test-collection
+pillars-check	0	1s	corepack pnpm harness:pillars:check
+lint-edge-db	0	3s	corepack pnpm lint:edge-db
+migrations-check	0	1s	corepack pnpm harness:migrations:check
+lint-baseline	0	2s	corepack pnpm lint:baseline
+lint-authority	1	2s	corepack pnpm lint:authority
+lint-workplan	0	1s	corepack pnpm lint:workplan
+lint-residue	0	2s	corepack pnpm lint:residue
+lint-reuse-ladder	0	1s	corepack pnpm lint:reuse-ladder
+lint-protocol-routes	0	2s	corepack pnpm lint:protocol-routes
+harness-capabilities	0	1s	corepack pnpm harness:capabilities:check
+harness-access	0	12s	corepack pnpm harness:access:check
+harness-privileged	0	1s	corepack pnpm harness:privileged:check
+harness-transactions	0	2s	corepack pnpm harness:transactions:check
+harness-manifest	0	5s	corepack pnpm harness:manifest:check
+diff-check	0	2s	diffcheck
+test-api	0	71s	corepack pnpm test:api
+test-mobile	0	323s	corepack pnpm test:mobile
+DONE

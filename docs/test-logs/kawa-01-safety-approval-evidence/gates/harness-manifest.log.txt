@@ -1,0 +1,6 @@
+
+> nestscout@0.1.0 harness:manifest:check <repo>
+> node scripts/run.mjs run-node scripts/harness/check-manifest.mjs
+
+harness manifest ok: 51 repository skills, 11 runtime tools, 1 provider adapters, 2 routers; sha256:0ba5de3aa0b4af8cd5c4252144815930267f35398d5f4547c909b9fbac502138
+

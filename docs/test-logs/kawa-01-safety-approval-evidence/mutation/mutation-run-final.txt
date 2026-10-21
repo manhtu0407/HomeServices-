@@ -1,0 +1,26 @@
+KILLED   M01 turn route no longer answers an emergency over an invalid schedule (22 failed) kael-case-emergency-closure-paths-pillar.test.ts,kael-emergency-delivery-pillar.test.ts,kael-emergency-sentinel-matrix-pillar.test.ts
+KILLED   M02 new Case create never answers over an invalid schedule (6 failed) kael-case-emergency-closure-paths-pillar.test.ts,kael-emergency-delivery-pillar.test.ts
+KILLED   M03 the dropped-schedule create still runs the analysis (1 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M04 the invalid schedule is kept on the created Case (5 failed) kael-case-emergency-closure-paths-pillar.test.ts,kael-emergency-delivery-pillar.test.ts
+KILLED   M05 a closed Case is written to by the open-session answer (3 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M06 ownership removed from the soft owner lookup (3 failed) kael-case-emergency-closure-paths-pillar.test.ts,kael-emergency-delivery-pillar.test.ts
+KILLED   M07 assistant: the quota stands before the emergency again (8 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M08 assistant: the job status refusal stands before the emergency again (2 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M09 assistant: the customer role is no longer required for the job (1 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M10 normal chat: no early reading, the old order returns (7 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M11 normal chat: an emergency still consumes its image references (1 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M12 normal chat: a service-dependent report skips the stored conversation (1 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M13 reading: a service-dependent report is called certain (2 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M14 reading: nothing is ever reported (12 failed) kael-emergency-delivery-pillar.test.ts
+KILLED   M15 the early emergency answer is never produced (24 failed) kael-emergency-delivery-pillar.test.ts,kael-emergency-sentinel-matrix-pillar.test.ts
+KILLED   M16 intake decision: the customer-role guard removed (3 failed) kael-approval-boundary-pillar.test.ts
+KILLED   M17 evidence: the customer-role guard removed (3 failed) kael-approval-boundary-pillar.test.ts
+KILLED   M18 offer accept: the worker-role guard removed (1 failed) kael-approval-boundary-pillar.test.ts
+KILLED   M19 offer decline: the worker-role guard removed (1 failed) kael-approval-boundary-pillar.test.ts
+KILLED   M20 evidence route: the emergency is not answered (12 failed) kael-emergency-sentinel-matrix-pillar.test.ts
+KILLED   M21 blind eval: independence without the registered hash (1 failed) kael-emergency-blind-eval-pillar.test.ts
+KILLED   M22 blind eval: an empty denominator reports 0 (1 failed) kael-emergency-blind-eval-pillar.test.ts
+KILLED   M23 blind eval: a miss carries the row text (2 failed) kael-emergency-blind-eval-pillar.test.ts
+KILLED   M24 blind eval: a small perfect set clears the gate (1 failed) kael-emergency-blind-eval-pillar.test.ts
+24/24 killed
+exit=0

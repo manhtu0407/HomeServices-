@@ -1,0 +1,6 @@
+
+> nestscout@0.1.0 lint:baseline <repo>
+> node scripts/run.mjs run-node scripts/check-structure-baseline.mjs
+
+structure baseline is no weaker than ce4bd3cd
+

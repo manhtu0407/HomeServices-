@@ -1,0 +1,2 @@
+rerun-type-check-api	0	10s	corepack pnpm type-check:api
+rerun-lint-authority	1	2s	corepack pnpm lint:authority

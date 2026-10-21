@@ -7,6 +7,9 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { reconcileSavedWorkerFallback } from "./matching-preference.ts";
 
 export async function declineBroadcast(ctx: MobileApiContext, jobId: string) {
+  if (ctx.role !== "worker") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ thợ mới được từ chối yêu cầu.", 403);
+  }
   const client = db(ctx);
   const result = await dbQuery<Record<string, unknown>>(
     client

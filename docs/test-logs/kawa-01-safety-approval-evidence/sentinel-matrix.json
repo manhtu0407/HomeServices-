@@ -1,0 +1,894 @@
+{
+  "schema": "kael_sentinel_matrix.v1",
+  "evidence_tier": "T0",
+  "note": "plumbing of the gate at each entry point; not recall on unseen wording",
+  "sentinel_sha256": "07fdd814c13c19e720a8ff84715e00aad122735426a156ae3ab48bd3f93de42d",
+  "sentinels": 14,
+  "entries": [
+    {
+      "id": "E01",
+      "name": "Case turn, typed message"
+    },
+    {
+      "id": "E02",
+      "name": "Case turn, reviewed voice transcript"
+    },
+    {
+      "id": "E03",
+      "name": "Case evidence step, skip reason"
+    },
+    {
+      "id": "E04",
+      "name": "new Case, first message"
+    },
+    {
+      "id": "E05",
+      "name": "existing Case, create with a voice transcript and no message"
+    },
+    {
+      "id": "E06",
+      "name": "Case turn while the booking confirmation is pending"
+    },
+    {
+      "id": "E07",
+      "name": "Case turn that also carries an invalid schedule"
+    },
+    {
+      "id": "E08",
+      "name": "assistant, normal chat surface"
+    },
+    {
+      "id": "E09",
+      "name": "assistant, Case surface on a job in progress"
+    },
+    {
+      "id": "E10",
+      "name": "normal chat conversation turn"
+    }
+  ],
+  "cells": 140,
+  "passed": 140,
+  "failed": 0,
+  "matrix": [
+    {
+      "entry": "E01",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E01",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E02",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E03",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E04",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E05",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E06",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E07",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E08",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E09",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S01",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S02",
+      "route": "fire",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S03",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S04",
+      "route": "medical",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S05",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S06",
+      "route": "police",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S07",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S08",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S09",
+      "route": "gas",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S10",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S11",
+      "route": "electrical_water",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S12",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S13",
+      "route": "uncertain",
+      "ok": true
+    },
+    {
+      "entry": "E10",
+      "sentinel": "S14",
+      "route": "uncertain",
+      "ok": true
+    }
+  ]
+}

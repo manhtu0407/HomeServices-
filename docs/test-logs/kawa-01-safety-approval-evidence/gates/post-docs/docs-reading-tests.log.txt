@@ -1,0 +1,10 @@
+
+ RUN  v4.1.6 <repo>/apps/api
+
+
+ Test Files  1 passed (1)
+      Tests  18 passed (18)
+   Start at  16:47:42
+   Duration  2.67s (transform 73ms, setup 0ms, import 133ms, tests 2.22s, environment 0ms)
+
+

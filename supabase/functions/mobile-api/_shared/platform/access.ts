@@ -69,15 +69,19 @@ export async function requireJobAccess(
     apiFailure("NOT_FOUND", "Không tìm thấy yêu cầu", 404);
   }
 
-  if (options.statuses && !options.statuses.includes(job.status)) {
+  if (options.statuses) assertJobStatus(job, options.statuses);
+
+  return job;
+}
+
+export function assertJobStatus(job: JobAccessRecord, statuses: readonly JobStatus[]): void {
+  if (!statuses.includes(job.status)) {
     apiFailure(
       "INVALID_STATUS",
       "Trạng thái yêu cầu đã thay đổi. Vui lòng tải lại và thử lại.",
       409,
     );
   }
-
-  return job;
 }
 
 function normalizeJobAccessRecord(row: Record<string, unknown>): JobAccessRecord {

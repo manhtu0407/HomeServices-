@@ -30,6 +30,7 @@ import {
 } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { answerKaelAssistant } from "./assistant.ts";
+import { emergencyReadingWithoutContext } from "../../kael/agents/customer-assistant-answer.ts";
 import { replyTelemetryMetadata } from "../kael-chat/turn-telemetry.ts";
 import { customerConversationNextActions, startCaseNextAction } from "./kael-conversation-next-actions.ts";
 import {
@@ -150,7 +151,18 @@ export async function sendCustomerKaelConversationTurn(
     return existingResponse;
   }
 
-  const requestedMediaRefs = input.media_refs ?? [];
+  // A reported emergency is answered from the message alone. The summary, the web search and an image check cost time or
+  // money or can refuse, and none of them may stand between the customer and the guidance, so a report that is or may be
+  // an emergency skips them and is recorded without images. Only a report that depends on the service ("possible") still
+  // reads the stored conversation, which is free and settles it.
+  const reading = emergencyReadingWithoutContext({
+    message: input.message,
+    language: input.language,
+    surface: "customer_normal",
+    secrets,
+  });
+  const emergency = reading !== "none";
+  const requestedMediaRefs = emergency ? [] : input.media_refs ?? [];
   if (requestedMediaRefs.length > 0 && conversationMode !== "normal") {
     apiFailure(
       "NORMAL_CHAT_MEDIA_ONLY",
@@ -170,7 +182,7 @@ export async function sendCustomerKaelConversationTurn(
   const normalChatScope = conversationMode === "normal"
     ? { actorRole: "customer" as const, actorId: ctx.user.id, sessionId: conversationId }
     : null;
-  if (normalChatScope) {
+  if (normalChatScope && !emergency) {
     await summarizeNormalChatSessionIfDue(
       client,
       normalChatScope,
@@ -181,10 +193,10 @@ export async function sendCustomerKaelConversationTurn(
       errorName: error instanceof Error ? error.name : typeof error,
     }));
   }
-  const sessionContext = normalChatScope
+  const sessionContext = normalChatScope && reading !== "certain"
     ? await loadNormalChatSessionContext(client, normalChatScope)
     : { memorySummary: null, previousTurns: [] };
-  const normalChatSearchResults = normalChatScope && shouldSearchNormalChatQuestion(input.message)
+  const normalChatSearchResults = normalChatScope && !emergency && shouldSearchNormalChatQuestion(input.message)
     ? await searchNormalChatQuestion({
       question: input.message,
       language: input.language,
@@ -258,7 +270,7 @@ export async function sendCustomerKaelConversationTurn(
   if (appended.error) {
     apiFailure("DB_ERROR", "Không thể lưu lượt trò chuyện Kael", 500);
   }
-  if (normalChatScope) {
+  if (normalChatScope && !emergency) {
     await summarizeNormalChatSessionIfDue(
       client,
       normalChatScope,

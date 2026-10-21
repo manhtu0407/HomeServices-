@@ -1,0 +1,95 @@
+{
+  "schema": "kael_classifier_perturbation.v1",
+  "evidence_tier": "T0",
+  "sets": [
+    "development-h1.json",
+    "development-h2.json",
+    "development-h3.json",
+    "development-h4.json"
+  ],
+  "positives": 156,
+  "negatives": 113,
+  "note": "development sets only; counts only",
+  "results": {
+    "identity": {
+      "route_exact": 155,
+      "detected": 155,
+      "positives": 156,
+      "route_exact_rate": 0.9936,
+      "false_alarms": 0,
+      "negatives": 113
+    },
+    "strip_diacritics": {
+      "route_exact": 143,
+      "detected": 143,
+      "positives": 156,
+      "route_exact_rate": 0.9167,
+      "false_alarms": 0,
+      "negatives": 113
+    },
+    "uppercase": {
+      "route_exact": 155,
+      "detected": 155,
+      "positives": 156,
+      "route_exact_rate": 0.9936,
+      "false_alarms": 0,
+      "negatives": 113
+    },
+    "trailing_exclamations": {
+      "route_exact": 155,
+      "detected": 155,
+      "positives": 156,
+      "route_exact_rate": 0.9936,
+      "false_alarms": 0,
+      "negatives": 113
+    },
+    "filler_prefix_suffix": {
+      "route_exact": 155,
+      "detected": 155,
+      "positives": 156,
+      "route_exact_rate": 0.9936,
+      "false_alarms": 0,
+      "negatives": 113
+    },
+    "elongate_longest_word": {
+      "route_exact": 113,
+      "detected": 114,
+      "positives": 156,
+      "route_exact_rate": 0.7244,
+      "false_alarms": 3,
+      "negatives": 113
+    },
+    "one_letter_deleted_in_longest_word": {
+      "route_exact": 111,
+      "detected": 112,
+      "positives": 156,
+      "route_exact_rate": 0.7115,
+      "false_alarms": 3,
+      "negatives": 113
+    },
+    "two_adjacent_letters_swapped_in_longest_word": {
+      "route_exact": 113,
+      "detected": 114,
+      "positives": 156,
+      "route_exact_rate": 0.7244,
+      "false_alarms": 3,
+      "negatives": 113
+    },
+    "words_in_reverse_order": {
+      "route_exact": 14,
+      "detected": 17,
+      "positives": 156,
+      "route_exact_rate": 0.0897,
+      "false_alarms": 1,
+      "negatives": 113
+    },
+    "typed_with_no_spaces": {
+      "route_exact": 0,
+      "detected": 0,
+      "positives": 156,
+      "route_exact_rate": 0,
+      "false_alarms": 0,
+      "negatives": 113
+    }
+  }
+}

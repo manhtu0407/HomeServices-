@@ -1,0 +1,12 @@
+Whole API suite (vitest) on the pushed sources 8a03e780d390ea312f1b8b2283806e2135172ed7 with the current tests
+vitest exit status: 1 (1 = failures, as intended)
+tests total 3412, passed 3336, failed 70, pending 6
+working sources restored byte-identical: true
+
+Files with failures:
+  src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts: 8 failed of 76
+  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts: 3 failed of 37
+  src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts: 31 failed of 52
+  src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts: 28 failed of 165
+
+Every other test file in the suite passed on the pushed sources: rolling the 13 production files back removes only the behaviour these four pillars pin.

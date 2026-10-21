@@ -1,0 +1,15 @@
+type-check-api	2	15s	corepack pnpm type-check:api
+type-check-mobile	0	26s	corepack pnpm type-check:mobile
+edge-check	0	96s	corepack pnpm edge:check
+lint-structure	0	4s	corepack pnpm lint:structure
+lint-comments	0	2s	corepack pnpm lint:comments --working
+lint-playbooks	0	1s	corepack pnpm lint:playbooks
+lint-test-collection	0	2s	corepack pnpm lint:test-collection
+pillars-check	0	1s	corepack pnpm harness:pillars:check
+lint-edge-db	0	3s	corepack pnpm lint:edge-db
+migrations-check	0	2s	corepack pnpm harness:migrations:check
+lint-baseline	0	1s	corepack pnpm lint:baseline
+lint-authority	1	2s	corepack pnpm lint:authority
+test-api	0	77s	corepack pnpm test:api
+test-mobile	0	309s	corepack pnpm test:mobile
+DONE

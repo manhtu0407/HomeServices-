@@ -1,0 +1,9 @@
+
+> nestscout@0.1.0 type-check:mobile <repo>
+> node scripts/run.mjs run-package-script @nestscout/mobile type-check
+
+
+> @nestscout/mobile@0.3.2 type-check <repo>\apps\mobile
+> tsc --noEmit
+
+

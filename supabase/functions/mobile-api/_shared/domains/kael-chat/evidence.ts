@@ -63,6 +63,10 @@ export async function submitKaelChatEvidence(
   input: KaelChatEvidenceInput,
   secrets: EdgeAiSecrets,
 ) {
+  // Submitting or skipping evidence is recorded as the customer's own turn, so only the customer can do it.
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được gửi hoặc bỏ qua bằng chứng của yêu cầu mình.", 403);
+  }
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client

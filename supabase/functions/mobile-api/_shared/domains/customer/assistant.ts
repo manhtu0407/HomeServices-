@@ -1,4 +1,4 @@
-import { requireJobAccess } from "../../platform/access.ts";
+import { assertJobStatus, requireJobAccess } from "../../platform/access.ts";
 import { takeDurableKaelChatRateLimit } from "../../kael/kael-guardrails/durable-guards.ts";
 import {
   buildKaelL2L3MemorySummary,
@@ -17,6 +17,7 @@ import type { NormalChatSearchResult } from "../../kael/tools/normal-chat-search
 import { asString, nullableString } from "../../platform/coercions.ts";
 import { db } from "../../platform/db.ts";
 import { traceAssistantTurn } from "../../kael/agents/customer-assistant-trace.ts";
+import { resolveCustomerAssistantEmergency } from "../../kael/agents/customer-assistant-answer.ts";
 
 const CUSTOMER_CASE_ACTIVE_STATUSES: readonly JobStatus[] = [
   "awaiting_customer_confirm",
@@ -70,39 +71,11 @@ export async function answerKaelAssistant(
   const job = input.job_id
     ? await requireJobAccess(client, input.job_id, ctx, {
       requiredRole: "customer",
-      ...(input.surface === "customer_case"
-        ? { statuses: CUSTOMER_CASE_ACTIVE_STATUSES }
-        : {}),
       select: CUSTOMER_ASSISTANT_JOB_SELECT,
     })
     : null;
 
-  const rate = secrets.durableGuardsEnabled
-    ? await takeDurableKaelChatRateLimit(
-      secrets.durableGuardClient,
-      `customer_assistant:${ctx.user.id}`,
-    )
-    : checkRateLimit(
-      `kael_customer_assistant:${ctx.user.id}`,
-      AI_SESSION_LIMIT,
-    );
-  if (!rate.allowed) {
-    apiFailure(
-      "RATE_LIMITED",
-      input.language === "en" ? "Please try again later" : "Vui lòng thử lại sau",
-      429,
-    );
-  }
-
-  const memorySummary = input.surface === "customer_normal"
-    ? options.memorySummary ?? null
-    : await buildKaelL2L3MemorySummary(client, {
-      customerId: ctx.user.id,
-      jobId: input.job_id ?? null,
-      includeCustomer: true,
-      maxTotalTokens: 1000,
-    });
-  const answer = await runCustomerAssistant({
+  const assistantInput = {
     actorId: ctx.user.id,
     client,
     job: job
@@ -121,7 +94,6 @@ export async function answerKaelAssistant(
     caseContext: options.caseContext ?? null,
     serviceType: input.service_type ?? null,
     language: input.language,
-    memorySummary,
     previousTurns: options.previousTurns?.filter((turn): turn is NormalChatPreviousTurn & {
       role: "customer" | "kael";
     } => turn.role === "customer" || turn.role === "kael"),
@@ -133,7 +105,42 @@ export async function answerKaelAssistant(
     response: options.response,
     secrets,
     surface: input.surface,
-  });
+  };
+  // A reported emergency is answered once ownership is established and before the quota, the memory read and every
+  // provider call: the deterministic answer costs nothing, and a refusal in its place reaches the customer as generic copy.
+  const emergency = resolveCustomerAssistantEmergency(assistantInput);
+  // A Case in a closed job status takes no question, but a reported emergency is answered whatever the status is.
+  if (!emergency && job && input.surface === "customer_case") assertJobStatus(job, CUSTOMER_CASE_ACTIVE_STATUSES);
+  if (!emergency) {
+    const rate = secrets.durableGuardsEnabled
+      ? await takeDurableKaelChatRateLimit(
+        secrets.durableGuardClient,
+        `customer_assistant:${ctx.user.id}`,
+      )
+      : checkRateLimit(
+        `kael_customer_assistant:${ctx.user.id}`,
+        AI_SESSION_LIMIT,
+      );
+    if (!rate.allowed) {
+      apiFailure(
+        "RATE_LIMITED",
+        input.language === "en" ? "Please try again later" : "Vui lòng thử lại sau",
+        429,
+      );
+    }
+  }
+
+  const memorySummary = emergency
+    ? null
+    : input.surface === "customer_normal"
+    ? options.memorySummary ?? null
+    : await buildKaelL2L3MemorySummary(client, {
+      customerId: ctx.user.id,
+      jobId: input.job_id ?? null,
+      includeCustomer: true,
+      maxTotalTokens: 1000,
+    });
+  const answer = emergency ?? await runCustomerAssistant({ ...assistantInput, memorySummary });
   if (answer.normalChatImageAnalysis) {
     options.onNormalChatImageAnalysis?.(answer.normalChatImageAnalysis);
   }

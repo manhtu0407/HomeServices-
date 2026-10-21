@@ -72,6 +72,37 @@ export function pendingWorld(service: Service = 'hvac') {
   return world
 }
 
+// A world with no Case yet, for a request that creates one. The Case-to-conversation link is unrelated to safety and
+// uses PostgREST calls the in-memory stand-in lacks, and the stand-in applies none of the column defaults the real
+// table does.
+export function newCaseWorld(service: Service = 'hvac') {
+  const world = activeWorld(service)
+  world.db.tables.kael_chat_sessions.length = 0
+  world.db.tables.kael_chat_turns.length = 0
+  const inert: unknown = new Proxy(function () {}, {
+    get: (_target, property) => property === 'then'
+      ? (resolve: (value: unknown) => unknown) => Promise.resolve({ data: { id: 'conversation-stub' }, error: null }).then(resolve)
+      : () => inert,
+    apply: () => inert,
+  })
+  const client = world.db.client as unknown as { from: (table: string) => unknown }
+  const original = client.from.bind(client)
+  const sessionDefaults = {
+    job_id: null, status: 'active', case_phase: 'analysis', total_turns: 0, total_cost_usd: 0,
+    diagnosis_scope: null, started_at: '2026-10-20T00:00:00.000Z', created_at: '2026-10-20T00:00:00.000Z',
+    estimate_ready_at: null, scheduled_at: null, safe_metadata: {},
+  }
+  client.from = (table: string) => {
+    if (table === 'kael_customer_conversations') return inert
+    const query = original(table) as { insert: (value: Record<string, unknown>) => unknown }
+    if (table !== 'kael_chat_sessions') return query
+    const insert = query.insert.bind(query)
+    query.insert = (value) => insert({ ...sessionDefaults, ...value })
+    return query
+  }
+  return world
+}
+
 // A Case that has asked for required evidence and is waiting for it.
 export function evidenceWorld(options: { env?: Record<string, string> } = {}) {
   const base = buildInitialDiagnosisScopeArtifact({ serviceType: 'hvac', customerGoal: 'Cần hỗ trợ' })

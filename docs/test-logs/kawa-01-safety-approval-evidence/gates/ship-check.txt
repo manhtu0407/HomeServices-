@@ -1,0 +1,133 @@
+
+> nestscout@0.1.0 ship:check <repo>
+> node scripts/run.mjs run-node scripts/check-ship-ready.mjs
+
+ship readiness on codex/kawa-foundation-safety-20261020
+
+git state
+  FAIL  27 path(s) not committed — a push carries only what is committed
+          unstaged   apps/api/scripts/kael-playbook-eval.mjs
+          unstaged   apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts
+          unstaged   apps/api/src/__tests__/kael-edge-runtime/harness/emergency-fixtures.ts
+          unstaged   docs/architecture/code-ownership-map.md
+          unstaged   docs/test-logs/INDEX.md
+          unstaged   docs/test-logs/kawa-execution-ledger.md
+          unstaged   governance/protocols/test-pillars.md
+          unstaged   supabase/functions/mobile-api/_shared/domains/customer/assistant.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/matching/accept.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/matching/decline.ts
+          unstaged   supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts
+          unstaged   supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts
+          unstaged   supabase/functions/mobile-api/_shared/kael/agents/customer-assistant.ts
+          unstaged   supabase/functions/mobile-api/_shared/platform/access.ts
+          untracked  apps/api/src/__tests__/helpers/emergency-blind-eval.ts
+          untracked  apps/api/src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts
+          untracked  apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts
+          untracked  apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts
+          untracked  apps/api/src/__tests__/kael-edge-runtime/harness/normal-chat-world.ts
+          untracked  apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts
+          untracked  docs/test-logs/kawa-01-safety-approval-evidence/
+
+gates
+  ok    comment discipline         1.0s
+  ok    source residue             0.6s
+  ok    structure and ratchets     0.5s
+  ok    skills mirror              0.2s
+  ok    skill contracts            0.1s
+  ok    protocol routes            0.1s
+  ok    work-router coverage       0.1s
+  ok    runner parity              0.1s
+  FAIL  harness assurance          62.1s
+  FAIL  script fixture suites      71.0s
+
+--- harness assurance ---
+✔ recognizes fixed function configuration: set search_path = '' (10.1873ms)
+✔ recognizes fixed function configuration: SET search_path TO '' (1.217ms)
+✔ tracks ALTER FUNCTION search_path TO configuration (0.749ms)
+[... output elided: the passing harness tests ...]
+✔ ci.yml requires fresh API and mobile assertions for its evidence gate (1.2858ms)
+✔ release-production.yml requires fresh API and mobile assertions for its evidence gate (1.0415ms)
+✔ a snapshot captures modified, staged and untracked files and writes nothing to the repository (8489.667ms)
+✔ snapshot objects live in a private store, invisible to the repository object database (2754.6227ms)
+✔ a snapshot never captures secret-shaped files or the review state directory (2258.233ms)
+✔ a snapshot removes tracked secret-shaped files from its private index without changing the worktree (3675.3135ms)
+✔ the same tree and parent give the same snapshot and no ref is created (2496.8603ms)
+✔ a linked worktree resolves from a subdirectory and only its own changes are captured (2616.9808ms)
+✔ the base is the explicit ref, then the recorded one, then origin/main, then main (2400.294ms)
+✔ one plan covers committed, uncommitted and untracked work in a combined diff against origin/main (3294.7599ms)
+✔ an ocr answer whose mode is not range is refused (2093.053ms)
+✔ an unknown schema_version is refused instead of guessed (2098.4359ms)
+✔ review is incremental, survives a commit, and falls back to a full review when its footing changes (10857.4822ms)
+✔ a recorded snapshot that no longer exists falls back to a full review (3391.0472ms)
+✔ git errors drop warnings so the real failure is reported (0.2609ms)
+✔ files are batched by rule group and bounded by file count and changed lines (0.6111ms)
+✔ diff commands quote paths that a shell would otherwise split, expand or reject (0.7555ms)
+✔ diff paths escape apostrophes for PowerShell and POSIX shells (0.1027ms)
+✔ printing quotes for Git Bash even where process.platform reports win32 (0.1953ms)
+✔ the Stop hook timeout exceeds the OCR subprocess timeout (0.4158ms)
+✔ ocr is launched through node when the npm layout or an override is found, never through a shell shim (5.801ms)
+✔ the nudge fires once per change state and only above the threshold (6715.2557ms)
+✔ the nudge stays silent and reports why when ocr or git cannot answer (1608.4132ms)
+✔ the Stop hook blocks once with the command to run, then lets the turn end (3671.0696ms)
+✔ the Stop hook fails open on unreadable input, missing repo or missing ocr (1853.2498ms)
+✔ the Stop hook fails open on empty input even when the project would trigger a nudge (900.6678ms)
+✔ the command line plans, records a review, and then reports nothing new (4094.6728ms)
+✔ completion operations and audited recovery belong to the job lifecycle (2.1429ms)
+✔ system health monitor tables belong to the monitoring lifecycle (0.5488ms)
+✔ backend system-health promotion evidence belongs to the harness lifecycle (0.3779ms)
+✔ generated type comparison accepts terminal newline differences but rejects schema drift (625.3022ms)
+✔ type regeneration preserves neighboring files and exact schema bytes (180.2974ms)
+✔ configures the monitor Vault secret through the service-only RPC without returning secret data (105.3651ms)
+✔ rejects invalid targets and credentials before making a request (1.72ms)
+✔ does not include upstream response content in safe errors (1.4161ms)
+✔ disables only the minute collector schedule through the service-only RPC (1.3253ms)
+✔ rejects an invalid schedule target before making a request (0.6362ms)
+✔ does not include upstream response content in schedule errors (1.063ms)
+ℹ tests 634
+ℹ suites 0
+ℹ pass 633
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 70898.8049
+
+✖ failing tests:
+
+test at scripts\harness\transaction-release-gate.test.mjs:102:1
+✖ EAS upload retains every tracked input used by the full-source release identity (363.6242ms)
+  AssertionError [ERR_ASSERTION]: EAS would omit 17 release inputs; first: docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log, docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log, docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log, docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log, docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log
+  
+  17 !== 0
+  
+      at TestContext.<anonymous> (file://<repo>/scripts/harness/transaction-release-gate.test.mjs:107:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 17,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+not run by this command
+  pnpm type-check, test, build, lint         pnpm is not on PATH here
+  deno check on the Edge functions           deno is not on PATH here
+  migration replay and the SQL actor matrix  supabase is not on PATH here
+  CI runs all of these on the pull request. This command does not stand in for them.
+
+NOT READY — git state + 2 gate(s): harness assurance, script fixture suites
+ ELIFECYCLE  Command failed with exit code 1.
+exit=1 seconds=137
+

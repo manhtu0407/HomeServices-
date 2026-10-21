@@ -1,0 +1,6 @@
+
+> nestscout@0.1.0 harness:privileged:check <repo>
+> node scripts/run.mjs run-node scripts/harness/check-privileged-clients.mjs
+
+privileged Supabase client boundary ok
+

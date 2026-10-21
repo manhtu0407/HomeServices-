@@ -13,7 +13,7 @@ import {
   type Actor,
   type CaseWorld,
 } from '../harness'
-import { activeWorld, armWriteFailures, pendingWorld } from '../harness/emergency-fixtures'
+import { activeWorld, armWriteFailures, newCaseWorld, pendingWorld } from '../harness/emergency-fixtures'
 
 export const PILLAR = {
   id: 'P411-kael-case-emergency-closure-paths',
@@ -221,16 +221,17 @@ describe(`${PILLAR.id}: a refusal never reveals more than the plain one to someo
 })
 
 describe(`${PILLAR.id}: an invalid schedule does not hide an emergency`, () => {
-  it('answers a turn whose message reports a danger with the guidance in the same 400, and writes nothing', async () => {
+  it('answers a turn whose message reports a danger as an ordinary reply that applies no schedule', async () => {
     const world = activeWorld()
-    const before = snapshot(world)
+    const turnsBefore = world.db.tables.kael_chat_turns.length
 
     const result = await world.request('', { message: 'Ổ cắm đang bốc khói', language: 'vi', ...PAST })
     const why = pillarWhy(PILLAR, `status=${result.status} body=${failureText(result).slice(0, 160)}`)
-    expect(result.status, why).toBe(400)
-    expect(failureText(result), why).toContain('114')
-    expect(failureText(result), `${why} (the schedule is still reported)`).toContain(HCMC_SCHEDULE_VALIDATION_MESSAGE)
-    expect(snapshot(world), why).toEqual(before)
+    expect(result.status, `${why} (the app shows a 2xx reply; a 4xx becomes generic copy)`).toBe(200)
+    expect(routesOf(world), why).toEqual(['fire'])
+    expect(String(world.kaelTurns().at(-1)?.text_content), why).toContain('114')
+    expect(world.db.tables.kael_chat_turns.slice(turnsBefore).map((turn) => turn.role), why).toEqual(['customer', 'kael'])
+    expect(world.session().scheduled_at ?? null, `${why} (the invalid schedule is applied nowhere)`).toBeNull()
     expect(world.modelCalls, why).toEqual([])
   })
 
@@ -238,8 +239,11 @@ describe(`${PILLAR.id}: an invalid schedule does not hide an emergency`, () => {
     const world = activeWorld()
 
     const result = await world.request('', { message: BENIGN, language: 'vi', evidence_items: [voice(GAS)], ...PAST })
-    expect(result.status, pillarWhy(PILLAR, `status=${result.status}`)).toBe(400)
-    expect(failureText(result), pillarWhy(PILLAR, 'the guidance is in the refusal')).toContain('114')
+    const why = pillarWhy(PILLAR, `status=${result.status}`)
+    expect(result.status, why).toBe(200)
+    expect(routesOf(world), why).toEqual(['gas'])
+    expect(String(world.kaelTurns().at(-1)?.text_content), why).toContain('114')
+    expect(world.modelCalls, why).toEqual([])
   })
 
   it('refuses an ordinary turn with the unchanged message', async () => {
@@ -263,9 +267,8 @@ describe(`${PILLAR.id}: an invalid schedule does not hide an emergency`, () => {
     expect(snapshot(world), why).toEqual(before)
   })
 
-  it('answers a new Case whose description reports a danger with the guidance in the 400, and creates nothing', async () => {
-    const world = activeWorld()
-    const sessions = world.db.tables.kael_chat_sessions.length
+  it('answers a new Case whose transcript reports a danger as an ordinary reply, with no schedule and no analysis', async () => {
+    const world = newCaseWorld()
 
     const result = await createOn(world, {
       session_id: undefined,
@@ -277,10 +280,13 @@ describe(`${PILLAR.id}: an invalid schedule does not hide an emergency`, () => {
       ...PAST,
     })
     const why = pillarWhy(PILLAR, `status=${result.status} body=${failureText(result).slice(0, 160)}`)
-    expect(result.status, why).toBe(400)
-    expect(failureText(result), why).toContain('114')
-    expect(world.db.tables.kael_chat_sessions.length, `${why} (no Case is created by a refusal)`).toBe(sessions)
+    expect(result.status, `${why} (the app shows a 2xx reply; a 4xx becomes generic copy)`).toBeLessThan(300)
+    expect(world.db.tables.kael_chat_sessions.length, why).toBe(1)
+    expect(routesOf(world), why).toEqual(['gas'])
+    expect(world.session().scheduled_at ?? null, `${why} (the invalid schedule is applied nowhere)`).toBeNull()
     expect(world.modelCalls, why).toEqual([])
+    // The customer's own reviewed transcript is stored with the Case; no Job, quote, match or payment is.
+    expect(world.unexpectedWrites(), why).toEqual(['kael_voice_transcript=1'])
   })
 
   it('refuses an ordinary new Case with the unchanged message', async () => {

@@ -669,3 +669,122 @@ Test-count reconciliation: API passes 3,050 → 3,097 (+47) = P411 +37, P402 +5,
 **ROLLBACK:** revert the files in `file-digests.txt` (all uncommitted). Compatibility: success responses, the progress stream and the shared contracts are unchanged; the only visible change is extra text at the front of an existing error message when a Case owner reports an emergency in a request that was going to be refused anyway. No migration, RPC, contract, secret or flag was touched, so no data rollback exists.
 **OUTCOME:** ACCEPTANCE CANDIDATE (T0). Not independently reviewed; T1, T2 and T3 are NOT_RUN.
 **NEXT:** Stop. Request an independent acceptance review. KAWA_02 requires a new instruction.
+
+## Checkpoint SAFETY-APPROVAL — Final safety and approval hardening (2026-10-21)
+
+**TASK_ID:** SAFETY-APPROVAL — "NESTSCOUT KAWA_01 — FINAL SAFETY & APPROVAL HARDENING"
+**BASELINE:** branch `codex/kawa-foundation-safety-20261020`; base and HEAD `8a03e780d390ea312f1b8b2283806e2135172ed7` (pushed). This checkpoint's work is one commit on top of it, pushed to the same branch at the owner's request (see Publication authorization below). Nothing is merged or deployed.
+**AUTHORIZATION (owner, this session):** audit every customer-facing Kael entry point for the deterministic emergency gate and every existing approval boundary, and close the confirmed Safety and Approval defects inside KAWA_01. No commit, push, PR, merge, deploy, hosted database operation, new RPC, migration, paid call, release-control change, KAWA_02 work or six-service remediation was authorized and none occurred. `scripts/harness/*`, the locked docs, `supabase/migrations`, the classifier files and the sealed set are untouched.
+**EVIDENCE_TIER:** T0 only (deterministic tests, an in-memory PostgREST stand-in, scripted providers, a pinned-container compile of the seven Edge functions). No real Postgres, RLS, device, hosted Edge or live model ran. Properties that need them are recorded BLOCKED at T1, not proved.
+**REVIEW:** reviewed by the author only. No separate reviewer or agent was used; this checkpoint is NOT independently reviewed.
+**VERDICT:** NEEDS OWNER APPROVAL. The confirmed defects are fixed and proved at T0, but a safety release still depends on owner decisions (classifier strategy and an independent evaluation, how guidance reaches the customer in a failure response, and a T1 lane). Details in `kawa-01-safety-approval-evidence/`.
+
+### Confirmed defects, root cause and smallest fix
+
+| # | Defect (baseline `8a03e780`) | Root cause | Smallest fix | Red on the baseline sources → green |
+|---|---|---|---|---|
+| D-01 | An emergency reported together with an invalid schedule was refused with a 4xx on the turn route, on the create route with a session id and on a new-Case create. The shipped app maps every failure to fixed copy by code and renders server text only for a 2xx, so the guidance in that 400 was never shown | The schedule refusal ran before any text was read, and the earlier fix answered inside the refusal instead of answering | `answerEmergencyOnOpenSession` before the refusal on the turn route; on create the schedule is dropped and the analysis deferred so the first message is answered as an ordinary reply. Closed Cases, strangers and ordinary requests keep the refusal | P411 3 rows, P412, P414 entry E07 |
+| D-02 | On the assistant and normal-chat routes the gate stood behind the quota (429), the job-status refusal (409), a paid summary, a paid web search, the stored-context read and image consumption | The gate lived inside `runCustomerAssistant`, which runs after `answerKaelAssistant` and the conversation handler have done all of that | `resolveCustomerAssistantEmergency` in `answerKaelAssistant` after ownership and before the quota, memory read and status refusal (`assertJobStatus` split out of `requireJobAccess`); `emergencyReadingWithoutContext` (none / possible / certain) in the conversation turn | P412, P414 entries E08–E10 |
+| D-03 | An admin could record the customer's booking-intake decision and submit or skip evidence for the customer, each writing a turn attributed to the customer | `assertKaelSessionOwnership` lets an admin through (a read override) and these two services had no customer-role guard | `ctx.role !== "customer"` → 403 in `decideKaelIntakeConfirmation` and `submitKaelChatEvidence` | P413 |
+| D-04 | An admin reached the durable accept RPC and the decline query as a worker | No role check in the Edge service; only SQL actor binding stopped it (defence in depth) | `ctx.role !== "worker"` → 403 in `acceptBroadcast` and `declineBroadcast` | P413 |
+
+Whole API suite run on the pushed sources with the current tests: 3,412 tests, 3,336 passed, 6 pending, **70 failed, all in the four pillars that pin the new behaviour** (P411 3, P412 31, P413 8, P414 28). No other test depends on the new code, so rolling back removes only the new behaviour.
+
+### Not fixed (owner decision, T1, or out of scope), reported not hidden
+
+| # | Finding | Why it stays |
+|---|---|---|
+| N-01 | Guidance carried in an error response is not shown by the shipped app (closed Case through the API, a reply that cannot be written, a streaming failure) | Needs a structured field in the error envelope, a client change and a new build: a public contract change |
+| N-02 | A first message that reports an emergency gets a 429 when the customer is over the new-Case quota | An allowance changes the abuse limit |
+| N-03 | Recall on unseen wording is unmeasured; the only reproduction is H5 11 of 29 (37.9 %, 95 % interval 22.7–56.0 %) with 1 of 30 false alarms | Needs an independent set, then an owner decision on a fail-safe, a model second opinion or a fixed emergency affordance |
+| N-04 | Atomicity, concurrency and row-level security of the approval commands | Need real Postgres (T1): SQL pillars P106, P108, P117, P119, P121, P122, P129, P133, P135, P177, P371, P378, P20 were not run |
+| N-05 | The scope-change decision carries no version of what was shown | Adding one is the KAWA_02 approval receipt |
+| N-06 | `POST /api/jobs` in `apps/api` (Next.js reference surface) creates a Job from free text with no gate and no Case Work | Reference code with no deployment config and no shipped caller; the Edge route refuses with 409 |
+| N-07 | **Pre-existing, found by `ship:check`:** 17 tracked `*.log` files in the previous evidence folder match `.easignore`, so the harness test "EAS upload retains every tracked input used by the full-source release identity" fails on the pushed commit and the harness-assurance step of `ci.yml` will fail once CI runs | Every fix (rename the 17 files to `*.log.txt`, add a negation to `.easignore`, or untrack them) alters earlier evidence or release config; owner decision. This checkpoint saves its own raw logs as `*.log.txt` |
+
+### Safety coverage
+
+18 entry points were enumerated from the Edge route table and the request contracts (`safety-coverage-matrix.md`). Every route that takes a customer's report to Kael (typed message, reviewed voice transcript, evidence summary, booking description, price-question chip, pending confirmation, invalid schedule, assistant, normal-chat conversation) answers a clear emergency before any paid step, quota or refusable check, and the parked and stop-turn rules hold. P414 runs 14 fixed sentinel reports at 10 entry points: 140 of 140 cells pass (no model call, no Job, quote, match, payment or consent, strangers and wrong roles get nothing). The sentinels prove the gate is wired; they do not show the classifier generalises. Free-text surfaces that are not Kael intake (job chat, disputes, notes, address labels, memory edits, feedback) have no gate.
+
+### Approval and authorization
+
+Audit of the existing boundaries from RULES.md #7 (`approval-authorization-matrix.md`), not KAWA_02. P413: 20 customer-decision routes refused to an admin and to a worker with a 403 and no database write, RPC or provider call; 7 worker-action routes refused to an admin and to a customer; a real Case world driven as an admin; fail-closed validation of 9 approval-evidence routes; import-reachability assertions showing no Kael-layer or emergency module reaches an approval writer. 76 tests.
+
+### Classifier
+
+Unchanged and byte-identical to the baseline. `classifier-assessment.md` explains why unseen phrasing fails (a closed enumeration of word orders, an author who wrote cues and sets together, no recall-oriented step, exact-spelling matching: 111–143 of 156 under one-letter typos or missing tone marks), concludes a rule-only strategy cannot support a recall claim on open wording, and lays out bounded options A–E. Nothing was tuned on H5. A blind-evaluation harness (P415, 16 tests) and protocol (`blind-evaluation-protocol.md`) are ready for a set written and sealed by an independent reviewer; **no independent set exists, so unseen-wording recall is NOT_RUN**.
+
+### Mutation testing
+
+24 mutants of the new code: the turn and new-Case create paths over an invalid schedule, retention of the invalid schedule, a closed Case written to, ownership in the owner lookup (M01–M06); the assistant quota and job-status ordering and its customer role (M07–M09); normal-chat ordering, image consumption and the stored-conversation read (M10–M12); the reading function (M13–M14) and the early answer (M15); the four role guards, intake decision, evidence, accept, decline (M16–M19); the evidence route (M20); and the blind-evaluation gate: independence without the registered hash, an empty denominator, row text in a report, a small perfect set (M21–M24). The first run killed 22; M09 (assistant customer role dropped) and M24 (a perfect set that is too small, short on negatives only, clearing the gate) survived, a test was added for each, and the final run on the final tests killed **24 of 24**. Sources were restored byte-identical after every mutant.
+
+### Changed assertions (disclosed)
+
+Three P411 rows pinned the 400-with-guidance answer for an emergency over an invalid schedule. They now expect a 2xx reply and assert the route, the guidance, the two turns written, no schedule stored and no model call (the voice-evidence row was then strengthened with the guidance text and the no-model-call check). No other existing assertion was weakened or removed.
+
+### Commands and exit codes (raw logs in `kawa-01-safety-approval-evidence/gates/`)
+
+| Command | Exit | Result |
+|---|---|---|
+| `pnpm type-check:api` | 0 | no diagnostics. The first run of this task exited 2 (one type error each in the new P412 and P413 files); fixed and rerun, first-run logs kept in `gates/first-run/` |
+| `pnpm type-check:mobile` | 0 | no diagnostics |
+| `pnpm edge:check` | 0 | discovered 7, checked 7, failed 0 (Docker running) |
+| `pnpm lint:structure` | 0 | 1,452 source files; 9 grandfathered oversize; none new; `customer-assistant.ts` is 787 lines (cap 800) |
+| `pnpm lint:comments --working` | 0 | clean |
+| `pnpm lint:playbooks`, `lint:test-collection`, `harness:pillars:check` (410 pillars), `lint:edge-db` (no database given, nothing compared), `harness:migrations:check` (463 migrations), `lint:baseline`, `lint:residue`, `lint:protocol-routes` | 0 each | |
+| `pnpm lint:workplan` | 0 | 10 slices, all closed; every changed file, this package's files included, is inside a declared read window |
+| `pnpm lint:reuse-ladder` | 0 | observational, lists 20 new exports. Reuse check: no Wilson-interval or zero-miss implementation exists anywhere else (grep); the normal-chat world has no collected counterpart (existing setups are private to non-collected files); `assertJobStatus` and `assistantQuestion` are extractions of existing code. Nothing logged to the debt ledger |
+| `pnpm harness:capabilities:check` (275 routes), `harness:access:check` (210 tables, 380 functions), `harness:privileged:check`, `harness:transactions:check` (prints the existing RELEASE GAPs), `harness:manifest:check` | 0 each | |
+| `git diff --check` (temporary index, evidence folder excluded) | 0 | |
+| `pnpm lint:authority` | 1 | existing failure only: `apps/mobile/lib/__tests__/normal-chat-suggestions-cache-pillar-test.tsx:31` cites Plan §3.4, which exists nowhere; unchanged from the baseline, not introduced here |
+| `pnpm ship:check` | 1 | git state: 27 paths uncommitted at the time of the run (expected; committed afterwards at the owner's request). One failing harness test, reported by both "harness assurance" and "script fixture suites": `EAS upload retains every tracked input used by the full-source release identity` (`17 !== 0`). Cause: `.easignore` has `*.log` and `docs/test-logs/kawa-01-final-closure-evidence/` holds 17 tracked `*.log` files committed in `8a03e780`. **Pre-existing on the pushed commit, not caused by this change** (the index equals the pushed commit, nothing is staged); `ci.yml` runs this test, and CI has not run on PR #403 yet. Every other gate it ran is ok (comment discipline, residue, structure, skills mirror, skill contracts, protocol routes, work-router coverage, runner parity; 633 of 634 harness tests). Not fixed: see N-07 |
+| `pnpm test:api` | 0 | 197 files passed, 2 skipped; 3,406 passed, 6 skipped (was 3,097); Node contracts 114 passed, 1 skipped |
+| `pnpm test:mobile` | 0 | 284 suites, 2,631 passed (no mobile file changed) |
+| Fourteen emergency, approval and observability pillar files, JSON reporter | 0 | 949 passed, 0 failed, 0 pending |
+| Four pillars on the pushed sources with the current tests | 1 (red as intended) | 70 failed, 260 passed of 330 (P411 3 of 37, P412 31 of 52, P413 8 of 76, P414 28 of 165); working sources restored byte-identical |
+| Whole API suite on the pushed sources with the current tests | 1 (red as intended) | 3,412 tests: 3,336 passed, 6 pending, 70 failed, all in those four files; working sources restored byte-identical |
+| 24-mutant run | 0 | 24 of 24 killed; no source left mutated |
+
+Not run: `kael-eval.mjs --mode deterministic` and `kael-playbook-eval.mjs --mock` (unchanged W02 tools; `SOURCE_FILES` gained one entry, which moves `source_tree_hash` and takes the listed files from 71 to 72, and P402 pins that list; the new hash was not measured), the SQL pillars (no Postgres), any hosted query, any device or live-model run.
+
+### Test-count reconciliation
+
+API passes 3,097 → 3,406 (+309) = P412 +52, P413 +76, P414 +165, P415 +16; P411 stays at 37. Skipped stays 6. Mobile unchanged (284 suites, 2,631 tests); no mobile file was touched.
+
+### Acceptance matrix (applicable gates only)
+
+| Item | Status | Basis |
+|---|---|---|
+| W00 reproducible baseline and authority | VERIFIED (preserved) | Earlier checkpoints untouched; base `8a03e780` |
+| W01 critical safety sentinel suite | 100 % at T0 (140 of 140 cells, plus P401–P411) | Unseen-wording recall is NOT_RUN and is a safety release blocker until an independent result exists |
+| W02 truthful taxonomy and provenance | preserved | H5 stays labelled REPRODUCTION; the blind-set harness does not call a set independent without the reviewer's attestation, the sealed hash and a hash registered out of band |
+| W03 redacted traces and observability | preserved | The early assistant answer still traces; no text or actor hash added |
+| G0 repository authority | PASS | Locked docs and `scripts/harness/*` untouched |
+| G1 isolation | N/A | No T1 used; SQL properties BLOCKED |
+| G2 before/after regression evidence | PASS at T0 | 70 red on the baseline sources, green on the new; 24 of 24 mutants killed |
+| G3 safety and privacy | PASS at T0 with residual risks | No text, PII or actor hash added to traces; guidance only to the Case owner |
+| G6 complete, truthful ledger | This checkpoint | Nothing renamed or deleted from earlier checkpoints |
+| T1 / T2 / T3 | NOT_RUN | Master Plan permits |
+
+### Residual risks and owner decisions
+
+| Risk | Severity | Decision |
+|---|---|---|
+| Classifier recall on unseen wording unmeasured; the only reproduction is 37.9 % | P0 for any emergency-detection claim | Nominate the independent reviewer, approve thresholds, then choose B, C or D |
+| Guidance in a failure response not shown by the shipped app (N-01, N-02) | P1 | Approve a structured emergency field and client change, or accept |
+| Approval atomicity, concurrency and RLS are unproven | P1 for T1 | Approve a T1 lane |
+| Fixed LPG, fire and health wording has had no domain review | P2 | Domain review |
+| Excluded fields, free-text surfaces without a gate, `POST /api/jobs` reference route | P2 | Owner decision |
+| PR #403 conflicts with main in `.claude/MEMORY.md` and `docs/memory/2026-10.md` | housekeeping | Merge or rebase needs separate authorization |
+| Harness test `EAS upload retains every tracked input…` fails on the pushed commit (N-07) | P1 for the final CI decision, pre-existing | Choose how the 17 tracked `*.log` files stop matching `.easignore` |
+| `lint:authority` | pre-existing | Unchanged: cites an absent Plan §3.4 from a mobile test |
+
+**COST:** actual_calls=0; actual_usd=NOT_RUN; approval_ref=none.
+**ROLLBACK:** revert the commit that carries this checkpoint (a new commit; nothing is rewritten); no data rollback exists. Compatibility, the route and status table and the full-suite rollback run are in `compatibility-and-rollback.md`. No migration, RPC, contract, secret, flag or mobile file was touched.
+**OUTCOME:** NEEDS OWNER APPROVAL. Not independently reviewed; T1, T2 and T3 are NOT_RUN.
+**NEXT:** Stop. Independent review (Codex, ChatGPT, Tu, Dev Kouuu) and the owner decisions above are required before the final CI and merge decision. KAWA_02 requires a new instruction.
+
+## Publication authorization (2026-10-21, SAFETY-APPROVAL)
+
+- After the evidence package was delivered, Tu authorized committing and pushing it to this branch so that Codex, ChatGPT, Tu and Dev Kouuu can review it. The push is a plain fast-forward of `8a03e780` on `codex/kawa-foundation-safety-20261020`; no force push, merge, deployment, workflow dispatch or new pull request was part of it. PR #403 already exists and still conflicts with main in `.claude/MEMORY.md` and `docs/memory/2026-10.md`, so no CI runs on it until that is resolved, which was not authorized.
+- The session-memory entry for this checkpoint was NOT written: its draft is still awaiting Tu's approval, and `.claude/MEMORY.md` and `docs/memory/` are untouched.
