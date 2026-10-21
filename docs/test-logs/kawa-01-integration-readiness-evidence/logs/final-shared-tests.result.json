@@ -1,0 +1,10 @@
+{
+  "id": "final-shared-tests",
+  "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+  "ended": "2026-10-21T13:51:59.2853226Z",
+  "lane": "T0",
+  "started": "2026-10-21T13:51:53.7889730Z",
+  "command": "pnpm test:shared",
+  "exitCode": 0,
+  "dirtyCandidate": true
+}

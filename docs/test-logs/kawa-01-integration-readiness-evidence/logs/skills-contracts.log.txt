@@ -1,0 +1,2 @@
+$ node scripts/run.mjs run-node scripts/check-skill-contracts.mjs
+skill contracts ok: 51 skills (48 autonomous, 3 gated; 36 report, 15 inline) — paths resolve, commands exist, readiness/lanes and closeout match, every skill carries a Codex descriptor

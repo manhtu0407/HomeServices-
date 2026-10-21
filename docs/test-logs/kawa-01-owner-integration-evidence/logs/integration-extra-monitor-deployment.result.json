@@ -1,0 +1,7 @@
+{
+  "id": "monitor-deployment",
+  "ended": "2026-10-21T14:46:27.9256141Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:45:02.8887370Z",
+  "command": "corepack pnpm test:system-monitor-deployment"
+}

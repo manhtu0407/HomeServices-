@@ -1,4 +1,3 @@
-// Request-local safety metadata is registered only after customer authorization and Case ownership.
 import { readKaelEmergencyGuidance, type EdgeEmergencyGuidancePayload } from '../../../_shared/contracts/emergency-guidance.ts';
 
 const guidance = new WeakMap<object, EdgeEmergencyGuidancePayload>();

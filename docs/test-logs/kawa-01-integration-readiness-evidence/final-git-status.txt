@@ -1,0 +1,7 @@
+ M apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
+ M apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts
+ M apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
+ M apps/mobile/lib/kael-stream.ts
+ M docs/test-logs/INDEX.md
+ M docs/test-logs/kawa-execution-ledger.md
+?? docs/test-logs/kawa-01-integration-readiness-evidence/

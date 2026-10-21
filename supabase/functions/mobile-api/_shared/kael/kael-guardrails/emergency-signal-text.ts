@@ -1,6 +1,3 @@
-// Safety-cue text that keeps Vietnamese tone marks aligned with an accent-free twin. Matching runs
-// on the plain text so unaccented typing still works; tone marks decide the words the plain text
-// cannot tell apart (cháy / chạy / chảy, khói / khối / khởi, lửa / lừa).
 
 export type SignalText = {
   readonly plain: string;
@@ -19,7 +16,6 @@ const SEGMENT_BOUNDARY =
   /[.;!?:]+|\s[-\u2013\u2014]+\s|[\u2013\u2014]|\b(?:nhung|tuy nhien|tuy vay|ma|but|however|although|though)\b/g;
 const SENTENCE_BOUNDARY = /[.;!?:]+|\s[-\u2013\u2014]+\s|[\u2013\u2014]/g;
 
-// A tone mark keeps a cue only when it spells the safety word; an unmarked spelling is accepted.
 const TONE_RULES: Readonly<Record<string, RegExp>> = {
   chay: /^ch[a\u00e1]y$/u,
   khoi: /^kh[o\u00f3]i$/u,
@@ -35,7 +31,6 @@ export function buildSignalText(input: string): SignalText {
   let accented = "";
   const push = (plainChar: string, accentedChar: string) => {
     if (plainChar === "." && plain.endsWith(" ")) {
-      // A sentence stop typed after a space still ends the sentence.
       plain = plain.slice(0, -1) + ".";
       accented = accented.slice(0, -1) + ".";
       return;
@@ -85,7 +80,6 @@ export function segmentAt(ranges: readonly Segment[], index: number): Segment {
     { start: index, end: index };
 }
 
-// Replaces every match with spaces in both twins so indices stay aligned.
 export function blankMatches(text: SignalText, pattern: RegExp): SignalText {
   let plain = text.plain;
   let accented = text.accented;
@@ -101,10 +95,8 @@ export function blankMatches(text: SignalText, pattern: RegExp): SignalText {
 
 export type ToneCheck = "tolerant" | "acute";
 
-// Tone rules a single cue adds for words it shares letters with; they never apply to other cues.
 export type ToneRules = Readonly<Record<string, RegExp>>;
 
-// `plainSlice` and `accentedSlice` cover the same cue match, so their tokens line up one to one.
 export function tonesAgree(
   plainSlice: string,
   accentedSlice: string,
@@ -125,8 +117,6 @@ export function tonesAgree(
   return true;
 }
 
-// True when the index sits inside a quotation that names text rather than reports an event,
-// such as: the screen shows the word "fire".
 export function insideNamedQuote(plain: string, index: number): boolean {
   const before = plain.slice(0, index);
   const quoteCount = (before.match(/"/g) ?? []).length;

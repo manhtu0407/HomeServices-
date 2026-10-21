@@ -84,8 +84,6 @@ export async function createKaelChat(
   const scheduleRefused = scheduleInvalid && (!input.client_request_id || Boolean(input.session_id));
   if (input.session_id) {
     if (!input.message) {
-      // Nothing here is a turn the Case takes, but a reported emergency in a voice transcript or note is still
-      // answered (after the ownership check) before the request is ignored or refused for its schedule.
       const answered = await answerEmergencyOnOwnedSession(ctx, input.session_id, {
         texts: createTexts,
         language: input.language ?? "vi",
@@ -111,8 +109,6 @@ export async function createKaelChat(
 
   registerCaseEmergencyDelivery(ctx, createTexts, input.service_type);
 
-  // A new Case whose schedule is invalid is refused, unless the request reports an emergency: that is answered, as an
-  // ordinary reply, with the schedule dropped and the analysis deferred so nothing else of the request is applied.
   const emergencyOverSchedule = scheduleInvalid && resolveCaseEmergency({
     message: createTexts,
     language: input.language ?? "vi",
@@ -203,8 +199,6 @@ export async function createKaelChat(
       createdSessionId,
       input.client_request_id ?? null,
     );
-    // A Case opened with a voice transcript or a booking description and no typed message has no first turn to
-    // analyse, but what the customer said is still read for a reported emergency.
     const texts = customerAuthoredTexts({
       intakeDescription: input.intake_description,
       evidenceItems: prepared.initialEvidenceItems,
@@ -231,8 +225,6 @@ export async function createKaelChat(
   return getKaelChat(ctx, createdSessionId);
 }
 
-// The schedule refusal of a new Case. A reported emergency in the request is answered in the same error, and nothing
-// is created: a Case is never opened or scheduled by a refused request.
 function refuseCreateSchedule(ctx: MobileApiContext, input: KaelChatCreateInput, texts: readonly string[]): never {
   refuseWithEmergencyGuidance(
     { code: "VALIDATION", message: HCMC_SCHEDULE_VALIDATION_MESSAGE, status: 400 },
@@ -283,15 +275,12 @@ async function enforceCreateKaelChatRateLimit(
 async function processInitialKaelChatMessage(input: InitialKaelChatMessageInput) {
   const message = sanitizeForLLM(input.input.message ?? "");
   await persistInitialCustomerKaelChatTurn(input, message);
-  // The message, the booking description and every reviewed transcript or note of the first request.
   const texts = customerAuthoredTexts({
     message,
     intakeDescription: input.prepared.intakeConfirmation?.intake.description,
     evidenceItems: input.prepared.initialEvidenceItems,
   });
   if (input.input.defer_analysis || input.prepared.intakeConfirmation) {
-    // The Case parks this first message (a booking confirmation waits for the customer, or analysis is
-    // deferred), so a reported emergency is answered now and the confirmation stays pending.
     const emergency = resolveCaseEmergency({
       message: texts,
       language: input.language,

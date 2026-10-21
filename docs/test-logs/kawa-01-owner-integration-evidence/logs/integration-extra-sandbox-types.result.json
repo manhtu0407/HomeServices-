@@ -1,0 +1,7 @@
+{
+  "id": "sandbox-types",
+  "ended": "2026-10-21T14:45:00.0882777Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:44:55.9742710Z",
+  "command": "corepack pnpm sandbox:type-check"
+}

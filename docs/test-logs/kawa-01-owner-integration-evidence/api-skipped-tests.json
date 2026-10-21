@@ -1,0 +1,37 @@
+[
+  {
+    "file": "apps/api/src/__tests__/integration/kael-recurring-incident-local-db-pillar.test.ts",
+    "test": "P400 HVAC incident against a real local database T1-1 stores the unit answer and keeps HVAC through the real database",
+    "status": "skipped"
+  },
+  {
+    "file": "apps/api/src/__tests__/integration/kael-recurring-incident-local-db-pillar.test.ts",
+    "test": "P400 HVAC incident against a real local database T1-2 explains the WHY, keeps the recorded blocker and writes nothing but chat rows",
+    "status": "skipped"
+  },
+  {
+    "file": "apps/api/src/__tests__/integration/kael-recurring-incident-local-db-pillar.test.ts",
+    "test": "P400 HVAC incident against a real local database T2-1 a second customer is refused by the route and cannot read the Case under RLS",
+    "status": "skipped"
+  },
+  {
+    "file": "apps/api/src/__tests__/integration/kael-recurring-incident-local-db-pillar.test.ts",
+    "test": "P400 HVAC incident against a real local database T2-2 a worker is refused by the route and cannot read or change the Case under RLS",
+    "status": "skipped"
+  },
+  {
+    "file": "apps/api/src/__tests__/integration/kael-recurring-incident-local-db-pillar.test.ts",
+    "test": "P400 HVAC incident against a real local database T2-3 the owner cannot move the Case into another service or link a Job through the data API",
+    "status": "skipped"
+  },
+  {
+    "file": "apps/api/src/__tests__/integration/stage1-agentic-flow-pillar.test.ts",
+    "test": "Stage 1 hosted Agentic Customer-Worker flow runs real auto-quote, RFQ or inspection, recovery, delivery, and official match",
+    "status": "skipped"
+  },
+  {
+    "file": "apps/api/src/__tests__/integration/staging-service-catalog-pillar.test.ts",
+    "test": "staging service catalog matches the shared six-service contract",
+    "status": "skipped"
+  }
+]

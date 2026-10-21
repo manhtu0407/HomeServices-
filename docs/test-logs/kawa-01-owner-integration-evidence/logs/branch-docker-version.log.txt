@@ -1,0 +1,4 @@
+$ node scripts/run.mjs docker/scripts/ensure-version
+docker_version=Docker version 29.9.2, build a82e528
+compose_version=Docker Compose version v5.6.0
+strategy=latest-stable result=updated-or-current update_attempts=1

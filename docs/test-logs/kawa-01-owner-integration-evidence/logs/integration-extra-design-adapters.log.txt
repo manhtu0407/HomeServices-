@@ -1,0 +1,1 @@
+design adapters ok: 12 fixture results; 3 wheel skills; 10 upstream routing cases

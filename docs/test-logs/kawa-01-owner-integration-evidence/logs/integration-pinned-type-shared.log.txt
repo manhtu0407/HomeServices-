@@ -1,0 +1,8 @@
+
+> nestscout@0.1.0 type-check:shared <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-package-script @nestscout/shared type-check
+
+
+> @nestscout/shared@0.1.0 type-check <USER>\.codex\worktrees\kawa01-integration-simulation\home-services\packages\shared
+> tsc --noEmit
+

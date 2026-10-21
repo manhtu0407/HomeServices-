@@ -1,4 +1,3 @@
-// Versioned route metadata carries no request text. Clients render only reviewed static copy.
 import { z } from 'zod';
 
 export const kaelEmergencyGuidanceSchema = z.object({

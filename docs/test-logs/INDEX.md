@@ -51,3 +51,7 @@ Newest test reports first.
 | 2026-05-26 | [P16 Pre-Launch Verification](2026-05-26_p16-prelaunch-verification.md) | passed | 0 product bugs; 1 existing Supabase Auth warning | Security/review/manual audit, full gates, advisors |
 | 2026-05-26 | [P15 Staging E2E](2026-05-26_p15-staging-e2e.md) | passed | 0 product bugs; harness sequencing fixed before final run | 5-case staging matrix, realtime, p95/cost, cleanup |
 | 2026-05-11 | [PR#3 Schema Tests](2026-05-11_pr3-schema-tests.md) | 177/177 passed | 1 fixed (database.types.ts artifact) | 4 tiers: types, business rules, relationships, SQL migration |
+
+- 2026-10-21: [KAWA_01 final closure and integration readiness](kawa-01-integration-readiness-evidence/report.md) — scoped SSE/recovery repair verified at T0; NEEDS OWNER APPROVAL, merge/release NO-GO; protected memory and release containment proposals unapplied.
+
+- 2026-10-21: [KAWA_01 owner-approved integration checkpoint](kawa-01-owner-integration-evidence/report.md) — exact protected memory approved/applied, Backend release disabled and verified, 167 comment lines aligned with identical AST; fresh Edge/API/Mobile checks recorded; final commit/CI and explicit owner merge approval remain required.

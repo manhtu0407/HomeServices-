@@ -1,0 +1,8 @@
+{
+  "id": "pr403-metadata",
+  "command": "gh pr view 403 --json number,url,headRefOid,baseRefOid,mergeable,mergeStateStatus,statusCheckRollup",
+  "cwd": "[WORKSPACE]",
+  "started": "2026-10-21T13:20:24.298Z",
+  "ended": "2026-10-21T13:20:25.138Z",
+  "exitCode": 0
+}

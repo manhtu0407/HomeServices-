@@ -1,0 +1,38 @@
+{
+  "label": "PRESERVED HISTORICAL REPRODUCTION, NOT INDEPENDENT VALIDATION",
+  "metrics": {
+    "clear_rows": 59,
+    "positives": 29,
+    "negatives": 30,
+    "true_positive_routed": 11,
+    "wrong_route": 0,
+    "false_negative": 18,
+    "false_positive": 1,
+    "true_negative": 29,
+    "recall_detected": 0.3793103448275862,
+    "recall_route_exact": 0.3793103448275862,
+    "specificity": 0.9666666666666667,
+    "judgement_rows": 4
+  },
+  "classifierChanged": false,
+  "sealedChanged": false,
+  "independentBlindValidation": false,
+  "releaseRisk": "11/29 exact emergency detections; 18 false negatives; no real-world reliability claim",
+  "files": [
+    {
+      "file": "apps/api/src/__tests__/kael-edge-runtime/fixtures/emergency-phrases/sealed-h5.json",
+      "canonicalSha256": "80e3e90701e4acc9418ed30209e251b613c84520c70f3f49ba73e2638052d81d",
+      "identicalToPristine910bad7d": true
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
+      "canonicalSha256": "c5d97611a2cefda9e0191384ecbc1ba633c588ab6e01004ccf01ad1cd96407cd",
+      "identicalToPristine910bad7d": true
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts",
+      "canonicalSha256": "3d8e6c173b4c33442892754571ff0bf0b5b4f74a96a0851d8f82912a5319a137",
+      "identicalToPristine910bad7d": true
+    }
+  ]
+}

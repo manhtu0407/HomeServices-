@@ -1,0 +1,212 @@
+$ node scripts/run.mjs run-node scripts/check-comment-discipline.mjs "--diff" "origin/main"
+comment-discipline: 167 violation(s) in 19 file(s)
+
+apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx
+  20: [comment on an added production line] // This local sheet needs no request, classifier, phone permission or business-state chang
+
+packages/shared/src/contracts/emergency-guidance.ts
+  1: [comment on an added production line] // Versioned route metadata carries no request text. Clients render only reviewed static c
+
+supabase/functions/_shared/contracts/emergency-guidance.ts
+  1: [comment on an added production line] // Versioned route metadata carries no request text. Clients render only reviewed static c
+
+supabase/functions/mobile-api/_shared/domains/customer/assistant.ts
+  109: [comment on an added production line] // A reported emergency is answered once ownership is established and before the quota, th
+  110: [comment on an added production line] // provider call: the deterministic answer costs nothing, and a refusal in its place reach
+  112: [comment on an added production line] // A Case in a closed job status takes no question, but a reported emergency is answered w
+
+supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts
+  154: [comment on an added production line] // A reported emergency is answered from the message alone. The summary, the web search an
+  155: [comment on an added production line] // money or can refuse, and none of them may stand between the customer and the guidance, 
+  156: [comment on an added production line] // an emergency skips them and is recorded without images. Only a report that depends on t
+  157: [comment on an added production line] // reads the stored conversation, which is free and settles it.
+
+supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts
+  87: [comment on an added production line] // Nothing here is a turn the Case takes, but a reported emergency in a voice transcript o
+  88: [comment on an added production line] // answered (after the ownership check) before the request is ignored or refused for its s
+  114: [comment on an added production line] // A new Case whose schedule is invalid is refused, unless the request reports an emergenc
+  115: [comment on an added production line] // ordinary reply, with the schedule dropped and the analysis deferred so nothing else of 
+  206: [comment on an added production line] // A Case opened with a voice transcript or a booking description and no typed message has
+  207: [comment on an added production line] // analyse, but what the customer said is still read for a reported emergency.
+  234: [comment on an added production line] // The schedule refusal of a new Case. A reported emergency in the request is answered in 
+  235: [comment on an added production line] // is created: a Case is never opened or scheduled by a refused request.
+  286: [comment on an added production line] // The message, the booking description and every reviewed transcript or note of the first
+  293: [comment on an added production line] // The Case parks this first message (a booking confirmation waits for the customer, or an
+  294: [comment on an added production line] // deferred), so a reported emergency is answered now and the confirmation stays pending.
+
+supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+  1: [comment on an added production line] // Deterministic emergency handling for Case intake turns. It runs before the boundary gua
+  2: [comment on an added production line] // intent router and the pipeline, and it does not depend on a playbook flag or on a model
+  32: [comment on an added production line] // Fire, medical, police and unclear emergencies end the turn. A wiring or water hazard is
+  33: [comment on an added production line] // the intake can continue after, so the Case still gets its next question.
+  37: [comment on an added production line] // Where in the Case the report was caught; it labels the trace and nothing else.
+  41: [comment on an added production line] // One text, or every customer-authored text the request carries.
+  47: [comment on an added production line] // The request cannot take the turn: its booking confirmation is pending, analysis is defe
+  48: [comment on an added production line] // price-question chip persists nothing. No flagged path or pipeline step runs, so every r
+  49: [comment on an added production line] // answered here and ends the request.
+  53: [comment on an added production line] // Every text a customer wrote into one request, read once each in a fixed order. The gate
+  54: [comment on an added production line] // Case persists and the text a model may see all start from this list, so a hazard cannot
+  55: [comment on an added production line] // that only one of them reads.
+  82: [comment on an added production line] // Classification for delivery is independent of which successful intake path would answer
+  83: [comment on an added production line] // Callers must first establish customer authorization and ownership of any referenced Cas
+  92: [comment on an added production line] // Schema failures never consume evidence or create state. Read bounded text only, and est
+  93: [comment on an added production line] // before classifying anything on an existing Case; all original validation errors stay un
+  129: [comment on an added production line] // When a service's flagged path already answers a smoke, fire or wiring hazard with its o
+  130: [comment on an added production line] // deterministic guidance, that reply is the only safety message; a second one would repea
+  131: [comment on an added production line] // reads the safety signals of every text, so the check reads the same texts.
+  153: [comment on an added production line] // Tracing is observability only: it must never be the reason a customer's emergency goes 
+  172: [comment on an added production line] // The trace carries route and release codes only. It never gets an actor pseudonym: a sta
+  173: [comment on an added production line] // health or police code would profile one person.
+  181: [comment on an added production line] // What a request that cannot take the turn answers when its customer reported an emergenc
+  182: [comment on an added production line] // status the contract already gives that refusal, with the deterministic guidance in fron
+  183: [comment on an added production line] // written, so a closed Case stays closed and an invalid schedule is applied nowhere. With
+  184: [comment on an added production line] // not establish who owns the Case) the refusal is the plain one, so guidance is never han
+  215: [comment on an added production line] // The Case when the caller owns it; null for a missing Case, someone else's Case or a fai
+  216: [comment on an added production line] // bound for a refusal uses it so that looking the Case up never changes which refusal the
+  235: [comment on an added production line] // A request that carries customer-authored text but no typed message (a create on an exis
+  236: [comment on an added production line] // the Case takes, so nothing about it changes unless the text reports an emergency. Retur
+  237: [comment on an added production line] // `soft` is for a request that is already bound for a refusal: a Case it cannot reach is 
+  282: [comment on an added production line] // A reported emergency on an open Case its caller owns, on a request the Case cannot take
+  283: [comment on an added production line] // field (an invalid schedule). The customer's words and one deterministic reply are recor
+  284: [comment on an added production line] // nowhere, so the guidance arrives as an ordinary answer. A closed Case, or a request tha
+  285: [comment on an added production line] // and is refused exactly as before.
+  313: [comment on an added production line] // A classified emergency whose reply could not be written: the failure is traced (route, 
+  314: [comment on an added production line] // correlation only, never a word of the customer's text) and the error the caller already
+  315: [comment on an added production line] // status but carries the guidance, so the customer is not left with a bare failure while 
+  350: [comment on an added production line] // Answers a reported emergency on a request the Case cannot take: the customer's words an
+  351: [comment on an added production line] // reply are recorded, and nothing else about the Case moves. Only the customer decides th
+  352: [comment on an added production line] // confirmation is never touched, and no evidence is consumed or merged.
+  353: [comment on an added production line] //
+  354: [comment on an added production line] // A write that failed half-way leaves rows the session counter does not know about, and a
+  355: [comment on an added production line] // races for the same turn index. One bounded retry re-reads the table and finishes what i
+  356: [comment on an added production line] // of repeating it. This is a mitigation inside the existing tables: the guarantee that th
+  357: [comment on an added production line] // atomically and exactly once needs a database function and is proposed separately.
+  406: [comment on an added production line] // Turns a failed earlier attempt wrote after the last one the counter recorded.
+  432: [comment on an added production line] // The reply never moves the Case: it keeps whatever phase and offer time it had.
+  445: [comment on an added production line] // A reply on a turn the Case has already taken: wiring or water advice the intake continu
+  446: [comment on an added production line] // emergency in a first message or booking description that has just been recorded.
+  454: [comment on an added production line] // The session as it stood before this turn: the trace names its service and phase.
+  456: [comment on an added production line] // A Case whose offer is under review stays under review after advice the turn continues f
+
+supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts
+  67: [comment on an added production line] // Submitting or skipping evidence is recorded as the customer's own turn, so only the cus
+  100: [comment on an added production line] // A closed Case takes no evidence and is never written to, but its owner's reported emerg
+  101: [comment on an added production line] // in the refusal.
+  114: [comment on an added production line] // Every text the customer wrote is read before any validation, media consumption or phase
+  115: [comment on an added production line] // emergency is answered even when the same submission would otherwise be refused (a pendi
+  116: [comment on an added production line] // required evidence that cannot be skipped), and the Case keeps waiting exactly as it was
+  215: [comment on an added production line] // Wiring or water advice the submission continues after; any other emergency was answered
+
+supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts
+  46: [comment on an added production line] // The decision is recorded as the customer's own words, so only the customer can make it;
+
+supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts
+  29: [comment on an added production line] // The signals a request's customer-authored texts raise together with the ones already on
+  30: [comment on an added production line] // scanned on its own, so what one field says never changes how another is read.
+
+supabase/functions/mobile-api/_shared/domains/kael-chat/session-store.ts
+  136: [comment on an added production line] // The turn this reply follows, when the caller has just written it or found it in the tab
+  137: [comment on an added production line] // reply follows the session's counter, which a write that failed half-way leaves behind t
+  139: [comment on an added production line] // A reply that does not move the Case leaves the time its offer was made untouched.
+
+supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
+  93: [comment on an added production line] // A reported emergency is not hidden behind that refusal. The owner of an open Case is an
+  94: [comment on an added production line] // reply that applies no schedule (a 4xx reaches the customer as generic copy); a closed C
+  95: [comment on an added production line] // the guidance in front of its message, and anyone else gets the plain refusal.
+  140: [comment on an added production line] // A closed Case takes no message and is never written to, but its owner's reported emerge
+  141: [comment on an added production line] // in the refusal.
+  155: [comment on an added production line] // Every text the customer wrote (the message, a reviewed transcript or note, an evidence 
+  156: [comment on an added production line] // before the Case does anything with the request: a reply, a refusal, a media consumption
+  157: [comment on an added production line] // A turn the Case cannot take yet (its booking confirmation is pending, or the price-ques
+  158: [comment on an added production line] // nothing) still answers a reported emergency before it is refused or ignored; any other 
+  159: [comment on an added production line] // the turn is answered without touching evidence or the phase.
+  186: [comment on an added production line] // What is left here is wiring or water advice, which the intake continues after.
+
+supabase/functions/mobile-api/_shared/domains/matching/accept.ts
+  16: [comment on an added production line] // Accepting an offer proposes the caller as the worker, so only a worker can do it.
+
+supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts
+  74: [comment on an added production line] // The emergency answer for a message, or null. It reads no database, calls no provider an
+  75: [comment on an added production line] // caller can place it ahead of everything that does.
+  82: [comment on an added production line] // What the message alone says, before the earlier conversation is read. "certain" is an e
+  83: [comment on an added production line] // about, so nothing else is needed to answer it. "possible" depends on the service: a bar
+  84: [comment on an added production line] // air-conditioning chat, so only the stored conversation can settle it, but nothing paid 
+
+supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts
+  11: [comment on an added production line] // The question every assistant check reads: scrubbed of PII, bounded, and never empty whe
+
+supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+  22: [comment on an added production line] // The service the report was made in. "Gas" is the everyday word for HVAC refrigerant, so
+  23: [comment on an added production line] // "xi gas" inside the HVAC service is a refrigerant request, not a fuel-gas leak.
+  26: [comment on an added production line] // Bumped whenever the cues or the routing rule change what a report is answered with, so 
+  27: [comment on an added production line] // classifier produced a reply.
+  37: [comment on an added production line] // Context in the same clause that makes the words ordinary (cooking, a candle, a cigarett
+  47: [comment on an added production line] // Words a cue shares letters with: dầy/đầy/dây, ngập/ngáp, tràn/trấn, bốc/bóc, bùng/bụng,
+  48: [comment on an added production line] // nhỏ/nho, hở/họ/hồ, chảy/cháy. The rules apply to that cue only, so no other cue changes
+  74: [comment on an added production line] // A cue with a stretch of free words in it must not be vetoed by a tone rule meant for an
+  75: [comment on an added production line] // not "giật" (shock), and "khói", "lửa" or "chảy" inside the stretch are not the cue's ow
+  99: [comment on an added production line] // Patterns run on accent-free text; `tone` tells the matcher how strictly the tone marks 
+  100: [comment on an added production line] // agree, so "đang chạy" and "đang chảy" never read as "đang cháy".
+  173: [comment on an added production line] // Fuel gas (LPG, cooking gas) leaking is an emergency; refrigerant leaking is a service r
+  174: [comment on an added production line] // Vietnamese calls both "gas". The word alone never decides: a leaking stove, cylinder or
+  175: [comment on an added production line] // word or a smell of gas reports fuel gas; a bare leak is ambiguous and the surrounding s
+  176: [comment on an added production line] // Words a gas cue shares letters with: gà (chicken), họ (they), rõ (clear), dày (thick), 
+  219: [comment on an added production line] // The line between a cylinder and a stove. In the air-conditioning service the same words
+  220: [comment on an added production line] // so they say "fuel gas" only outside it.
+  223: [comment on an added production line] // Generic urgency says a request is pressing, not that anyone is in danger.
+  233: [comment on an added production line] // Fire-safety equipment and training talk names the words without reporting a fire.
+  239: [comment on an added production line] // Someone other than the speaker is the one affected: "not me, the person next to me", "n
+  244: [comment on an added production line] // Words that say the smoke or fire itself has ended; "đã tắt aptomat" says only that a sw
+  288: [comment on an added production line] // The Case-intake gate acts on a reported danger only; "urgent" alone is an ordinary prio
+  297: [comment on an added production line] // A request carries several customer-authored texts (a message, a transcript, a note). Ea
+  298: [comment on an added production line] // so a negation or a sentence stop in one never reaches the next, and the hazards found a
+  299: [comment on an added production line] // same rule as hazards inside one text: the order and the boundaries between fields never
+  315: [comment on an added production line] // What one text reports, before any rule combines it with other texts.
+  346: [comment on an added production line] // Smoke with sparking or live wiring is one electrical hazard whose guidance already name
+  347: [comment on an added production line] // Fuel gas with smoke, fire or sparking keeps the gas guidance, which already names 114 a
+  360: [comment on an added production line] // A fuel-gas object or smell is an emergency; a bare leak is refrigerant unless the kitch
+  361: [comment on an added production line] // wording or the service says otherwise, and is asked about (112) only when nothing says 
+  381: [comment on an added production line] // "Ống gas máy lạnh" is the refrigerant line of an air conditioner. A refrigerant word in
+  382: [comment on an added production line] // makes it one, and so does a bare pipe, hose or valve in the air-conditioning service; a
+  383: [comment on an added production line] // nearby ("a gas cylinder beside the air conditioner is leaking") does not hide a fuel-ga
+  386: [comment on an added production line] // The object phrase is the object, the gas word and up to two words after it; what lies b
+  387: [comment on an added production line] // leak word is free text and says nothing about which gas the object holds.
+  398: [comment on an added production line] // In the air-conditioning service a smell named beside refrigerant words, with nothing fr
+  399: [comment on an added production line] // sentence, is the refrigerant the customer is asking about, not an unclear fuel-gas repo
+  411: [comment on an added production line] // A negation word whose plain spelling is also another word: "nổ" (explodes) reads as the
+  412: [comment on an added production line] // (shouts) as "hết" (no more), "chữa" (to cure) as "chưa" (not yet). Only the accented tw
+  413: [comment on an added production line] // a plain word counts as a negation when the accented twin spells it unmarked or with its
+  432: [comment on an added production line] // Bleeding a radiator, brake line or valve is maintenance; a person bleeding is a medical
+  452: [comment on an added production line] // A condition ends at its comma: "if that fails, the house is on fire" still reports a fi
+
+supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts
+  1: [comment on an added production line] // Safety-cue text that keeps Vietnamese tone marks aligned with an accent-free twin. Matc
+  2: [comment on an added production line] // on the plain text so unaccented typing still works; tone marks decide the words the pla
+  3: [comment on an added production line] // cannot tell apart (cháy / chạy / chảy, khói / khối / khởi, lửa / lừa).
+  22: [comment on an added production line] // A tone mark keeps a cue only when it spells the safety word; an unmarked spelling is ac
+  38: [comment on an added production line] // A sentence stop typed after a space still ends the sentence.
+  88: [comment on an added production line] // Replaces every match with spaces in both twins so indices stay aligned.
+  104: [comment on an added production line] // Tone rules a single cue adds for words it shares letters with; they never apply to othe
+  107: [comment on an added production line] // `plainSlice` and `accentedSlice` cover the same cue match, so their tokens line up one 
+  128: [comment on an added production line] // True when the index sits inside a quotation that names text rather than reports an even
+  129: [comment on an added production line] // such as: the screen shows the word "fire".
+
+supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts
+  1: [comment on an added production line] // Request-local safety metadata is registered only after customer authorization and Case 
+
+supabase/functions/mobile-api/_shared/platform/turn-trace.ts
+  64: [comment on an added production line] // Where in the Case a reported emergency was caught: the follow-up turn, the evidence sub
+  65: [comment on an added production line] // message of a new Case, or the booking confirmation.
+  207: [comment on an added production line] // Customer turns the gate looked at in the same window; null when the caller could not co
+  212: [comment on an added production line] // Classified emergencies that were refused with the guidance in the error (nothing persis
+  213: [comment on an added production line] // reply could not be written. Neither is an answered turn, and neither is ever counted as
+  218: [comment on an added production line] // emergency_turns / evaluated_turns; null, never 0, when there is no sample to divide by.
+  222: [comment on an added production line] // Counts the Case emergency answers among persisted reply traces. The denominator is supp
+  223: [comment on an added production line] // customer turns of the same Case sessions in the same window) because every route that a
+  224: [comment on an added production line] // gate, so a customer turn is a gate evaluation. A trace that is not a well-formed Case e
+  307: [comment on an added production line] // A stable pseudonym beside a health, fire or police emergency code would profile one per
+
+Move dates, phase/status/plan/audit banners, AI attribution, and first-person narration to the git commit message or docs/.
+Production source takes no comment on an added line: put the reason in the commit message or docs/.
+See the kael-core-hygiene skill / governance/protocols/code-hygiene.md.
+[ELIFECYCLE] Command failed with exit code 1.

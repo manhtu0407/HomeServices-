@@ -43,7 +43,6 @@ export async function decideKaelIntakeConfirmation(
   input: EdgeKaelChatIntakeConfirmationDecisionInput,
   secrets: EdgeAiSecrets,
 ) {
-  // The decision is recorded as the customer's own words, so only the customer can make it; an admin may read the Case.
   if (ctx.role !== "customer") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được xác nhận thông tin yêu cầu của mình.", 403);
   }

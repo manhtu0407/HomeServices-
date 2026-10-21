@@ -90,9 +90,6 @@ export async function sendKaelChatTurn(
   secrets: EdgeAiSecrets,
 ) {
   if (validateFutureHcmcSchedule(input.scheduled_at, input.schedule_window) !== null) {
-    // A reported emergency is not hidden behind that refusal. The owner of an open Case is answered as an ordinary
-    // reply that applies no schedule (a 4xx reaches the customer as generic copy); a closed Case keeps the refusal with
-    // the guidance in front of its message, and anyone else gets the plain refusal.
     const refused = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
     const owned = refused.length > 0 ? await ownedSessionForRefusal(ctx, sessionId) : null;
     const refusedLanguage = input.language ?? (asRecord(owned?.safe_metadata).language === "en" ? "en" : "vi");
@@ -137,8 +134,6 @@ export async function sendKaelChatTurn(
     status === "confirmed" || status === "abandoned" ||
     status === "unsupported"
   ) {
-    // A closed Case takes no message and is never written to, but its owner's reported emergency is still answered
-    // in the refusal.
     refuseWithEmergencyGuidance(
       { code: "INVALID_STATUS", message: "Phiên Kael này không còn nhận tin nhắn", status: 409 },
       {
@@ -152,11 +147,6 @@ export async function sendKaelChatTurn(
     );
   }
 
-  // Every text the customer wrote (the message, a reviewed transcript or note, an evidence summary) is read
-  // before the Case does anything with the request: a reply, a refusal, a media consumption or a phase change.
-  // A turn the Case cannot take yet (its booking confirmation is pending, or the price-question chip persists
-  // nothing) still answers a reported emergency before it is refused or ignored; any other emergency that ends
-  // the turn is answered without touching evidence or the phase.
   const parked = input.turn_intent === "price_question" || isIntakeConfirmationPending(previousMetadata);
   const emergency = resolveCaseEmergency({
     message: texts,
@@ -183,7 +173,6 @@ export async function sendKaelChatTurn(
     session,
     status,
   });
-  // What is left here is wiring or water advice, which the intake continues after.
   if (emergency) {
     await answerCaseEmergency(client, sessionId, emergency, {
       entry: "turn",

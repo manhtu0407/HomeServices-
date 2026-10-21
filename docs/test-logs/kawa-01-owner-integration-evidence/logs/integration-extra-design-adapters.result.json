@@ -1,0 +1,7 @@
+{
+  "id": "design-adapters",
+  "ended": "2026-10-21T14:46:46.5090933Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:46:46.2662159Z",
+  "command": "node scripts/design/check-design-adapters.mjs"
+}

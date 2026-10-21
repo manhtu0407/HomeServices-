@@ -289,6 +289,7 @@ async function streamKaelTurn<T>(
 
   const lifetime = createStreamLifetime(signal)
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  let terminalFailure: Extract<ApiResult<T>, { success: false }> | null = null
   try {
     const fetchStream = streamFetch ?? (await import('expo/fetch')).fetch
     const response = await waitForStreamConnection(fetchStream(mobileApiUrl(path), {
@@ -329,6 +330,7 @@ async function streamKaelTurn<T>(
     const parser = createKaelSseParser()
     let finalResult: T | null = null
     let responseBytes = 0
+    let observerFailed = false
 
     for (;;) {
       const { done, value } = await lifetime.wait(reader.read())
@@ -342,15 +344,22 @@ async function streamKaelTurn<T>(
         }
         chunk = decoder.push(value)
       }
-      for (const event of parser.push(chunk)) {
-        if (event.type === 'stage') handlers.onStage?.(event)
-        if (event.type === 'token') handlers.onToken?.(event)
-        if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
-        if (isKaelResponseStreamEvent(event)) handlers.onResponseEvent?.(event)
-        if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
-        if (event.type === 'error') {
-          handlers.onError?.(event)
-          return { success: false, error: event.message, code: event.code, status: response.status, ...(event.emergency ? { emergency: event.emergency } : {}) }
+      const events = parser.push(chunk)
+      const failure = events.find((event) => event.type === 'error')
+      if (failure?.type === 'error') {
+        terminalFailure = { success: false, error: failure.message, code: failure.code, status: response.status, ...(failure.emergency ? { emergency: failure.emergency } : {}) }
+        handlers.onError?.(failure)
+        return terminalFailure
+      }
+      for (const event of events) {
+        try {
+          if (event.type === 'stage') handlers.onStage?.(event)
+          if (event.type === 'token') handlers.onToken?.(event)
+          if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
+          if (isKaelResponseStreamEvent(event)) handlers.onResponseEvent?.(event)
+          if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
+        } catch {
+          observerFailed = true
         }
         if (event.type === 'result') {
           if (!resultGuard(event.data)) {
@@ -363,14 +372,17 @@ async function streamKaelTurn<T>(
             return { success: false, error: invalidResult.message, code: invalidResult.code, status: response.status }
           }
           const result = event.data
-          handlers.onResult?.({ type: 'result', data: result })
           finalResult = result
         }
       }
       if (done) break
     }
 
-    if (finalResult) return { success: true, data: finalResult, status: response.status }
+    if (observerFailed) throw new Error('STREAM_CALLBACK_FAILED')
+    if (finalResult) {
+      handlers.onResult?.({ type: 'result', data: finalResult })
+      return { success: true, data: finalResult, status: response.status }
+    }
     return {
       success: false,
       error: 'Kael stream ended before a result.',
@@ -378,6 +390,7 @@ async function streamKaelTurn<T>(
       status: response.status,
     }
   } catch (error) {
+    if (terminalFailure) return terminalFailure
     if (signal?.aborted) {
       return {
         success: false,

@@ -1,0 +1,6 @@
+{
+  "command": "node scripts/check-ship-ready.mjs",
+  "pendingIntegration": true,
+  "ended": "2026-10-21T14:47:07.1537984Z",
+  "exitCode": 1
+}

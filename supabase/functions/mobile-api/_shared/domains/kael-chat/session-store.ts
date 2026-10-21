@@ -133,10 +133,7 @@ export async function appendKaelSystemTurn(
     contentType: "analysis" | "clarification" | "estimate" | "error";
     text: string;
     nextStatus: ReturnType<typeof asKaelChatStatus>;
-    // The turn this reply follows, when the caller has just written it or found it in the table. Without it the
-    // reply follows the session's counter, which a write that failed half-way leaves behind the table.
     afterTurnIndex?: number;
-    // A reply that does not move the Case leaves the time its offer was made untouched.
     keepEstimateTimestamp?: boolean;
     estimate?: unknown;
     costUsd?: number;

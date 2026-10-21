@@ -1,0 +1,7 @@
+{
+  "id": "kael-multiturn",
+  "ended": "2026-10-21T14:46:46.1038843Z",
+  "exitCode": 1,
+  "started": "2026-10-21T14:46:41.8433888Z",
+  "command": "node apps/api/scripts/kael-multi-turn-eval.mjs"
+}

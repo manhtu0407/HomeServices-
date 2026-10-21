@@ -13,7 +13,6 @@ export async function acceptBroadcast(
   jobId: string,
   quoteId: string,
 ) {
-  // Accepting an offer proposes the caller as the worker, so only a worker can do it.
   if (ctx.role !== "worker") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ thợ mới được nhận yêu cầu.", 403);
   }

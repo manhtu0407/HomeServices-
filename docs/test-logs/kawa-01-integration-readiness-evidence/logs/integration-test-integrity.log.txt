@@ -1,0 +1,4 @@
+$ node scripts/run.mjs run-node scripts/check-test-integrity.mjs "--diff" "origin/main"
+REPORT apps/api/src/__tests__/unit/kael-playbook-registry-pillar.test.ts [expected-literal-changed] an expected value changed while product source changed in the same diff
+REPORT apps/api/src/__tests__/unit/mobile-api-kael-intake-observation.test.ts [expected-literal-changed] an expected value changed while product source changed in the same diff
+check-test-integrity: 0 blocking, 2 report-only, 351 changed file(s) examined

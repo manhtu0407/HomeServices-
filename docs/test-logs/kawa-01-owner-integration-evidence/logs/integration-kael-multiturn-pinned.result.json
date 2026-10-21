@@ -1,0 +1,4 @@
+{
+  "command": "corepack pnpm --filter @nestscout/shared exec vitest run src/__tests__/kael-multi-turn-eval.test.ts --reporter=verbose",
+  "exitCode": 0
+}

@@ -106,10 +106,7 @@ export async function answerKaelAssistant(
     secrets,
     surface: input.surface,
   };
-  // A reported emergency is answered once ownership is established and before the quota, the memory read and every
-  // provider call: the deterministic answer costs nothing, and a refusal in its place reaches the customer as generic copy.
   const emergency = resolveCustomerAssistantEmergency(assistantInput);
-  // A Case in a closed job status takes no question, but a reported emergency is answered whatever the status is.
   if (!emergency && job && input.surface === "customer_case") assertJobStatus(job, CUSTOMER_CASE_ACTIVE_STATUSES);
   if (!emergency) {
     const rate = secrets.durableGuardsEnabled

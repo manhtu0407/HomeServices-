@@ -1,5 +1,3 @@
-// Deterministic emergency handling for Case intake turns. It runs before the boundary guard, the
-// intent router and the pipeline, and it does not depend on a playbook flag or on a model.
 
 import { sanitizeForLLM } from "../../../../_shared/domain.ts";
 import { sanitizeCustomerCaseEvidenceText } from "../../kael/evidence/untrusted-evidence.ts";
@@ -29,30 +27,20 @@ import {
 
 export type CaseEmergency = {
   readonly guidance: EmergencyGuidance;
-  // Fire, medical, police and unclear emergencies end the turn. A wiring or water hazard is advice
-  // the intake can continue after, so the Case still gets its next question.
   readonly stopsTurn: boolean;
 };
 
-// Where in the Case the report was caught; it labels the trace and nothing else.
 export type CaseEmergencyEntry = "turn" | "evidence" | "create" | "confirm";
 
 type CaseEmergencyInput = {
-  // One text, or every customer-authored text the request carries.
   readonly message: string | readonly string[];
   readonly language: "vi" | "en";
   readonly serviceType: unknown;
   readonly persistedSafetySignals?: readonly string[];
   readonly actorId?: string | null;
-  // The request cannot take the turn: its booking confirmation is pending, analysis is deferred, or the
-  // price-question chip persists nothing. No flagged path or pipeline step runs, so every reported route is
-  // answered here and ends the request.
   readonly parked?: boolean;
 };
 
-// Every text a customer wrote into one request, read once each in a fixed order. The gate, the safety signals a
-// Case persists and the text a model may see all start from this list, so a hazard cannot be reported in a field
-// that only one of them reads.
 export function customerAuthoredTexts(input: {
   readonly message?: string | null;
   readonly skipReason?: string | null;
@@ -79,8 +67,6 @@ export function customerAuthoredTexts(input: {
   return texts;
 }
 
-// Classification for delivery is independent of which successful intake path would answer the danger.
-// Callers must first establish customer authorization and ownership of any referenced Case.
 export function registerCaseEmergencyDelivery(ctx: MobileApiContext, texts: readonly string[], serviceType: unknown): void {
   if (ctx.role !== "customer") return;
   const guidance = resolveReportedEmergencyGuidanceFromTexts(texts, "vi", {
@@ -89,8 +75,6 @@ export function registerCaseEmergencyDelivery(ctx: MobileApiContext, texts: read
   if (guidance) setRequestEmergencyGuidance(ctx, { version: "v1", route: guidance.route });
 }
 
-// Schema failures never consume evidence or create state. Read bounded text only, and establish ownership
-// before classifying anything on an existing Case; all original validation errors stay unchanged.
 export async function registerRejectedCaseEmergencyDelivery(ctx: MobileApiContext, raw: unknown, sessionId?: string): Promise<void> {
   if (ctx.role !== "customer" || !raw || typeof raw !== "object" || Array.isArray(raw)) return;
   const input = raw as Record<string, unknown>;
@@ -126,9 +110,6 @@ export function resolveCaseEmergency(input: CaseEmergencyInput): CaseEmergency |
   const hazardOnly = guidance.route === "electrical_water";
   const flaggedPathOwnsHazard = guidance.route === "fire" || hazardOnly;
   const serviceType = nullableServiceType(input.serviceType);
-  // When a service's flagged path already answers a smoke, fire or wiring hazard with its own
-  // deterministic guidance, that reply is the only safety message; a second one would repeat it. The flagged path
-  // reads the safety signals of every text, so the check reads the same texts.
   if (
     flaggedPathOwnsHazard && serviceType &&
     requiresImmediateKaelSafetyPathForTexts(
@@ -150,7 +131,6 @@ function emergencyTrace(
   session: Record<string, unknown> | undefined,
   outcome: EmergencyOutcome = emergency.stopsTurn ? "emergency_stop" : "emergency_advice",
 ): KaelTurnTrace | undefined {
-  // Tracing is observability only: it must never be the reason a customer's emergency goes unanswered.
   try {
     return buildKaelTurnTrace({
       identity,
@@ -169,8 +149,6 @@ function emergencyTrace(
 }
 
 function logEmergencyTrace(trace: KaelTurnTrace | undefined) {
-  // The trace carries route and release codes only. It never gets an actor pseudonym: a stable id beside a fire,
-  // health or police code would profile one person.
   try {
     if (trace) logKaelTurnTrace(trace, console.warn);
   } catch {
@@ -178,10 +156,6 @@ function logEmergencyTrace(trace: KaelTurnTrace | undefined) {
   }
 }
 
-// What a request that cannot take the turn answers when its customer reported an emergency: the same error code and
-// status the contract already gives that refusal, with the deterministic guidance in front of its message. Nothing is
-// written, so a closed Case stays closed and an invalid schedule is applied nowhere. With no scope (the caller could
-// not establish who owns the Case) the refusal is the plain one, so guidance is never handed to someone else's request.
 export type EmergencyRefusalScope = {
   readonly texts: readonly string[];
   readonly language: "vi" | "en";
@@ -212,8 +186,6 @@ export function refuseWithEmergencyGuidance(
 
 const SESSION_COLUMNS = "id, customer_id, service_type, status, case_phase, total_turns, safe_metadata";
 
-// The Case when the caller owns it; null for a missing Case, someone else's Case or a failed read. A request already
-// bound for a refusal uses it so that looking the Case up never changes which refusal the caller gets.
 export async function ownedSessionForRefusal(
   ctx: MobileApiContext,
   sessionId: string,
@@ -232,9 +204,6 @@ export async function ownedSessionForRefusal(
 
 const CLOSED_STATUSES = new Set(["confirmed", "abandoned", "unsupported"]);
 
-// A request that carries customer-authored text but no typed message (a create on an existing session) is not a turn
-// the Case takes, so nothing about it changes unless the text reports an emergency. Returns true when it was answered.
-// `soft` is for a request that is already bound for a refusal: a Case it cannot reach is then simply not answered.
 export async function answerEmergencyOnOwnedSession(
   ctx: MobileApiContext,
   sessionId: string,
@@ -279,10 +248,6 @@ export async function answerEmergencyOnOwnedSession(
   return true;
 }
 
-// A reported emergency on an open Case its caller owns, on a request the Case cannot take only because of an unrelated
-// field (an invalid schedule). The customer's words and one deterministic reply are recorded and the field is applied
-// nowhere, so the guidance arrives as an ordinary answer. A closed Case, or a request that reports nothing, returns false
-// and is refused exactly as before.
 export async function answerEmergencyOnOpenSession(
   ctx: MobileApiContext,
   sessionId: string,
@@ -310,9 +275,6 @@ export async function answerEmergencyOnOpenSession(
   return true;
 }
 
-// A classified emergency whose reply could not be written: the failure is traced (route, entry, gate version and
-// correlation only, never a word of the customer's text) and the error the caller already raises keeps its code and
-// status but carries the guidance, so the customer is not left with a bare failure while the Case may be in danger.
 function emergencyWriteFailure(
   error: unknown,
   emergency: CaseEmergency,
@@ -347,14 +309,6 @@ function turnRow(row: Record<string, unknown> | undefined): TurnRow | undefined 
   };
 }
 
-// Answers a reported emergency on a request the Case cannot take: the customer's words and one deterministic
-// reply are recorded, and nothing else about the Case moves. Only the customer decides the booking, so a pending
-// confirmation is never touched, and no evidence is consumed or merged.
-//
-// A write that failed half-way leaves rows the session counter does not know about, and a concurrent duplicate
-// races for the same turn index. One bounded retry re-reads the table and finishes what is already there instead
-// of repeating it. This is a mitigation inside the existing tables: the guarantee that the exchange is written
-// atomically and exactly once needs a database function and is proposed separately.
 export async function answerParkedEmergency(input: {
   readonly client: DbClient;
   readonly sessionId: string;
@@ -403,7 +357,6 @@ async function writeParkedExchange(
   const counted = asNumber(session.data.total_turns);
   const last = turnRow(turns.data[0]);
   const before = turnRow(turns.data[1]);
-  // Turns a failed earlier attempt wrote after the last one the counter recorded.
   const stranded = last !== undefined && last.index > counted;
 
   if (
@@ -429,7 +382,6 @@ async function writeParkedExchange(
   await appendKaelSystemTurn(client, sessionId, {
     contentType: "analysis",
     text: input.emergency.guidance.response,
-    // The reply never moves the Case: it keeps whatever phase and offer time it had.
     nextStatus: asKaelChatStatus(session.data.status),
     afterTurnIndex: customerIndex,
     keepEstimateTimestamp: true,
@@ -442,8 +394,6 @@ async function writeParkedExchange(
   });
 }
 
-// A reply on a turn the Case has already taken: wiring or water advice the intake continues after, or an
-// emergency in a first message or booking description that has just been recorded.
 export async function answerCaseEmergency(
   client: DbClient,
   sessionId: string,
@@ -451,9 +401,7 @@ export async function answerCaseEmergency(
   options: {
     readonly entry: CaseEmergencyEntry;
     readonly identity?: KaelTurnTraceIdentity;
-    // The session as it stood before this turn: the trace names its service and phase.
     readonly session?: Record<string, unknown>;
-    // A Case whose offer is under review stays under review after advice the turn continues from.
     readonly keepOfferStatus?: boolean;
   },
 ) {

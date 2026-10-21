@@ -1,0 +1,5 @@
+{
+  "command": "corepack pnpm build:api",
+  "ended": "2026-10-21T14:42:36.0711866Z",
+  "exitCode": 0
+}

@@ -61,8 +61,6 @@ const OUTCOMES = [
   "emergency_guidance_only",
   "emergency_write_failed",
 ] as const;
-// Where in the Case a reported emergency was caught: the follow-up turn, the evidence submission, the first
-// message of a new Case, or the booking confirmation.
 const GATE_ENTRIES = ["turn", "evidence", "create", "confirm"] as const;
 const EMERGENCY_ROUTES = ["fire", "medical", "police", "electrical_water", "gas", "uncertain"] as const;
 const GATE_VERSION = /^[a-z][a-z0-9_.]{2,47}$/;
@@ -204,24 +202,17 @@ export function buildKaelTurnTrace(input: KaelTurnTraceInput): KaelTurnTrace {
 }
 
 export type CaseEmergencySummary = {
-  // Customer turns the gate looked at in the same window; null when the caller could not count them.
   readonly evaluated_turns: number | null;
   readonly emergency_turns: number;
   readonly stopped_turns: number;
   readonly advised_turns: number;
-  // Classified emergencies that were refused with the guidance in the error (nothing persisted), and ones whose
-  // reply could not be written. Neither is an answered turn, and neither is ever counted as one.
   readonly guidance_only_turns: number;
   readonly write_failed_turns: number;
   readonly by_route: Readonly<Record<string, number>>;
   readonly by_entry: Readonly<Record<string, number>>;
-  // emergency_turns / evaluated_turns; null, never 0, when there is no sample to divide by.
   readonly emergency_rate: number | null;
 };
 
-// Counts the Case emergency answers among persisted reply traces. The denominator is supplied by the caller (the
-// customer turns of the same Case sessions in the same window) because every route that advances a Case passes the
-// gate, so a customer turn is a gate evaluation. A trace that is not a well-formed Case emergency trace is ignored.
 export function summarizeCaseEmergencyTraces(
   traces: readonly unknown[],
   evaluatedTurns: unknown,
@@ -304,7 +295,6 @@ export function logKaelTurnTrace(
   if (trace.stage === "answered") return false;
   const bucket = `kael_turn_trace_log:${trace.route}:${trace.stage}`;
   if (!checkRateLimit(bucket, LOG_ALLOWANCE).allowed) return false;
-  // A stable pseudonym beside a health, fire or police emergency code would profile one person.
   const emergencyTurn = typeof trace.permission_reason === "string" && trace.permission_reason.startsWith("EMERGENCY_");
   const safeTrace = !emergencyTurn && typeof actorRoleHash === "string" && ACTOR_ROLE_HASH.test(actorRoleHash)
     ? Object.freeze({ ...trace, actor_role_hash: actorRoleHash })

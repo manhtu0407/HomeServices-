@@ -151,10 +151,6 @@ export async function sendCustomerKaelConversationTurn(
     return existingResponse;
   }
 
-  // A reported emergency is answered from the message alone. The summary, the web search and an image check cost time or
-  // money or can refuse, and none of them may stand between the customer and the guidance, so a report that is or may be
-  // an emergency skips them and is recorded without images. Only a report that depends on the service ("possible") still
-  // reads the stored conversation, which is free and settles it.
   const reading = emergencyReadingWithoutContext({
     message: input.message,
     language: input.language,

@@ -1,0 +1,5 @@
+{
+  "diffExit": 0,
+  "command": "pnpm lint:workplan and git diff --check",
+  "workplanExit": 1
+}

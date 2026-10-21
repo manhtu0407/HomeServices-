@@ -1,0 +1,20 @@
+{
+  "base": "origin/main",
+  "range": "exact pending candidate working tree",
+  "integrity": [
+    {
+      "file": "apps/api/src/__tests__/unit/kael-playbook-registry-pillar.test.ts",
+      "severity": "report",
+      "rule": "expected-literal-changed",
+      "detail": "an expected value changed while product source changed in the same diff"
+    },
+    {
+      "file": "apps/api/src/__tests__/unit/mobile-api-kael-intake-observation.test.ts",
+      "severity": "report",
+      "rule": "expected-literal-changed",
+      "detail": "an expected value changed while product source changed in the same diff"
+    }
+  ],
+  "hygiene": [],
+  "changed": 88
+}

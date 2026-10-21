@@ -19,12 +19,8 @@ export type EmergencyGuidance = {
   response: string;
 };
 
-// The service the report was made in. "Gas" is the everyday word for HVAC refrigerant, so a bare
-// "xi gas" inside the HVAC service is a refrigerant request, not a fuel-gas leak.
 export type EmergencyContext = { readonly serviceType?: string | null };
 
-// Bumped whenever the cues or the routing rule change what a report is answered with, so a trace can say which
-// classifier produced a reply.
 export const EMERGENCY_GATE_VERSION = "case_emergency_gate.v2";
 
 type CueRoute = Exclude<EmergencyRoute, "uncertain" | "gas">;
@@ -34,7 +30,6 @@ type Cue = {
   readonly tone?: ToneCheck;
   readonly toneRules?: ToneRules;
   readonly technicalBleeding?: boolean;
-  // Context in the same clause that makes the words ordinary (cooking, a candle, a cigarette).
   readonly unless?: RegExp;
 };
 
@@ -44,8 +39,6 @@ const FIXED_WIRING_NOUNS = "o dien|o cam|tu dien|bang dien|day dien|cau dao|apto
 const HOME_NOUNS = "nha|phong|can ho|chung cu|toa nha|tang";
 const WIRED_FIXTURES = "hop cau dao|o cam|o dien|bang dien|tu dien|cau dao|day dien|cong to dien|aptomat|cong tac|hop dien";
 
-// Words a cue shares letters with: dầy/đầy/dây, ngập/ngáp, tràn/trấn, bốc/bóc, bùng/bụng, bắt/bát, rò/rõ, rỉ/rì,
-// nhỏ/nho, hở/họ/hồ, chảy/cháy. The rules apply to that cue only, so no other cue changes meaning.
 const SMOKE_FILL_TONES: ToneRules = {
   day: /^(?:day|\u0111\u1ea7y)$/u,
   ngap: /^(?:ngap|ng\u1eadp)$/u,
@@ -71,8 +64,6 @@ const ARMED_TONES: ToneRules = {
 };
 const SOAKED_TONES: ToneRules = { ngam: /^(?:ngam|ng\u00e2m)$/u };
 const RAIN_TONES: ToneRules = { tat: /^(?:tat|t\u1ea1t)$/u };
-// A cue with a stretch of free words in it must not be vetoed by a tone rule meant for another cue: "máy giặt" is
-// not "giật" (shock), and "khói", "lửa" or "chảy" inside the stretch are not the cue's own words.
 const FILLER_TONES: ToneRules = {
   giat: /^gi\p{L}t$/u,
   chay: /^ch\p{L}y$/u,
@@ -96,8 +87,6 @@ const WATER_TONES: ToneRules = {
 };
 const EXPOSED_WIRE_TONES: ToneRules = { ho: /^h[o\u1edf]$/u };
 
-// Patterns run on accent-free text; `tone` tells the matcher how strictly the tone marks must
-// agree, so "đang chạy" and "đang chảy" never read as "đang cháy".
 const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   fire: [
     cue(/\b(?:boc khoi|phat khoi|tuon khoi|toa khoi|bao dong chay)\b/u),
@@ -170,10 +159,6 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   ],
 };
 
-// Fuel gas (LPG, cooking gas) leaking is an emergency; refrigerant leaking is a service request, and
-// Vietnamese calls both "gas". The word alone never decides: a leaking stove, cylinder or pipe, a fuel-gas
-// word or a smell of gas reports fuel gas; a bare leak is ambiguous and the surrounding service decides.
-// Words a gas cue shares letters with: gà (chicken), họ (they), rõ (clear), dày (thick), ông (grandfather).
 const GAS_TONES: ToneRules = {
   phut: /^(?:phut|ph\u1ee5t)$/u,
   ga: /^ga$/u,
@@ -216,11 +201,8 @@ const GAS_BARE_EN: readonly Cue[] = [
 ];
 const REFRIGERANT_CONTEXT = /\b(?:may lanh|may dieu hoa|dieu hoa|dan lanh|dan nong|cuc nong|cuc lanh|inverter|may nen|ong dong|r32|r410a?|r22|r134a|r290|freon|refrigerants?|gas lanh|nap (?:them )?gas|bom (?:them )?gas|thieu gas|het gas may|air ?cond\w*|ac|hvac|compressor|condenser|evaporator|split (?:unit|ac)|heat pump)\b/u;
 const KITCHEN_CONTEXT = /\b(?:bep|nha bep|phong bep|nau an|binh (?:gas|ga)|kitchen|stove|hob|cooker|cylinder|lpg|propane|butane|cooking)\b/u;
-// The line between a cylinder and a stove. In the air-conditioning service the same words name the refrigerant line,
-// so they say "fuel gas" only outside it.
 const GAS_LINE_CONTEXT = /\b(?:day dan|ong dan|van binh|bo dieu ap|dieu ap|dau noi)\b/u;
 
-// Generic urgency says a request is pressing, not that anyone is in danger.
 const UNCERTAIN_SPECIFIC_CUES = [
   cue(/\b(?:dang gap nguy hiem|gap nguy hiem|khong ro goi ai|khong biet (?:phai |nen |can )?goi (?:ai|so nao|cho ai)|khong (?:ro|biet|chac) (?:nen |phai |can )?goi (?:so )?11[2345]|goi 11[2345] hay (?:goi )?11[2345]|khong (?:ro|biet|chac) (?:nen |phai |can )?goi so nao|khong chac day co phai tinh huong khan cap|khong biet day co phai nguy hiem khong)\b/u),
   cue(/\b(?:don t know who to call|not sure who to call|which emergency number|unsure which emergency service|not sure if this is an emergency|not sure (?:whether to |if (?:i|we) should |who to |which (?:number|service) to )call (?:the )?(?:fire (?:brigade|department|service)|police|an? ambulance|emergency|112|113|114|115|999|911))\b/u),
@@ -230,18 +212,15 @@ const UNCERTAIN_GENERIC_CUES = [
   cue(/\b(?:emergency help|urgent emergency)\b/u),
 ];
 
-// Fire-safety equipment and training talk names the words without reporting a fire.
 const PREVENTION_PHRASES =
   /\b(?:canh (?:co )?(?:chay|hoa hoan)|phong chay chua chay|chua chay|binh chua chay|binh cuu hoa|cuu hoa|pccc|(?:canh )?bao ro (?:khi )?(?:gas|ga)|dau do (?:khi )?(?:gas|ga)|cam bien (?:khi )?(?:gas|ga)|(?:kiem tra|do) ro (?:khi )?(?:gas|ga)|gas (?:detectors?|alarms?|sensors?)|(?:check|checking|test|testing|detect|detecting) (?:for )?(?:a )?gas leaks?|fire (?:drill|safety|prevention|extinguisher|exit|escape|door|rated|proof|sprinkler|code)|fire-?proof|smoke (?:detectors?|alarms?) (?:battery|install\w*|replac\w*|test\w*))\b/u;
 
 const NEGATED_CUE_SUFFIX = /\b(?:khong|chua|chang|het|no|not|never|without|no longer|does not|do not|is not|are not|was not|were not|doesn t|don t|isn t|aren t)\b(?:\s+[\p{L}\p{N}]+){0,4}\s*$/u;
 const SELF_NEGATION = /\b(?:khong phai|khong|chua|chang)\s+(?:phai\s+)?(?:la\s+)?(?:toi|minh|tui|em|chung toi|nha toi|bon toi)\b|\b(?:toi|minh|tui|em|chung toi)\s+(?:khong|chua|chang)\b|\b(?:not|never)\s+(?:me|i|us|myself)\b|\b(?:i|we)\s+(?:am not|m not|was not|wasn t|did not|didn t|have not|haven t|do not|don t)\b/u;
-// Someone other than the speaker is the one affected: "not me, the person next to me", "not me but my child".
 const THIRD_PARTY_REST = /\b(?:nguoi (?:ben canh|khac|nha|kia|ay|do|trong nha)|ai do|hang xom|(?:ong|ba|anh|chi|co|chu|bac|em|con|be) (?:ay|kia|do|ben canh|hang xom))(?: [a-z]+){0,2} (?:moi|cung|thi|dang) bi\b|\bma la (?:con|chong|vo|me|bo|ba|ong|anh|chi|em|nguoi|hang xom|be)\b|\b(?:con|chong|vo|me|bo) (?:toi|minh|nha toi) thi co\b/u;
 const HYPOTHETICAL_BEFORE = /\b(?:neu|neu nhu|gia su|gia dinh|gia nhu|lo ma|phong khi|de phong|de tranh|if|what if|in case|suppose|supposing|should there be|to prevent|to avoid)\b/u;
 const PAST_MARKER = /\b(?:sau (?:khi |vu |dam )?(?:chay|hoa hoan)|after (?:the|a) fire|aftermath|hom qua|hom truoc|bua truoc|tuan truoc|tuan roi|thang truoc|thang roi|nam ngoai|truoc day|luc truoc|hoi sang|toi qua|dem qua|hom kia|da tung|tung bi|tung co|lan truoc|lan roi|tu lau|yesterday|last (?:night|week|month|year|time)|(?:days?|weeks?|months?|years?) ago|used to|previously|a while back)\b/u;
 const PRESENT_MARKER = /\b(?:dang|van (?:con|dang|boc|co|phat|toa|tuon|chay|nong|bi)|bay gio|hien tai|hien gio|ngay luc nay|luc nay|still|right now|now|currently|at the moment)\b/u;
-// Words that say the smoke or fire itself has ended; "đã tắt aptomat" says only that a switch was turned off.
 const RESOLVED_AFTER = /\b(?:da (?:het|dap|tan|ngung)(?: (?:roi|han|khoi|lua))?\s*(?:,|$)|da tat (?:khoi|lua|roi)|het (?:roi|khoi|lua)|khong con (?:khoi|lua|boc khoi)|ngung roi|has stopped|stopped|went out|put out|no longer|is gone|has gone|died down)/u;
 const BLEED_TARGET = "radiators?|brakes?|valves?|pipes?|lines?|hydraulic|heating|refrigerant|coolant|tyres?|tires?|systems?|boiler|loop|air";
 const BLEED_TARGET_AFTER = new RegExp(
@@ -285,7 +264,6 @@ export function resolveEmergencyGuidance(
   return guidanceFor(routeOfReadings([readEmergencySignals(text, true, context)]), language);
 }
 
-// The Case-intake gate acts on a reported danger only; "urgent" alone is an ordinary priority.
 export function resolveReportedEmergencyGuidance(
   text: string,
   language: "vi" | "en",
@@ -294,9 +272,6 @@ export function resolveReportedEmergencyGuidance(
   return resolveReportedEmergencyGuidanceFromTexts([text], language, context);
 }
 
-// A request carries several customer-authored texts (a message, a transcript, a note). Each is read on its own,
-// so a negation or a sentence stop in one never reaches the next, and the hazards found are then routed by the
-// same rule as hazards inside one text: the order and the boundaries between fields never change the answer.
 export function resolveReportedEmergencyGuidanceFromTexts(
   texts: readonly string[],
   language: "vi" | "en",
@@ -312,7 +287,6 @@ function guidanceFor(route: EmergencyRoute | null, language: "vi" | "en"): Emerg
   return route ? { route, response: GUIDANCE[route][language] } : null;
 }
 
-// What one text reports, before any rule combines it with other texts.
 type EmergencyReading = {
   readonly routes: readonly EmergencyRoute[];
   readonly unclear: boolean;
@@ -343,8 +317,6 @@ function readEmergencySignals(
 
 function routeOfReadings(readings: readonly EmergencyReading[]): EmergencyRoute | null {
   const routes = [...new Set(readings.flatMap((reading) => reading.routes))];
-  // Smoke with sparking or live wiring is one electrical hazard whose guidance already names 114, 115 and 112.
-  // Fuel gas with smoke, fire or sparking keeps the gas guidance, which already names 114 and forbids ignition.
   if (routes.length > 1) {
     const fireOrWiring = (route: EmergencyRoute) => route === "fire" || route === "electrical_water";
     if (routes.includes("gas")) {
@@ -357,8 +329,6 @@ function routeOfReadings(readings: readonly EmergencyReading[]): EmergencyRoute 
   return null;
 }
 
-// A fuel-gas object or smell is an emergency; a bare leak is refrigerant unless the kitchen, the English
-// wording or the service says otherwise, and is asked about (112) only when nothing says which gas it is.
 function classifyGasLeak(
   signal: SignalText,
   segments: readonly Segment[],
@@ -378,13 +348,8 @@ function classifyGasLeak(
   const refrigerant = (index: number) => REFRIGERANT_CONTEXT.test(clause(index));
   const kitchen = (index: number) => KITCHEN_CONTEXT.test(clause(index));
   const hvac = serviceType === "hvac";
-  // "Ống gas máy lạnh" is the refrigerant line of an air conditioner. A refrigerant word inside the object phrase
-  // makes it one, and so does a bare pipe, hose or valve in the air-conditioning service; a refrigerant word merely
-  // nearby ("a gas cylinder beside the air conditioner is leaking") does not hide a fuel-gas object.
   const fuelObject = (index: number, end: number) => {
     const phrase = signal.plain.slice(index, end);
-    // The object phrase is the object, the gas word and up to two words after it; what lies between that and the
-    // leak word is free text and says nothing about which gas the object holds.
     const words = phrase.split(" ");
     const gasWord = words.findIndex((word) => word === "gas" || word === "ga");
     if (REFRIGERANT_CONTEXT.test(gasWord < 0 ? phrase : words.slice(0, gasWord + 3).join(" "))) return false;
@@ -395,8 +360,6 @@ function classifyGasLeak(
   };
   if (hit(GAS_OBJECT_CUES, fuelObject)) return "gas";
   if (hit(GAS_SMELL_CUES, (index, end) => !REFRIGERANT_CONTEXT.test(near(index, end)))) return "gas";
-  // In the air-conditioning service a smell named beside refrigerant words, with nothing from a kitchen in the
-  // sentence, is the refrigerant the customer is asking about, not an unclear fuel-gas report.
   if (hit(GAS_SMELL_CUES)) {
     const kitchenSmell = hit(GAS_SMELL_CUES, (index) => kitchen(index));
     return hvac && !kitchenSmell ? null : "uncertain";
@@ -408,9 +371,6 @@ function classifyGasLeak(
   return null;
 }
 
-// A negation word whose plain spelling is also another word: "nổ" (explodes) reads as the English "no", "hét"
-// (shouts) as "hết" (no more), "chữa" (to cure) as "chưa" (not yet). Only the accented twin can tell them apart, so
-// a plain word counts as a negation when the accented twin spells it unmarked or with its own marks.
 const NEGATION_SPELLINGS: Readonly<Record<string, readonly string[]>> = {
   no: ["no"],
   het: ["het", "h\u1ebft"],
@@ -429,7 +389,6 @@ function negationText(plainPrefix: string, accentedPrefix: string): string {
     .join(" ");
 }
 
-// Bleeding a radiator, brake line or valve is maintenance; a person bleeding is a medical emergency.
 function isBleedingATarget(plain: string, start: number, end: number): boolean {
   return BLEED_TARGET_AFTER.test(plain.slice(end, end + 40)) ||
     BLEED_TARGET_BEFORE.test(plain.slice(Math.max(0, start - 28), start));
@@ -449,7 +408,6 @@ function hasAffirmedCue(
     const segment = segmentAt(segments, index);
     const segmentText = signal.plain.slice(segment.start, segment.end);
     const prefix = signal.plain.slice(segment.start, index);
-    // A condition ends at its comma: "if that fails, the house is on fire" still reports a fire.
     if (HYPOTHETICAL_BEFORE.test(prefix.slice(prefix.lastIndexOf(",") + 1))) continue;
     if (PAST_MARKER.test(segmentText) && !PRESENT_MARKER.test(segmentText)) continue;
     if (RESOLVED_AFTER.test(signal.plain.slice(end, segmentAt(sentences, index).end))) continue;

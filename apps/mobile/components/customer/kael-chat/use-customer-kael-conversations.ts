@@ -488,7 +488,7 @@ export function useCustomerKaelConversations(
       }
       const committed = sent.success
         ? sent.data
-        : isAmbiguousConversationTurnFailure(sent)
+        : !sent.emergency && isAmbiguousConversationTurnFailure(sent)
           ? await recoverCommittedConversationTurn(targetId, clientRequestId)
           : null
       if (

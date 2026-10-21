@@ -1,0 +1,14 @@
+[
+  {
+    "proposal": "claude-MEMORY.proposed.md",
+    "conflictBlocks": 1,
+    "method": "concatenate both non-overlapping concurrent additions; retain all auto-merged surrounding text",
+    "applied": false
+  },
+  {
+    "proposal": "2026-10.proposed.md",
+    "conflictBlocks": 1,
+    "method": "concatenate both non-overlapping concurrent additions; retain all auto-merged surrounding text",
+    "applied": false
+  }
+]

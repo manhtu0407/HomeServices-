@@ -1,0 +1,10 @@
+{
+  "id": "final-lint-authority",
+  "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+  "ended": "2026-10-21T13:52:26.3146433Z",
+  "lane": "T0",
+  "started": "2026-10-21T13:52:21.5659316Z",
+  "command": "pnpm lint:authority",
+  "exitCode": 1,
+  "dirtyCandidate": true
+}

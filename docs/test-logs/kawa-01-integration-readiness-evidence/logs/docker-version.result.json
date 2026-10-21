@@ -1,0 +1,5 @@
+{
+  "ended": "2026-10-21T13:36:39.6818800Z",
+  "command": "pnpm docker:version:ensure",
+  "exitCode": 1
+}

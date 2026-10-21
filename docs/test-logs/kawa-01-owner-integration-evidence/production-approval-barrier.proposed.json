@@ -1,0 +1,28 @@
+{
+  "environment": "production",
+  "proposedOnly": true,
+  "reviewers": [
+    {
+      "type": "User",
+      "id": 255643814,
+      "login": "manhtu0407"
+    }
+  ],
+  "prevent_self_review": true,
+  "can_admins_bypass": false,
+  "deployment_branch_policy": {
+    "protected_branches": false,
+    "custom_branch_policies": true
+  },
+  "branchPolicyProposal": {
+    "name": "main",
+    "type": "branch"
+  },
+  "prerequisites": [
+    "Owner verifies a second independent reviewer or actor arrangement before enabling releases; self-review is deliberately blocked",
+    "Keep NESTSCOUT_BACKEND_RELEASE_ENABLED=false",
+    "Do not change secrets or provider budgets",
+    "Do not re-enable automatic deployment as part of KAWA01"
+  ],
+  "rollback": "No barrier has been applied. Do not roll the auto-release variable back to true; only owner-controlled future release procedure may change it."
+}

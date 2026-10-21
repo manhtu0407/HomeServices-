@@ -1,0 +1,13 @@
+import {execFileSync} from 'node:child_process';
+import {readFileSync,writeFileSync} from 'node:fs';
+import {parseUnifiedDiff} from '../../scripts/lib/unified-diff.mjs';
+import {analyzeChanges} from '../../scripts/check-test-integrity.mjs';
+import {analyzeHygiene} from '../../scripts/check-added-source-hygiene.mjs';
+const raw=execFileSync('git',['diff','--unified=0','origin/main','--','apps','packages','supabase','scripts','config','.github'],{encoding:'utf8',maxBuffer:1<<28});
+const changes=parseUnifiedDiff(raw).map(c=>({...c,content:c.deleted?null:readFileSync(c.path,'utf8')}));
+const integrity=analyzeChanges(changes);
+const hygiene=changes.flatMap(analyzeHygiene);
+const result={base:'origin/main',range:'exact pending candidate working tree',integrity,hygiene,changed:changes.length};
+writeFileSync('.scratch/kawa01-owner-integration-20261021/pending-integrity-hygiene.json',JSON.stringify(result,null,2)+'\n');
+console.log(JSON.stringify(result,null,2));
+process.exit([...integrity,...hygiene].some(f=>f.severity==='block')?1:0);

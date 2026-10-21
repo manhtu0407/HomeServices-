@@ -1,0 +1,8 @@
+{
+  "id": "sse-red-runtime",
+  "command": "pnpm --filter @nestscout/mobile exec jest --runInBand --watch=false --runTestsByPath components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx",
+  "cwd": "[WORKSPACE]",
+  "started": "2026-10-21T13:22:33.681Z",
+  "ended": "2026-10-21T13:22:34.364Z",
+  "exitCode": 1
+}

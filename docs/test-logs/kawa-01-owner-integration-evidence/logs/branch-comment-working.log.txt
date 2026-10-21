@@ -1,0 +1,14 @@
+warning: in the working copy of 'apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/mobile/lib/kael-stream.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'packages/shared/src/contracts/emergency-guidance.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/_shared/contracts/emergency-guidance.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts', LF will be replaced by CRLF the next time Git touches it
+comment-discipline: clean — no note-banner comments found.

@@ -1,0 +1,51 @@
+$ node scripts/run.mjs run-package-script @nestscout/api build
+
+> @nestscout/api@0.1.0 build [WORKSPACE]\apps\api
+> next build
+
+▲ Next.js 16.3.0 (Turbopack)
+✓ Running next.config.ts took 439ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.1s
+  Running TypeScript ...
+  Finished TypeScript in 6.0s ...
+  Collecting page data using 19 workers ...
+  Generating static pages using 19 workers (0/15) ...
+  Generating static pages using 19 workers (3/15) 
+  Generating static pages using 19 workers (7/15) 
+  Generating static pages using 19 workers (11/15) 
+✓ Generating static pages using 19 workers (15/15) in 443ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /admin/kael-learning
+├ ○ /admin/kael-queue
+├ ƒ /api/health
+├ ƒ /api/jobs
+├ ƒ /api/jobs/[id]
+├ ƒ /api/jobs/[id]/accept
+├ ƒ /api/jobs/[id]/cancel
+├ ƒ /api/jobs/[id]/confirm-completion
+├ ƒ /api/jobs/[id]/confirm-search
+├ ƒ /api/jobs/[id]/decline
+├ ƒ /api/jobs/[id]/review
+├ ƒ /api/jobs/[id]/scope-change
+├ ƒ /api/jobs/[id]/status
+├ ƒ /api/scope-changes/[id]/decide
+├ ƒ /api/services
+├ ƒ /api/workers/me
+├ ƒ /api/workers/me/availability
+├ ƒ /api/workers/me/broadcasts
+├ ƒ /api/workers/me/earnings
+├ ƒ /api/workers/me/jobs
+└ ƒ /api/workers/register
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

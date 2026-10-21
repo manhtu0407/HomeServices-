@@ -26,8 +26,6 @@ export function persistentKaelSafetySignals(
   ])].filter((signal) => allowed.has(signal));
 }
 
-// The signals a request's customer-authored texts raise together with the ones already on the Case. Each text is
-// scanned on its own, so what one field says never changes how another is read.
 export function persistentKaelSafetySignalsFromTexts(
   texts: readonly string[],
   serviceType: ServiceType,

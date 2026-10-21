@@ -1,0 +1,116 @@
+[
+  {
+    "file": "apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx",
+    "sourceSha256": "f426df078c20c4c8ee68094e4662e7f6c6a14e2284a8d980daa686148a7fb84c",
+    "simulationSha256": "9f67d6ac7b690b12fce67b109a93f137d3002c750b4b4f0b1333d270fd7a48d4",
+    "canonicalEqual": true
+  },
+  {
+    "file": "packages/shared/src/contracts/emergency-guidance.ts",
+    "sourceSha256": "1c8ace76911a50933b9978612c35726e0d414ea2f9f808a69a8f7315dd7f59fa",
+    "simulationSha256": "cbaeed434b02034324bbbc10475682d02aecd9c8ccfc5f4c4811e3ca636b08b4",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/_shared/contracts/emergency-guidance.ts",
+    "sourceSha256": "10176f134a9026b6a2eddd51402db0cff5decd12f42faca40863bea2abc91061",
+    "simulationSha256": "95c5d2e8c95ba04bde269fba9471bf456de4eb18f809d191b7c05b2e6dece5e0",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/customer/assistant.ts",
+    "sourceSha256": "ac6481179a26eb41064ce9d4177f7d79bea6a029d0517ee684e4eca5e8afd628",
+    "simulationSha256": "ac6481179a26eb41064ce9d4177f7d79bea6a029d0517ee684e4eca5e8afd628",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts",
+    "sourceSha256": "7c9cf6329ad581a7fed1b82ce9b422dcb0c91db71f8453f338170fc783714b8a",
+    "simulationSha256": "7c9cf6329ad581a7fed1b82ce9b422dcb0c91db71f8453f338170fc783714b8a",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts",
+    "sourceSha256": "3b51400efd9bfc68876123223078688449ef5b51ad9e8bc04bbeb2b272aea4bb",
+    "simulationSha256": "4f1eba63e469e36c286d489f84a3c0e238c5d0021409c3d71ce96587c55dce40",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts",
+    "sourceSha256": "4b1a8f9c56c3fbf72e9e68f7ff94c5ddaf789d348edebff6a869b84455b3deef",
+    "simulationSha256": "5d4fd16b85c592609df2fdaca5fb67937f2d7f28bab0015f76817f967cce5eca",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts",
+    "sourceSha256": "26274ccc4aa3f6416395b97ea8e5f685408738baffd8441b9914d35de2afa300",
+    "simulationSha256": "26465555c616430f2e37fa6919f2fb41d85bb960112c220c6341c66c532cf971",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts",
+    "sourceSha256": "29bce0a37f7aaadb610ca7bdfdf49ed1346efe8650a6ae4d1d4b020b0c4682ea",
+    "simulationSha256": "29bce0a37f7aaadb610ca7bdfdf49ed1346efe8650a6ae4d1d4b020b0c4682ea",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts",
+    "sourceSha256": "8105d8d4fdd402a43de5274e31605c119f4b8385ca9121e87f53b38424943fda",
+    "simulationSha256": "8105d8d4fdd402a43de5274e31605c119f4b8385ca9121e87f53b38424943fda",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/session-store.ts",
+    "sourceSha256": "424f4b916df9a8085c9a12b10e4aeecdd41dee9faea3d4afa1fb0d014c707d9d",
+    "simulationSha256": "424f4b916df9a8085c9a12b10e4aeecdd41dee9faea3d4afa1fb0d014c707d9d",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts",
+    "sourceSha256": "c66c37269e1c9ae4808a0f535e669df0a61cde569f6d9ad18549de64d8b8999a",
+    "simulationSha256": "47fb4f84b1eb08a35f1f08189181e86576567299eddec55a84d90d001c8cb9b7",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/matching/accept.ts",
+    "sourceSha256": "662ed7482aa3cdabdbfa381175f367b820446d5d13727a031c5c1074f39d54dd",
+    "simulationSha256": "662ed7482aa3cdabdbfa381175f367b820446d5d13727a031c5c1074f39d54dd",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts",
+    "sourceSha256": "816c5eb9aabf7a3790ff195c3ca21727bec18e33d0c26a1bf9dd828f51d0406c",
+    "simulationSha256": "816c5eb9aabf7a3790ff195c3ca21727bec18e33d0c26a1bf9dd828f51d0406c",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts",
+    "sourceSha256": "169dd43dc7d08e92c539ce7211a7d53117e015771af5e97902f0e99d399b5e73",
+    "simulationSha256": "169dd43dc7d08e92c539ce7211a7d53117e015771af5e97902f0e99d399b5e73",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
+    "sourceSha256": "68569488bd54dd1cd09e24a138c354340c4052b862b10113bf01ca13055279ce",
+    "simulationSha256": "5d44acc1c3ee962104255c80d4e74d7e0e86e46aac080e0713fd8331c4f92cb5",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts",
+    "sourceSha256": "9b8b88c5fd5dc84f6f9c5cf79bf4f9b6b5f91d17e415ac85ad0b3af7a8b7a7d9",
+    "simulationSha256": "bf02de38691116bdc69337e1636ad95aa05aaada88b5a423369bd3891acd1dfa",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts",
+    "sourceSha256": "4f6b7f579df853f2b273a75d118c5e69287407b7a912a0adc6887a9402def5a9",
+    "simulationSha256": "1d27fefd3eca046da3a4f8e74415d96445b1ce194699330c8c9aab51a10eb85a",
+    "canonicalEqual": true
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/platform/turn-trace.ts",
+    "sourceSha256": "5d740a0a0d2c4bb6649bd792da075a563e217d99850677a92dcbd548d00859c5",
+    "simulationSha256": "5d740a0a0d2c4bb6649bd792da075a563e217d99850677a92dcbd548d00859c5",
+    "canonicalEqual": true
+  }
+]

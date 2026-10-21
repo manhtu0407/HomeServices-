@@ -1,0 +1,7 @@
+{
+  "id": "sandbox-tests",
+  "ended": "2026-10-21T14:45:02.8837891Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:45:00.1451329Z",
+  "command": "corepack pnpm sandbox:test"
+}

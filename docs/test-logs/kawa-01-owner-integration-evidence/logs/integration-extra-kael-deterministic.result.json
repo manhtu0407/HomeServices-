@@ -1,0 +1,7 @@
+{
+  "id": "kael-deterministic",
+  "ended": "2026-10-21T14:46:41.8413658Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:46:41.6791385Z",
+  "command": "node apps/api/scripts/kael-eval.mjs --mode deterministic --report .scratch/kawa01-owner-integration-20261021/kael-eval.md"
+}

@@ -1,0 +1,298 @@
+{
+  "checked": 73,
+  "failed": [],
+  "results": [
+    {
+      "file": ".gitattributes",
+      "pass": true
+    },
+    {
+      "file": "api-skipped-tests.json",
+      "pass": true
+    },
+    {
+      "file": "api-vitest-complete.json",
+      "pass": true
+    },
+    {
+      "file": "api-vitest-complete.log.txt",
+      "pass": true
+    },
+    {
+      "file": "backend-baseline-result.json",
+      "pass": true
+    },
+    {
+      "file": "backend-contract-complete.log.txt",
+      "pass": true
+    },
+    {
+      "file": "backend-matrix-baseline-red.log.txt",
+      "pass": true
+    },
+    {
+      "file": "backend-tracer-red.log.txt",
+      "pass": true
+    },
+    {
+      "file": "build-api.log.txt",
+      "pass": true
+    },
+    {
+      "file": "candidate-complete.patch.txt",
+      "pass": true
+    },
+    {
+      "file": "candidate-metadata.json",
+      "pass": true
+    },
+    {
+      "file": "candidate-tree-merge.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-doctor-react-changed.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-gates.jsonl",
+      "pass": true
+    },
+    {
+      "file": "check-harness-migrations-check.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-harness-pillars-check.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-lint-authority.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-lint-baseline.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-lint-edge-db.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-lint-playbooks.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-lint-test-collection.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-skills-check.log.txt",
+      "pass": true
+    },
+    {
+      "file": "check-skills-contracts.log.txt",
+      "pass": true
+    },
+    {
+      "file": "delivery-changed-paths.json",
+      "pass": true
+    },
+    {
+      "file": "delivery-only.patch.txt",
+      "pass": true
+    },
+    {
+      "file": "docker-reopened-compose.log.txt",
+      "pass": true
+    },
+    {
+      "file": "docker-reopened-version.log.txt",
+      "pass": true
+    },
+    {
+      "file": "docker-version.log.txt",
+      "pass": true
+    },
+    {
+      "file": "edge-reopened.log.txt",
+      "pass": true
+    },
+    {
+      "file": "fetch-main.log.txt",
+      "pass": true
+    },
+    {
+      "file": "final-gates.jsonl",
+      "pass": true
+    },
+    {
+      "file": "final-index-preservation.json",
+      "pass": true
+    },
+    {
+      "file": "final-integrity.json",
+      "pass": true
+    },
+    {
+      "file": "final-lint-api.log.txt",
+      "pass": true
+    },
+    {
+      "file": "final-lint-comments.log.txt",
+      "pass": true
+    },
+    {
+      "file": "final-lint-mobile.log.txt",
+      "pass": true
+    },
+    {
+      "file": "final-lint-production-ui-copy.log.txt",
+      "pass": true
+    },
+    {
+      "file": "final-lint-structure.log.txt",
+      "pass": true
+    },
+    {
+      "file": "focused-selection.json",
+      "pass": true
+    },
+    {
+      "file": "full-gates.jsonl",
+      "pass": true
+    },
+    {
+      "file": "full-test-api-final.log.txt",
+      "pass": true
+    },
+    {
+      "file": "full-test-mobile.log.txt",
+      "pass": true
+    },
+    {
+      "file": "full-test-shared.log.txt",
+      "pass": true
+    },
+    {
+      "file": "full-type-check-shared.log.txt",
+      "pass": true
+    },
+    {
+      "file": "gitleaks-candidate.json",
+      "pass": true
+    },
+    {
+      "file": "gitleaks-candidate.log.txt",
+      "pass": true
+    },
+    {
+      "file": "gitleaks-evidence-final.json",
+      "pass": true
+    },
+    {
+      "file": "gitleaks-evidence-final.log.txt",
+      "pass": true
+    },
+    {
+      "file": "gitleaks-evidence-initial-redacted.json",
+      "pass": true
+    },
+    {
+      "file": "gitleaks-evidence-initial.log.txt",
+      "pass": true
+    },
+    {
+      "file": "lint-changed-mobile.log.txt",
+      "pass": true
+    },
+    {
+      "file": "merge-simulation.log.txt",
+      "pass": true
+    },
+    {
+      "file": "mobile-final.log.txt",
+      "pass": true
+    },
+    {
+      "file": "mobile-matrix-isolated.log.txt",
+      "pass": true
+    },
+    {
+      "file": "mobile-red.log.txt",
+      "pass": true
+    },
+    {
+      "file": "pillar-collision-final.json",
+      "pass": true
+    },
+    {
+      "file": "preservation-check.json",
+      "pass": true
+    },
+    {
+      "file": "protected-integrity-final.json",
+      "pass": true
+    },
+    {
+      "file": "report-redactions.json",
+      "pass": true
+    },
+    {
+      "file": "report.md",
+      "pass": true
+    },
+    {
+      "file": "safety-approval-focus-green.json",
+      "pass": true
+    },
+    {
+      "file": "safety-approval-focus-green.log.txt",
+      "pass": true
+    },
+    {
+      "file": "session-memory-draft.md",
+      "pass": true
+    },
+    {
+      "file": "ship-check-final.log.txt",
+      "pass": true
+    },
+    {
+      "file": "ship-final-result.json",
+      "pass": true
+    },
+    {
+      "file": "ship-inherited-index-failure.log.txt",
+      "pass": true
+    },
+    {
+      "file": "source-file-digests.json",
+      "pass": true
+    },
+    {
+      "file": "source-files.md",
+      "pass": true
+    },
+    {
+      "file": "type-api-final.log.txt",
+      "pass": true
+    },
+    {
+      "file": "type-mobile-complete.log.txt",
+      "pass": true
+    },
+    {
+      "file": "type-mobile-green.log.txt",
+      "pass": true
+    },
+    {
+      "file": "work-plan.json",
+      "pass": true
+    },
+    {
+      "file": "workplan-final.log.txt",
+      "pass": true
+    }
+  ]
+}

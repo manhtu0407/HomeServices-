@@ -64,7 +64,6 @@ export async function submitKaelChatEvidence(
   input: KaelChatEvidenceInput,
   secrets: EdgeAiSecrets,
 ) {
-  // Submitting or skipping evidence is recorded as the customer's own turn, so only the customer can do it.
   if (ctx.role !== "customer") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được gửi hoặc bỏ qua bằng chứng của yêu cầu mình.", 403);
   }
@@ -97,8 +96,6 @@ export async function submitKaelChatEvidence(
     status === "abandoned" ||
     status === "unsupported"
   ) {
-    // A closed Case takes no evidence and is never written to, but its owner's reported emergency is still answered
-    // in the refusal.
     refuseWithEmergencyGuidance(
       { code: "INVALID_STATUS", message: "Phiên Kael này không còn nhận bằng chứng", status: 409 },
       {
@@ -111,9 +108,6 @@ export async function submitKaelChatEvidence(
       },
     );
   }
-  // Every text the customer wrote is read before any validation, media consumption or phase change: a reported
-  // emergency is answered even when the same submission would otherwise be refused (a pending booking, or
-  // required evidence that cannot be skipped), and the Case keeps waiting exactly as it was.
   const parked = isIntakeConfirmationPending(previousSafeMetadata);
   const emergency = resolveCaseEmergency({
     message: texts,
@@ -212,7 +206,6 @@ async function persistKaelChatEvidenceSubmission(input: {
   evidenceRefs: string[];
   signedVisionUrls: string[];
   safeSkipReason: string | null;
-  // Wiring or water advice the submission continues after; any other emergency was answered before this point.
   emergency: CaseEmergency | null;
 }) {
   const {

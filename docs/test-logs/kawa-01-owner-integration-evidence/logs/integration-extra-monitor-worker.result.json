@@ -1,0 +1,7 @@
+{
+  "id": "monitor-worker",
+  "ended": "2026-10-21T14:46:41.6761465Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:46:27.9329934Z",
+  "command": "corepack pnpm test:system-monitor-worker"
+}

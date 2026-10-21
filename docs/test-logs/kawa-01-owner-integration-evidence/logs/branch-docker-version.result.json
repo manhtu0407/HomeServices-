@@ -1,0 +1,5 @@
+{
+  "attempt": 1,
+  "command": "pnpm docker:version:ensure",
+  "exitCode": 0
+}

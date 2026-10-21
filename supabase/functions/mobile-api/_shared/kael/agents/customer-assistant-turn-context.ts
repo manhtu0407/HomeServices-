@@ -8,7 +8,6 @@ import {
 import { scrubSensitiveForLLM } from "../pipeline/utils.ts";
 import { sanitizeCustomerCaseEvidenceText } from "../evidence/untrusted-evidence.ts";
 
-// The question every assistant check reads: scrubbed of PII, bounded, and never empty when only images were sent.
 export function assistantQuestion(input: CustomerAssistantInput) {
   const language = input.language ?? "vi";
   const surface = input.surface ?? "customer_normal";

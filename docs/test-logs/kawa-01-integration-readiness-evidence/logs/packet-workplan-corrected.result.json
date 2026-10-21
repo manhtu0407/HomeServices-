@@ -1,0 +1,5 @@
+{
+  "exitCode": 0,
+  "repair": "plan metadata only; no checker modification",
+  "command": "pnpm lint:workplan"
+}

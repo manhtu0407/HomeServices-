@@ -17,7 +17,6 @@ const LABELS: Record<Route, { vi: string; en: string }> = {
   gas: { vi: 'Rò rỉ gas', en: 'Fuel-gas leak' },
 }
 
-// This local sheet needs no request, classifier, phone permission or business-state change.
 export function CustomerKaelEmergencyAccess({ guidance, language, tokens }: {
   guidance?: EmergencyGuidancePayload | null
   language: 'vi' | 'en'

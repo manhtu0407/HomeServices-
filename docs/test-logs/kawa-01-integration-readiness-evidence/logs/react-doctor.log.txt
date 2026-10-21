@@ -1,0 +1,41 @@
+$ node scripts/run.mjs run-react-doctor changed
+React Doctor v0.5.8
+
+✔ Select projects › @nestscout/api, @nestscout/mobile
+Scanning changes: codex/kawa-foundation-safety-20261020 → main
+
+✔ Scanned 5 files in 15.9s
+
+  ⚠ Bugs: Non-virtualized mapped list in ScrollView
+    Your users get slow scrolling when <ScrollView> with
+    items.map(...) builds every row at once.
+    → `<ScrollView>{items.map(...)}</ScrollView>` builds every
+    row at once, which slows scrolling. Use FlashList,
+    LegendList, or FlatList instead.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-no-scrollview-mapped-list
+
+    components/customer/kael-chat/customer-kael-emergency-access.tsx:43
+
+
+  ────────────────────────────────────────────────────────────
+
+  All 1 issue
+
+  Bugs > 1 warning
+
+  React Doctor (https://react.doctor)
+  Score unavailable.
+
+  Full diagnostics written to [USER_HOME]\AppData\Local\Temp\react-doctor-fbb53c1b-9428-46bc-8293-4881c30eec89
+
+  @nestscout/api     no score  0 issues
+  @nestscout/mobile  no score  1 issue
+
+  ────────────────────────────────────────────────────────────
+
+  Docs: https://react.doctor/docs
+  Learn more about fixing issues, setting up CI/CD, and
+  configuring rules with a config file
+
+  GitHub: https://github.com/millionco/react-doctor
+  Report issues and star the repository!

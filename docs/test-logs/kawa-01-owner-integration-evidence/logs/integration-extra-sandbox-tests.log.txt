@@ -1,0 +1,14 @@
+
+> nestscout@0.1.0 sandbox:test <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-package-script @nestscout/sandbox test
+
+
+> @nestscout/sandbox@0.1.0 test <USER>\.codex\worktrees\kawa01-integration-simulation\home-services\sandbox\agent
+> node ./src/sandbox-check.mjs
+
+NestScout agent sandbox check
+- repo=.
+- sandbox=sandbox
+- package=@nestscout/sandbox
+- workspacePattern=sandbox/*
+Sandbox is ready for in-repo agent probes.

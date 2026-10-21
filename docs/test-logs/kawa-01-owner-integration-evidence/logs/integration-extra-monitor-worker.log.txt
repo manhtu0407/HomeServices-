@@ -1,0 +1,13 @@
+
+> nestscout@0.1.0 test:system-monitor-worker <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> vitest run --config packages/shared/system-monitor.vitest.config.mts
+
+
+ RUN  v4.1.6 <USER>/.codex/worktrees/kawa01-integration-simulation/home-services
+
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  21:46:31
+   Duration  10.57s (transform 59ms, setup 0ms, import 97ms, tests 842ms, environment 0ms)
+
