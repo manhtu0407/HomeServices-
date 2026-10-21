@@ -1,0 +1,12 @@
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-lint-baseline.log.txt","command":"pnpm lint:baseline","ended":"2026-10-21T18:29:05.2206036+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-lint-comments.log.txt","command":"pnpm lint:comments","ended":"2026-10-21T18:29:08.4794464+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-lint-edge-db.log.txt","command":"pnpm lint:edge-db","ended":"2026-10-21T18:29:12.4182554+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-harness-migrations-check.log.txt","command":"pnpm harness:migrations:check","ended":"2026-10-21T18:29:15.1033136+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-harness-pillars-check.log.txt","command":"pnpm harness:pillars:check","ended":"2026-10-21T18:29:16.9741538+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-lint-test-collection.log.txt","command":"pnpm lint:test-collection","ended":"2026-10-21T18:29:18.9648275+07:00"}
+{"exitCode":1,"log":".scratch/kawa01-delivery-20261021/check-lint-authority.log.txt","command":"pnpm lint:authority","ended":"2026-10-21T18:29:24.1780802+07:00"}
+{"exitCode":1,"log":".scratch/kawa01-delivery-20261021/check-lint-workplan.log.txt","command":"pnpm lint:workplan","ended":"2026-10-21T18:29:29.0097576+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-lint-playbooks.log.txt","command":"pnpm lint:playbooks","ended":"2026-10-21T18:29:33.4999881+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-skills-check.log.txt","command":"pnpm skills:check","ended":"2026-10-21T18:29:39.6067119+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-skills-contracts.log.txt","command":"pnpm skills:contracts","ended":"2026-10-21T18:29:43.9371432+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/check-doctor-react-changed.log.txt","command":"pnpm doctor:react:changed","ended":"2026-10-21T18:30:22.2596534+07:00"}

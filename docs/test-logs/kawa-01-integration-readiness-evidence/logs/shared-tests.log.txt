@@ -1,0 +1,14 @@
+$ node scripts/run.mjs run-package-script @nestscout/shared test
+
+> @nestscout/shared@0.1.0 test [WORKSPACE]\packages\shared
+> vitest run
+
+
+ RUN  v4.1.6 [WORKSPACE]/packages/shared
+
+
+ Test Files  10 passed (10)
+      Tests  189 passed (189)
+   Start at  20:31:48
+   Duration  1.47s (transform 3.48s, setup 0ms, import 6.61s, tests 375ms, environment 2ms)
+

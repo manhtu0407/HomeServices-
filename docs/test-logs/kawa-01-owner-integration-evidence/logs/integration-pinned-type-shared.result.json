@@ -1,0 +1,10 @@
+{
+  "lane": "T0",
+  "dirtyCandidate": true,
+  "ended": "2026-10-21T14:37:48.2189822Z",
+  "command": "corepack pnpm type-check:shared",
+  "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+  "started": "2026-10-21T14:37:41.0974825Z",
+  "exitCode": 0,
+  "id": "type-shared"
+}

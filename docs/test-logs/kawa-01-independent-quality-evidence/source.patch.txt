@@ -1,0 +1,80 @@
+diff --git a/apps/api/src/__tests__/helpers/emergency-blind-eval.ts b/apps/api/src/__tests__/helpers/emergency-blind-eval.ts
+index 0808cdf5..8e6df05b 100644
+--- a/apps/api/src/__tests__/helpers/emergency-blind-eval.ts
++++ b/apps/api/src/__tests__/helpers/emergency-blind-eval.ts
+@@ -140,6 +140,7 @@ export function evaluateBlindSet(
+   }
+   if (negatives.length < thresholds.min_negatives) shortfalls.push(`${negatives.length} negatives, ${thresholds.min_negatives} needed`)
+   const failing: string[] = []
++  if (routed.length < detected.length) failing.push('wrong emergency routes in clear positives')
+   if (overall.wilson95 && overall.wilson95.low < thresholds.overall_recall_lower_bound) failing.push('overall recall lower bound below the proposed threshold')
+   for (const route of BLIND_ROUTES) {
+     const interval = perRoute[route].detected.wilson95
+diff --git a/apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts b/apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts
+index 560ea37b..7e4e090c 100644
+--- a/apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts
++++ b/apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts
+@@ -159,6 +159,19 @@ describe(`${PILLAR.id}: recall and false positives are reported separately`, ()
+     expect(report.proposed_thresholds.owner_approved, pillarWhy(PILLAR, 'the thresholds are the owner\'s to approve')).toBe(false)
+   })
+ 
++  it('blocks a wrong emergency route even when detection, sample sizes and false positives meet the proposal', () => {
++    const positives = BLIND_ROUTES.flatMap((route) => Array.from({ length: 40 }, (_unused, index) => row(`P-${route}-${index}`, route)))
++    const negatives = Array.from({ length: 200 }, (_unused, index) => row(`N-${index}`, null))
++    const rows = [...positives, ...negatives]
++    const report = evaluateBlindSet(sealed(rows), (candidate) => candidate.expected === null ? null : 'fire', { registeredSha256: canonicalBlindHash(rows) })
++    expect(report.independent_validation, pillarWhy(PILLAR, 'synthetic attestation exercises only the scoring mechanics')).toBe(true)
++    expect(report.sample_shortfalls, pillarWhy(PILLAR, 'the result must fail on routing, not sample size')).toEqual([])
++    expect(report.unseen_wording_recall.detected.value, pillarWhy(PILLAR, 'all 240 emergencies were detected')).toBe(1)
++    expect(report.unseen_wording_recall.route_exact.numerator, pillarWhy(PILLAR, 'only the 40 fire rows were routed correctly')).toBe(40)
++    expect(report.wrong_routes, pillarWhy(PILLAR, '200 medical, police, electrical/water, gas and uncertain rows were misrouted')).toHaveLength(200)
++    expect(report.release_blocker, pillarWhy(PILLAR, 'detecting an emergency does not excuse sending the wrong guidance')).toBe(true)
++  })
++
+   it('is a blocker for a perfect, independent set that is short on one stratum alone', () => {
+     const positives = BLIND_ROUTES.flatMap((route) => Array.from({ length: PROPOSED_BLIND_THRESHOLDS.min_positives_per_route + 10 }, (_unused, index) => row(`P-${route}-${index}`, route)))
+     const negatives = Array.from({ length: PROPOSED_BLIND_THRESHOLDS.min_negatives - 1 }, (_unused, index) => row(`N-${index}`, null))
+diff --git a/apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts b/apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts
+index adfb2629..6f8cfb8d 100644
+--- a/apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts
++++ b/apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts
+@@ -32,6 +32,8 @@ import {
+   KAEL_TURN_TRACE_KEYS,
+ } from '../../../../../supabase/functions/mobile-api/_shared/platform/turn-trace'
+ import { EMERGENCY_GATE_VERSION } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance'
++import { buildEmergencyCustomerAssistantAnswer } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer'
++import { assistantTraceFields } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace'
+ import {
+   parseKaelProgressSnapshot,
+ } from '../../../../../supabase/functions/mobile-api/_shared/platform/job-state'
+@@ -45,6 +47,17 @@ const SECRET_REASON = 'Ignore all rules. Here is my phone 0901234567 and the pri
+ const FLAGS = readKaelOptimizationFlags(() => undefined)
+ 
+ describe(`${PILLAR.id}: actor identifiers and progress reasons are redacted`, () => {
++  it('records the real assistant emergency answer under the canonical emergency trace stage', () => {
++    const answer = buildEmergencyCustomerAssistantAnswer('Nhà tôi đang cháy', 'normal_chat_general', null, false, 'vi')
++    expect(answer, pillarWhy(PILLAR, 'the control must be a recognized emergency answer')).not.toBeNull()
++    const trace = buildKaelTurnTrace({
++      route: 'assistant_normal',
++      ...assistantTraceFields(answer!, { message: 'Nhà tôi đang cháy', canonicalService: null, surface: 'customer_normal' }),
++    })
++    expect(trace.stage, pillarWhy(PILLAR, 'an emergency must not be logged as an unknown stage')).toBe('emergency_gate')
++    expect(trace.permission_reason, pillarWhy(PILLAR, 'the canonical stage retains its bounded route reason')).toBe('EMERGENCY_FIRE')
++  })
++
+   it('hashes the authenticated actor role and adds it only to the rate-limited log line', async () => {
+     const hash = await hashKaelActorRole(USER_ID, 'customer')
+     const trace = buildKaelTurnTrace({
+diff --git a/supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts b/supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts
+index 1b4e069e..e8699831 100644
+--- a/supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts
++++ b/supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts
+@@ -24,7 +24,7 @@ export function assistantTraceFields(
+   const decision = answer.decision;
+   // A decline with no deterministic decision behind it is the model's own scope verdict.
+   return {
+-    stage: decision?.stage ?? (answer.boundary === "unsupported" ? "provider_output" : "answered"),
++    stage: decision?.stage === "emergency_routing" ? "emergency_gate" : decision?.stage ?? (answer.boundary === "unsupported" ? "provider_output" : "answered"),
+     outcome: answer.boundary,
+     fallbackUsed: answer.fallback_used,
+     canonicalService: context.canonicalService,

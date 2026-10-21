@@ -1,0 +1,83 @@
+{
+  "mission": "KAWA01 final closure and integration readiness; preserve existing implementation; no commit push merge deploy",
+  "slices": [
+    {
+      "id": "sse-final",
+      "domain": "ui",
+      "reach": "X",
+      "status": "closed",
+      "scope": [
+        "apps/mobile/lib/kael-stream.ts",
+        "apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts",
+        "apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts",
+        "apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx"
+      ],
+      "read": [
+        "apps/mobile",
+        "packages/shared/src/contracts/emergency-guidance.ts",
+        "governance",
+        "docs"
+      ],
+      "skills": [
+        "kael-diagnose",
+        "kael-tdd",
+        "kael-security-sweep",
+        "kael-frontend-test"
+      ],
+      "gate": "P418 red-green observed; final 29/29 plus full Mobile 2660/2660 and type-check",
+      "dropped": []
+    },
+    {
+      "id": "final-quality",
+      "domain": "review",
+      "reach": "X",
+      "status": "closed",
+      "scope": [],
+      "read": [
+        "apps",
+        "packages",
+        "supabase",
+        "scripts",
+        "config",
+        "docker",
+        "governance",
+        "docs"
+      ],
+      "skills": [
+        "kael-ship",
+        "kael-docker",
+        "kael-security-sweep"
+      ],
+      "gate": "all final command exits recorded, including known-red and current Edge NOT RUN; no readiness claim",
+      "dropped": []
+    },
+    {
+      "id": "integration-packet",
+      "domain": "docs",
+      "reach": "C",
+      "status": "closed",
+      "scope": [
+        "docs/test-logs/kawa-01-integration-readiness-evidence",
+        "docs/test-logs/INDEX.md",
+        "docs/test-logs/kawa-execution-ledger.md"
+      ],
+      "read": [
+        ".github",
+        "docs",
+        ".claude/MEMORY.md"
+      ],
+      "skills": [
+        "kael-ship"
+      ],
+      "gate": "isolated simulation, exact memory proposals, release containment audit, checksummed handoff",
+      "dropped": []
+    }
+  ],
+  "deviations": [
+    "Preliminary full pass ran before the cross-chunk callback defect was discovered; one final complete pass followed stabilization.",
+    "Integration brought newly stricter main governance into review; 167-line incompatibility recorded without changing the gate.",
+    "pnpm rejected simulation dependency junctions; direct Node/Jest used the same test config; failed attempt retained.",
+    "Tier1 and selected authority reads were wider than the per-slice window for cross-session evidence and latest-main integration.",
+    "Closeout reconciler first failed on glob-style read-window syntax, missing dropped arrays, and UI-path classification; corrected plan metadata only, not the checker or product source."
+  ]
+}

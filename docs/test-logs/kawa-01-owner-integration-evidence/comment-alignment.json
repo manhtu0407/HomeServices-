@@ -1,0 +1,402 @@
+{
+  "count": 167,
+  "files": [
+    {
+      "file": "apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx",
+      "removedCommentLines": [
+        20
+      ],
+      "removedCount": 1,
+      "beforeSha256": "012b40f1b79c0165a2fd2c021784e1fe36c7a29181efe77da563cb5972937b6a",
+      "afterSha256": "f426df078c20c4c8ee68094e4662e7f6c6a14e2284a8d980daa686148a7fb84c",
+      "lexicalHash": "fac62c238b34e4cd7492fe6ffde0a6bf56398a9761ea4a0fac58ec310a9785ec",
+      "printedAstWithoutCommentsHash": "41be8ceb1d331d4329de005df1444fa99068378ec22769c21556e270ae8d6f59",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "packages/shared/src/contracts/emergency-guidance.ts",
+      "removedCommentLines": [
+        1
+      ],
+      "removedCount": 1,
+      "beforeSha256": "4de5e7c63c0883a22c7ca8d9cac2251c23611a33858e915023c52b3389745523",
+      "afterSha256": "1c8ace76911a50933b9978612c35726e0d414ea2f9f808a69a8f7315dd7f59fa",
+      "lexicalHash": "c8b4b689135742c4b7b142ac9a9a11371623460230758fc7153472bc483cd16f",
+      "printedAstWithoutCommentsHash": "a9f7a148d60c2f0da7be0198f4d0262ae647d24ad67bea08bea1bae9d6888cc8",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/_shared/contracts/emergency-guidance.ts",
+      "removedCommentLines": [
+        1
+      ],
+      "removedCount": 1,
+      "beforeSha256": "90e2f4995a5ca191d3088b6835f7bca58706f90fa30d0e312a5be9acead4e7fa",
+      "afterSha256": "10176f134a9026b6a2eddd51402db0cff5decd12f42faca40863bea2abc91061",
+      "lexicalHash": "0be56cc441c597415242000533dd38be63f0d94be79e900117259745923122f8",
+      "printedAstWithoutCommentsHash": "d06f14505c058ce703d51c82fb856ebe80412859c936acad13a9c8a4d44d1c5f",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/customer/assistant.ts",
+      "removedCommentLines": [
+        109,
+        110,
+        112
+      ],
+      "removedCount": 3,
+      "beforeSha256": "7d8cf551b81309c191ab456000eee9614f35ffb722f62e4364f7158c5790a851",
+      "afterSha256": "ac6481179a26eb41064ce9d4177f7d79bea6a029d0517ee684e4eca5e8afd628",
+      "lexicalHash": "d779beb22d9d00252f4a992b74f3f448530008b6675262662d3f477812047483",
+      "printedAstWithoutCommentsHash": "96126febef2a56329fc75dbc53499e327531323b2e6fa5e36e0e29082e1ff700",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts",
+      "removedCommentLines": [
+        154,
+        155,
+        156,
+        157
+      ],
+      "removedCount": 4,
+      "beforeSha256": "0a2e0cc48a5665311a43c5030342696210dd355cdf303e18c27a160171f119df",
+      "afterSha256": "7c9cf6329ad581a7fed1b82ce9b422dcb0c91db71f8453f338170fc783714b8a",
+      "lexicalHash": "9968f9cfdb4a69d4105fc2c47c95dc3823d69036c02720d24c9e0756a2b8eda2",
+      "printedAstWithoutCommentsHash": "746426ba63aab82d45d56b87d9fce24bacff2c624c6974990837ed596408d8f0",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts",
+      "removedCommentLines": [
+        87,
+        88,
+        114,
+        115,
+        206,
+        207,
+        234,
+        235,
+        286,
+        293,
+        294
+      ],
+      "removedCount": 11,
+      "beforeSha256": "612a1d5d6f5f6063b8e85ba205acb2201009ee57a77d40eeb5e8c929083daed6",
+      "afterSha256": "3b51400efd9bfc68876123223078688449ef5b51ad9e8bc04bbeb2b272aea4bb",
+      "lexicalHash": "a06926be290b7d43fa5f785334165d901b4ef91a95618539860d588cb4c290c7",
+      "printedAstWithoutCommentsHash": "dbb073a7ab286cc6d3d92f1ad5511ba96e69faba6c4940a70595290a78df5aa2",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts",
+      "removedCommentLines": [
+        1,
+        2,
+        32,
+        33,
+        37,
+        41,
+        47,
+        48,
+        49,
+        53,
+        54,
+        55,
+        82,
+        83,
+        92,
+        93,
+        129,
+        130,
+        131,
+        153,
+        172,
+        173,
+        181,
+        182,
+        183,
+        184,
+        215,
+        216,
+        235,
+        236,
+        237,
+        282,
+        283,
+        284,
+        285,
+        313,
+        314,
+        315,
+        350,
+        351,
+        352,
+        353,
+        354,
+        355,
+        356,
+        357,
+        406,
+        432,
+        445,
+        446,
+        454,
+        456
+      ],
+      "removedCount": 52,
+      "beforeSha256": "f4a65dbca5007d7ab5e0cf5c8f7cb1535579aa41d681c29b999d5f1ef1fe9c78",
+      "afterSha256": "4b1a8f9c56c3fbf72e9e68f7ff94c5ddaf789d348edebff6a869b84455b3deef",
+      "lexicalHash": "c410e9e4c06e5176ec00dfcf1c80b60bdcef63e5ba58b940c3a4c144ba5764c6",
+      "printedAstWithoutCommentsHash": "17b5ca886daf199471e10f3e97fb3daee29b5bc0c68b23ca1a7b316effc56395",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts",
+      "removedCommentLines": [
+        67,
+        100,
+        101,
+        114,
+        115,
+        116,
+        215
+      ],
+      "removedCount": 7,
+      "beforeSha256": "6490306d133eb0f2f05c643bbfef708abd698fa9ff9861b1d452500464df0192",
+      "afterSha256": "26274ccc4aa3f6416395b97ea8e5f685408738baffd8441b9914d35de2afa300",
+      "lexicalHash": "e7e05c15b73f0635f0c2c4e3991b92036830bb39318d29e2899021a5090f4a02",
+      "printedAstWithoutCommentsHash": "903cb5fef0a95545e9e558a07fbd1cb19d00e0b465959795a625c8de01334f62",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts",
+      "removedCommentLines": [
+        46
+      ],
+      "removedCount": 1,
+      "beforeSha256": "c6faaf4f787ef7b3478b2ea8e2867279aba07d06e8d350bb2de159f0a88c73ac",
+      "afterSha256": "29bce0a37f7aaadb610ca7bdfdf49ed1346efe8650a6ae4d1d4b020b0c4682ea",
+      "lexicalHash": "c1336ea4926833821b5def2f46b1d7c2ad445573d80a177dc21ea81c388ce2d2",
+      "printedAstWithoutCommentsHash": "14fd294424eda405cd0a4b10d39077edc9e8d8fb6ed1a00e2b4e6e8ea627b3dc",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts",
+      "removedCommentLines": [
+        29,
+        30
+      ],
+      "removedCount": 2,
+      "beforeSha256": "31f196ebf4cfa4de731fc9cc73366da29c409ac7743b3c682be49a7efc4d35d8",
+      "afterSha256": "8105d8d4fdd402a43de5274e31605c119f4b8385ca9121e87f53b38424943fda",
+      "lexicalHash": "0e857234e4d758edf9db2eff690ee6ec90541406ca5c78a08e2e05ef5c99212b",
+      "printedAstWithoutCommentsHash": "b08edc9731326e6efbbc497aba3933c12494a045b3121a8683949e3b27946897",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/session-store.ts",
+      "removedCommentLines": [
+        136,
+        137,
+        139
+      ],
+      "removedCount": 3,
+      "beforeSha256": "b117a82ddf0dd98b561718b93db5468e20cd5dcd4d4c8255c6fe5b1c8c2f234a",
+      "afterSha256": "424f4b916df9a8085c9a12b10e4aeecdd41dee9faea3d4afa1fb0d014c707d9d",
+      "lexicalHash": "e4b5ef4d0780081e1b5c68bd06b779adfdfa612634eb847b1ce5df9257f54161",
+      "printedAstWithoutCommentsHash": "0c345de99d8b523d410a5b6e9c5faff335f4a67ee09f4a5ed126fd512e3924f1",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts",
+      "removedCommentLines": [
+        93,
+        94,
+        95,
+        140,
+        141,
+        155,
+        156,
+        157,
+        158,
+        159,
+        186
+      ],
+      "removedCount": 11,
+      "beforeSha256": "c90a80a2f009ce94a188f85b2aac3e110b87841bd6ef529dca80d7a1e7a873e8",
+      "afterSha256": "c66c37269e1c9ae4808a0f535e669df0a61cde569f6d9ad18549de64d8b8999a",
+      "lexicalHash": "1f3e1e9f25c3dc2278385101b11873a1cdc9f0b97bdb768a78f7e77fad6204b9",
+      "printedAstWithoutCommentsHash": "027bb16be19e207a32aacbafb5905c461054e500852a5363e4d4e086bf36aa36",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/domains/matching/accept.ts",
+      "removedCommentLines": [
+        16
+      ],
+      "removedCount": 1,
+      "beforeSha256": "7918a53b6bac1c63925a543a720fedf08ea832db71e2c340bb711987b4e1f1b6",
+      "afterSha256": "662ed7482aa3cdabdbfa381175f367b820446d5d13727a031c5c1074f39d54dd",
+      "lexicalHash": "83f6e660edd03b2aa54ed8603e67b3ae93432a442d1ded7602fd99a924a2254c",
+      "printedAstWithoutCommentsHash": "974295dcd49bf1c660768e478f87fb09e9ef2282cb141c27b747424ab7e77700",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts",
+      "removedCommentLines": [
+        74,
+        75,
+        82,
+        83,
+        84
+      ],
+      "removedCount": 5,
+      "beforeSha256": "b9cef883e0a396f73f96de34e23bf3a9473b9caf75cc134f32a1ad8aff9b555f",
+      "afterSha256": "816c5eb9aabf7a3790ff195c3ca21727bec18e33d0c26a1bf9dd828f51d0406c",
+      "lexicalHash": "a28110b1a481d6599a7d86cb0c26925a7a95a57b4d0a0e0d6ed5152cd88dc826",
+      "printedAstWithoutCommentsHash": "3226485a9ab94ae277aeae98023359d97b7e4695ba520332f4963b2f7fd5b3fa",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts",
+      "removedCommentLines": [
+        11
+      ],
+      "removedCount": 1,
+      "beforeSha256": "95d3cc7ef8cf9788c6fae4c30413c105aadfce862a3a645d9dfb8d66e165b01c",
+      "afterSha256": "169dd43dc7d08e92c539ce7211a7d53117e015771af5e97902f0e99d399b5e73",
+      "lexicalHash": "30f0f67725a416a787770edc8158b67a4a70021893eea98cf569786fc139a1c4",
+      "printedAstWithoutCommentsHash": "bc87670ddd5d782ffe46948d80e693d7946992407a067dcd3370ba52a6900ca8",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
+      "removedCommentLines": [
+        22,
+        23,
+        26,
+        27,
+        37,
+        47,
+        48,
+        74,
+        75,
+        99,
+        100,
+        173,
+        174,
+        175,
+        176,
+        219,
+        220,
+        223,
+        233,
+        239,
+        244,
+        288,
+        297,
+        298,
+        299,
+        315,
+        346,
+        347,
+        360,
+        361,
+        381,
+        382,
+        383,
+        386,
+        387,
+        398,
+        399,
+        411,
+        412,
+        413,
+        432,
+        452
+      ],
+      "removedCount": 42,
+      "beforeSha256": "c5d97611a2cefda9e0191384ecbc1ba633c588ab6e01004ccf01ad1cd96407cd",
+      "afterSha256": "68569488bd54dd1cd09e24a138c354340c4052b862b10113bf01ca13055279ce",
+      "lexicalHash": "45ae85fdc7ecc2ca53cda36bb4a91430d8c6df2811ba279cb12eab5cc8b8a8ff",
+      "printedAstWithoutCommentsHash": "297ef405ce5119f2e1abe1d694450dab3012ff1a25786fe83d83fe00cc058723",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts",
+      "removedCommentLines": [
+        1,
+        2,
+        3,
+        22,
+        38,
+        88,
+        104,
+        107,
+        128,
+        129
+      ],
+      "removedCount": 10,
+      "beforeSha256": "3d8e6c173b4c33442892754571ff0bf0b5b4f74a96a0851d8f82912a5319a137",
+      "afterSha256": "9b8b88c5fd5dc84f6f9c5cf79bf4f9b6b5f91d17e415ac85ad0b3af7a8b7a7d9",
+      "lexicalHash": "8ace52f67400c11aeb6902e13a5e8eaffc4aa75058350ad8e2b6c6e1463aa763",
+      "printedAstWithoutCommentsHash": "a3d723561d3c77cc1fad76143d32b50a1837a2fd1dbd5df5448fa06ff9e18b58",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts",
+      "removedCommentLines": [
+        1
+      ],
+      "removedCount": 1,
+      "beforeSha256": "1f0e2e05ee6cbdc24b7ce6023c3fc5c6e7726ae860aa6ef8f29cb8043e86630c",
+      "afterSha256": "4f6b7f579df853f2b273a75d118c5e69287407b7a912a0adc6887a9402def5a9",
+      "lexicalHash": "6596e4f0f69540f0c35da363a4abe8faced052002f7eb2a64f5232e735d03df1",
+      "printedAstWithoutCommentsHash": "00f8b95db42e872651d531307e4a2be1ab316f3105ec9eb64d2d7fd41c8ff0f1",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    },
+    {
+      "file": "supabase/functions/mobile-api/_shared/platform/turn-trace.ts",
+      "removedCommentLines": [
+        64,
+        65,
+        207,
+        212,
+        213,
+        218,
+        222,
+        223,
+        224,
+        307
+      ],
+      "removedCount": 10,
+      "beforeSha256": "2ab9c99fa0deb065b2f7ac04bca902753ed4c34ae57b00f30b0fa07a0fcbf6a6",
+      "afterSha256": "5d740a0a0d2c4bb6649bd792da075a563e217d99850677a92dcbd548d00859c5",
+      "lexicalHash": "0fdb79a2c57978e3ad5bde30301b7ec3e1f61332fa7467b3331cb0bfe32f6afb",
+      "printedAstWithoutCommentsHash": "a40f2b283b238fa2a6afe9cbf320651f36f29f8287ca13bcdbeabdea241b3597",
+      "tokenAndAstEqual": true,
+      "parseDiagnostics": 0
+    }
+  ],
+  "behaviorProof": "AST token leaves (context-aware for regex/template literals) and comment-free TypeScript printer AST equal before/after",
+  "toolingNote": "A context-free scanner produced a false mismatch in a regex/template-heavy file while AST stayed equal; replaced with parser-owned token leaves before touching that file."
+}

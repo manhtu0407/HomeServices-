@@ -1,0 +1,7 @@
+{
+  "limitation": "committed candidate HEAD versus main, plus final incremental source separately inspected",
+  "command": "latest main ratchets --diff origin/main",
+  "addedHygieneExit": 0,
+  "zeroCommentsExit": 1,
+  "testIntegrityExit": 0
+}

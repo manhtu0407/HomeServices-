@@ -1,0 +1,2 @@
+{"command":"pnpm type-check:api","exit_code":0,"log":".scratch/kawa01-quality-20261021/final-type-check-api.log.txt","revision":"after trace-stage correction"}
+{"command":"pnpm test:api","exit_code":0,"log":".scratch/kawa01-quality-20261021/final-test-api.log.txt","revision":"after trace-stage correction"}

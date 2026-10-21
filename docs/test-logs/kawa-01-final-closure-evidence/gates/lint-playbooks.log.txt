@@ -1,0 +1,120 @@
+      "slugs": {
+        "bathroom_deep_clean": 3,
+        "cleaning-general": 2,
+        "deep_cleaning": 2,
+        "kitchen_deep_clean": 2,
+        "other_cleaning": 2,
+        "post_repair_cleaning": 3,
+        "standard_home_cleaning": 2,
+        "window_cleaning": 3
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 8,
+        "medium": 7,
+        "hard": 9
+      },
+      "complexity": {
+        "small": 4,
+        "medium": 4,
+        "large": 9,
+        "null": 7
+      }
+    },
+    "holdout": {
+      "cases": 24,
+      "slugs": {
+        "bathroom_deep_clean": 3,
+        "cleaning-general": 2,
+        "deep_cleaning": 2,
+        "kitchen_deep_clean": 2,
+        "other_cleaning": 2,
+        "post_repair_cleaning": 3,
+        "standard_home_cleaning": 2,
+        "window_cleaning": 3
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 8,
+        "medium": 7,
+        "hard": 9
+      },
+      "complexity": {
+        "small": 4,
+        "medium": 4,
+        "large": 9,
+        "null": 7
+      }
+    },
+    "segment_chars": 10074
+  },
+  "upholstery": {
+    "corpus": {
+      "cases": 24,
+      "slugs": {
+        "carpet_cleaning": 3,
+        "curtain_cleaning": 2,
+        "mattress_cleaning": 2,
+        "odor_or_mold": 2,
+        "other_upholstery": 2,
+        "sofa_cleaning": 3,
+        "stain_treatment": 3,
+        "upholstery-general": 2
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 7,
+        "hard": 11,
+        "medium": 6
+      },
+      "complexity": {
+        "small": 4,
+        "large": 9,
+        "medium": 4,
+        "null": 7
+      }
+    },
+    "holdout": {
+      "cases": 24,
+      "slugs": {
+        "carpet_cleaning": 3,
+        "curtain_cleaning": 2,
+        "mattress_cleaning": 2,
+        "odor_or_mold": 2,
+        "other_upholstery": 2,
+        "sofa_cleaning": 3,
+        "stain_treatment": 3,
+        "upholstery-general": 2
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 6,
+        "hard": 11,
+        "medium": 7
+      },
+      "complexity": {
+        "small": 4,
+        "large": 9,
+        "medium": 4,
+        "null": 7
+      }
+    },
+    "segment_chars": 9237
+  }
+}

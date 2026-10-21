@@ -1,0 +1,11 @@
+{
+  "personalPathPrefixesRemoved": true,
+  "alignmentFieldRename": "tokenHash -> lexicalHash; all19 digest values unchanged; original retained in ignored scratch",
+  "apiFixtureTitleFields": [
+    "testResults.58.assertionResults.15.title",
+    "testResults.58.assertionResults.15.fullName"
+  ],
+  "reason": "same synthetic local-preview fixture label as historical export; generic-api-key false positive",
+  "countsPreserved": true,
+  "rawOriginalsRetained": true
+}

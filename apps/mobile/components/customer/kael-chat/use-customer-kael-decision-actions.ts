@@ -307,6 +307,7 @@ export function useCustomerKaelDecisionActions({
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       if (!result.success) {
         stopProcessLines()
+        conversation.setEmergencyGuidance?.(result.emergency)
         setError(localizeKaelRequestFailure(result, language))
         return
       }
@@ -372,6 +373,7 @@ export function useCustomerKaelDecisionActions({
       )
       if (!kaelRequestGuard.isCurrent(requestToken)) return
       if (!result.success) {
+        conversation.setEmergencyGuidance?.(result.emergency)
         setError(localizeKaelRequestFailure(result, language))
         return
       }
@@ -566,6 +568,7 @@ export function useCustomerKaelDecisionActions({
         onSuccess()
       } else {
         stopProcessLines()
+        conversation.setEmergencyGuidance?.(result.emergency)
         setError(localizeKaelRequestFailure(result, language))
       }
     } catch {
@@ -710,6 +713,7 @@ export function useCustomerKaelDecisionActions({
         setCaseEditOpen(true)
       } else {
         stopProcessLines()
+        conversation.setEmergencyGuidance?.(result.emergency)
         setError(localizeKaelRequestFailure(result, language))
       }
     } catch {

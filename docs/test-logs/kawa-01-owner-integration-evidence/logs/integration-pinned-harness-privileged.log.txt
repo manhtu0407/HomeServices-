@@ -1,0 +1,5 @@
+
+> nestscout@0.1.0 harness:privileged:check <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-node scripts/harness/check-privileged-clients.mjs
+
+privileged Supabase client boundary ok

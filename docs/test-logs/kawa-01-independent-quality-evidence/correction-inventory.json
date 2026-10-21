@@ -1,0 +1,564 @@
+{
+  "reviewed_commit": "062db16094a5eb8168e9bdec9823c221aea729ae",
+  "main": "111988b0ad6ec276082f6a4706866401fc887e4b",
+  "merge_candidate_commit": null,
+  "status_against_reviewed_head": [
+    "M\tapps/api/src/__tests__/helpers/emergency-blind-eval.ts",
+    "M\tapps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts",
+    "M\tapps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts",
+    "M\tdocs/test-logs/INDEX.md",
+    "M\tdocs/test-logs/kawa-01-final-closure-evidence/README.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log\tdocs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log.txt",
+    "M\tdocs/test-logs/kawa-01-final-closure-evidence/file-digests.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log.txt",
+    "R100\tdocs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log\tdocs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/.gitattributes",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/baseline-gate-comparison.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/blind-route-green.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/blind-route-red.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/build-api.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/candidate-metadata.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/changed-files.tsv",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/correction-inventory.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/eas-baseline.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/eas-corrected.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/emergency-trace-green.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/emergency-trace-red.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/evidence-renames.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/final-ship-check.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/final-test-api.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/final-type-check-api.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gates-extra.jsonl",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gates-final.jsonl",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gates.jsonl",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gitleaks-commits.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gitleaks-commits.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gitleaks-corrections.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gitleaks-corrections.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gitleaks-evidence.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gitleaks-evidence.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gitleaks-final-staged.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/gitleaks-final-staged.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/h5-reproduction.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/h5-reproduction.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/harness-access-check.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/harness-capabilities-check.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/harness-migrations-check.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/harness-pillars-check.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/harness-privileged-check.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/harness-transactions-check.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-api.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-authority.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-baseline.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-comments-working.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-corrected-api-files.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-edge-db.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-mobile.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-playbooks.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-test-collection.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/lint-workplan-final.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/memory-resolution-proposal.diff.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/merge-metadata.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/merge-simulation.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/owner-decisions.md",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/p401-p415-api-final.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/p401-p415-api-final.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/pillar-discovery.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/pillar-id-collision-check.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/pr-classifier-recheck.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/protected-integrity.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/report.md",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/reviewed-pr-inventory.tsv",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/rpc-catalog-proposal.sql.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/safety-probe.cjs.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/safety-probe.json",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/session-memory-draft.md",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/source.patch.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/test-api.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/test-mobile.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/test-shared.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/type-check-api.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/type-check-mobile.log.txt",
+    "A\tdocs/test-logs/kawa-01-independent-quality-evidence/type-check-shared.log.txt",
+    "M\tdocs/test-logs/kawa-execution-ledger.md",
+    "M\tsupabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts"
+  ],
+  "files": [
+    {
+      "path": "apps/api/src/__tests__/helpers/emergency-blind-eval.ts",
+      "bytes": 9395,
+      "sha256": "1d530278d319bc02c7eeaa565df066c76dd3d63d200c125d3f788ddcc2d576dc"
+    },
+    {
+      "path": "apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts",
+      "bytes": 14526,
+      "sha256": "f8a8a8fd59a7dc23f6645dc3ab9bb9e563dba7fbc65a37bb7c8cc5de7a4b440f"
+    },
+    {
+      "path": "apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts",
+      "bytes": 15098,
+      "sha256": "cb2e3ee8a06c320c7c6f44d284dbf32a842f3c021da92ac9fa94fee3cc01a67c"
+    },
+    {
+      "path": "docs/test-logs/INDEX.md",
+      "bytes": 15144,
+      "sha256": "b748cb6655d346e8eaebd41aa21643b52711984b2aa813f6340e1b810c4148a0"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/README.txt",
+      "bytes": 1982,
+      "sha256": "459638fbee99ab6e1af93f4183f3516ded5aa85c465877faa66a0d07581ec807"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log.txt",
+      "bytes": 221,
+      "sha256": "bc4856fc6c9d177f505af18b3e86535f4f5d9beb210c7c1d96b387aa35fbaafa"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/file-digests.txt",
+      "bytes": 6523,
+      "sha256": "10268a2c4a92a070b2e73692f1264e40535553b0979298736dbfcf27c14ed4f3"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log.txt",
+      "bytes": 1126,
+      "sha256": "d35a09bfb0dac6ad69a6f318ad14d2762f1282743a814c19c8ce36b912b9dcc2"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log.txt",
+      "bytes": 2240,
+      "sha256": "450ad0da29d9cc772dda31cfd0c00de0f9f8861cac06760d398dadc73763fa18"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log.txt",
+      "bytes": 6898,
+      "sha256": "3f2bd5163e9033a92b9e6e072a2f93100688a944eeac07cb87bf2da2623e5883"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log.txt",
+      "bytes": 156,
+      "sha256": "2d5f8fdc35618abba510a11bf2d01ae9f4979b6aabf7078c0992a784bc027bda"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log.txt",
+      "bytes": 171,
+      "sha256": "9148015e236a7a6e7bbb3d10cd29480a607e705215a3ef64941797979d8e859d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log.txt",
+      "bytes": 367,
+      "sha256": "3e525a46925ebeda76689aabb3ec96808f0e79175bcd061a10035840e14500d9"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log.txt",
+      "bytes": 2537,
+      "sha256": "796652d9e18205ca107987ca420b50860e1e997b67495412a227e043e5298885"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log.txt",
+      "bytes": 194,
+      "sha256": "768dd352ce23042d1397b3f998821a133c947d5a8fc386be26856e5cf104417c"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log.txt",
+      "bytes": 212,
+      "sha256": "99e612b3f66b823e7529f0acf687e0fd85d697ee57805c7407a76f4a6d2a2456"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log.txt",
+      "bytes": 603,
+      "sha256": "dc1ef03bdcaf1975a378c1ae7099382a23ac3a64cf198d2981dc02cd2caac139"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log.txt",
+      "bytes": 163,
+      "sha256": "32fe9abe3f2ea69a500f2ca1914e8010fa8433e7e0b5b81edfd05299e742006e"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log.txt",
+      "bytes": 16268,
+      "sha256": "666a13a14c39719505151618f9902acf0bf335da33feb387fc8fc320d9a88762"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log.txt",
+      "bytes": 15719,
+      "sha256": "bd6b4318f4f4f289fe0ca7c34540675be159dda717e0d133d6f4c4b184133d9a"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log.txt",
+      "bytes": 7065,
+      "sha256": "3de17f9d6a8f66da4bea36b23dedc6a73c93962959e0ae3f3380e1a8a665ec4c"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log.txt",
+      "bytes": 1150,
+      "sha256": "1843019d3df9f253d7285d96df16d0c0ed4007a54cdba0ff76bda44a71dd729d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log.txt",
+      "bytes": 189,
+      "sha256": "a27a9276ac09577d82a5d379db8d4a019add0457d7bdf264675e9a0855c7ac8f"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/.gitattributes",
+      "bytes": 20,
+      "sha256": "e97602ab9cac70102245345c5ab0fc9830df8b17f1072b188265a662a3a547ae"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/baseline-gate-comparison.json",
+      "bytes": 8893,
+      "sha256": "2a7aabd20b3a62e9584127fe6e71cf358c780f3b754f4856c2d35326710b50d1"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/blind-route-green.log.txt",
+      "bytes": 287,
+      "sha256": "be4a6a177065e44cec2c860a218ff6ed970e93ec1f982cb0c30136c92a130d71"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/blind-route-red.log.txt",
+      "bytes": 2735,
+      "sha256": "9c3841378c86714bff5a84c5ee75e27aa1e7b7c8487a7071bd66fb99832fa974"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/build-api.log.txt",
+      "bytes": 1578,
+      "sha256": "1bc6916046014fbfecf8668b9565fb993f08bce91ff5d12287a4a5341105c78d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/candidate-metadata.json",
+      "bytes": 471,
+      "sha256": "b6260503a4a1cd6245ec1e5ef2c48ce06562c2dbed74e8cf1704f8162791a70e"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/changed-files.tsv",
+      "bytes": 8360,
+      "sha256": "4f651d5061fc25c921c743a149b2726a700ec0964d28cd255255b78e4ec6187b"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/eas-baseline.log.txt",
+      "bytes": 1460,
+      "sha256": "b1bb5371c0909e48b5a2853ea60ec4fb405495f5c95c647fe65b31f623a1223d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/eas-corrected.log.txt",
+      "bytes": 219,
+      "sha256": "36b6c769b23833f9f36ea5bf3f3bead8bd9505a1a336c649d5fca70457098031"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/emergency-trace-green.log.txt",
+      "bytes": 287,
+      "sha256": "ef423ff1ad4d078271543489d8beb5cc9de95efc1ba6c9f09ddfa764017fe6fd"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/emergency-trace-red.log.txt",
+      "bytes": 2530,
+      "sha256": "5da1219be885cf0668b2c7664f1b7c951ac431f689b9f9d2829554d1f6735dd1"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/evidence-renames.json",
+      "bytes": 8200,
+      "sha256": "02c1d84a9c53872c1b9a6ab3b793be377bc9b6710febf8c4824403d8cc763308"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/final-ship-check.log.txt",
+      "bytes": 9748,
+      "sha256": "971b371076822c253a3b3402a9f8035cdc0e65762a5b4766383c0ea45ed1d13f"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/final-test-api.log.txt",
+      "bytes": 17118,
+      "sha256": "b0321b6699cce51be3b0c31bb9c20143b644f7628a31b6d99959cffb9d92f2ea"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/final-type-check-api.log.txt",
+      "bytes": 218,
+      "sha256": "da03582f9be05234788af19c82b5355a6bb98ff690fe95bb9fdfc79f87a50b4d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gates-extra.jsonl",
+      "bytes": 1363,
+      "sha256": "e6bb0d0bb3531fc34bc73db835df536700a2f21790752b3dce0b39ee3e76ec56"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gates-final.jsonl",
+      "bytes": 310,
+      "sha256": "566a14322c65828068484b4f420e0ed9c2f844bbf0411bb385d90d3138d0cc7b"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gates.jsonl",
+      "bytes": 1103,
+      "sha256": "10118377a3a0261eb71c81c6bfaa1d941551ff2d43856e797f466ffaf8fc9ed1"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-commits.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-commits.log.txt",
+      "bytes": 112,
+      "sha256": "3402726550f64f24624a7861581cd88e0eba77d8320fd43894a1f359dd0c1d5e"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-corrections.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-corrections.log.txt",
+      "bytes": 112,
+      "sha256": "dc2f5fdf8600eeaea5b38323a8eff82e0ebb57f08b241de7b806c32c7d1d3bc0"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-evidence.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-evidence.log.txt",
+      "bytes": 79,
+      "sha256": "107cd44d46c77eee8245be73808ffd6b387d1e552846e9c529d371dfb014f9f4"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-final-staged.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-final-staged.log.txt",
+      "bytes": 112,
+      "sha256": "cfdf7e614d41b787160415ea62248835389de7d6b9d7c7736a37f55917d92a91"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/h5-reproduction.json",
+      "bytes": 2748,
+      "sha256": "f10cbc426f649d596a973b6e7335af2fecb8513481eb7e1c63280076672746d1"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/h5-reproduction.log.txt",
+      "bytes": 288,
+      "sha256": "85bf9b2eb1eb3c402354807c9a3f60db0683fb728199aea786f844848ebcc628"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/harness-access-check.log.txt",
+      "bytes": 112,
+      "sha256": "18a4171db40cf2110ec0abe38666398967efd6819dfdf37acc6f67448f1579ca"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/harness-capabilities-check.log.txt",
+      "bytes": 109,
+      "sha256": "7441d2f94f26d714ec40d9af8c3246b530ad16eb72460a114ff1d76131f3a455"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/harness-migrations-check.log.txt",
+      "bytes": 113,
+      "sha256": "d80219dbcdbd744294e2220bb5e85bdb543d969aec3196fcb43820afced8ca8d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/harness-pillars-check.log.txt",
+      "bytes": 55535,
+      "sha256": "336474d58e2723ea5ad97bbd65fea245d1c34c0ea438e761d19c88cd7cfbe1c1"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/harness-privileged-check.log.txt",
+      "bytes": 118,
+      "sha256": "093b6cdb464a99507caf9887e867d8aae8a260de7c443f524c61ca4812096bf0"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/harness-transactions-check.log.txt",
+      "bytes": 12937,
+      "sha256": "f4999d742ec01a48393d262d6d9a0fda5d36f85a0fd4a2168c5cd7f87f27eeee"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-api.log.txt",
+      "bytes": 3122,
+      "sha256": "8fa0193d20ea5a4169e0f91b0045ec25cdacc544c03fdff0bad616bb47d5306c"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-authority.log.txt",
+      "bytes": 6884,
+      "sha256": "3f20391cac4fc953d91ad8ec9d2913449fdb0c6679ccb4761b4aa561a9ca84cb"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-baseline.log.txt",
+      "bytes": 117,
+      "sha256": "2f8903855273b9a61dfc759193641478a58ca07fbd7f407bc0a18b0177eab02f"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-comments-working.log.txt",
+      "bytes": 618,
+      "sha256": "510fdde3ace3e27a1bfdb75aa71de3d7213eba17d6d19a4c21b15b7fc65f250e"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-corrected-api-files.log.txt",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-edge-db.log.txt",
+      "bytes": 333,
+      "sha256": "0843353aee7599c30a603d7e2f12f71007d66ff07adc640f570332612c59d5db"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-mobile.log.txt",
+      "bytes": 117090,
+      "sha256": "13d3faa99385d1601f4e7ebb9bb2c75b505c21261ce75ae05dd2509ee37eb71f"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-playbooks.log.txt",
+      "bytes": 8314,
+      "sha256": "f998cf2764c25aa27ce06ccaf53be6d06ccc0e7cccb837d3f820ede6c440fc57"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-test-collection.log.txt",
+      "bytes": 166,
+      "sha256": "f1996a277e02743cd48b84cd0b4a5ab277fb50e3a3662b11a2fa71a462ac7a8f"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/lint-workplan-final.log.txt",
+      "bytes": 168,
+      "sha256": "196931db235a485e83a2bcc59fcff6dcde148db817000bb035527080f1a3a708"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/memory-resolution-proposal.diff.txt",
+      "bytes": 11296,
+      "sha256": "86f93da4703cf941da25775131c6a1c83d879d664f619bb5755f38d4a81c1f2e"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/merge-metadata.json",
+      "bytes": 370,
+      "sha256": "3eb6cf5a652269d9c10ed855f7aaed30c0edd0dbe0af045b475e6c26e918fc5c"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/merge-simulation.txt",
+      "bytes": 699,
+      "sha256": "c9fa9753bbad0d624fe6bc1ba21a183cfe1031ac8b063dcd47d5e68384f91504"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/owner-decisions.md",
+      "bytes": 9857,
+      "sha256": "0cfc3511c3533efd9d2d8154f33b73e9898c1f0fbcd4e67408f559db99465034"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/p401-p415-api-final.json",
+      "bytes": 409959,
+      "sha256": "0bced9669accd8a33b77c2b4d4ee41ec8b07bbfe6e55122fd0924dd43cdf1f46"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/p401-p415-api-final.log.txt",
+      "bytes": 167,
+      "sha256": "e26ec11da018ab308df50362c54196c295169a0f807ff7ee41319896daca5aed"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/pillar-discovery.json",
+      "bytes": 2292,
+      "sha256": "a8c46b013c0d74aa804475831488642ba9bb31b36d7630152153481beb3bd563"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/pillar-id-collision-check.json",
+      "bytes": 81,
+      "sha256": "e1a4a8443505ebfb40fc761fda95b9a6d8b5255a006501ae43cb044990ddd00b"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/pr-classifier-recheck.json",
+      "bytes": 595,
+      "sha256": "3047f861fda03de02b7f8980f379eb3e6ffd5481900080c100c4966e35b36c7d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/protected-integrity.json",
+      "bytes": 1305,
+      "sha256": "5620bc7d810d464fd4a55a2a690a5f3e3fece52a68880922ed3d73fe13285fb6"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/report.md",
+      "bytes": 21340,
+      "sha256": "c47458f68df00ed5b31bf62938c06bae5909cc24019cb3f91911a87f99882f9e"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/reviewed-pr-inventory.tsv",
+      "bytes": 14417,
+      "sha256": "8287f4bb5ece0eaec043fe034cac1321f6f0f0b26f9b38d199630f544d556059"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/rpc-catalog-proposal.sql.txt",
+      "bytes": 9514,
+      "sha256": "7e65eb337bf09700dd29ae364a2b411ca7a0fcdda22eb3cb32f6f8a7b538101d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/safety-probe.cjs.txt",
+      "bytes": 4202,
+      "sha256": "c161da1971d83a228d4fbc73a0abb7a9cb438c61496e36a68a8cf126814e1d2d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/safety-probe.json",
+      "bytes": 1493,
+      "sha256": "654662fa1410e652011bbcde4306e34ebc38aec4f0f002c5c2041d35d98575d1"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/session-memory-draft.md",
+      "bytes": 2934,
+      "sha256": "5a048c707cf5c4c1d4df345c4976de48a6c0ccfe4e4ddbc0e3870aa686a23ce3"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/source.patch.txt",
+      "bytes": 6460,
+      "sha256": "42e40164b80ff455574b361c9ad9f63f6452bfff6e13d5eb3665fe1b6c1cba26"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/test-api.log.txt",
+      "bytes": 15479,
+      "sha256": "f5521a15f9269f4627547cac81ac194af03111d6a78b730a73831f25ef5b3671"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/test-mobile.log.txt",
+      "bytes": 378587,
+      "sha256": "cdd66837c09eed11e4d61ad67575134f45880e6b5a89d932e84556ab885b37c4"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/test-shared.log.txt",
+      "bytes": 516,
+      "sha256": "3b0d8f2c1abff5e9bc973f3977e6d355cd93d6f585db43bc85db62f36255eb2c"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/type-check-api.log.txt",
+      "bytes": 218,
+      "sha256": "da03582f9be05234788af19c82b5355a6bb98ff690fe95bb9fdfc79f87a50b4d"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/type-check-mobile.log.txt",
+      "bytes": 227,
+      "sha256": "c27695e1fb16074c8e2e6e9e3af97e892475f16355ee58b87bd034fa3caf5c51"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-independent-quality-evidence/type-check-shared.log.txt",
+      "bytes": 231,
+      "sha256": "faf21b89d886ee8507b5e10739485bde405c8f984d7d465733468dc42b32a7c1"
+    },
+    {
+      "path": "docs/test-logs/kawa-execution-ledger.md",
+      "bytes": 113254,
+      "sha256": "a69fa917c5422d5f5c833278265620710f7e6bb8089effc4dda32993978c362e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts",
+      "bytes": 3197,
+      "sha256": "ec8ffc6b8268dcec23f4945e433bbf2eb05ff1e8a97e63b729fd52be29cedb28"
+    }
+  ],
+  "excludes_self": "docs/test-logs/kawa-01-independent-quality-evidence/correction-inventory.json",
+  "scope": "Complete current staged correction inventory, not a merged-tree or deployed release attestation"
+}

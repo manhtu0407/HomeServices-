@@ -1,0 +1,37 @@
+{
+  "schema": "kawa01.final-integration-readiness.v1",
+  "date": "2026-10-21",
+  "branch": "codex/kawa-foundation-safety-20261020",
+  "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+  "remotePrHead": "062db16094a5eb8168e9bdec9823c221aea729ae",
+  "main": "111988b0ad6ec276082f6a4706866401fc887e4b",
+  "mergeBase": "ce4bd3cd98c72a46ea14d4cc60d24e53c0b91f72",
+  "dirtySourcePaths": [
+    "apps/mobile/lib/kael-stream.ts",
+    "apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts",
+    "apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts",
+    "apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx"
+  ],
+  "sourceManifestSha256": "91473b7c038f772c1bd5c32b62209773eb31a55635c5d95791aa926e04fa0886",
+  "closurePatchSha256": "82baa7af397669496b75c319f04a713e83daa740ed5de33b8d000c90bdfbd886",
+  "candidateSourcePatchSha256": "9bd5b22795b26672f6fc956e7fc5ead7febd8ae26f615d6fb0d99e088a779473",
+  "integratedSimulationTree": "50245345958bab6843297eea9ab9a6335a20442f",
+  "simulationLimitation": "contains unresolved memory blobs; no merge commit; protected working memory files not written",
+  "authorReviewOnly": true,
+  "subagentsSpawned": 0,
+  "committed": false,
+  "pushed": false,
+  "merged": false,
+  "deployed": false,
+  "paidProviderCalls": 0,
+  "hostedDatabaseMutation": false,
+  "dirtyTreeStatus": {
+    "modifiedSource": 4,
+    "modifiedEvidenceIndexes": [
+      "docs/test-logs/INDEX.md",
+      "docs/test-logs/kawa-execution-ledger.md"
+    ],
+    "newEvidenceDirectory": "docs/test-logs/kawa-01-integration-readiness-evidence",
+    "protectedMemoryUnchanged": true
+  }
+}

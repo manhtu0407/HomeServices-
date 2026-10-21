@@ -1,0 +1,7 @@
+{
+  "id": "workflow-cost",
+  "ended": "2026-10-21T14:46:46.5928109Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:46:46.5113000Z",
+  "command": "node scripts/check-workflow-cost.mjs"
+}

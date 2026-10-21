@@ -1,0 +1,2 @@
+$ node scripts/run.mjs run-node scripts/check-comment-discipline.mjs "--diff" "origin/main"
+comment-discipline: clean — no note-banner comments found.

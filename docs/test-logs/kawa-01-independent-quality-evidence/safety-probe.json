@@ -1,0 +1,65 @@
+{
+  "evidence_tier": "T0",
+  "authentication": "injected",
+  "database": "in-memory; no RLS or atomicity proof",
+  "providers": "stubbed; no network",
+  "hazard_delivery_verdict": "FAIL",
+  "hazard_delivery_failures": 4,
+  "cases": [
+    {
+      "id": "new-fire-control",
+      "status": 201,
+      "code": null,
+      "guidance_114": true,
+      "sessions": 1,
+      "provider_calls": 0
+    },
+    {
+      "id": "new-fire-foreign-photo",
+      "status": 400,
+      "code": "VALIDATION",
+      "guidance_114": false,
+      "sessions": 0,
+      "provider_calls": 0
+    },
+    {
+      "id": "new-fire-expired-own-photo",
+      "status": 400,
+      "code": "MEDIA_INTENT_INVALID",
+      "guidance_114": false,
+      "sessions": 0,
+      "provider_calls": 0
+    },
+    {
+      "id": "required-evidence-fire-control",
+      "status": 200,
+      "code": null,
+      "guidance_114": true,
+      "new_turns": 2,
+      "provider_calls": 0
+    },
+    {
+      "id": "required-evidence-electrical",
+      "status": 409,
+      "code": "EVIDENCE_REQUIRED",
+      "guidance_114": false,
+      "new_turns": 0,
+      "provider_calls": 0
+    },
+    {
+      "id": "existing-electrical-expired-photo",
+      "status": 400,
+      "code": "MEDIA_INTENT_INVALID",
+      "guidance_114": false,
+      "new_turns": 0,
+      "provider_calls": 0
+    },
+    {
+      "id": "admin-case-turn-refused",
+      "status": 403,
+      "code": "KAEL_PATH_CONTROL_DENIED",
+      "new_turns": 0,
+      "provider_calls": 0
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+$ node scripts/run.mjs run-node scripts/check-comment-discipline.mjs "--working"
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+comment-discipline: clean — no note-banner comments found.

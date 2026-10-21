@@ -1,0 +1,8 @@
+$ node scripts/run.mjs run-package-script @nestscout/shared test
+
+> @nestscout/shared@0.1.0 test <USER>\.codex\worktrees\kawa01-integration-simulation\home-services\packages\shared
+> vitest run
+
+
+ RUN  v4.1.6 <USER>/.codex/worktrees/kawa01-integration-simulation/home-services/packages/shared
+

@@ -1,0 +1,12 @@
+
+> nestscout@0.1.0 lint:comments <repo>
+> node scripts/run.mjs run-node scripts/check-comment-discipline.mjs "--working"
+
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/harness/emergency-fixtures.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+comment-discipline: clean — no note-banner comments found.
+

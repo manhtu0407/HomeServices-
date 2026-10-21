@@ -28,10 +28,19 @@ import type { MobileApiContext } from "../../platform/auth.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import { advanceKaelChatEstimate } from "./advance.ts";
 import {
+  answerCaseEmergency,
+  answerParkedEmergency,
+  customerAuthoredTexts,
+  registerCaseEmergencyDelivery,
+  refuseWithEmergencyGuidance,
+  resolveCaseEmergency,
+  type CaseEmergency,
+} from "./emergency-turn.ts";
+import {
   mergeCaseWorkEvidence,
   sanitizeCaseWorkEvidenceItems,
 } from "./case-work-context.ts";
-import { persistentKaelSafetySignals } from "./intake-safety.ts";
+import { persistentKaelSafetySignalsFromTexts } from "./intake-safety.ts";
 import { resolveKaelChatProblemChips } from "./intake.ts";
 import {
   buildKaelVisionValidationEvidence,
@@ -44,6 +53,7 @@ import {
   assertIntakeConfirmationCompleted,
   assertKaelSessionOwnership,
   insertKaelTurn,
+  isIntakeConfirmationPending,
   updateKaelSession,
   withoutEphemeralKaelMediaUrls,
 } from "./session-store.ts";
@@ -54,6 +64,9 @@ export async function submitKaelChatEvidence(
   input: KaelChatEvidenceInput,
   secrets: EdgeAiSecrets,
 ) {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được gửi hoặc bỏ qua bằng chứng của yêu cầu mình.", 403);
+  }
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
@@ -71,14 +84,44 @@ export async function submitKaelChatEvidence(
   const session = sessionResult.data;
   assertKaelSessionOwnership(session, ctx);
   const status = asKaelChatStatus(session.status);
+  const previousSafeMetadata = asRecord(session.safe_metadata);
+  const texts = customerAuthoredTexts({
+    message: input.message,
+    skipReason: input.skip_reason,
+    evidenceItems: input.evidence_items,
+  });
+  registerCaseEmergencyDelivery(ctx, texts, session.service_type);
   if (
     status === "confirmed" ||
     status === "abandoned" ||
     status === "unsupported"
   ) {
-    apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận bằng chứng", 409);
+    refuseWithEmergencyGuidance(
+      { code: "INVALID_STATUS", message: "Phiên Kael này không còn nhận bằng chứng", status: 409 },
+      {
+        texts,
+        language: input.language ?? (previousSafeMetadata.language === "en" ? "en" : "vi"),
+        serviceType: session.service_type,
+        entry: "evidence",
+        identity: ctx,
+        session,
+      },
+    );
   }
-  assertIntakeConfirmationCompleted(asRecord(session.safe_metadata));
+  const parked = isIntakeConfirmationPending(previousSafeMetadata);
+  const emergency = resolveCaseEmergency({
+    message: texts,
+    language: input.language ?? (previousSafeMetadata.language === "en" ? "en" : "vi"),
+    serviceType: session.service_type,
+    persistedSafetySignals: asStringArray(previousSafeMetadata.intake_safety_signals),
+    actorId: ctx.user.id,
+    parked,
+  });
+  if (emergency && (parked || emergency.stopsTurn)) {
+    await answerParkedEmergency({ client, sessionId, session, texts, emergency, entry: "evidence", identity: ctx });
+    return getKaelChat(ctx, sessionId);
+  }
+  assertIntakeConfirmationCompleted(previousSafeMetadata);
 
   const requestedEvidence = kaelDiagnosisScopeArtifactSchema.safeParse(
     session.diagnosis_scope,
@@ -147,6 +190,7 @@ export async function submitKaelChatEvidence(
     evidenceRefs,
     signedVisionUrls,
     safeSkipReason,
+    emergency,
   });
 }
 
@@ -162,6 +206,7 @@ async function persistKaelChatEvidenceSubmission(input: {
   evidenceRefs: string[];
   signedVisionUrls: string[];
   safeSkipReason: string | null;
+  emergency: CaseEmergency | null;
 }) {
   const {
     client,
@@ -209,8 +254,12 @@ async function persistKaelChatEvidenceSubmission(input: {
     transcriptText,
     ...videoFrameContext,
   ].filter((value, index, values) => value && values.indexOf(value) === index).join("\n\n"));
-  const persistedSafetySignals = persistentKaelSafetySignals(
-    message,
+  const persistedSafetySignals = persistentKaelSafetySignalsFromTexts(
+    customerAuthoredTexts({
+      message,
+      skipReason: safeSkipReason,
+      evidenceItems: sanitizedEvidenceItems,
+    }),
     asServiceType(session.service_type),
     asStringArray(previousMetadata.intake_safety_signals),
     ctx.user.id,
@@ -279,6 +328,10 @@ async function persistKaelChatEvidenceSubmission(input: {
         : undefined,
     }),
   });
+
+  if (input.emergency) {
+    await answerCaseEmergency(client, sessionId, input.emergency, { entry: "evidence", identity: ctx, session });
+  }
 
   await advanceKaelChatEstimate(ctx, sessionId, {
     service_type: asServiceType(session.service_type),

@@ -1,0 +1,10 @@
+{
+  "exitCode": 1,
+  "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+  "dirtyCandidate": true,
+  "command": "pnpm test:mobile --runInBand --watch=false --json --outputFile=../../.scratch/kawa01-owner-integration-20261021/mobile-jest.json",
+  "ended": "2026-10-21T14:34:28.9222609Z",
+  "lane": "T0",
+  "started": "2026-10-21T14:34:25.3844468Z",
+  "id": "mobile-full"
+}

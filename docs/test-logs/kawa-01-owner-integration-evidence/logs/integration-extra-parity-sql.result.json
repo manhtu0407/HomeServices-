@@ -1,0 +1,7 @@
+{
+  "id": "parity-sql",
+  "ended": "2026-10-21T14:46:48.8939631Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:46:47.5077557Z",
+  "command": "node scripts/check-edge-db-contract.mjs --emit-sql"
+}

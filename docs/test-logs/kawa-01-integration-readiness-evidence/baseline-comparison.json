@@ -1,0 +1,31 @@
+{
+  "baselineCommit": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+  "baselineMethod": "pristine git archive; source files were not edited; dependency junctions used",
+  "authority": {
+    "baselineExit": 1,
+    "candidateExit": 1,
+    "sameFinding": "normal-chat-suggestions-cache-pillar-test.tsx:31 cites missing Plan section 3.4"
+  },
+  "mobileLint": {
+    "baselineCommand": "node node_modules/eslint/bin/eslint.js . --format json --output-file ../../baseline-mobile-lint.json",
+    "baselineExit": 1,
+    "baselineErrors": 75,
+    "baselineWarnings": 87,
+    "candidateCommand": "pnpm lint:mobile",
+    "candidateExit": 1,
+    "candidateErrors": 75,
+    "candidateWarnings": 87,
+    "touchedFilesBaselineFindings": 0
+  },
+  "reactDoctor": {
+    "exitCode": 0,
+    "warnings": 1,
+    "scope": "unchanged six-item local emergency guide ScrollView",
+    "disposition": "bounded fixed list; warning retained, no native scrolling claim"
+  },
+  "historical599of600": {
+    "status": "UNRESOLVED",
+    "failureIdentityRecovered": false,
+    "note": "No original failed-test identity recovered; current larger green suites do not close this historical incident"
+  }
+}

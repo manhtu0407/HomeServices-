@@ -1,0 +1,17 @@
+
+> nestscout@0.1.0 type-check:api <repo>
+> node scripts/run.mjs run-package-script @nestscout/api type-check
+
+
+> @nestscout/api@0.1.0 type-check <repo>\apps\api
+> tsc --noEmit
+
+src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts(367,29): error TS7006: Parameter 'call' implicitly has an 'any' type.
+src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts(367,74): error TS7006: Parameter 'call' implicitly has an 'any' type.
+src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts(417,24): error TS7006: Parameter 'trace' implicitly has an 'any' type.
+src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts(443,30): error TS7006: Parameter 'trace' implicitly has an 'any' type.
+src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts(453,33): error TS7006: Parameter 'trace' implicitly has an 'any' type.
+<repo>\apps\api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @nestscout/api@0.1.0 type-check: `tsc --noEmit`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.

@@ -1,0 +1,6 @@
+
+> nestscout@0.1.0 lint:protocol-routes <repo>
+> node scripts/run.mjs run-node scripts/check-protocol-routes.mjs
+
+protocol routes ok: 11/14 protocols selected by a routing row (3 exempt), every routed name resolves
+

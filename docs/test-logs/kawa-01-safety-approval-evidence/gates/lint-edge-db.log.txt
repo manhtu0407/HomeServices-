@@ -1,0 +1,10 @@
+
+> nestscout@0.1.0 lint:edge-db <repo>
+> node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs
+
+rpc names found: 265 (227 literal, 38 resolved from a local const)
+unscannable call sites: 0
+
+no --functions given, so nothing was compared against a database.
+run `node scripts/check-edge-db-contract.mjs --emit-sql` and feed the result back with --functions.
+

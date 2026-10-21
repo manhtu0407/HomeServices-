@@ -1,0 +1,374 @@
+
+> nestscout@0.1.0 lint:playbooks <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-node scripts/check-kael-playbook-coverage.mjs
+
+{
+  "electrical": {
+    "corpus": {
+      "cases": 24,
+      "slugs": {
+        "breaker_trip": 2,
+        "electrical-general": 2,
+        "flickering_light": 2,
+        "install_device": 2,
+        "other_electrical": 2,
+        "outlet_or_switch_broken": 4,
+        "power_outage_one_room": 2,
+        "power_outage_whole_unit": 2
+      },
+      "scope": {
+        "in_scope": 18,
+        "out_of_scope": 3,
+        "service_mismatch": 3
+      },
+      "difficulty": {
+        "hard": 5,
+        "easy": 12,
+        "medium": 7
+      },
+      "complexity": {
+        "large": 6,
+        "small": 4,
+        "null": 8,
+        "medium": 6
+      }
+    },
+    "holdout": {
+      "cases": 24,
+      "slugs": {
+        "breaker_trip": 2,
+        "electrical-general": 2,
+        "flickering_light": 2,
+        "install_device": 3,
+        "other_electrical": 2,
+        "outlet_or_switch_broken": 3,
+        "power_outage_one_room": 2,
+        "power_outage_whole_unit": 2
+      },
+      "scope": {
+        "in_scope": 18,
+        "service_mismatch": 3,
+        "out_of_scope": 3
+      },
+      "difficulty": {
+        "medium": 6,
+        "easy": 14,
+        "hard": 4
+      },
+      "complexity": {
+        "large": 6,
+        "null": 10,
+        "medium": 4,
+        "small": 4
+      }
+    },
+    "segment_chars": 9546
+  },
+  "plumbing": {
+    "corpus": {
+      "cases": 24,
+      "slugs": {
+        "clogged_drain_or_sink": 3,
+        "faucet_broken": 2,
+        "install_or_replace_fixture": 2,
+        "other_plumbing": 2,
+        "pipe_leak": 4,
+        "plumbing-general": 2,
+        "toilet_flush_issue": 2,
+        "weak_water_pressure": 2
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 11,
+        "medium": 8,
+        "hard": 5
+      },
+      "complexity": {
+        "small": 4,
+        "large": 9,
+        "medium": 4,
+        "null": 7
+      }
+    },
+    "holdout": {
+      "cases": 24,
+      "slugs": {
+        "clogged_drain_or_sink": 3,
+        "faucet_broken": 2,
+        "install_or_replace_fixture": 2,
+        "other_plumbing": 2,
+        "pipe_leak": 4,
+        "plumbing-general": 2,
+        "toilet_flush_issue": 2,
+        "weak_water_pressure": 2
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 11,
+        "medium": 8,
+        "hard": 5
+      },
+      "complexity": {
+        "small": 4,
+        "large": 9,
+        "medium": 4,
+        "null": 7
+      }
+    },
+    "segment_chars": 11185
+  },
+  "hvac": {
+    "corpus": {
+      "cases": 24,
+      "slugs": {
+        "error_code": 2,
+        "hvac-general": 2,
+        "no_cooling": 3,
+        "other_hvac": 2,
+        "routine_hvac_cleaning": 2,
+        "unusual_noise": 2,
+        "water_leak": 3,
+        "weak_cooling": 3
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 6,
+        "medium": 8,
+        "hard": 10
+      },
+      "complexity": {
+        "small": 4,
+        "medium": 4,
+        "large": 9,
+        "null": 7
+      }
+    },
+    "holdout": {
+      "cases": 24,
+      "slugs": {
+        "error_code": 2,
+        "hvac-general": 2,
+        "no_cooling": 4,
+        "other_hvac": 2,
+        "routine_hvac_cleaning": 2,
+        "unusual_noise": 2,
+        "water_leak": 2,
+        "weak_cooling": 3
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 6,
+        "medium": 8,
+        "hard": 10
+      },
+      "complexity": {
+        "small": 4,
+        "medium": 4,
+        "large": 9,
+        "null": 7
+      }
+    },
+    "segment_chars": 10182
+  },
+  "handyman": {
+    "corpus": {
+      "cases": 24,
+      "slugs": {
+        "drill_or_mount_shelf": 2,
+        "handyman-general": 2,
+        "install_bathroom_fixture": 2,
+        "install_curtain_rod": 2,
+        "install_small_fixture": 2,
+        "mount_tv_or_furniture": 2,
+        "other_handyman": 2,
+        "repair_hinge_or_handle": 2,
+        "replace_cabinet_hinges": 2
+      },
+      "scope": {
+        "in_scope": 18,
+        "service_mismatch": 4,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 8,
+        "hard": 10,
+        "medium": 6
+      },
+      "complexity": {
+        "small": 5,
+        "large": 8,
+        "medium": 4,
+        "null": 7
+      }
+    },
+    "holdout": {
+      "cases": 24,
+      "slugs": {
+        "drill_or_mount_shelf": 2,
+        "handyman-general": 2,
+        "install_bathroom_fixture": 2,
+        "install_curtain_rod": 2,
+        "install_small_fixture": 2,
+        "mount_tv_or_furniture": 2,
+        "other_handyman": 2,
+        "repair_hinge_or_handle": 2,
+        "replace_cabinet_hinges": 2
+      },
+      "scope": {
+        "in_scope": 18,
+        "service_mismatch": 3,
+        "out_of_scope": 3
+      },
+      "difficulty": {
+        "easy": 8,
+        "hard": 10,
+        "medium": 6
+      },
+      "complexity": {
+        "small": 5,
+        "large": 8,
+        "medium": 4,
+        "null": 7
+      }
+    },
+    "segment_chars": 10638
+  },
+  "cleaning": {
+    "corpus": {
+      "cases": 24,
+      "slugs": {
+        "bathroom_deep_clean": 3,
+        "cleaning-general": 2,
+        "deep_cleaning": 2,
+        "kitchen_deep_clean": 2,
+        "other_cleaning": 2,
+        "post_repair_cleaning": 3,
+        "standard_home_cleaning": 2,
+        "window_cleaning": 3
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 8,
+        "medium": 7,
+        "hard": 9
+      },
+      "complexity": {
+        "small": 4,
+        "medium": 4,
+        "large": 9,
+        "null": 7
+      }
+    },
+    "holdout": {
+      "cases": 24,
+      "slugs": {
+        "bathroom_deep_clean": 3,
+        "cleaning-general": 2,
+        "deep_cleaning": 2,
+        "kitchen_deep_clean": 2,
+        "other_cleaning": 2,
+        "post_repair_cleaning": 3,
+        "standard_home_cleaning": 2,
+        "window_cleaning": 3
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 8,
+        "medium": 7,
+        "hard": 9
+      },
+      "complexity": {
+        "small": 4,
+        "medium": 4,
+        "large": 9,
+        "null": 7
+      }
+    },
+    "segment_chars": 10074
+  },
+  "upholstery": {
+    "corpus": {
+      "cases": 24,
+      "slugs": {
+        "carpet_cleaning": 3,
+        "curtain_cleaning": 2,
+        "mattress_cleaning": 2,
+        "odor_or_mold": 2,
+        "other_upholstery": 2,
+        "sofa_cleaning": 3,
+        "stain_treatment": 3,
+        "upholstery-general": 2
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 7,
+        "hard": 11,
+        "medium": 6
+      },
+      "complexity": {
+        "small": 4,
+        "large": 9,
+        "medium": 4,
+        "null": 7
+      }
+    },
+    "holdout": {
+      "cases": 24,
+      "slugs": {
+        "carpet_cleaning": 3,
+        "curtain_cleaning": 2,
+        "mattress_cleaning": 2,
+        "odor_or_mold": 2,
+        "other_upholstery": 2,
+        "sofa_cleaning": 3,
+        "stain_treatment": 3,
+        "upholstery-general": 2
+      },
+      "scope": {
+        "in_scope": 19,
+        "service_mismatch": 3,
+        "out_of_scope": 2
+      },
+      "difficulty": {
+        "easy": 6,
+        "hard": 11,
+        "medium": 7
+      },
+      "complexity": {
+        "small": 4,
+        "large": 9,
+        "medium": 4,
+        "null": 7
+      }
+    },
+    "segment_chars": 9237
+  }
+}

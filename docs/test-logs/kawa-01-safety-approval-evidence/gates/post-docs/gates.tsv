@@ -1,0 +1,12 @@
+lint-structure	0	2s	corepack pnpm lint:structure
+lint-comments	0	1s	corepack pnpm lint:comments --working
+lint-test-collection	0	1s	corepack pnpm lint:test-collection
+pillars-check	0	1s	corepack pnpm harness:pillars:check
+lint-authority	1	2s	corepack pnpm lint:authority
+lint-workplan	0	1s	corepack pnpm lint:workplan
+lint-residue	0	2s	corepack pnpm lint:residue
+lint-protocol-routes	0	2s	corepack pnpm lint:protocol-routes
+lint-baseline	0	1s	corepack pnpm lint:baseline
+diff-check	0	2s	diffcheck
+docs-reading-tests	0	4s	corepack pnpm exec vitest run kael-a5-eval-harness kael-section32-staging-harness privileged-admin-script-safety kael-playbook-eval-core kael-eval-report-contract
+DONE

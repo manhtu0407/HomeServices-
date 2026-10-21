@@ -1,0 +1,5 @@
+
+> nestscout@0.1.0 lint:production-ui-copy <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-node scripts/check-production-ui-copy.mjs
+
+production UI normality passed: 777 files, 30658 visible literals, 9934 localized literals, 0 unsafe terms

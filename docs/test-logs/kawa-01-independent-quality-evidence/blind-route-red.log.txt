@@ -1,0 +1,40 @@
+
+ RUN  v4.1.6 C:/Users/Phan Manh Tu/.codex/worktrees/kawa-foundation-safety-20261020/home-services/apps/api
+
+ ❯ src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts (17 tests | 1 failed) 23ms
+     × blocks a wrong emergency route even when detection, sample sizes and false positives meet the proposal 10ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts > P415-kael-emergency-blind-eval: recall and false positives are reported separately > blocks a wrong emergency route even when detection, sample sizes and false positives meet the proposal
+AssertionError: [P415-kael-emergency-blind-eval] a blind emergency set written and sealed by someone other than the implementer is scored with recall and false positives reported separately, per route, with sample sizes and intervals; it is called independent only when the reviewer attests the authorship and the rows match both the sealed hash and a hash the reviewer registered out of band; a report never carries a row's text; an absent set is not run, never passed
+authority: governance/RULES.md #8 (a measurement states its sample and its limits; no fake success) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (emergency routing misses) and W02 (truthful evaluation taxonomy) | governance/critical.md #3 (a gate that could not run is not a gate that passed)
+target:    apps/api/src/__tests__/helpers/emergency-blind-eval.ts
+next:      P410-kael-emergency-phrase-sets, P402-kael-eval-report-contract
+detail:    detecting an emergency does not excuse sending the wrong guidance: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts:172:124
+    170|     expect(report.unseen_wording_recall.route_exact.numerator, pillarW…
+    171|     expect(report.wrong_routes, pillarWhy(PILLAR, '200 medical, police…
+    172|     expect(report.release_blocker, pillarWhy(PILLAR, 'detecting an eme…
+       |                                                                                                                            ^
+    173|   })
+    174|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 16 passed (17)
+   Start at  17:07:07
+   Duration  691ms (transform 122ms, setup 0ms, import 161ms, tests 23ms, environment 0ms)
+
+undefined
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts

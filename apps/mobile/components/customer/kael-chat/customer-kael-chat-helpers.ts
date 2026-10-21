@@ -227,3 +227,12 @@ export function latestKaelReply(response: KaelChatResponse) {
   }
   return null
 }
+
+export function applyCustomerKaelRequestFailure(
+  conversation: { setEmergencyGuidance?: (value: unknown) => void; setError: (message: string) => void },
+  result: { code?: string; error: string; status?: number; emergency?: unknown },
+  language: AppLanguage,
+): void {
+  conversation.setEmergencyGuidance?.(result.emergency)
+  conversation.setError(localizeKaelRequestFailure(result, language))
+}

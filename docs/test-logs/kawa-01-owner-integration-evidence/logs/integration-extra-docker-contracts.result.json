@@ -1,0 +1,7 @@
+{
+  "id": "docker-contracts",
+  "ended": "2026-10-21T14:46:46.2640536Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:46:46.1060220Z",
+  "command": "node scripts/check-docker-contracts.mjs"
+}

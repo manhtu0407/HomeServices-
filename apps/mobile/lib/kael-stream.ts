@@ -1,4 +1,6 @@
 import {
+  readKaelEmergencyGuidance,
+  type EmergencyGuidancePayload,
   type CustomerKaelConversationTurnInput,
   type KaelChatEvidenceInput,
   type KaelChatTurnInput,
@@ -40,6 +42,7 @@ import {
   isCustomerKaelStreamResult,
   isKaelProgressStage,
   isKaelProgressStatus,
+  safeKaelProgressFailureReason,
   isWorkerKaelStreamResult,
   safeParseObject,
 } from './kael-stream-validation'
@@ -79,6 +82,7 @@ type KaelStreamResultEvent = {
 }
 
 type KaelStreamErrorEvent = {
+  emergency?: EmergencyGuidancePayload
   type: 'error'
   code: string
   message: string
@@ -176,12 +180,13 @@ export async function streamKaelChatTurn(
   input: KaelChatTurnInput,
   handlers: KaelChatStreamHandlers = {},
   signal?: AbortSignal,
+  streamFetch?: typeof fetch,
 ): Promise<ApiResult<KaelChatResponse>> {
   return streamKaelTurn(`/kael/chat/${encodeURIComponent(sessionId)}/stream`, input, handlers, {
     httpErrorField: 'error',
     httpFallbackCode: (status) => `HTTP_${status}`,
     httpFallbackMessage: 'Kael streaming failed.',
-  }, isCustomerKaelStreamResult, signal)
+  }, isCustomerKaelStreamResult, signal, streamFetch)
 }
 
 export async function streamCustomerKaelConversationTurn(
@@ -284,6 +289,7 @@ async function streamKaelTurn<T>(
 
   const lifetime = createStreamLifetime(signal)
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  let terminalFailure: Extract<ApiResult<T>, { success: false }> | null = null
   try {
     const fetchStream = streamFetch ?? (await import('expo/fetch')).fetch
     const response = await waitForStreamConnection(fetchStream(mobileApiUrl(path), {
@@ -302,6 +308,7 @@ async function streamKaelTurn<T>(
       return {
         success: false,
         error: safeServerError(parsed[httpError.httpErrorField], httpError.httpFallbackMessage),
+        ...(readKaelEmergencyGuidance(parsed.emergency) ? { emergency: readKaelEmergencyGuidance(parsed.emergency)! } : {}),
         code: safeCode === `HTTP_${response.status}`
           ? httpError.httpFallbackCode(response.status)
           : safeCode,
@@ -323,6 +330,7 @@ async function streamKaelTurn<T>(
     const parser = createKaelSseParser()
     let finalResult: T | null = null
     let responseBytes = 0
+    let observerFailed = false
 
     for (;;) {
       const { done, value } = await lifetime.wait(reader.read())
@@ -336,15 +344,22 @@ async function streamKaelTurn<T>(
         }
         chunk = decoder.push(value)
       }
-      for (const event of parser.push(chunk)) {
-        if (event.type === 'stage') handlers.onStage?.(event)
-        if (event.type === 'token') handlers.onToken?.(event)
-        if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
-        if (isKaelResponseStreamEvent(event)) handlers.onResponseEvent?.(event)
-        if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
-        if (event.type === 'error') {
-          handlers.onError?.(event)
-          return { success: false, error: event.message, code: event.code, status: response.status }
+      const events = parser.push(chunk)
+      const failure = events.find((event) => event.type === 'error')
+      if (failure?.type === 'error') {
+        terminalFailure = { success: false, error: failure.message, code: failure.code, status: response.status, ...(failure.emergency ? { emergency: failure.emergency } : {}) }
+        handlers.onError?.(failure)
+        return terminalFailure
+      }
+      for (const event of events) {
+        try {
+          if (event.type === 'stage') handlers.onStage?.(event)
+          if (event.type === 'token') handlers.onToken?.(event)
+          if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
+          if (isKaelResponseStreamEvent(event)) handlers.onResponseEvent?.(event)
+          if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
+        } catch {
+          observerFailed = true
         }
         if (event.type === 'result') {
           if (!resultGuard(event.data)) {
@@ -357,14 +372,17 @@ async function streamKaelTurn<T>(
             return { success: false, error: invalidResult.message, code: invalidResult.code, status: response.status }
           }
           const result = event.data
-          handlers.onResult?.({ type: 'result', data: result })
           finalResult = result
         }
       }
       if (done) break
     }
 
-    if (finalResult) return { success: true, data: finalResult, status: response.status }
+    if (observerFailed) throw new Error('STREAM_CALLBACK_FAILED')
+    if (finalResult) {
+      handlers.onResult?.({ type: 'result', data: finalResult })
+      return { success: true, data: finalResult, status: response.status }
+    }
     return {
       success: false,
       error: 'Kael stream ended before a result.',
@@ -372,6 +390,7 @@ async function streamKaelTurn<T>(
       status: response.status,
     }
   } catch (error) {
+    if (terminalFailure) return terminalFailure
     if (signal?.aborted) {
       return {
         success: false,
@@ -609,6 +628,7 @@ function parseKaelSseFrame(frame: string): KaelStreamEvent | null {
       type: 'error',
       code: code === 'HTTP_0' ? 'STREAM_ERROR' : code,
       message: safeServerError(data.message, 'Kael stream failed.'),
+      ...(readKaelEmergencyGuidance(data.emergency) ? { emergency: readKaelEmergencyGuidance(data.emergency)! } : {}),
     }
   }
   return null
@@ -630,7 +650,7 @@ function stageEventToProgress(data: Record<string, unknown>): KaelChatProgress |
     current_stage: stage as KaelChatProgress['current_stage'],
     status,
     progress,
-    failure_reason: typeof data.failure_reason === 'string' ? data.failure_reason : null,
+    failure_reason: safeKaelProgressFailureReason(data.failure_reason),
     updated_at: updatedAt,
   }
 }

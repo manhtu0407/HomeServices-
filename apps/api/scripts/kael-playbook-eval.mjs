@@ -20,6 +20,7 @@ import {
   validatePlaybookCorpus,
   validateStagingEvalTargets,
 } from './lib/kael-playbook-eval-core.mjs'
+import { computeSourceTreeHash, normalizeSourceFiles } from './lib/kael-playbook-source-hash.mjs'
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
@@ -49,11 +50,20 @@ const CLIENT_CONTRACT_EPOCH_PATTERN = /^[1-9][0-9]{0,8}$/
 const CLIENT_EAS_BUILD_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const CLIENT_GIT_SHA_PATTERN = /^[0-9a-f]{40}$/i
 const CLIENT_IDENTITY_PATTERN = /^[A-Za-z0-9._:-]{1,160}$/
+// source_tree_hash binds the bytes of the files listed here and nothing else: every Edge file that decides or
+// delivers a Case emergency reply, each file it imports directly, and the service playbook. It is not the transitive
+// import closure (the shared barrels pull in hundreds of files and the manifest holds 100), and it does not cover the
+// corpus, the mock fixture, the environment or any model. A report therefore proves which listed bytes ran, not that
+// nothing else changed.
 const SOURCE_FILES = [
+  'supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts',
+  'supabase/functions/_shared/contracts/emergency-guidance.ts',
   'apps/api/scripts/kael-playbook-eval.mjs',
   'apps/api/scripts/lib/kael-playbook-eval-core.mjs',
   'supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts',
   'supabase/functions/mobile-api/_shared/kael/kael-guardrails/electrical-intake-policy.ts',
+  'supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts',
+  'supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts',
   'supabase/functions/mobile-api/_shared/kael/index.ts',
   'supabase/functions/mobile-api/_shared/kael/pipeline/intake-runtime.ts',
   'supabase/functions/mobile-api/_shared/kael/tools/intent.ts',
@@ -81,10 +91,44 @@ const SOURCE_FILES = [
   'supabase/functions/mobile-api/_shared/domains/kael-chat/clarification.service.ts',
   'supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-support.ts',
   'supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/session-store.ts',
   'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts',
   'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts',
   'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts',
   'supabase/functions/mobile-api/_shared/domains/kael-chat/serialize.ts',
+  'supabase/functions/_shared/contracts.ts',
+  'supabase/functions/_shared/domain.ts',
+  'supabase/functions/mobile-api/_shared/domains/customer/kael-conversation.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-artifact.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-context.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/intake.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/media-upload.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/media-vision.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/persistence.service.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/read.service.ts',
+  'supabase/functions/mobile-api/_shared/domains/kael-chat/turn-intent-router.ts',
+  'supabase/functions/mobile-api/_shared/domains/worker/apartment-access.ts',
+  'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts',
+  'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-policy.ts',
+  'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-provider-output.ts',
+  'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts',
+  'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-workflow.ts',
+  'supabase/functions/mobile-api/_shared/kael/agents/customer-assistant.ts',
+  'supabase/functions/mobile-api/_shared/kael/contracts/artifact-contract.ts',
+  'supabase/functions/mobile-api/_shared/kael/evidence/untrusted-evidence.ts',
+  'supabase/functions/mobile-api/_shared/kael/kael-guardrails/durable-guards.ts',
+  'supabase/functions/mobile-api/_shared/kael/kael-guardrails/permission-gate.ts',
+  'supabase/functions/mobile-api/_shared/kael/language/user-facing-copy.ts',
+  'supabase/functions/mobile-api/_shared/kael/pipeline/intake-confirmation.ts',
+  'supabase/functions/mobile-api/_shared/platform/api-failure.ts',
+  'supabase/functions/mobile-api/_shared/platform/auth.ts',
+  'supabase/functions/mobile-api/_shared/platform/coercions.ts',
+  'supabase/functions/mobile-api/_shared/platform/db.ts',
+  'supabase/functions/mobile-api/_shared/platform/rate-limit.ts',
+  'supabase/functions/mobile-api/_shared/platform/scheduling.ts',
+  'supabase/functions/mobile-api/_shared/platform/turn-trace.ts',
 ]
 
 async function main() {
@@ -705,14 +749,14 @@ function gitIsDirty() {
 }
 
 function sourceFilesForService(serviceType) {
-  return [...SOURCE_FILES, PLAYBOOK_SOURCE_BY_SERVICE[serviceType]]
+  return normalizeSourceFiles([...SOURCE_FILES, PLAYBOOK_SOURCE_BY_SERVICE[serviceType]])
 }
 
 async function sourceTreeHash(sourceFiles) {
-  const parts = await Promise.all(sourceFiles.map(async (path) =>
-    `${path}\n${sha256(await readFile(resolve(REPO_ROOT, path), 'utf8'))}`
-  ))
-  return sha256(parts.join('\n'))
+  const texts = new Map(await Promise.all(sourceFiles.map(async (path) =>
+    [path, await readFile(resolve(REPO_ROOT, path), 'utf8')]
+  )))
+  return computeSourceTreeHash(sourceFiles, (path) => texts.get(path))
 }
 
 function repoRelative(path) {

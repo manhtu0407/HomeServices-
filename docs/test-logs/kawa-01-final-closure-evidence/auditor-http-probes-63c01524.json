@@ -1,0 +1,111 @@
+{
+  "voice_only_existing_session": {
+    "status": 201,
+    "body": {
+      "session": {
+        "id": "39800000-0000-4000-8000-000000000001",
+        "job_id": null,
+        "customer_id": "39800000-0000-4000-8000-0000000000a1",
+        "service_type": "hvac",
+        "status": "active",
+        "case_phase": "analysis",
+        "diagnosis_scope": {
+          "version": 1,
+          "service_type": "hvac",
+          "profile_id": "air_scope",
+          "case_phase": "analysis",
+          "facts": {
+            "customer_goal": "Vệ sinh hai máy lạnh"
+          },
+          "missing_facts": [
+            "unit_type_count_and_capacity",
+            "symptom_and_operating_condition"
+          ],
+          "evidence": [],
+          "safety_flags": [],
+          "scope_summary": null,
+          "quote_ready": false,
+          "quote_blockers": [
+            "unit_type_count_and_capacity",
+            "symptom_and_operating_condition"
+          ],
+          "worker_requirements": [],
+          "confidence": 0.4,
+          "next_action": {
+            "kind": "ask_question",
+            "question": "Máy treo tường hay âm trần, mấy bộ, công suất khoảng bao nhiêu HP?"
+          },
+          "updated_at": "2026-10-21T04:01:07.377Z"
+        },
+        "scheduled_at": null,
+        "estimate": null,
+        "started_at": "2026-10-20T01:00:00.000Z",
+        "estimate_ready_at": null,
+        "total_turns": 2,
+        "total_cost_usd": 0,
+        "next_action": "ask_question",
+        "intake_confirmation": null,
+        "policy_version": null,
+        "intake_coverage": null,
+        "confirmation_operation": null,
+        "evidence_previews": []
+      },
+      "turns": [
+        {
+          "id": "39800000-0000-4000-8000-000000000100",
+          "session_id": "39800000-0000-4000-8000-000000000001",
+          "turn_index": 1,
+          "role": "customer",
+          "content_type": "text",
+          "text_content": "Mình cần vệ sinh máy lạnh trong nhà.",
+          "media_refs": [],
+          "estimate": null,
+          "clarification": null,
+          "created_at": "2026-10-20T01:00:00.000Z"
+        },
+        {
+          "id": "39800000-0000-4000-8000-000000000101",
+          "session_id": "39800000-0000-4000-8000-000000000001",
+          "turn_index": 2,
+          "role": "kael",
+          "content_type": "clarification",
+          "text_content": "Máy treo tường hay âm trần, mấy bộ, công suất khoảng bao nhiêu HP?",
+          "media_refs": [],
+          "estimate": null,
+          "clarification": null,
+          "created_at": "2026-10-20T01:00:00.000Z"
+        }
+      ]
+    },
+    "model_calls": 0,
+    "new_turns": 0,
+    "total_turns": 2
+  },
+  "invalid_schedule_create": {
+    "status": 400,
+    "body": {
+      "code": "VALIDATION",
+      "error": "Thời gian hẹn phải ở tương lai và khớp múi giờ TP.HCM"
+    },
+    "model_calls": 0,
+    "new_turns": 0
+  },
+  "invalid_schedule_turn": {
+    "status": 400,
+    "body": {
+      "code": "VALIDATION",
+      "error": "Thời gian hẹn phải ở tương lai và khớp múi giờ TP.HCM"
+    },
+    "model_calls": 0,
+    "new_turns": 0
+  },
+  "terminal_status_emergency": {
+    "status": 409,
+    "body": {
+      "code": "INVALID_STATUS",
+      "error": "Phiên Kael này không còn nhận tin nhắn"
+    },
+    "model_calls": 0,
+    "new_turns": 0
+  }
+}

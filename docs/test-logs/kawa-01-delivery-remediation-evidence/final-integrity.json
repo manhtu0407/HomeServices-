@@ -1,0 +1,22 @@
+{
+  "originalStagedPatchPreserved": true,
+  "originalStagedPaths": 93,
+  "priorRenamesByteIdentical": 17,
+  "classifierAndProtectedFilesUnchanged": true,
+  "sourcePaths": 30,
+  "gitleaksPatchExit": 0,
+  "gitleaksPacketExit": 0,
+  "shipExit": 1,
+  "shipMachineGates": 10,
+  "edgeExit": 0,
+  "edgeFunctionsChecked": 7,
+  "edgeCompatibilityTests": 4,
+  "apiVitestPassed": 3440,
+  "apiVitestSkipped": 6,
+  "mobileSuitesPassed": 285,
+  "mobileTestsPassed": 2646,
+  "sharedTestsPassed": 189,
+  "focusedFinalBackendContract": 32,
+  "focusedMobile": 15,
+  "commitPushCiMergeDeploy": false
+}

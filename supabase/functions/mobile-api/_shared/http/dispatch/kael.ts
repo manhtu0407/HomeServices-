@@ -8,6 +8,7 @@ import {
   kaelChatMediaUploadSchema,
   kaelChatTurnSchema,
 } from "../../../../_shared/domain.ts";
+import { registerRejectedCaseEmergencyDelivery } from "../../domains/kael-chat/emergency-turn.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
 import { readJson } from "../read-json.ts";
 import type { MobileApiContext, MobileApiServices } from "../contracts.ts";
@@ -22,8 +23,12 @@ export async function dispatchKaelRoute(
 ): Promise<unknown> {
   switch (route.kind) {
     case "kael.chat.create": {
-      const input = kaelChatCreateSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      const raw = await readJson(request);
+      const input = kaelChatCreateSchema.safeParse(raw);
+      if (!input.success) {
+        await registerRejectedCaseEmergencyDelivery(ctx, raw, undefined);
+        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      }
       return services.createKaelChat(ctx, input.data);
     }
     case "kael.assistant": {
@@ -46,18 +51,30 @@ export async function dispatchKaelRoute(
     case "kael.chat.progress":
       return services.getKaelChatProgress(ctx, route.sessionId);
     case "kael.chat.stream": {
-      const input = kaelChatTurnSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      const raw = await readJson(request);
+      const input = kaelChatTurnSchema.safeParse(raw);
+      if (!input.success) {
+        await registerRejectedCaseEmergencyDelivery(ctx, raw, route.sessionId);
+        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      }
       return services.streamKaelChatTurn(ctx, route.sessionId, input.data);
     }
     case "kael.chat.evidenceStream": {
-      const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      const raw = await readJson(request);
+      const input = kaelChatEvidenceSchema.safeParse(raw);
+      if (!input.success) {
+        await registerRejectedCaseEmergencyDelivery(ctx, raw, route.sessionId);
+        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      }
       return services.streamKaelChatEvidence(ctx, route.sessionId, input.data);
     }
     case "kael.chat.turn": {
-      const input = kaelChatTurnSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      const raw = await readJson(request);
+      const input = kaelChatTurnSchema.safeParse(raw);
+      if (!input.success) {
+        await registerRejectedCaseEmergencyDelivery(ctx, raw, route.sessionId);
+        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      }
       return services.sendKaelChatTurn(ctx, route.sessionId, input.data);
     }
     case "kael.chat.intakeConfirmation": {
@@ -86,8 +103,12 @@ export async function dispatchKaelRoute(
       return services.recoverLegacyKaelConfirmation(ctx, route.sessionId, input.data);
     }
     case "kael.chat.evidence": {
-      const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      const raw = await readJson(request);
+      const input = kaelChatEvidenceSchema.safeParse(raw);
+      if (!input.success) {
+        await registerRejectedCaseEmergencyDelivery(ctx, raw, route.sessionId);
+        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
+      }
       return services.submitKaelChatEvidence(ctx, route.sessionId, input.data);
     }
   }

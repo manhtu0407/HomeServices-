@@ -1,3 +1,4 @@
+import { requestEmergencyFields } from "../../platform/emergency-guidance.ts";
 import { readKaelChatProgressSnapshot } from "./read.service.ts";
 import { sendKaelChatTurn } from "./turn.ts";
 import { submitKaelChatEvidence } from "./evidence.ts";
@@ -121,7 +122,7 @@ async function streamKaelChatRequest(
           close();
         })
         .catch((err) => {
-          emit("error", kaelChatStreamErrorPayload(err));
+          emit("error", kaelChatStreamErrorPayload(err, ctx));
           close();
         });
 
@@ -138,7 +139,7 @@ async function streamKaelChatRequest(
         }
         await resultPromise;
       })().catch((err) => {
-        emit("error", kaelChatStreamErrorPayload(err));
+        emit("error", kaelChatStreamErrorPayload(err, ctx));
         close();
       });
     },
@@ -165,11 +166,12 @@ function kaelProgressSignature(progress: KaelStreamProgress | null) {
   return `${progress.current_stage}:${progress.status}:${progress.progress}:${progress.updated_at}`;
 }
 
-export function kaelChatStreamErrorPayload(err: unknown) {
+export function kaelChatStreamErrorPayload(err: unknown, ctx?: MobileApiContext) {
   const code = typeof (err as { code?: unknown })?.code === "string"
     ? (err as { code: string }).code
     : "STREAM_ERROR";
   return {
+    ...requestEmergencyFields(ctx),
     code,
     message:
       "Kael ch\u01b0a th\u1ec3 ph\u00e1t lu\u1ed3ng c\u1eadp nh\u1eadt. B\u1ea1n th\u1eed l\u1ea1i sau \u00edt ph\u00fat.",

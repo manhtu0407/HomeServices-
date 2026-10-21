@@ -1,0 +1,5 @@
+
+> nestscout@0.1.0 harness:capabilities:check <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-node scripts/harness/capability-registry.mjs
+
+capability registry ok: 275 routes

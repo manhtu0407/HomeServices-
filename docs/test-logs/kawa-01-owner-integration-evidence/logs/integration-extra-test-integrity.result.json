@@ -1,0 +1,7 @@
+{
+  "id": "test-integrity",
+  "ended": "2026-10-21T14:46:47.5051657Z",
+  "exitCode": 0,
+  "started": "2026-10-21T14:46:47.1378260Z",
+  "command": "node scripts/check-test-integrity.mjs --working"
+}

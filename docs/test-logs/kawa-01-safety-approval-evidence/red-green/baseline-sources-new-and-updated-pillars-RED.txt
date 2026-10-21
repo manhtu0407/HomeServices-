@@ -1,0 +1,139 @@
+ RUN  v4.1.6 <repo>/apps/api
+ Test Files  4 failed (4)
+      Tests  70 failed | 260 passed (330)
+⎯⎯⎯⎯⎯⎯ Failed Tests 70 ⎯⎯⎯⎯⎯⎯⎯
+
+Files:
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts (37 tests | 3 failed)
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts (52 tests | 31 failed)
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts (165 tests | 28 failed)
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts (76 tests | 8 failed)
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:129:34
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:129:34
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:154:34
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:154:34
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:173:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:173:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:185:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:228:144
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:230:93
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:243:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:283:93
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:74:112
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:74:112
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:74:112
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:74:112
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:95:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:104:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:172:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:172:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:172:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:172:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:187:32
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:223:103
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:263:111
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:280:33
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:294:125
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:321:21
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:344:97
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:362:85
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:296:76
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts:298:81
+
+Failing tests (70):
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a customer approval is never recorded for the wrong role > as admin > confirm the booking intake is refused with no write, no function call and no provider call
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a customer approval is never recorded for the wrong role > as admin > submit evidence or skip it is refused with no write, no function call and no provider call
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a worker action is never taken for the wrong role > as admin > accept an offer is refused with no write, no function call and no provider call
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a worker action is never taken for the wrong role > as admin > decline an offer is refused with no write, no function call and no provider call
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: an admin cannot decide, confirm or abandon a customer's Case > refuses the booking-intake decision confirmed and leaves the confirmation pending
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: an admin cannot decide, confirm or abandon a customer's Case > refuses the booking-intake decision correction_requested and leaves the confirmation pending
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: an admin cannot decide, confirm or abandon a customer's Case > refuses to submit or skip evidence for the customer, so no customer turn is forged
+src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts > P413-kael-approval-boundary: a Case stream refuses the wrong role before anything is written > the evidence stream refuses an admin
+src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: an invalid schedule does not hide an emergency > answers a turn whose message reports a danger as an ordinary reply that applies no schedule
+src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: an invalid schedule does not hide an emergency > reads a voice transcript on that turn the same way
+src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: an invalid schedule does not hide an emergency > answers a new Case whose transcript reports a danger as an ordinary reply, with no schedule and no analysis
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a turn that only an invalid schedule would refuse > answers "Mình ngửi thấy mùi gas ở bếp" (gas) as a 2xx reply that names 114 and applies no schedule
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a turn that only an invalid schedule would refuse > answers "Ổ cắm đang bốc khói" (fire) as a 2xx reply that names 114 and applies no schedule
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a turn that only an invalid schedule would refuse > answers "Chồng mình bị điện giật, nằm im không cử động" (medical) as a 2xx reply that names 115 and applies no schedule
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a turn that only an invalid schedule would refuse > answers "Có người đột nhập vào nhà" (police) as a 2xx reply that names 113 and applies no schedule
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a turn that only an invalid schedule would refuse > reads a reviewed voice transcript on that turn the same way
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a turn that only an invalid schedule would refuse > leaves a pending booking confirmation pending
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a new Case that only an invalid schedule would refuse > answers "Mình ngửi thấy mùi gas ở bếp" (gas) with a created Case and a reply that names 114
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a new Case that only an invalid schedule would refuse > answers "Ổ cắm đang bốc khói" (fire) with a created Case and a reply that names 114
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a new Case that only an invalid schedule would refuse > answers "Chồng mình bị điện giật, nằm im không cử động" (medical) with a created Case and a reply that names 115
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a new Case that only an invalid schedule would refuse > answers "Có người đột nhập vào nhà" (police) with a created Case and a reply that names 113
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: a new Case that only an invalid schedule would refuse > answers wiring advice the same way and runs no analysis
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: the assistant answers a clear emergency before its rate limit > answers "Mình ngửi thấy mùi gas ở bếp" (gas) after the quota is spent, with no provider
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: the assistant answers a clear emergency before its rate limit > answers "Ổ cắm đang bốc khói" (fire) after the quota is spent, with no provider
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: the assistant answers a clear emergency before its rate limit > answers "Chồng mình bị điện giật, nằm im không cử động" (medical) after the quota is spent, with no provider
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: the assistant answers a clear emergency before its rate limit > answers "Có người đột nhập vào nhà" (police) after the quota is spent, with no provider
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > answers "Mình ngửi thấy mùi gas ở bếp" (gas) after the quota is spent, with no provider call
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > answers "Ổ cắm đang bốc khói" (fire) after the quota is spent, with no provider call
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > answers "Chồng mình bị điện giật, nằm im không cử động" (medical) after the quota is spent, with no provider call
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > answers "Có người đột nhập vào nhà" (police) after the quota is spent, with no provider call
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > does not wait for a web search or a memory summary before answering
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > answers an emergency that arrives with an unusable image reference and consumes no media
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > reads "Nhà tôi đang cháy" as certain before the earlier conversation is known
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > reads "Mình ngửi thấy mùi gas ở bếp" as certain before the earlier conversation is known
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > reads "Có người đột nhập" as certain before the earlier conversation is known
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > reads "Ổ cắm tóe lửa" as certain before the earlier conversation is known
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > reads "Nhà mình bị xì gas" as possible before the earlier conversation is known
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > reads "Máy lạnh nhà mình bị xì gas" as none before the earlier conversation is known
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > reads "Mình cần thợ xem giúp thiết bị trong căn hộ" as none before the earlier conversation is known
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: normal chat answers a clear emergency before anything paid or refusable > skips the paid steps for a report that depends on the service, and lets the full check settle the answer
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: the early answer never outruns ownership, and an ordinary message keeps its old path > answers a reported emergency in a cancelled job and refuses an ordinary question as before
+src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts > P412-kael-emergency-delivery: the early answer never outruns ownership, and an ordinary message keeps its old path > answers a reported emergency in a reviewed job and refuses an ordinary question as before
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S01 (fire, vi): nhà tôi đang cháy
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S02 (fire, en): Smoke is coming from the outlet
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S03 (medical, vi): Có người bị điện giật
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S04 (medical, en): My dad is not breathing
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S05 (police, vi): Có người đột nhập
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S06 (police, en): Someone is breaking in
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S07 (gas, vi): Mình ngửi thấy mùi gas ở bếp
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S08 (gas, en): I can smell gas in the kitchen
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S09 (gas, en): The gas cylinder in the kitchen is leaking
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S10 (electrical_water, vi): Ổ cắm tóe lửa
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S11 (electrical_water, en): Exposed live wire in the bathroom
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S12 (uncertain, vi): Tôi không biết gọi số nào
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S13 (uncertain, vi): Đang gặp nguy hiểm
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E07 Case turn that also carries an invalid schedule > S14 (uncertain, en): I am not sure who to call
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S01 (fire, vi): nhà tôi đang cháy
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S02 (fire, en): Smoke is coming from the outlet
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S03 (medical, vi): Có người bị điện giật
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S04 (medical, en): My dad is not breathing
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S05 (police, vi): Có người đột nhập
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S06 (police, en): Someone is breaking in
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S07 (gas, vi): Mình ngửi thấy mùi gas ở bếp
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S08 (gas, en): I can smell gas in the kitchen
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S09 (gas, en): The gas cylinder in the kitchen is leaking
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S10 (electrical_water, vi): Ổ cắm tóe lửa
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S11 (electrical_water, en): Exposed live wire in the bathroom
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S12 (uncertain, vi): Tôi không biết gọi số nào
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S13 (uncertain, vi): Đang gặp nguy hiểm
+src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts > E09 assistant, Case surface on a job in progress > S14 (uncertain, en): I am not sure who to call

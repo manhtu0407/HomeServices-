@@ -1,0 +1,110 @@
+[
+  {
+    "name": "M01 refusal drops the guidance",
+    "red": 12,
+    "passed": 217,
+    "killed": true
+  },
+  {
+    "name": "M02 refusal logs no trace",
+    "red": 1,
+    "passed": 228,
+    "killed": true
+  },
+  {
+    "name": "M03 owned-session answer ignores a closed Case",
+    "red": 3,
+    "passed": 226,
+    "killed": true
+  },
+  {
+    "name": "M04 owned-session answer skips ownership (hard path)",
+    "red": 1,
+    "passed": 228,
+    "killed": true
+  },
+  {
+    "name": "M05 refusal lookup skips ownership",
+    "red": 2,
+    "passed": 227,
+    "killed": true
+  },
+  {
+    "name": "M06 write failure leaves no trace",
+    "red": 2,
+    "passed": 227,
+    "killed": true
+  },
+  {
+    "name": "M07 write failure drops the guidance",
+    "red": 2,
+    "passed": 227,
+    "killed": true
+  },
+  {
+    "name": "M08 advice write failure is not wrapped",
+    "red": 1,
+    "passed": 228,
+    "killed": true
+  },
+  {
+    "name": "M09 parked write failure is not wrapped",
+    "red": 2,
+    "passed": 227,
+    "killed": true
+  },
+  {
+    "name": "M10 create ignores the soft flag",
+    "red": 2,
+    "passed": 227,
+    "killed": true
+  },
+  {
+    "name": "M11 create reads no description",
+    "red": 0,
+    "passed": 229,
+    "killed": false
+  },
+  {
+    "name": "M12 new-Case schedule refusal is plain",
+    "red": 1,
+    "passed": 228,
+    "killed": true
+  },
+  {
+    "name": "M13 turn schedule refusal never finds the owner",
+    "red": 2,
+    "passed": 227,
+    "killed": true
+  },
+  {
+    "name": "M14 turn closed refusal reads no text",
+    "red": 4,
+    "passed": 225,
+    "killed": true
+  },
+  {
+    "name": "M15 evidence closed refusal reads no text",
+    "red": 3,
+    "passed": 226,
+    "killed": true
+  },
+  {
+    "name": "M16 summary counts a guidance-only refusal as stopped",
+    "red": 1,
+    "passed": 228,
+    "killed": true
+  },
+  {
+    "name": "M17 trace vocabulary lacks write_failed",
+    "red": 3,
+    "passed": 226,
+    "killed": true
+  },
+  {
+    "name": "M18 create answers voice-only before ownership (no emergency check at all)",
+    "red": 9,
+    "passed": 220,
+    "killed": true
+  }
+]

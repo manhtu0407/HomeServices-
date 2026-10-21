@@ -1,0 +1,24 @@
+PASS components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx (17.979 s)
+  P418-kael-emergency-mobile-delivery
+    √ preserves the rejected JSON response and the recognized emergency field (58 ms)
+    √ delivers a rejected create into the actual request action and conversation reducer (51 ms)
+  P418-kael-emergency-mobile-delivery: actual error state and local access
+    √ preserves a JSON failure received by the real stream transport (8 ms)
+    √ renders trusted guidance after HTTP 400 without changing the existing Case (582 ms)
+    √ renders trusted guidance after HTTP 409 without changing the existing Case (16 ms)
+    √ renders trusted guidance after HTTP 500 without changing the existing Case (10 ms)
+    √ keeps SSE errors as failures and repeated reports occupy one guidance slot (15 ms)
+    √ missing or hostile guidance never becomes a safety message: undefined (8 ms)
+    √ missing or hostile guidance never becomes a safety message: {"version":"v1","route":"fire","text":"untrusted"} (6 ms)
+    √ missing or hostile guidance never becomes a safety message: {"version":"v9","route":"fire"} (5 ms)
+    √ offline manual access uses static vi copy without any request (40 ms)
+    √ offline manual access uses static en copy without any request (22 ms)
+    √ clears guidance when the conversation mode changes (5 ms)
+    √ an interrupted request keeps the Case unchanged and never renders transport exception text (9 ms)
+    √ a connection timeout ends loading without inventing guidance or a successful turn (15 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       15 passed, 15 total
+Snapshots:   0 total
+Time:        19.956 s
+Ran all test suites within paths "components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx".

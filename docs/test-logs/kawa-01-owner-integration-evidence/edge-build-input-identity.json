@@ -1,0 +1,5 @@
+{
+  "compared": 762,
+  "mismatches": [],
+  "limitation": "Integration runtime source is identical; main changes to API eval scripts/tests are covered by the full API suite in the simulation. Next production build executed in the valid branch checkout."
+}

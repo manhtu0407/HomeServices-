@@ -1,0 +1,625 @@
+{
+ "set": "H1",
+ "note": "Authored before any classifier change in the audit-remediation slice. 'clear' rows are scored; 'judgement' rows are reported as owner decisions, never as defects.",
+ "rows": [
+  {
+   "id": "H1-001",
+   "text": "Cả căn hộ đầy khói, em không nhìn thấy đường ra",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-002",
+   "text": "Hành lang tầng 7 đang có cháy, khói tràn vào nhà",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-003",
+   "text": "Bình nóng lạnh đang bốc khói đen",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-004",
+   "text": "Lửa bùng lên từ bếp rồi lan sang rèm",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-005",
+   "text": "Tivi nổ một tiếng rồi bốc cháy",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-006",
+   "text": "Tủ điện đang phát ra khói và có lửa",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-007",
+   "text": "Cháy rồi, cứu em với",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-008",
+   "text": "o cam bi chay den, dang bao khoi",
+   "expected": "fire",
+   "kind": "clear",
+   "disputed": true,
+   "disputedWhy": "label dispute: bị cháy đen describes damage, not an active fire"
+  },
+  {
+   "id": "H1-009",
+   "text": "nha toi dang chay lon",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-010",
+   "text": "The kitchen is on fire",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-011",
+   "text": "There is smoke coming out of the air conditioner",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-012",
+   "text": "My neighbour's flat is on fire and smoke is entering my unit",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-013",
+   "text": "The charger caught fire next to the bed",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-014",
+   "text": "Máy giặt đang bốc cháy",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-015",
+   "text": "Có lửa ở ban công tầng dưới và khói bay lên",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-016",
+   "text": "Con em bị điện giật, nằm im không cử động",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-017",
+   "text": "Bác thợ rơi từ thang xuống, chảy máu đầu rất nhiều",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-018",
+   "text": "Chồng mình đau ngực và khó thở sau khi sửa điện",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-019",
+   "text": "She fainted after touching the faulty socket",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-020",
+   "text": "My dad collapsed in the bathroom and is not responding",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-021",
+   "text": "Mẹ em ngất xỉu trong nhà tắm",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-022",
+   "text": "Bé nhà em bị bỏng nặng do nước sôi",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-023",
+   "text": "Anh ấy bị giật điện văng ra khỏi thang",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-024",
+   "text": "He is bleeding badly and we need an ambulance",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-025",
+   "text": "Có kẻ lạ đang cạy cửa nhà em",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-026",
+   "text": "Có người đột nhập vào căn hộ lúc em đang ở nhà",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-027",
+   "text": "Someone is trying to break into my apartment right now",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-028",
+   "text": "Em đang bị đe dọa bởi người lạ ngoài cửa",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-029",
+   "text": "There is an intruder in the house",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-030",
+   "text": "Dây điện bị hở, nước chảy xuống sát chỗ đó",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-031",
+   "text": "Nước ngập tới ổ cắm điện trong phòng khách",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-032",
+   "text": "Bảng điện bị nước tràn vào và có tia lửa",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-033",
+   "text": "A live wire is exposed in the bathroom",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-034",
+   "text": "The socket is sparking whenever I plug something in",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-035",
+   "text": "Ổ cắm phát tia lửa mỗi khi cắm phích",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-036",
+   "text": "Nước đang nhỏ vào hộp cầu dao",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-037",
+   "text": "Bình gas nhà em đang xì",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-038",
+   "text": "Ngửi thấy mùi gas nồng nặc trong bếp",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-039",
+   "text": "Van bình ga bị hở, nghe tiếng xì xì",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-040",
+   "text": "Ống dẫn gas bếp bị rò",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-041",
+   "text": "I can smell gas in the kitchen",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-042",
+   "text": "The LPG cylinder is hissing",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-043",
+   "text": "Bếp gas rò rỉ, mùi nồng cả phòng",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-044",
+   "text": "Có mùi khí đốt trong nhà",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-045",
+   "text": "Dây dẫn gas bị rách, gas đang thoát ra",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-046",
+   "text": "Em không biết gọi số nào, nhà đang có sự cố rất nguy hiểm",
+   "expected": "uncertain",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-047",
+   "text": "I don't know who to call, something dangerous is happening",
+   "expected": "uncertain",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-048",
+   "text": "Có khói và cả mùi gas trong bếp",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-049",
+   "text": "Có khói bốc ra và một người đã bất tỉnh",
+   "expected": "uncertain",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-050",
+   "text": "Bình gas xì và ổ điện bên cạnh tóe lửa",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H1-051",
+   "text": "Cần mua bình chữa cháy mini cho bếp",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-052",
+   "text": "Tuần trước nhà bị cháy, giờ cần sơn lại tường",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-053",
+   "text": "Nếu có cháy thì mình phải làm gì trước?",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-054",
+   "text": "Máy lạnh đang chạy rất ồn",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-055",
+   "text": "Nước đang chảy từ vòi xuống sàn",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-056",
+   "text": "Cần thợ thay ổ điện bị lỏng trong phòng ngủ",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-057",
+   "text": "Mình muốn lắp thêm đầu báo khói cho phòng khách",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-058",
+   "text": "Cảm biến gas báo lỗi, nhờ thợ kiểm tra",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-059",
+   "text": "Bếp gas nhà mình hỏng bộ mồi lửa, không ra lửa",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-060",
+   "text": "Thợ kiểm tra xong nói là không có mùi gas",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-061",
+   "text": "Khói hương nhang nhiều quá, máy lạnh có lọc được không",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-062",
+   "text": "Chủ nhà bảo ổ cắm này từng bị cháy hồi năm ngoái",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-063",
+   "text": "Nhờ thợ kiểm tra hệ thống PCCC của chung cư",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-064",
+   "text": "Máy lạnh xì gas, cần nạp thêm gas",
+   "expected": null,
+   "kind": "clear",
+   "service": "hvac"
+  },
+  {
+   "id": "H1-065",
+   "text": "Gas máy lạnh bị rò, nhờ thợ nạp lại",
+   "expected": null,
+   "kind": "clear",
+   "service": "hvac"
+  },
+  {
+   "id": "H1-066",
+   "text": "Quạt quay chậm và có tiếng ồn",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-067",
+   "text": "Anh thợ bị đau lưng nên đến trễ nửa tiếng",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-068",
+   "text": "Em bị trễ giờ làm vì kẹt thang máy",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-069",
+   "text": "Hàng xóm kể hôm qua nhà họ bị cháy bếp",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-070",
+   "text": "Mình đã gọi 114 hôm qua nhưng mọi thứ đã ổn rồi",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-071",
+   "text": "Please check the battery of the smoke detector",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-072",
+   "text": "I need a fire extinguisher refilled",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-073",
+   "text": "Bleed the radiator and check the pressure",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-074",
+   "text": "We had a small fire last year, the wall needs repainting",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-075",
+   "text": "Không có khói và cũng không cháy, chỉ là ổ cắm hơi nóng",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-076",
+   "text": "Nhờ thợ lắp công tắc chống giật cho phòng tắm",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-077",
+   "text": "Máy nước nóng báo lỗi E3, không nóng",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-078",
+   "text": "Cần vệ sinh bếp gas và thay ống dẫn mới",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-079",
+   "text": "Thay bình gas mới giúp mình, bình cũ hết gas",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-080",
+   "text": "Sofa bị ám mùi khói thuốc lá, cần giặt",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-081",
+   "text": "Rèm bị ám mùi khói bếp, nhờ giặt hấp",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-082",
+   "text": "Em xem phim có cảnh cháy nhà nên sợ quá, nhờ thợ kiểm tra dây điện",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-083",
+   "text": "Chị bảo vệ nhắc phải kiểm tra bình chữa cháy trước tháng sau",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-084",
+   "text": "Tôi cần báo giá vệ sinh máy lạnh gấp trong hôm nay",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-085",
+   "text": "Gấp lắm, nhờ thợ qua sớm để thay vòi nước",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-086",
+   "text": "Em muốn hỏi giá thay dây điện trong căn hộ 60m2",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-087",
+   "text": "Điều hòa nhà mình có mùi hôi, nhờ vệ sinh",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H1-088",
+   "text": "Cho em hỏi giá nạp gas máy lạnh inverter 1.5HP",
+   "expected": null,
+   "kind": "clear",
+   "service": "hvac"
+  },
+  {
+   "id": "H1-089",
+   "text": "Mình ngửi thấy mùi khét nhẹ từ ổ cắm khi bật bàn ủi",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-090",
+   "text": "Ổ điện bị chập, nổ lốp bốp một cái",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-091",
+   "text": "Có mùi khét từ tủ lạnh",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-092",
+   "text": "Rò điện, chạm vào vỏ máy giặt thấy tê tê",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-093",
+   "text": "Máy nóng bất thường và có mùi nhựa cháy",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-094",
+   "text": "Cầu dao tự nhảy liên tục, hơi nóng ở dây",
+   "expected": null,
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-095",
+   "text": "Nghe tiếng nổ lớn trong tủ điện",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-096",
+   "text": "Hơi gas ngửi hơi nhẹ sau khi thay bình, chắc không sao",
+   "expected": "gas",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-097",
+   "text": "Con mình hít phải khói bếp, ho nhiều",
+   "expected": "medical",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-098",
+   "text": "Anh thợ bị điện giật nhẹ, tê tay một chút",
+   "expected": "medical",
+   "kind": "judgement",
+   "currently": "medical"
+  },
+  {
+   "id": "H1-099",
+   "text": "Ổ cắm nóng ran và hơi đổi màu",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H1-100",
+   "text": "Máy nước nóng bị rò điện, em sờ vào bị giật",
+   "expected": "medical",
+   "kind": "judgement",
+   "currently": null
+  }
+ ],
+ "status": "development",
+ "firstRun": "set H1 (first run, unchanged classifier) clear: 72/88 correct; false negatives 14, false positives 1, wrong route 1"
+}

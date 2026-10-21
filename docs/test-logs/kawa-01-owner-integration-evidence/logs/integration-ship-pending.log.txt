@@ -1,0 +1,120 @@
+ship readiness on HEAD
+
+git state
+  FAIL  96 path(s) not committed — a push carries only what is committed
+          staged     .agents/skills/kael-core-hygiene/SKILL.md
+          staged     .agents/skills/kael-ship/SKILL.md
+          staged     .agents/skills/kael-ship/agents/openai.yaml
+          staged     .agents/skills/kael-solve-conflict-maximize/SKILL.md
+          staged     .agents/skills/kael-solve-conflict-maximize/agents/openai.yaml
+          staged     .claude/MEMORY.md
+          staged     .claude/hooks/verify-test-integrity.mjs
+          staged     .claude/settings.json
+          staged     .claude/skills/kael-core-hygiene/SKILL.md
+          staged     .claude/skills/kael-ship/SKILL.md
+          staged     .claude/skills/kael-ship/agents/openai.yaml
+          staged     .claude/skills/kael-solve-conflict-maximize/SKILL.md
+          staged     .claude/skills/kael-solve-conflict-maximize/agents/openai.yaml
+          staged     .easignore
+          staged     .github/workflows/ci.yml
+          staged     .github/workflows/release-production-verification.yml
+          staged     .github/workflows/release-production.yml
+          staged     AGENTS.md
+          staged     CLAUDE.md
+          staged     apps/api/src/__tests__/harness/stage1-production-release-workflow-pillar.test.ts
+          staged     apps/api/src/__tests__/unit/native-push-release-readiness-pillar.test.ts
+          staged     apps/mobile/app.json
+          staged     apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
+          staged     apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts
+          staged     apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx
+          staged     apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
+          staged     apps/mobile/config/__tests__/ios-release-readiness-pillar-test.tsx
+          staged     apps/mobile/config/release-client-policy.json
+          staged     apps/mobile/lib/kael-stream.ts
+          staged     config/harness/manifest.json
+          staged     config/harness/transaction-critical-coverage.json
+          staged     docs/INDEX.md
+          staged     docs/agent-lessons.md
+          staged     docs/memory/2026-10.md
+          staged     docs/ops/github-actions-cost.md
+          staged     docs/ops/harness/local-production-release.md
+          staged     docs/ops/harness/verification-release.md
+          staged     docs/test-logs/INDEX.md
+          staged     docs/test-logs/kawa-execution-ledger.md
+          staged     governance/critical.md
+          staged     governance/protocols/code-hygiene.md
+          staged     governance/protocols/solve-conflict-maximize.md
+          staged     governance/protocols/test-pillars.md
+          staged     governance/protocols/work-router.md
+          staged     package.json
+          staged     packages/shared/src/contracts/emergency-guidance.ts
+          staged     scripts/check-added-source-hygiene.mjs
+          staged     scripts/check-added-source-hygiene.test.mjs
+          staged     scripts/check-comment-discipline.mjs
+          staged     scripts/check-comment-discipline.test.mjs
+          staged     scripts/check-test-integrity.mjs
+          staged     scripts/check-test-integrity.test.mjs
+          staged     scripts/check-workflow-cost.mjs
+          staged     scripts/harness/deployment-drift.mjs
+          staged     scripts/harness/deployment-drift.test.mjs
+          staged     scripts/harness/generate-verification-workflow.mjs
+          staged     scripts/harness/generate-verification-workflow.test.mjs
+          staged     scripts/harness/github-merge-approval.mjs
+          staged     scripts/harness/github-merge-approval.test.mjs
+          staged     scripts/harness/hosted-release-artifact.mjs
+          staged     scripts/harness/plan55-workflow-contract.test.mjs
+          staged     scripts/harness/production-release-credentials.mjs
+          staged     scripts/harness/production-release-credentials.ps1
+          staged     scripts/harness/production-release-credentials.sh
+          staged     scripts/harness/production-release-runner.mjs
+          staged     scripts/harness/production-release-runner.test.mjs
+          staged     scripts/harness/production-release-steps.yml
+          staged     scripts/harness/release-bundle.mjs
+          staged     scripts/harness/release-bundle.test.mjs
+          staged     scripts/harness/release-control-timing.mjs
+          staged     scripts/harness/release-control.mjs
+          staged     scripts/harness/run-production-release-pnpm.ps1
+          staged     scripts/harness/runtime-release-bindings.test.mjs
+          staged     scripts/harness/transaction-critical-coverage.test.mjs
+          staged     scripts/harness/transaction-release-gate.test.mjs
+          staged     scripts/lib/comment-lines.mjs
+          staged     scripts/lib/unified-diff.mjs
+          staged     scripts/run-supabase.ps1
+          staged     scripts/run-supabase.sh
+          staged     supabase/functions/_shared/contracts/emergency-guidance.ts
+          staged     supabase/functions/mobile-api/_shared/domains/customer/assistant.ts
+          staged     supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/session-store.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
+          staged     supabase/functions/mobile-api/_shared/domains/matching/accept.ts
+          staged     supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts
+          staged     supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts
+          staged     supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+          staged     supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts
+          staged     supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts
+          staged     supabase/functions/mobile-api/_shared/platform/turn-trace.ts
+
+gates
+  ok    comment discipline         1.8s
+  ok    source residue             0.7s
+  ok    structure and ratchets     0.5s
+  ok    skills mirror              0.2s
+  ok    skill contracts            0.1s
+  ok    protocol routes            0.1s
+  ok    work-router coverage       0.1s
+  ok    runner parity              0.1s
+  ok    harness assurance          107.9s
+  ok    script fixture suites      90.9s
+
+not run by this command
+  pnpm type-check, test, build, lint         pnpm is on PATH; run it yourself
+  deno check on the Edge functions           deno is not on PATH here
+  migration replay and the SQL actor matrix  supabase is not on PATH here
+  CI runs all of these on the pull request. This command does not stand in for them.
+
+NOT READY — git state

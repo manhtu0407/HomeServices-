@@ -1,0 +1,11 @@
+{
+  "head": "062db16094a5eb8168e9bdec9823c221aea729ae",
+  "main": "111988b0ad6ec276082f6a4706866401fc887e4b",
+  "merge_base": "ce4bd3cd98c72a46ea14d4cc60d24e53c0b91f72",
+  "simulation_tree_with_conflict_markers": "22775a6ec244b3be4c5859cf0580be35f4671453",
+  "conflicts": [
+    ".claude/MEMORY.md",
+    "docs/memory/2026-10.md"
+  ],
+  "working_merge_performed": false
+}

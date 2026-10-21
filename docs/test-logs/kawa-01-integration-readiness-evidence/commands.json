@@ -1,0 +1,275 @@
+{
+  "finalPass": [
+    {
+      "lane": "T0",
+      "exitCode": 0,
+      "command": "pnpm test:api --reporter=default --reporter=json --outputFile=../../.scratch/kawa01-integration-20261021/api-vitest-final.json",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "id": "final-api-full",
+      "started": "2026-10-21T13:50:30.5854231Z",
+      "dirtyCandidate": true,
+      "ended": "2026-10-21T13:52:05.7881031Z"
+    },
+    {
+      "id": "final-build-api",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:21.5629216Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:51:59.2902625Z",
+      "command": "pnpm build:api",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-diff-check",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:53:22.3623831Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:53:22.2638645Z",
+      "command": "git diff --check",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-harness-access",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:53:17.7476536Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:53:05.1983059Z",
+      "command": "pnpm harness:access:check",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-harness-capabilities",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:53:20.6672547Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:53:19.3669608Z",
+      "command": "pnpm harness:capabilities:check",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-harness-privileged",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:53:19.3652012Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:53:17.7502087Z",
+      "command": "pnpm harness:privileged:check",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-harness-transactions",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:53:22.2621629Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:53:20.6690275Z",
+      "command": "pnpm harness:transactions:check",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-lint-authority",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:26.3146433Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:21.5659316Z",
+      "command": "pnpm lint:authority",
+      "exitCode": 1,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-lint-comments",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:28.3877282Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:26.3184835Z",
+      "command": "pnpm lint:comments --diff origin/main",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-lint-edge-db",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:31.1642466Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:28.3898645Z",
+      "command": "pnpm lint:edge-db",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-migration-inventory",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:33.0820060Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:31.1669323Z",
+      "command": "pnpm harness:migrations:check",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "dirtyCandidate": true,
+      "command": "pnpm test:mobile --runInBand --watch=false --json --outputFile=../../.scratch/kawa01-integration-20261021/mobile-jest-final.json",
+      "lane": "T0",
+      "started": "2026-10-21T13:50:30.5854237Z",
+      "ended": "2026-10-21T13:56:34.3037782Z",
+      "exitCode": 0,
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "id": "final-mobile-full"
+    },
+    {
+      "id": "final-mobile-lint",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:54:44.3880353Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:53:22.3638869Z",
+      "command": "pnpm lint:mobile",
+      "exitCode": 1,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-pillar-registry",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:34.6427543Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:33.0837693Z",
+      "command": "pnpm harness:pillars:check",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-playbooks",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:37.2186742Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:35.9746789Z",
+      "command": "pnpm lint:playbooks",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-production-copy",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:39.8895807Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:37.2205004Z",
+      "command": "pnpm lint:production-ui-copy",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-react-doctor",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:53:05.1952160Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:42.4215468Z",
+      "command": "pnpm doctor:react:changed",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-shared-tests",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:51:59.2853226Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:51:53.7889730Z",
+      "command": "pnpm test:shared",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-skills-contracts",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:42.4192917Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:41.1938656Z",
+      "command": "pnpm skills:contracts",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-skills-sync",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:41.1922022Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:39.8913505Z",
+      "command": "pnpm skills:check",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-test-collection",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:52:35.9726326Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:52:34.6446140Z",
+      "command": "pnpm lint:test-collection",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-type-api",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:50:48.5898500Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:50:30.5854395Z",
+      "command": "pnpm type-check:api",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-type-mobile",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:51:46.7629601Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:50:48.6784787Z",
+      "command": "pnpm type-check:mobile",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    },
+    {
+      "id": "final-type-shared",
+      "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+      "ended": "2026-10-21T13:51:53.7838210Z",
+      "lane": "T0",
+      "started": "2026-10-21T13:51:46.7697520Z",
+      "command": "pnpm type-check:shared",
+      "exitCode": 0,
+      "dirtyCandidate": true
+    }
+  ],
+  "otherRequired": [
+    {
+      "id": "ship-check",
+      "command": "pnpm ship:check",
+      "exitCode": 1,
+      "source": "final child output reports ELIFECYCLE exit 1; wrapper lingered with no live node children and was interrupted after final output",
+      "machineGatesPassed": 10,
+      "gitState": "4 uncommitted source paths",
+      "wrapperInterrupted": true
+    },
+    {
+      "ended": "2026-10-21T13:36:39.6818800Z",
+      "command": "pnpm docker:version:ensure",
+      "exitCode": 1
+    },
+    {
+      "limitation": "committed candidate HEAD versus main, plus final incremental source separately inspected",
+      "command": "latest main ratchets --diff origin/main",
+      "addedHygieneExit": 0,
+      "zeroCommentsExit": 1,
+      "testIntegrityExit": 0
+    },
+    {
+      "lane": "T0",
+      "id": "integration-mobile-final",
+      "command": "node node_modules/jest/bin/jest.js --runInBand --watch=false --runTestsByPath components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx config/__tests__/ios-release-readiness-pillar-test.tsx",
+      "exitCode": 0,
+      "source": "final merged index source, protected memory excluded"
+    }
+  ],
+  "preliminaryPass": "all earlier logs retained; callback cross-chunk regression was discovered after the preliminary full pass; one complete final pass followed source stabilization"
+}

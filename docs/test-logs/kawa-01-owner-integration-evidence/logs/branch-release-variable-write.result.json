@@ -1,0 +1,4 @@
+{
+  "command": "gh variable set NESTSCOUT_BACKEND_RELEASE_ENABLED --body false",
+  "exitCode": 0
+}

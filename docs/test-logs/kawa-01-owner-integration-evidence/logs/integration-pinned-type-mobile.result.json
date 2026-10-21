@@ -1,0 +1,10 @@
+{
+  "lane": "T0",
+  "dirtyCandidate": true,
+  "ended": "2026-10-21T14:37:41.0720814Z",
+  "command": "corepack pnpm type-check:mobile",
+  "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+  "started": "2026-10-21T14:37:02.5181187Z",
+  "exitCode": 0,
+  "id": "type-mobile"
+}

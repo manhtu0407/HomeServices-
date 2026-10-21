@@ -1,0 +1,6 @@
+
+> nestscout@0.1.0 lint:residue <repo>
+> node scripts/run.mjs run-node scripts/check-source-residue.mjs
+
+source residue ok: 2723 source files (1620 runtime) — no focused or skipped tests, no debug probes, no runtime console.log
+

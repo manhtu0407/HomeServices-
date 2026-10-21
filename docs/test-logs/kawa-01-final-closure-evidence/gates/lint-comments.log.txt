@@ -1,0 +1,5 @@
+
+> nestscout@0.1.0 lint:comments <repo>
+> node scripts/run.mjs run-node scripts/check-comment-discipline.mjs
+
+comment-discipline: clean — no note-banner comments found.

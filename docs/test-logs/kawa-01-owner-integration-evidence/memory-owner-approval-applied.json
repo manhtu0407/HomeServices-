@@ -1,0 +1,26 @@
+{
+  "approvedAnswer": "Duyệt nguyên cả hai bản memory",
+  "approvedAt": "2026-10-21T14:41:41.425Z",
+  "writes": [
+    {
+      "checkout": "working-branch",
+      "path": ".claude/MEMORY.md",
+      "sha256": "91c57396ee2df466ea3922801c9de303d07ccd58ede01bf52b1781ce205ea45d"
+    },
+    {
+      "checkout": "isolated-integration",
+      "path": ".claude/MEMORY.md",
+      "sha256": "91c57396ee2df466ea3922801c9de303d07ccd58ede01bf52b1781ce205ea45d"
+    },
+    {
+      "checkout": "working-branch",
+      "path": "docs/memory/2026-10.md",
+      "sha256": "8a863c71143704a3c90bfa147dcc91f45172ac432cbc887feb62dd2d283024af"
+    },
+    {
+      "checkout": "isolated-integration",
+      "path": "docs/memory/2026-10.md",
+      "sha256": "8a863c71143704a3c90bfa147dcc91f45172ac432cbc887feb62dd2d283024af"
+    }
+  ]
+}

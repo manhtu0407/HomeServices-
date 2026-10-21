@@ -19,7 +19,7 @@ import {
 } from "./evidence-gap-policy.ts";
 import { appendKaelSystemTurn } from "./session-store.ts";
 import { assistantTraceFields } from "../../kael/agents/customer-assistant-trace.ts";
-import { buildKaelTurnTrace, logKaelTurnTrace, type KaelTurnTrace, type KaelTurnTraceInput } from "../../platform/turn-trace.ts";
+import { buildKaelTurnTrace, hashKaelActorRole, logKaelTurnTrace, type KaelTurnTrace, type KaelTurnTraceInput } from "../../platform/turn-trace.ts";
 import { pendingClarificationSlotOf, slotAskCountsOf } from "./case-work-artifact.ts";
 
 export type CaseTurnRouting = {
@@ -204,7 +204,12 @@ export async function answerKaelCaseQuestion(input: CaseQuestionInput) {
   });
   const currentStatus = asKaelChatStatus(input.session.status);
   const turnTrace = caseTurnTrace(input, quoteTurn, traceFields);
-  if (turnTrace) logKaelTurnTrace(turnTrace);
+  if (turnTrace) {
+    const actorRoleHash = turnTrace.stage === "answered"
+      ? undefined
+      : await hashKaelActorRole(input.ctx.user.id, input.ctx.role);
+    logKaelTurnTrace(turnTrace, console.warn, actorRoleHash);
+  }
   await appendKaelSystemTurn(input.client, input.sessionId, {
     contentType: "clarification",
     text: text.slice(0, 4_000),

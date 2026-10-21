@@ -1,0 +1,309 @@
+diff --git a/apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx b/apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
+index f66446df..7dfa93e5 100644
+--- a/apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
++++ b/apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
+@@ -11,11 +11,15 @@ jest.mock('@/lib/runtime-config', () => ({ mobileRuntimeConfig: {
+ jest.mock('@/lib/services', () => {
+   const actual = jest.requireActual('@/lib/services')
+   const stream = jest.requireActual('@/lib/kael-stream') as typeof import('@/lib/kael-stream')
+-  return { ...actual, kaelChatStreamService: { ...actual.kaelChatStreamService,
++  return { ...actual, customerKaelConversationService: { ...actual.customerKaelConversationService,
++    streamTurn: (...args: Parameters<typeof stream.streamCustomerKaelConversationTurn>) => stream.streamCustomerKaelConversationTurn(args[0], args[1], args[2], args[3], mockFetch),
++  }, kaelChatStreamService: { ...actual.kaelChatStreamService,
+     sendTurn: (...args: Parameters<typeof stream.streamKaelChatTurn>) => stream.streamKaelChatTurn(args[0], args[1], args[2], args[3], mockFetch),
+   } }
+ })
+ jest.mock('@/lib/sentry-runtime', () => ({ Sentry: { addBreadcrumb: jest.fn() } }))
++jest.mock('@/lib/auth-provider', () => ({ useAuth: () => ({ session: { user: { id: 'customer-emergency-normal', app_metadata: {} } } }) }))
++jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'))
+ jest.mock('@/lib/supabase', () => ({ supabase: null }))
+ jest.mock('@/lib/release-client-platform', () => ({ releaseClientPlatform: () => 'ios' }))
+ jest.mock('@/lib/media-upload', () => ({ cleanupKaelChatMediaRefs: jest.fn(async () => true) }))
+@@ -23,6 +27,9 @@ jest.mock('@/lib/media-upload', () => ({ cleanupKaelChatMediaRefs: jest.fn(async
+ import { resetConnectivityForTests } from '@/lib/connectivity'
+ import { CustomerKaelEmergencyAccess } from '../kael-chat/customer-kael-emergency-access'
+ import { getCustomerThemeTokens } from '../customer-theme'
++import type { CustomerKaelConversationResponse } from '@/lib/api-types/customer'
++import { useCustomerKaelConversations } from '../kael-chat/use-customer-kael-conversations'
++import { reconcileCommittedKaelTurn } from '../kael-chat/customer-kael-conversation-requests'
+ import type { KaelChatResponse } from '@/lib/api-types'
+ import { streamKaelChatTurn } from '@/lib/kael-stream'
+ import { api } from '@/lib/api'
+@@ -60,13 +67,13 @@ function rejectedResponse(status: number, payload: unknown) {
+   return { ok: false, status, body: null, headers: { get: () => null }, text: async () => JSON.stringify(payload) }
+ }
+ 
+-function useRequestHarness(mode: 'normal' | 'case' = 'normal') {
++function useRequestHarness(mode: 'normal' | 'case' = 'normal', conversations?: ReturnType<typeof useCustomerKaelConversations>) {
+   const chatUi = useCustomerKaelChatUiState()
+   const conversation = useCustomerKaelConversationState({ initialLoading: false, initialMode: mode, pendingDraft: null })
+   const guard = useCustomerKaelRequestGuard('customer-emergency:normal')
+   const serviceRef = useRef<ServiceType | null>('electrical')
+   const actions = useCustomerKaelMessageActions({
+-    chatUi, conversation, deal: null, hasSharedJobIncident: false,
++    chatUi, conversation, conversations, deal: null, hasSharedJobIncident: false,
+     jobIncidentThread: {} as Parameters<typeof useCustomerKaelMessageActions>[0]['jobIncidentThread'],
+     kaelRequestGuard: guard, language: 'vi', mode,
+     processController: { startBackendProcessLines: jest.fn(), stopProcessLines: jest.fn() } as unknown as Parameters<typeof useCustomerKaelMessageActions>[0]['processController'],
+@@ -199,3 +206,155 @@ describe(PILLAR.id + ': actual error state and local access', () => {
+   })
+ 
+ })
++
++
++describe(PILLAR.id + ': partial-output terminal failures', () => {
++  beforeEach(() => { mockFetch.mockReset(); global.fetch = mockFetch })
++  afterEach(() => resetConnectivityForTests())
++  it('retains the received emergency when an error observer throws after deltas', async () => {
++    const onResult = jest.fn()
++    mockFetch.mockResolvedValue(streamResponse(
++      'event: response_delta\ndata: ' + JSON.stringify({ turn_id: 'partial', delta: 'Partial reply' }) + '\n\n' +
++      'event: error\ndata: ' + JSON.stringify({ code: 'DB_ERROR', message: 'Cannot save reply', emergency }) + '\n\n',
++    ))
++    const result = await streamKaelChatTurn('case-delivery-test', { message: 'smoke', photo_urls: [] }, {
++      onError: () => { throw new Error('observer interrupted') }, onResult,
++    }, undefined, mockFetch)
++    expect(result).toMatchObject({ success: false, code: 'DB_ERROR', status: 200, emergency })
++    expect(onResult).not.toHaveBeenCalled()
++  })
++})
++
++
++function successResponse(data: unknown) {
++  return { ok: true, status: 200, headers: { get: () => 'application/json' }, text: async () => JSON.stringify(data) }
++}
++const validCase = { session: { ...chatBefore.session, job_id: null, customer_id: 'customer-emergency-normal',
++  service_type: 'electrical', status: 'active', case_phase: 'analysis', diagnosis_scope: null,
++  scheduled_at: null, estimate: null, started_at: '2026-10-21T00:00:00Z', estimate_ready_at: null,
++  total_turns: 0, total_cost_usd: 0, next_action: 'await_input',
++}, turns: [] }
++const frame = (event: string, data: unknown) => 'event: ' + event + '\ndata: ' + JSON.stringify(data) + '\n\n'
++const errorFrame = frame('error', { code: 'DB_ERROR', message: 'Cannot save reply', emergency })
++const deltaFrame = frame('response_delta', { turn_id: 'partial', delta: 'Partial reply' })
++
++describe(PILLAR.id + ': recovered state must not erase an explicit safety failure', () => {
++  beforeEach(() => { mockFetch.mockReset(); global.fetch = mockFetch })
++  afterEach(() => resetConnectivityForTests())
++  it('does not turn an explicit emergency failure into a successful Case recovery', async () => {
++    mockFetch.mockResolvedValue(successResponse({ ...chatBefore, turns: [
++      { role: 'customer', turn_index: 1 }, { role: 'kael', turn_index: 2 },
++    ] }))
++    const failure = { success: false as const, code: 'STREAM_NETWORK', error: 'failed', status: 200, emergency: { version: 'v1' as const, route: 'fire' as const } }
++    expect(await reconcileCommittedKaelTurn(chatBefore, failure)).toEqual(failure)
++    expect(mockFetch).not.toHaveBeenCalled()
++  })
++  it('keeps normal conversation guidance and failure even if a stored partial exchange exists', async () => {
++    let requestId = ''
++    const response = (): CustomerKaelConversationResponse => ({ session: {
++      id: 'normal-emergency-session', mode: 'normal', customer_id: 'customer-emergency-normal',
++      case_job_id: null, case_session_id: null, client_request_id: 'create-id', title: null, pinned_at: null,
++      profile_id: null, service_type: null, started_at: '2026-10-21T00:00:00Z', updated_at: '2026-10-21T00:00:00Z', total_turns: requestId ? 2 : 0,
++    }, turns: requestId ? ['customer', 'kael'].map((role, index) => ({ id: 'turn-' + index, conversation_id: 'normal-emergency-session', client_request_id: requestId, role, turn_index: index + 1, text_content: 'Stored partial output', created_at: '2026-10-21T00:00:00Z' })) : [] } as CustomerKaelConversationResponse)
++    mockFetch.mockImplementation(async (url: string, options: { method?: string; body?: string }) => {
++      if (url.endsWith('/stream')) { requestId = JSON.parse(options.body!).client_request_id; return streamResponse(deltaFrame + frame('error', { code: 'STREAM_NETWORK', message: 'Cannot save reply', emergency })) }
++      if (options.method === 'POST') return successResponse(response())
++      if (url.includes('?')) return successResponse({ sessions: [] })
++      return successResponse(response())
++    })
++    const { result } = renderHook(() => {
++      const conversations = useCustomerKaelConversations('normal', 'vi')
++      return { conversations, ...useRequestHarness('normal', conversations) }
++    })
++    await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
++    expect(requestId).not.toBe('')
++    expect(result.current.conversation.emergencyGuidance).toEqual(emergency)
++    expect(result.current.conversation.loading).toBe(false)
++    expect(result.current.conversations.activeResponse?.turns).toEqual([])
++    expect(result.current.conversation.streamingReply).toBeNull()
++    expect(result.current.conversation.error).toBeTruthy()
++  })
++})
++
++
++function chunkedStreamResponse(chunks: string[], disconnect = false) {
++  let index = 0
++  return { ok: true, status: 200, headers: { get: () => 'text/event-stream' }, body: { getReader: () => ({
++    read: async () => {
++      if (index < chunks.length) return { done: false, value: new Uint8Array(Buffer.from(chunks[index++])) }
++      if (disconnect) throw new TypeError('connection interrupted')
++      return { done: true }
++    }, cancel: jest.fn(async () => undefined),
++  }) } }
++}
++describe(PILLAR.id + ': terminal outcome after partial output', () => {
++  beforeEach(() => { mockFetch.mockReset(); global.fetch = mockFetch })
++  afterEach(() => resetConnectivityForTests())
++  it.each(['absent', 'interrupted-delta', 'interrupted-error'] as const)('keeps emergency available with %s callbacks', async observer => {
++    const onResult = jest.fn()
++    const interrupted = () => { throw new Error('callback interrupted') }
++    mockFetch.mockResolvedValue(chunkedStreamResponse([deltaFrame + errorFrame]))
++    const result = await streamKaelChatTurn('case-delivery-test', { message: 'smoke', photo_urls: [] }, {
++      onResult, ...(observer === 'interrupted-delta' ? { onResponseDelta: interrupted } : {}),
++      ...(observer === 'interrupted-error' ? { onError: interrupted } : {}),
++    }, undefined, mockFetch)
++    expect(result).toMatchObject({ success: false, status: 200, code: 'DB_ERROR', emergency })
++    expect(onResult).not.toHaveBeenCalled()
++  })
++  it('never commits a result callback if a later frame reports emergency failure', async () => {
++    const onResult = jest.fn()
++    mockFetch.mockResolvedValue(chunkedStreamResponse([deltaFrame, frame('result', validCase), errorFrame]))
++    const result = await streamKaelChatTurn('case-delivery-test', { message: 'smoke', photo_urls: [] }, { onResult }, undefined, mockFetch)
++    expect(result).toMatchObject({ success: false, code: 'DB_ERROR', emergency })
++    expect(onResult).not.toHaveBeenCalled()
++  })
++  it('emits one success callback for repeated valid results after a clean close', async () => {
++    const onResult = jest.fn()
++    mockFetch.mockResolvedValue(chunkedStreamResponse([frame('result', validCase), frame('result', validCase)]))
++    expect(await streamKaelChatTurn('case-delivery-test', { message: 'ordinary', photo_urls: [] }, { onResult }, undefined, mockFetch)).toMatchObject({ success: true, data: validCase })
++    expect(onResult).toHaveBeenCalledTimes(1)
++  })
++  it.each([deltaFrame, deltaFrame + frame('response.completed', { response_id: 'partial', elapsed_ms: 1 })])('a clean close without result cannot commit partial content', async partial => {
++    const onResult = jest.fn()
++    mockFetch.mockResolvedValue(chunkedStreamResponse([partial]))
++    expect(await streamKaelChatTurn('case-delivery-test', { message: 'ordinary', photo_urls: [] }, { onResult }, undefined, mockFetch)).toMatchObject({ success: false, code: 'STREAM_ENDED' })
++    expect(onResult).not.toHaveBeenCalled()
++  })
++  it('a disconnect after deltas stays failed without inventing guidance', async () => {
++    const onResult = jest.fn()
++    mockFetch.mockResolvedValue(chunkedStreamResponse([deltaFrame], true))
++    const result = await streamKaelChatTurn('case-delivery-test', { message: 'ordinary', photo_urls: [] }, { onResult }, undefined, mockFetch)
++    expect(result).toMatchObject({ success: false, code: 'STREAM_NETWORK' })
++    expect(result).not.toHaveProperty('emergency')
++    expect(onResult).not.toHaveBeenCalled()
++  })
++  it('partial-output failures reach the real Case reducer without duplicate success turns', async () => {
++    mockFetch.mockImplementation(async () => chunkedStreamResponse([deltaFrame, frame('result', validCase), errorFrame]))
++    const { result } = renderHook(() => useRequestHarness('case'))
++    act(() => result.current.conversation.setChat(chatBefore))
++    for (let attempt = 0; attempt < 2; attempt++) await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
++    expect(result.current.conversation.chat).toEqual(chatBefore)
++    expect(result.current.conversation.turns).toEqual([])
++    expect(result.current.conversation.assistantTurns).toEqual([])
++    expect(result.current.conversation.streamingReply).toBeNull()
++    expect(result.current.conversation.emergencyGuidance).toEqual(emergency)
++    expect(result.current.conversation.loading).toBe(false)
++  })
++  it('ordinary ambiguous Case recovery still accepts a confirmed stored exchange', async () => {
++    const recovered = { ...chatBefore, turns: [{ role: 'customer', turn_index: 1 }, { role: 'kael', turn_index: 2 }] }
++    mockFetch.mockResolvedValue(successResponse(recovered))
++    expect(await reconcileCommittedKaelTurn(chatBefore, { success: false, code: 'STREAM_NETWORK', error: 'failed', status: 0 })).toMatchObject({ success: true, data: recovered })
++  })
++})
++
++
++it('keeps reading after an interrupted delta callback so the later emergency frame is delivered', async () => {
++  mockFetch.mockReset()
++  const onResponseDelta = jest.fn(() => { throw new Error('observer interrupted') })
++  const onResult = jest.fn()
++  mockFetch.mockResolvedValue(chunkedStreamResponse([deltaFrame, errorFrame]))
++  const result = await streamKaelChatTurn('case-delivery-test', { message: 'smoke', photo_urls: [] }, { onResponseDelta, onResult }, undefined, mockFetch)
++  expect(onResponseDelta).toHaveBeenCalledTimes(1)
++  expect(result).toMatchObject({ success: false, code: 'DB_ERROR', emergency })
++  expect(onResult).not.toHaveBeenCalled()
++})
+diff --git a/apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts b/apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts
+index 52364586..cb0204f8 100644
+--- a/apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts
++++ b/apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts
+@@ -56,7 +56,7 @@ export async function reconcileCommittedKaelTurn(
+   previous: KaelChatResponse,
+   streamed: ApiResult<KaelChatResponse>,
+ ): Promise<ApiResult<KaelChatResponse>> {
+-  if (streamed.success || !RECONCILABLE_KAEL_STREAM_FAILURES.has(streamed.code)) return streamed
++  if (streamed.success || streamed.emergency || !RECONCILABLE_KAEL_STREAM_FAILURES.has(streamed.code)) return streamed
+   try {
+     const recovered = await kaelChatService.get(previous.session.id)
+     if (!recovered.success) return streamed
+diff --git a/apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts b/apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
+index 57445434..d208e434 100644
+--- a/apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
++++ b/apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
+@@ -488,7 +488,7 @@ export function useCustomerKaelConversations(
+       }
+       const committed = sent.success
+         ? sent.data
+-        : isAmbiguousConversationTurnFailure(sent)
++        : !sent.emergency && isAmbiguousConversationTurnFailure(sent)
+           ? await recoverCommittedConversationTurn(targetId, clientRequestId)
+           : null
+       if (
+diff --git a/apps/mobile/lib/kael-stream.ts b/apps/mobile/lib/kael-stream.ts
+index 453e71ab..d09b97d7 100644
+--- a/apps/mobile/lib/kael-stream.ts
++++ b/apps/mobile/lib/kael-stream.ts
+@@ -289,6 +289,7 @@ async function streamKaelTurn<T>(
+ 
+   const lifetime = createStreamLifetime(signal)
+   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
++  let terminalFailure: Extract<ApiResult<T>, { success: false }> | null = null
+   try {
+     const fetchStream = streamFetch ?? (await import('expo/fetch')).fetch
+     const response = await waitForStreamConnection(fetchStream(mobileApiUrl(path), {
+@@ -329,6 +330,7 @@ async function streamKaelTurn<T>(
+     const parser = createKaelSseParser()
+     let finalResult: T | null = null
+     let responseBytes = 0
++    let observerFailed = false
+ 
+     for (;;) {
+       const { done, value } = await lifetime.wait(reader.read())
+@@ -342,15 +344,22 @@ async function streamKaelTurn<T>(
+         }
+         chunk = decoder.push(value)
+       }
+-      for (const event of parser.push(chunk)) {
+-        if (event.type === 'stage') handlers.onStage?.(event)
+-        if (event.type === 'token') handlers.onToken?.(event)
+-        if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
+-        if (isKaelResponseStreamEvent(event)) handlers.onResponseEvent?.(event)
+-        if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
+-        if (event.type === 'error') {
+-          handlers.onError?.(event)
+-          return { success: false, error: event.message, code: event.code, status: response.status, ...(event.emergency ? { emergency: event.emergency } : {}) }
++      const events = parser.push(chunk)
++      const failure = events.find((event) => event.type === 'error')
++      if (failure?.type === 'error') {
++        terminalFailure = { success: false, error: failure.message, code: failure.code, status: response.status, ...(failure.emergency ? { emergency: failure.emergency } : {}) }
++        handlers.onError?.(failure)
++        return terminalFailure
++      }
++      for (const event of events) {
++        try {
++          if (event.type === 'stage') handlers.onStage?.(event)
++          if (event.type === 'token') handlers.onToken?.(event)
++          if (event.type === 'response_delta') handlers.onResponseDelta?.(event)
++          if (isKaelResponseStreamEvent(event)) handlers.onResponseEvent?.(event)
++          if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
++        } catch {
++          observerFailed = true
+         }
+         if (event.type === 'result') {
+           if (!resultGuard(event.data)) {
+@@ -363,14 +372,17 @@ async function streamKaelTurn<T>(
+             return { success: false, error: invalidResult.message, code: invalidResult.code, status: response.status }
+           }
+           const result = event.data
+-          handlers.onResult?.({ type: 'result', data: result })
+           finalResult = result
+         }
+       }
+       if (done) break
+     }
+ 
+-    if (finalResult) return { success: true, data: finalResult, status: response.status }
++    if (observerFailed) throw new Error('STREAM_CALLBACK_FAILED')
++    if (finalResult) {
++      handlers.onResult?.({ type: 'result', data: finalResult })
++      return { success: true, data: finalResult, status: response.status }
++    }
+     return {
+       success: false,
+       error: 'Kael stream ended before a result.',
+@@ -378,6 +390,7 @@ async function streamKaelTurn<T>(
+       status: response.status,
+     }
+   } catch (error) {
++    if (terminalFailure) return terminalFailure
+     if (signal?.aborted) {
+       return {
+         success: false,

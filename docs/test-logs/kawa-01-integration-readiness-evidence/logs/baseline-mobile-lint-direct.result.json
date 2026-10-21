@@ -1,0 +1,5 @@
+{
+  "exitCode": 1,
+  "baseline": "pristine git archive 910bad7d",
+  "command": "node node_modules/eslint/bin/eslint.js . --format json --output-file ../../baseline-mobile-lint.json"
+}

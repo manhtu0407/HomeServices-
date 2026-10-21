@@ -1,0 +1,93 @@
+A	docs/test-logs/kawa-01-independent-quality-evidence/.gitattributes
+A	docs/test-logs/kawa-01-independent-quality-evidence/baseline-gate-comparison.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/blind-route-green.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/blind-route-red.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/build-api.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/candidate-metadata.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/changed-files.tsv
+A	docs/test-logs/kawa-01-independent-quality-evidence/correction-inventory.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/eas-baseline.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/eas-corrected.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/emergency-trace-green.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/emergency-trace-red.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/evidence-renames.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/final-ship-check.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/final-test-api.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/final-type-check-api.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/gates-extra.jsonl
+A	docs/test-logs/kawa-01-independent-quality-evidence/gates-final.jsonl
+A	docs/test-logs/kawa-01-independent-quality-evidence/gates.jsonl
+A	docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-commits.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-commits.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-corrections.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-corrections.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-evidence.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-evidence.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-final-staged.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-final-staged.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/h5-reproduction.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/h5-reproduction.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/harness-access-check.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/harness-capabilities-check.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/harness-migrations-check.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/harness-pillars-check.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/harness-privileged-check.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/harness-transactions-check.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-api.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-authority.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-baseline.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-comments-working.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-corrected-api-files.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-edge-db.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-mobile.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-playbooks.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-test-collection.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/lint-workplan-final.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/memory-resolution-proposal.diff.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/merge-metadata.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/merge-simulation.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/owner-decisions.md
+A	docs/test-logs/kawa-01-independent-quality-evidence/p401-p415-api-final.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/p401-p415-api-final.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/pillar-discovery.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/pillar-id-collision-check.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/pr-classifier-recheck.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/protected-integrity.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/report.md
+A	docs/test-logs/kawa-01-independent-quality-evidence/reviewed-pr-inventory.tsv
+A	docs/test-logs/kawa-01-independent-quality-evidence/rpc-catalog-proposal.sql.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/safety-probe.cjs.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/safety-probe.json
+A	docs/test-logs/kawa-01-independent-quality-evidence/session-memory-draft.md
+A	docs/test-logs/kawa-01-independent-quality-evidence/source.patch.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/test-api.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/test-mobile.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/test-shared.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/type-check-api.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/type-check-mobile.log.txt
+A	docs/test-logs/kawa-01-independent-quality-evidence/type-check-shared.log.txt
+M	apps/api/src/__tests__/helpers/emergency-blind-eval.ts
+M	apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts
+M	apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts
+M	docs/test-logs/INDEX.md
+M	docs/test-logs/kawa-01-final-closure-evidence/README.txt
+M	docs/test-logs/kawa-01-final-closure-evidence/file-digests.txt
+M	docs/test-logs/kawa-execution-ledger.md
+M	supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts
+R100	docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log	docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log	docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log	docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log	docs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log	docs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log	docs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log	docs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log	docs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log	docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log.txt
+R100	docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log	docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log.txt

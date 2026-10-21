@@ -1,0 +1,23 @@
+{
+  "compared": 3711,
+  "canonicalLFEqual": true,
+  "mismatches": [],
+  "latestMain": "111988b0ad6ec276082f6a4706866401fc887e4b",
+  "firstParent": "556cfebc5c8a70ad48ae4716513a7321f5435b63",
+  "conflicts": [
+    ".claude/MEMORY.md",
+    "docs/memory/2026-10.md"
+  ],
+  "resolution": "exact owner-approved proposal bytes; no ours/theirs selection",
+  "originalApprovedHashes": [
+    {
+      "path": ".claude/MEMORY.md",
+      "sha256": "91c57396ee2df466ea3922801c9de303d07ccd58ede01bf52b1781ce205ea45d"
+    },
+    {
+      "path": "docs/memory/2026-10.md",
+      "sha256": "8a863c71143704a3c90bfa147dcc91f45172ac432cbc887feb62dd2d283024af"
+    }
+  ],
+  "history": "normal merge; no amend, rebase or force push"
+}

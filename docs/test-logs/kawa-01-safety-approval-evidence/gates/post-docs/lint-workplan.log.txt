@@ -1,0 +1,6 @@
+
+> nestscout@0.1.0 lint:workplan <repo>
+> node scripts/run.mjs run-node scripts/check-work-plan.mjs
+
+work plan ok: 10 slices declared (10 closed, 0 pending), 102 files changed inside the declared read-window
+

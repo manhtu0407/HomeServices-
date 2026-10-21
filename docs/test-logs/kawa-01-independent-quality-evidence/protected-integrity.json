@@ -1,0 +1,54 @@
+[
+  {
+    "path": ".claude/MEMORY.md",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "docs/memory/2026-10.md",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "governance/Plan.md",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "governance/critical.md",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "governance/RULES.md",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "governance/STRUCTURES.md",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "scripts/structure-baseline.json",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": ".easignore",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "apps/mobile/.easignore",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "pnpm-lock.yaml",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts",
+    "unchanged_from_reviewed_head": true
+  },
+  {
+    "path": "apps/api/src/__tests__/kael-edge-runtime/fixtures/emergency-phrases/sealed-h5.json",
+    "unchanged_from_reviewed_head": true
+  }
+]

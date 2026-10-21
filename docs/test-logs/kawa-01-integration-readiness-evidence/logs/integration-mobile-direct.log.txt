@@ -1,0 +1,8 @@
+PASS components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx (31.685 s)
+PASS config/__tests__/ios-release-readiness-pillar-test.tsx
+
+Test Suites: 2 passed, 2 total
+Tests:       32 passed, 32 total
+Snapshots:   0 total
+Time:        38.637 s
+Ran all test suites within paths "components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx", "config/__tests__/ios-release-readiness-pillar-test.tsx".

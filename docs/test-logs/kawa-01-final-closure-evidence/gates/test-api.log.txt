@@ -1,0 +1,120 @@
+✔ revalidates the generated proof against the exact archived source artifact bytes (2.1473ms)
+✔ requires exact source artifacts when verifying a deployed guard proof (0.9472ms)
+✔ packages all deployed-guard gates from one verified release artifact without external evidence (10.1877ms)
+✔ protected-boundary checks compare against the current pull request base (1.6309ms)
+✔ Plan 55 release dispatches from default main and enforces Production-base ancestry without targeting Staging (1.1773ms)
+✔ Plan 55 can be dispatched through the registered CI workflow without rerunning its other lanes (1.537ms)
+✔ the serialized canary timeout reserves unconditional cleanup and setup time for checkpoint recovery (0.6092ms)
+✔ preflight gate proofs bind exact source and successful CI step outcomes before artifact upload (1.2495ms)
+✔ guard deploy is rollback-protected, deploys only mobile-api, and applies no migration or global service flag (0.4384ms)
+✔ release-stage gate proofs bind the pinned hosted baseline and rollback before the deploy step (0.641ms)
+✔ independent holdout attestation gates the OFF-only guard deployment before any Production mutation (1.9043ms)
+✔ guard deployment stays OFF-only and cannot precede independent holdout attestation (0.5692ms)
+✔ holdout review is revalidated before any service actor or scoped flag mutation (1.0434ms)
+✔ Production source attestation is bound to downloaded hosted Edge bytes and live deployment metadata (1.6984ms)
+✔ deployed guard proofs consume only exact post-deploy Production evidence before disarming rollback (0.7742ms)
+✔ service workflow preserves order and resumes only an exact-source cleaned checkpoint (2.1537ms)
+✔ release workflows are covered by the deployed evaluator source attestation (0.523ms)
+✔ Perplexity exception remains limited to the synthetic blind Plan 55 holdout (0.8191ms)
+✔ blind holdout review packaging is source-bound, read-only, and excludes label sources (0.9368ms)
+✔ gate evidence packaging preserves exact-source evidence and has no Production write capability (2.1719ms)
+✔ post-receipt hosted drift is read-only, exact-source, and bound to immutable Production snapshots (0.6495ms)
+✔ rollback drill prerequisites can be packaged without accepting the drill result itself (1.4111ms)
+✔ post-receipt finalization consumes separately attested exact-source artifacts and cannot mutate Production (1.8013ms)
+✔ successful six-service receipts automatically package and finalize the receipts_validated packet (1.455ms)
+✔ API JSON evidence is emitted by Vitest without dropping the Node contract suite (4.8042ms)
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts', LF will be replaced by CRLF the next time Git touches it
+✔ release source paths exclude only Git-confirmed unstaged deletions (202.146ms)
+✔ release source paths retain missing skip-worktree files so digesting still fails closed (241.449ms)
+✔ Edge health preserves the release manifest provider readiness contract without exposing credentials (3862.1982ms)
+✔ Edge push readiness requires explicit flags and stays false for absent or invalid values (0.7039ms)
+✔ staging native builds bind only with matching release and embedded artifact identity (2590.0679ms)
+✔ native staging evidence rejects unfinished, stale, mixed-target and incomplete artifacts (2669.5404ms)
+✔ candidate bindings require the complete checksummed production release (2553.2777ms)
+✔ Plan 55 release lane is bound through runtime health and cannot be set in Staging (2546.3766ms)
+✔ Backend lane keeps Build55 as a legacy client and binds the checked-in current app policy (2504.3376ms)
+✔ Backend lane binds without native binary attestation while preserving the Build55 legacy floor (4965.1743ms)
+✔ staging bindings require explicit compatibility evidence from real EAS inventory (2385.6221ms)
+✔ staging bindings reject invented or cross-environment client evidence (2422.9985ms)
+✔ rollback bindings preserve exact hosted identity and fail closed to unreleased or unknown (0.6438ms)
+✔ rollback restores each observed push capability instead of inheriting candidate flags (0.1638ms)
+✔ rollback bindings reject the wrong project and shell-unsafe values (0.2618ms)
+✔ rollback preflight accepts only a complete exact hosted Production binding snapshot (0.9731ms)
+✔ rollback preflight round-trips release-bound EAS identity only for the Backend lane (0.5053ms)
+ℹ tests 115
+ℹ suites 0
+ℹ pass 114
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 27582.2093

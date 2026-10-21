@@ -1,0 +1,9 @@
+
+> nestscout@0.1.0 type-check:api <repo>
+> node scripts/run.mjs run-package-script @nestscout/api type-check
+
+
+> @nestscout/api@0.1.0 type-check <repo>\apps\api
+> tsc --noEmit
+
+

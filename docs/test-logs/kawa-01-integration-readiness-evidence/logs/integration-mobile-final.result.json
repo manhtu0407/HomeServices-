@@ -1,0 +1,7 @@
+{
+  "lane": "T0",
+  "id": "integration-mobile-final",
+  "command": "node node_modules/jest/bin/jest.js --runInBand --watch=false --runTestsByPath components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx config/__tests__/ios-release-readiness-pillar-test.tsx",
+  "exitCode": 0,
+  "source": "final merged index source, protected memory excluded"
+}

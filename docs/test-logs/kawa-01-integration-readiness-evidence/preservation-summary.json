@@ -1,0 +1,10 @@
+{
+  "sourceFiles": 89,
+  "dirtySourcePaths": 4,
+  "protectedMemoryWritten": false,
+  "previousEvidenceDigestCount": 73,
+  "previousEvidenceDigestFailures": 0,
+  "noNewRpc": true,
+  "noNewMigration": true,
+  "noPaidProviderCalls": true
+}

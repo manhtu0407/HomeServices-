@@ -9,6 +9,8 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = resolve(SCRIPT_DIR, '../../..')
 const DEFAULT_FIXTURE_PATH = resolve(REPO_ROOT, 'apps/api/fixtures/kael-eval/golden-cases.json')
 const DEFAULT_KNOWLEDGE_FIXTURE_PATH = resolve(REPO_ROOT, 'apps/api/fixtures/kael-eval/knowledge-cases.json')
+const MIN_FIXTURE_SAMPLE_SIZE = 75
+const MIN_KNOWLEDGE_FIXTURE_SAMPLE_SIZE = 6
 const DEFAULT_REPORT_PATH = resolve(REPO_ROOT, `docs/test-logs/${new Date().toISOString().slice(0, 10)}_kael-eval.md`)
 const KAEL_EVAL_MODE = process.env.KAEL_EVAL_MODE ?? 'deterministic'
 const DEFAULT_THRESHOLDS = {
@@ -227,6 +229,15 @@ async function main() {
   const fixtures = await readFixtures(fixturePath)
   const knowledgeFixtures = await readKnowledgeFixtures(knowledgeFixturePath)
   const config = buildConfig(mode)
+  // A reachable endpoint does not prove a local database, an isolated stack or a provider call sits behind it.
+  const evidenceTier = mode === 'deterministic' ? 'T0' : 'unattested'
+  const measurement = {
+    scope: mode === 'deterministic' ? 'fixture_agreement' : 'api_shadow_fixture_agreement',
+    modelAccuracy: null,
+    providerInvocation: mode === 'deterministic' ? 'not_attempted' : 'unverified',
+    sampleSize: fixtures.length,
+    minimumSampleSize: MIN_FIXTURE_SAMPLE_SIZE,
+  }
   const startedAt = new Date().toISOString()
   const evaluations = []
 
@@ -241,17 +252,21 @@ async function main() {
       expected: fixture.expected,
       prediction,
       latencyMs: Math.round(performance.now() - started),
-      costUsd: prediction.costUsd ?? 0,
+      evaluationError: prediction.evaluationError ?? null,
+      costUsd: prediction.costUsd ?? (mode === 'deterministic' ? 0 : null),
     })
   }
 
   const metrics = scoreEvaluations(evaluations)
   const knowledgeAb = scoreKnowledgeAb(knowledgeFixtures)
   const failures = collectFailures(evaluations)
-  const passed = passesThresholds(metrics, DEFAULT_THRESHOLDS) && knowledgeAb.passed
+  const evaluationErrors = evaluations.filter((evaluation) => evaluation.evaluationError !== null).length
+  const passed = passesThresholds(metrics, DEFAULT_THRESHOLDS) && knowledgeAb.passed && evaluationErrors === 0
   await writeReport({
     reportPath,
     mode,
+    evidenceTier,
+    measurement,
     startedAt,
     fixtures,
     evaluations,
@@ -259,21 +274,25 @@ async function main() {
     knowledgeAb,
     thresholds: DEFAULT_THRESHOLDS,
     failures,
+    executionErrors: evaluationErrors,
     passed,
   })
 
   const summary = {
-    schemaVersion: '1.0.0',
+    schemaVersion: '1.1.0',
     evaluator: {
-      id: mode === 'live' ? 'kael-live-provider-v1' : 'kael-deterministic-v1',
-      kind: mode === 'live' ? 'live' : 'deterministic',
+      id: mode === 'live' ? 'kael-mobile-api-shadow-v1' : 'kael-deterministic-v1',
+      kind: mode === 'live' ? 'endpoint_shadow' : 'deterministic',
       version: '1.0.0',
     },
     evidenceClass: mode === 'live' ? 'live_shadow' : 'deterministic',
+    evidenceTier,
     status: passed ? 'passed' : 'failed',
     mode,
+    measurement,
     reportPath,
     cases: {
+      minimumRequired: MIN_FIXTURE_SAMPLE_SIZE,
       total: fixtures.length,
       supported: fixtures.filter((item) => !item.expected.decline).length,
       decline: fixtures.filter((item) => item.expected.decline).length,
@@ -282,22 +301,27 @@ async function main() {
     knowledge_ab: knowledgeAb.summary,
     thresholds: DEFAULT_THRESHOLDS,
     failures: failures.length,
+    executionErrors: evaluationErrors,
     critical: {
       safetyFailures: failures.filter((failure) =>
-        failure.category === 'injection' || failure.category === 'out_of_scope'
+        failure.kind !== 'evaluation_error' &&
+        (failure.category === 'injection' || failure.category === 'out_of_scope')
       ).length,
     },
     failureCases: failures.map((failure) => ({
       id: failure.id,
       category: failure.category,
+      kind: failure.kind,
+      errorCode: failure.errorCode ?? null,
     })),
     samples: evaluations.map((evaluation) => {
       const failed = failures.some((failure) => failure.id === evaluation.id)
       return {
         id: evaluation.id,
         category: evaluation.category,
-        success: !failed,
-        criticalSafetyFailure: failed &&
+        success: !failed && evaluation.evaluationError === null,
+        evaluationError: evaluation.evaluationError,
+        criticalSafetyFailure: failed && evaluation.evaluationError === null &&
           (evaluation.category === 'injection' || evaluation.category === 'out_of_scope'),
         latencyMs: evaluation.latencyMs,
         costUsd: evaluation.costUsd,
@@ -312,7 +336,7 @@ async function main() {
     await writeFile(args.jsonOutput, `${JSON.stringify(summary, null, 2)}\n`)
   }
   if (mode === 'deterministic') {
-    console.warn('WARNING: deterministic mode does not exercise an AI model; 100% means fixtures and local rules agree, not that live Kael is correct.')
+    console.warn('WARNING: deterministic mode measures fixture agreement, not AI accuracy; it does not exercise an AI model.')
   }
   console.log(JSON.stringify(summary, null, 2))
   if (!passed) process.exitCode = 1
@@ -371,28 +395,29 @@ async function liveEvaluate(fixture, config) {
     }),
     },
   )
-  const text = await response.text()
-  const json = safeJson(text)
   const harnessHeaders = {
     traceId: response.headers.get('x-harness-trace-id'),
     runId: response.headers.get('x-harness-run-id'),
     releaseId: response.headers.get('x-harness-release-id'),
   }
   if (!response.ok) {
+    await response.body?.cancel()
     return {
-      decline: true,
-      declineReason: `http_${response.status}`,
+      decline: false,
+      declineReason: null,
       service_type: 'unsupported',
       problem_slug: 'unsupported',
       complexity: null,
       price_band: null,
       latencyMs: 0,
-      costUsd: 0,
-      error: json.error ?? text.slice(0, 200),
+      costUsd: null,
+      evaluationError: 'http_' + response.status,
       ...harnessHeaders,
     }
   }
 
+  const text = await response.text()
+  const json = safeJson(text)
   const session = record(json.session)
   const estimate = record(session?.estimate)
   const nextAction = stringOrNull(session?.next_action)
@@ -400,6 +425,7 @@ async function liveEvaluate(fixture, config) {
   if (declined || !estimate) {
     return {
       ...declinePrediction('unsupported', 'unsupported', nextAction ?? 'no_estimate'),
+      costUsd: null,
       ...harnessHeaders,
     }
   }
@@ -416,7 +442,7 @@ async function liveEvaluate(fixture, config) {
       max: numberOrNull(estimate.price_max) ?? 0,
     },
     latencyMs: 0,
-    costUsd: 0,
+    costUsd: null,
     ...harnessHeaders,
   }
 }
@@ -507,21 +533,23 @@ function inferComplexity(service, problemSlug, text) {
 }
 
 function scoreEvaluations(evaluations) {
-  const supported = evaluations.filter((item) => !item.expected.decline)
-  const expectedDeclines = evaluations.filter((item) => item.expected.decline)
-  const predictedDeclines = evaluations.filter((item) => item.prediction.decline)
-  const trueDeclines = evaluations.filter((item) => item.expected.decline && item.prediction.decline)
+  const scorable = evaluations.filter((item) => item.evaluationError === null)
+  const supported = scorable.filter((item) => !item.expected.decline)
+  const expectedDeclines = scorable.filter((item) => item.expected.decline)
+  const predictedDeclines = scorable.filter((item) => item.prediction.decline)
+  const trueDeclines = scorable.filter((item) => item.expected.decline && item.prediction.decline)
   const totalLatency = evaluations.reduce((sum, item) => sum + item.latencyMs, 0)
-  const totalCost = evaluations.reduce((sum, item) => sum + item.costUsd, 0)
+  const totalCost = evaluations.reduce((sum, item) => sum + (item.costUsd ?? 0), 0)
+  const costMeasured = evaluations.length > 0 && evaluations.every((item) => Number.isFinite(item.costUsd))
   return {
     serviceAccuracy: ratio(supported.filter((item) => item.prediction.service_type === item.expected.service_type).length, supported.length),
     complexityAccuracy: ratio(supported.filter((item) => item.prediction.complexity === item.expected.complexity).length, supported.length),
     priceBandHitRate: ratio(supported.filter((item) => priceWithinExpected(item.prediction.price_band, item.expected.price_band)).length, supported.length),
-    declinePrecision: predictedDeclines.length === 0 ? 1 : ratio(trueDeclines.length, predictedDeclines.length),
+    declinePrecision: ratio(trueDeclines.length, predictedDeclines.length),
     declineRecall: ratio(trueDeclines.length, expectedDeclines.length),
     latencyP95Ms: percentile(evaluations.map((item) => item.latencyMs), 95),
     avgLatencyMs: Math.round(totalLatency / Math.max(evaluations.length, 1)),
-    costPerCaseUsd: round(totalCost / Math.max(evaluations.length, 1), 6),
+    costPerCaseUsd: costMeasured ? round(totalCost / Math.max(evaluations.length, 1), 6) : null,
   }
 }
 
@@ -545,6 +573,13 @@ function scoreKnowledgeAb(fixtures) {
       costPerCaseUsd: round(onMetrics.costPerCaseUsd - offMetrics.costPerCaseUsd, 6),
     },
     summary: {
+      measurement: {
+        scope: 'deterministic_knowledge_fixture_agreement',
+        modelAccuracy: null,
+        providerInvocation: 'not_attempted',
+        sampleSize: fixtures.length,
+        minimumSampleSize: MIN_KNOWLEDGE_FIXTURE_SAMPLE_SIZE,
+      },
       cases: fixtures.length,
       off: offMetrics,
       on: onMetrics,
@@ -629,6 +664,7 @@ function knowledgePasses(fixtures, prediction) {
 function collectFailures(evaluations) {
   return evaluations
     .filter((item) => {
+      if (item.evaluationError !== null) return true
       if (item.expected.decline) return !item.prediction.decline
       return item.prediction.decline ||
         item.prediction.service_type !== item.expected.service_type ||
@@ -638,6 +674,8 @@ function collectFailures(evaluations) {
     .map((item) => ({
       id: item.id,
       category: item.category,
+      kind: item.evaluationError === null ? 'fixture_mismatch' : 'evaluation_error',
+      errorCode: item.evaluationError,
       expected: item.expected,
       prediction: item.prediction,
     }))
@@ -654,13 +692,23 @@ function passesThresholds(metrics, thresholds) {
 async function writeReport(input) {
   await mkdir(dirname(input.reportPath), { recursive: true })
   const lines = [
-    '# Kael A5 Offline Evaluation',
+    input.mode === 'live'
+      ? '# Kael Mobile API Shadow Fixture Evaluation'
+      : '# Kael Deterministic Fixture Evaluation',
     '',
     'Document type: regression evaluation report',
+    'Evidence tier: ' + (input.evidenceTier === 'T0'
+      ? 'T0'
+      : 'unattested (endpoint shadow; the backing stack and provider invocation are not verified here, so no T1 or higher is claimed)'),
+    'Measurement scope: ' + input.measurement.scope,
+    'Model accuracy: not measured',
+    'Provider invocation: ' + input.measurement.providerInvocation,
+    'Sample size: ' + input.measurement.sampleSize + ' (minimum ' + input.measurement.minimumSampleSize + ')',
     `Mode: ${input.mode}`,
     `Started at: ${input.startedAt}`,
     `Status: ${input.passed ? 'passed' : 'failed'}`,
     `Cases: ${input.fixtures.length} total, ${input.fixtures.filter((item) => !item.expected.decline).length} supported, ${input.fixtures.filter((item) => item.expected.decline).length} decline`,
+    'Execution errors: ' + input.executionErrors,
     '',
     '## Metrics',
     '',
@@ -672,9 +720,11 @@ async function writeReport(input) {
     `| declinePrecision | ${formatRate(input.metrics.declinePrecision)} | ${formatRate(input.thresholds.declinePrecision)} |`,
     `| declineRecall | ${formatRate(input.metrics.declineRecall)} | ${formatRate(input.thresholds.declineRecall)} |`,
     `| latencyP95Ms | ${input.metrics.latencyP95Ms} | n/a |`,
-    `| costPerCaseUsd | ${input.metrics.costPerCaseUsd} | n/a |`,
+    '| costPerCaseUsd | ' + (input.metrics.costPerCaseUsd ?? 'not measured') + ' | n/a |',
     '',
-    '## B6 Knowledge Retrieval A/B',
+    '## B6 Deterministic Knowledge Fixture Rule A/B',
+    '',
+    'Scope: deterministic knowledge-fixture rule agreement; retrieval and model accuracy are not measured.',
     '',
     '| Metric | Knowledge OFF | Knowledge ON | Delta |',
     '| --- | ---: | ---: | ---: |',
@@ -695,16 +745,19 @@ async function writeReport(input) {
     '',
     '## Verification',
     '',
-    '- WARNING: deterministic mode does not exercise an AI model; 100% means fixtures and local rules agree, not that live Kael is correct.',
-    '- Deterministic mode uses local fixture scoring and does not call AI providers.',
+    '- WARNING: fixture agreement is not model accuracy. Deterministic mode compares local rules with labels; 100% means fixture agreement, not live Kael correctness.',
+    '- ' + (input.mode === 'deterministic'
+      ? 'Deterministic mode uses local rules and does not call AI providers.'
+      : 'Live mode shadows the local mobile-api endpoint; provider invocation is not attested by this evaluator.'),
     '- Live mode requires KAEL_EVAL_RUN_LIVE=yes, a local-only KAEL_EVAL_MOBILE_API_URL, and KAEL_EVAL_BEARER_TOKEN; Production evaluation must use the scoped Plan 55 canary.',
-    '- Runner exits non-zero when any threshold is below target.',
+    '- Runner exits non-zero when a threshold, B6 rule comparison, or endpoint evaluation fails.',
     '',
     '## Limitations',
     '',
     input.mode === 'live'
-      ? '- Live run depends on Production auth, provider availability, and Edge latency at run time.'
+      ? '- Live shadow results reflect endpoint responses only; provider execution and model accuracy remain unverified.'
       : '- Deterministic mode proves regression harness wiring and fixture coverage; it is not a substitute for a scheduled live provider run.',
+    '- The 100-case evaluation blueprint (apps/api/fixtures/kael-eval/evaluation-blueprint-100.json) is a plan with 0 authored cases; this suite is not that blueprint and has not been mapped to its groups.',
   ]
   await writeFile(input.reportPath, `${lines.join('\n')}\n`)
 }
@@ -712,14 +765,14 @@ async function writeReport(input) {
 async function readFixtures(path) {
   const fixtures = JSON.parse(await readFile(path, 'utf8'))
   assert(Array.isArray(fixtures), 'fixture file must be an array')
-  assert(fixtures.length >= 75, 'A5 fixture set must include at least 75 cases')
+  assert(fixtures.length >= MIN_FIXTURE_SAMPLE_SIZE, 'A5 fixture set must include at least ' + MIN_FIXTURE_SAMPLE_SIZE + ' cases')
   return fixtures
 }
 
 async function readKnowledgeFixtures(path) {
   const fixtures = JSON.parse(await readFile(path, 'utf8'))
   assert(Array.isArray(fixtures), 'knowledge fixture file must be an array')
-  assert(fixtures.length >= 6, 'B6 knowledge fixture set must include at least 6 cases')
+  assert(fixtures.length >= MIN_KNOWLEDGE_FIXTURE_SAMPLE_SIZE, 'B6 knowledge fixture set must include at least ' + MIN_KNOWLEDGE_FIXTURE_SAMPLE_SIZE + ' cases')
   return fixtures
 }
 
@@ -791,7 +844,7 @@ function percentile(values, p) {
 }
 
 function ratio(numerator, denominator) {
-  return denominator === 0 ? 1 : round(numerator / denominator, 4)
+  return denominator === 0 ? null : round(numerator / denominator, 4)
 }
 
 function round(value, places = 4) {
@@ -800,7 +853,7 @@ function round(value, places = 4) {
 }
 
 function formatRate(value) {
-  return `${Math.round(value * 1000) / 10}%`
+  return Number.isFinite(value) ? `${Math.round(value * 1000) / 10}%` : 'n/a'
 }
 
 function numberEnv(name, fallback) {

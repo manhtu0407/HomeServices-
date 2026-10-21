@@ -1,0 +1,30 @@
+$ node scripts/run.mjs run-node scripts/check-ship-ready.mjs
+ship readiness on codex/kawa-foundation-safety-20261020
+
+git state
+  FAIL  4 path(s) not committed — a push carries only what is committed
+          unstaged   apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
+          unstaged   apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts
+          unstaged   apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
+          unstaged   apps/mobile/lib/kael-stream.ts
+
+gates
+  ok    comment discipline         1.7s
+  ok    source residue             0.8s
+  ok    structure and ratchets     0.5s
+  ok    skills mirror              0.3s
+  ok    skill contracts            0.1s
+  ok    protocol routes            0.1s
+  ok    work-router coverage       0.1s
+  ok    runner parity              0.1s
+  ok    harness assurance          107.5s
+  ok    script fixture suites      91.6s
+
+not run by this command
+  pnpm type-check, test, build, lint         pnpm is on PATH; run it yourself
+  deno check on the Edge functions           deno is not on PATH here
+  migration replay and the SQL actor matrix  supabase is not on PATH here
+  CI runs all of these on the pull request. This command does not stand in for them.
+
+NOT READY — git state
+[ELIFECYCLE] Command failed with exit code 1.

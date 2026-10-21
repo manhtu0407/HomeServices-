@@ -249,7 +249,7 @@ describe('Kael P5 permission scope and response policy', () => {
     expect(decision.responseText).toContain('pháp lý')
   })
 
-  it('B2 maps emergency redirects to legal_awareness_patterns emergency rows', async () => {
+  it('B2 keeps medical emergency routing deterministic when a stored boundary row is stale', async () => {
     const client = makeSequenceClient([{ data: [{
       pattern_key: 'emergency_medical_redirect',
       topic: 'medical_advice',
@@ -271,7 +271,7 @@ describe('Kael P5 permission scope and response policy', () => {
       allowed: false,
       reasonCode: 'DENY_MEDICAL_ADVICE',
       declineTemplateKey: 'emergency_redirect',
-      responseText: 'DB emergency redirect copy.',
+      responseText: 'Kael không thể chẩn đoán hoặc kê đơn. Nếu cần cấp cứu y tế, vui lòng gọi 115; nếu chưa rõ cần lực lượng nào, hãy gọi 112.',
       safeMetadata: expect.objectContaining({
         legal_boundary_type: 'emergency_redirect',
       }),

@@ -76,7 +76,7 @@ export function estimateProviderCostUsd(input: {
 }): number | null {
   const inputTokens = nonNegativeNumber(input.inputTokens);
   const outputTokens = nonNegativeNumber(input.outputTokens);
-  if (inputTokens === null && outputTokens === null) return null;
+  if (inputTokens === null || outputTokens === null) return null;
   if (!input.model?.trim()) return null;
   return roundUsd(calculateModelCostUsd({
     provider: input.provider,
@@ -89,9 +89,9 @@ export function estimateProviderCostUsd(input: {
 
 export function calculateKaelCostProjection(
   input: KaelCostProjectionInput,
-): { costPerJobUsd: number; projectedCostUsd: number } {
+): { costPerJobUsd: number | null; projectedCostUsd: number | null } {
   if (input.sampleJobs <= 0 || input.targetJobs <= 0) {
-    return { costPerJobUsd: 0, projectedCostUsd: 0 };
+    return { costPerJobUsd: null, projectedCostUsd: null };
   }
   const costPerJobUsd = input.totalCostUsd / input.sampleJobs;
   return {
@@ -136,8 +136,10 @@ function toMetricRow(
     output_tokens: outputTokens,
     quality_pass: qualityPass,
     quality_signal: qualityPass === false
-      ? stringOrNull(row.error_code) ?? "provider_failed"
-      : "provider_success",
+      ? reasonCodeOrNull(row.error_code) ?? "provider_failed"
+      : qualityPass === true
+      ? "provider_success"
+      : "unobserved",
     metric_source: "edge_api_log",
     safe_metadata: safeMetadata,
   };
@@ -174,12 +176,19 @@ function stringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
+function reasonCodeOrNull(value: unknown): string | null {
+  const code = stringOrNull(value);
+  return code && /^[A-Za-z][A-Za-z0-9_]{1,63}$/.test(code) ? code : null;
+}
+
 function integerOrNull(value: unknown): number | null {
   const number = nonNegativeNumber(value);
   return number === null ? null : Math.round(number);
 }
 
 function nonNegativeNumber(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  if (typeof value === "string" && value.trim().length === 0) return null;
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) && number >= 0 ? number : null;
 }

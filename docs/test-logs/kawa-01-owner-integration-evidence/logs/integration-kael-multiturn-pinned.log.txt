@@ -1,0 +1,28 @@
+
+ RUN  v4.1.6 C:/Users/Phan Manh Tu/.codex/worktrees/kawa01-integration-simulation/home-services/packages/shared
+
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > covers all six launch services with at least 18 deterministic conversations 3ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'clean-standard' never repeats an answered slot and reaches scope-ready within the turn budget 5ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'clean-deep' never repeats an answered slot and reaches scope-ready within the turn budget 1ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'clean-quick' never repeats an answered slot and reaches scope-ready within the turn budget 1ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'hvac-routine' never repeats an answered slot and reaches scope-ready within the turn budget 1ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'hvac-weak' never repeats an answered slot and reaches scope-ready within the turn budget 0ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'hvac-leak' never repeats an answered slot and reaches scope-ready within the turn budget 0ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'fabric-sofa' never repeats an answered slot and reaches scope-ready within the turn budget 1ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'fabric-mattress' never repeats an answered slot and reaches scope-ready within the turn budget 1ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'fabric-curtain' never repeats an answered slot and reaches scope-ready within the turn budget 1ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'handyman-shelf' never repeats an answered slot and reaches scope-ready within the turn budget 1ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'handyman-handles' never repeats an answered slot and reaches scope-ready within the turn budget 1ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'handyman-curtain' never repeats an answered slot and reaches scope-ready within the turn budget 0ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'electrical-small' has one safe question per turn with no repeated diagnostic slot 0ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'electrical-medium' has one safe question per turn with no repeated diagnostic slot 0ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'electrical-urgent' has one safe question per turn with no repeated diagnostic slot 0ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'plumbing-small' has one safe question per turn with no repeated diagnostic slot 0ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'plumbing-medium' has one safe question per turn with no repeated diagnostic slot 0ms
+ ✓ src/__tests__/kael-multi-turn-eval.test.ts > Kael multi-turn conversation eval > 'plumbing-urgent' has one safe question per turn with no repeated diagnostic slot 0ms
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  21:48:47
+   Duration  1.16s (transform 505ms, setup 0ms, import 885ms, tests 17ms, environment 0ms)
+

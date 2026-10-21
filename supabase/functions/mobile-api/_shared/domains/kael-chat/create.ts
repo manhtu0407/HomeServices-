@@ -34,7 +34,19 @@ import {
   retireFailedKaelSessionCreate,
 } from "./persistence.service.ts";
 import { findExistingKaelSessionByClientRequest, insertKaelTurn, updateKaelSession } from "./session-store.ts";
-import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./intake-safety.ts";
+import {
+  answerCaseEmergency,
+  answerEmergencyOnOwnedSession,
+  answerParkedEmergency,
+  customerAuthoredTexts,
+  registerCaseEmergencyDelivery,
+  refuseWithEmergencyGuidance,
+  resolveCaseEmergency,
+} from "./emergency-turn.ts";
+import {
+  persistentKaelSafetySignalsFromTexts,
+  requiresImmediateKaelSafetyPath,
+} from "./intake-safety.ts";
 import { validateFutureHcmcSchedule, HCMC_SCHEDULE_VALIDATION_MESSAGE } from "../../platform/scheduling.ts";
 import { sendKaelChatTurn } from "./turn.ts";
 
@@ -52,25 +64,35 @@ type InitialKaelChatMessageInput = {
 
 export async function createKaelChat(
   ctx: MobileApiContext,
-  input: KaelChatCreateInput,
+  received: KaelChatCreateInput,
   secrets: EdgeAiSecrets,
 ) {
   if (ctx.role !== "customer") {
     apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được tạo phiên Kael Xử lý công việc", 403);
   }
+  let input = received;
   const scheduleValidation = validateFutureHcmcSchedule(
     input.scheduled_at,
     input.schedule_window,
   );
-  if (
-    scheduleValidation !== null &&
-    input.intake_source !== "booking" &&
-    (!input.client_request_id || input.session_id)
-  ) {
-    apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
-  }
+  const createTexts = customerAuthoredTexts({
+    message: input.message,
+    intakeDescription: input.intake_description,
+    evidenceItems: input.evidence_items,
+  });
+  const scheduleInvalid = scheduleValidation !== null && input.intake_source !== "booking";
+  const scheduleRefused = scheduleInvalid && (!input.client_request_id || Boolean(input.session_id));
   if (input.session_id) {
-    if (!input.message) return getKaelChat(ctx, input.session_id);
+    if (!input.message) {
+      const answered = await answerEmergencyOnOwnedSession(ctx, input.session_id, {
+        texts: createTexts,
+        language: input.language ?? "vi",
+        soft: scheduleRefused,
+      });
+      if (answered) return getKaelChat(ctx, input.session_id);
+      if (scheduleRefused) apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+      return getKaelChat(ctx, input.session_id);
+    }
     return sendKaelChatTurn(ctx, input.session_id, {
       message: input.message,
       problem_chips: input.problem_chips,
@@ -85,11 +107,28 @@ export async function createKaelChat(
     }, secrets);
   }
 
+  registerCaseEmergencyDelivery(ctx, createTexts, input.service_type);
+
+  const emergencyOverSchedule = scheduleInvalid && resolveCaseEmergency({
+    message: createTexts,
+    language: input.language ?? "vi",
+    serviceType: input.service_type,
+    parked: true,
+  }) !== null;
+  if (emergencyOverSchedule) {
+    input = { ...input, scheduled_at: undefined, schedule_window: undefined, defer_analysis: true };
+  } else if (scheduleRefused) {
+    refuseCreateSchedule(ctx, input, createTexts);
+  }
   const client = db(ctx);
   const language = input.language ?? "vi";
   const safeProblemChips = sanitizeUntrustedEvidenceList(input.problem_chips);
-  const initialSafetySignals = persistentKaelSafetySignals(
-    sanitizeForLLM(input.message ?? ""),
+  const initialSafetySignals = persistentKaelSafetySignalsFromTexts(
+    customerAuthoredTexts({
+      message: input.message,
+      intakeDescription: input.intake_description,
+      evidenceItems: input.evidence_items,
+    }),
     input.service_type,
     [],
     ctx.user.id,
@@ -119,8 +158,8 @@ export async function createKaelChat(
         409,
       );
     }
-    if (scheduleValidation !== null && input.intake_source !== "booking") {
-      apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+    if (scheduleInvalid && !emergencyOverSchedule) {
+      refuseCreateSchedule(ctx, input, createTexts);
     }
   }
 
@@ -160,9 +199,44 @@ export async function createKaelChat(
       createdSessionId,
       input.client_request_id ?? null,
     );
+    const texts = customerAuthoredTexts({
+      intakeDescription: input.intake_description,
+      evidenceItems: prepared.initialEvidenceItems,
+    });
+    const emergency = resolveCaseEmergency({
+      message: texts,
+      language,
+      serviceType: input.service_type,
+      parked: true,
+    });
+    if (emergency) {
+      await answerParkedEmergency({
+        client,
+        sessionId: createdSessionId,
+        session: { service_type: input.service_type, case_phase: "analysis" },
+        texts,
+        emergency,
+        entry: "create",
+        identity: ctx,
+      });
+    }
   }
 
   return getKaelChat(ctx, createdSessionId);
+}
+
+function refuseCreateSchedule(ctx: MobileApiContext, input: KaelChatCreateInput, texts: readonly string[]): never {
+  refuseWithEmergencyGuidance(
+    { code: "VALIDATION", message: HCMC_SCHEDULE_VALIDATION_MESSAGE, status: 400 },
+    {
+      texts,
+      language: input.language ?? "vi",
+      serviceType: input.service_type,
+      entry: "create",
+      identity: ctx,
+      session: { service_type: input.service_type, case_phase: "analysis" },
+    },
+  );
 }
 
 async function enforceCreateKaelChatRateLimit(
@@ -201,8 +275,24 @@ async function enforceCreateKaelChatRateLimit(
 async function processInitialKaelChatMessage(input: InitialKaelChatMessageInput) {
   const message = sanitizeForLLM(input.input.message ?? "");
   await persistInitialCustomerKaelChatTurn(input, message);
-  if (input.input.defer_analysis || input.prepared.intakeConfirmation) return;
-  await advanceInitialKaelChatAnalysis(input, message);
+  const texts = customerAuthoredTexts({
+    message,
+    intakeDescription: input.prepared.intakeConfirmation?.intake.description,
+    evidenceItems: input.prepared.initialEvidenceItems,
+  });
+  if (input.input.defer_analysis || input.prepared.intakeConfirmation) {
+    const emergency = resolveCaseEmergency({
+      message: texts,
+      language: input.language,
+      serviceType: input.input.service_type,
+      parked: true,
+    });
+    if (emergency) {
+      await answerCaseEmergency(input.client, input.sessionId, emergency, { entry: "create", identity: input.ctx });
+    }
+    return;
+  }
+  await advanceInitialKaelChatAnalysis(input, message, texts);
 }
 
 async function persistInitialCustomerKaelChatTurn(
@@ -241,7 +331,19 @@ async function persistInitialCustomerKaelChatTurn(
 async function advanceInitialKaelChatAnalysis(
   input: InitialKaelChatMessageInput,
   message: string,
+  texts: readonly string[],
 ) {
+  const emergency = resolveCaseEmergency({
+    message: texts,
+    language: input.language,
+    serviceType: input.input.service_type,
+    persistedSafetySignals: input.initialSafetySignals,
+    actorId: input.ctx.user.id,
+  });
+  if (emergency) {
+    await answerCaseEmergency(input.client, input.sessionId, emergency, { entry: "create", identity: input.ctx });
+    if (emergency.stopsTurn) return;
+  }
   const boundaryHandled = await maybeApplyKaelBoundaryGuard(
     input.client,
     input.sessionId,

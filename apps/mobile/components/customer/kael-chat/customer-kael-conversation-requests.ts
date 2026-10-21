@@ -56,7 +56,7 @@ export async function reconcileCommittedKaelTurn(
   previous: KaelChatResponse,
   streamed: ApiResult<KaelChatResponse>,
 ): Promise<ApiResult<KaelChatResponse>> {
-  if (streamed.success || !RECONCILABLE_KAEL_STREAM_FAILURES.has(streamed.code)) return streamed
+  if (streamed.success || streamed.emergency || !RECONCILABLE_KAEL_STREAM_FAILURES.has(streamed.code)) return streamed
   try {
     const recovered = await kaelChatService.get(previous.session.id)
     if (!recovered.success) return streamed

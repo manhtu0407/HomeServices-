@@ -67,6 +67,7 @@ export function useCustomerKaelNextActions({
         setChat(result.data)
         setTurns(result.data.turns)
       } else {
+        conversation.setEmergencyGuidance?.(result.emergency)
         setError(localizeKaelRequestFailure(result, language))
       }
     } catch {

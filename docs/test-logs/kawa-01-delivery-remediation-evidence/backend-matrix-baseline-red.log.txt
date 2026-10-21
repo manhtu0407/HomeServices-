@@ -1,0 +1,620 @@
+
+ RUN  v4.1.6 C:/Users/Phan Manh Tu/.codex/worktrees/kawa-foundation-safety-20261020/home-services/apps/api
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery > preserves foreign media rejection and returns a trusted fire route without creating a Case
+harness_event {
+  p_event_id: '284c7562-cb67-4dcd-9538-bab2f556b989',
+  p_run_id: '53e37d95-4337-4c50-9c0d-f8d2a9230e57',
+  p_trace_id: '0e285f85-574c-4e83-8d1b-86fe3143e1b8',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.create',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 77,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'VALIDATION',
+  p_safe_metadata: { status: 400 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > missing upload intent stays 400 without a Case or evidence acceptance
+harness_event {
+  p_event_id: '41c4f8b0-8d32-4961-95b9-1f474cbe2503',
+  p_run_id: '3c509a16-f6bc-470c-8888-48443dfa98fc',
+  p_trace_id: '85d9187a-02cd-4ed3-9cae-4a38866f6b39',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.create',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 4,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'MEDIA_INTENT_INVALID',
+  p_safe_metadata: { status: 400 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > malformed owner media stays rejected
+harness_event {
+  p_event_id: '78ba9683-651f-4660-a2f1-0b6dda965189',
+  p_run_id: 'c8ee7e85-d6e3-495e-8a04-cdcbc71da2ba',
+  p_trace_id: 'c661d46d-f2c7-428f-9a77-14f48fb954f7',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.create',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'VALIDATION',
+  p_safe_metadata: { status: 400 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > required evidence cannot be skipped by emergency advice
+harness_event {
+  p_event_id: '55aebc12-9dce-493b-adb1-d5bda3a8011f',
+  p_run_id: '000d44d8-15fa-4be5-9caf-eda3b3c53b6b',
+  p_trace_id: '3fbd7592-2905-499d-b079-568cfbabd65b',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.evidence',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 54,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'EVIDENCE_REQUIRED',
+  p_safe_metadata: { status: 409 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > existing rejected evidence stays rejected without writes
+harness_event {
+  p_event_id: 'f2767d51-a79d-46d4-af06-a0a32b036eb1',
+  p_run_id: '5c9eff08-9935-4597-a904-da889b04b3bb',
+  p_trace_id: 'c6d9bf2d-6b71-49b7-9233-c4449fb07d2a',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 15,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'MEDIA_INTENT_INVALID',
+  p_safe_metadata: { status: 400 }
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal confirmed is never reopened
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'ba0271ea-664d-46ed-a6dc-4d5b0ab884b0',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_guidance_only',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal confirmed is never reopened
+harness_event {
+  p_event_id: '2c032796-3f82-400d-b24d-db4e347a5980',
+  p_run_id: '6228c45d-9162-4a3f-ae4a-21f9bf25f16f',
+  p_trace_id: 'ba0271ea-664d-46ed-a6dc-4d5b0ab884b0',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 24,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INVALID_STATUS',
+  p_safe_metadata: { status: 409 }
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal abandoned is never reopened
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '1259de4a-adf7-4d0f-8456-8ed7a6a5d594',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_guidance_only',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal abandoned is never reopened
+harness_event {
+  p_event_id: '6f121ab2-6568-4efd-8826-db433fc600d5',
+  p_run_id: '99af6f8d-e264-47d3-a522-4c3ab224c315',
+  p_trace_id: '1259de4a-adf7-4d0f-8456-8ed7a6a5d594',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 5,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INVALID_STATUS',
+  p_safe_metadata: { status: 409 }
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal unsupported is never reopened
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'a7a9cd0c-d831-4050-9f90-93e3d0b8c5c0',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_guidance_only',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal unsupported is never reopened
+harness_event {
+  p_event_id: '4a821c99-a939-4fa6-b674-7e77fa60b438',
+  p_run_id: '41667ac7-29d4-4679-aea2-0332833c132b',
+  p_trace_id: 'a7a9cd0c-d831-4050-9f90-93e3d0b8c5c0',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INVALID_STATUS',
+  p_safe_metadata: { status: 409 }
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > reply persistence failure stays 500 with no business transition
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '54f1edaa-9326-40f0-b490-654c7d5b6eb2',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_write_failed',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > reply persistence failure stays 500 with no business transition
+harness_event {
+  p_event_id: '21043ece-333f-4191-8bb1-ef5ed8ea6884',
+  p_run_id: 'a677d45a-a2fd-453e-ad17-97871bba8e9f',
+  p_trace_id: '54f1edaa-9326-40f0-b490-654c7d5b6eb2',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'failed',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 31,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'DB_ERROR',
+  p_safe_metadata: { status: 500 }
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > quota stays 429, creates no Case and still delivers guidance
+kael_chat rate limited {
+  userId: '39800000-0000-4000-8000-0000000000a1',
+  reason: 'minute',
+  minute_count: 6,
+  hour_count: 6
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > quota stays 429, creates no Case and still delivers guidance
+harness_event {
+  p_event_id: 'fc221e01-a653-49a1-8c4a-101a7bcca982',
+  p_run_id: 'a0a821de-461c-465f-bfec-a59f0139f89c',
+  p_trace_id: 'a9c093fd-34e8-4855-ac03-a783f9e85ff7',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.create',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'RATE_LIMITED',
+  p_safe_metadata: { status: 429 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > SSE emits error and no result on rejected evidence
+harness_event {
+  p_event_id: '86168843-5a28-4d04-b4ec-22716cb06e0a',
+  p_run_id: '0bb1be90-577d-4a2a-8708-1b224208af98',
+  p_trace_id: '86d5ef12-fe46-4773-ae90-4a2b8037a31a',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.stream_failed',
+  p_stage: 'kael.chat.stream',
+  p_status: 'failed',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 8,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'STREAM_APPLICATION_ERROR',
+  p_safe_metadata: {}
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > replay of a rejected closed request never creates consent or duplicates turns
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'ffd5c06d-a5e2-4ef5-b867-8ecb8bc3fb77',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_guidance_only',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > replay of a rejected closed request never creates consent or duplicates turns
+harness_event {
+  p_event_id: '46e5f4a2-dd29-4412-ba86-23a4edef9504',
+  p_run_id: '12d0676e-ff7c-4ea2-b163-5e096f67d28f',
+  p_trace_id: 'ffd5c06d-a5e2-4ef5-b867-8ecb8bc3fb77',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 3,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INVALID_STATUS',
+  p_safe_metadata: { status: 409 }
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts (16 tests | 12 failed) 416ms
+     × preserves foreign media rejection and returns a trusted fire route without creating a Case 184ms
+     × missing upload intent stays 400 without a Case or evidence acceptance 8ms
+     × malformed owner media stays rejected 6ms
+     × required evidence cannot be skipped by emergency advice 58ms
+     × existing rejected evidence stays rejected without writes 20ms
+     × terminal confirmed is never reopened 28ms
+     × terminal abandoned is never reopened 9ms
+     × terminal unsupported is never reopened 6ms
+     × reply persistence failure stays 500 with no business transition 36ms
+     × quota stays 429, creates no Case and still delivers guidance 6ms
+     × SSE emits error and no result on rejected evidence 19ms
+     × replay of a rejected closed request never creates consent or duplicates turns 7ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 12 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery > preserves foreign media rejection and returns a trusted fire route without creating a Case
+AssertionError: [P416-kael-emergency-error-delivery] authorized recognized emergencies carry only versioned deterministic route metadata through JSON and SSE business failures without changing the rejection, crossing a confirmation gate, spending on providers or revealing private Case details to another actor
+authority: governance/RULES.md #7 (customer approval gates remain authoritative) | governance/RULES.md #8 (rejected operations remain visible failures) | governance/RULES.md #9 (new metadata contains no private text or identifiers)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P412-kael-emergency-delivery, P411-kael-case-emergency-closure-paths
+detail:    foreign new media status=400: expected undefined to deeply equal { version: 'v1', route: 'fire' }
+
+- Expected:
+{
+  "route": "fire",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:58:40
+     56|     expect(result.status, why).toBe(400)
+     57|     expect(result.body, why).toMatchObject({ code: 'VALIDATION', error…
+     58|     expect(result.body.emergency, why).toEqual({ version: 'v1', route:…
+       |                                        ^
+     59|     expect(world.db.tables.kael_chat_sessions, why).toEqual([])
+     60|     expect(world.db.tables.kael_chat_turns, why).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > missing upload intent stays 400 without a Case or evidence acceptance
+AssertionError: expected undefined to deeply equal { version: 'v1', route: 'fire' }
+
+- Expected:
+{
+  "route": "fire",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ safeFailure src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:72:33
+     70|   expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
+     71|   expect(result.body.code).toBe(code)
+     72|   expect(result.body.emergency).toEqual({ version: 'v1', route })
+       |                                 ^
+     73|   expect(Object.keys(result.body.emergency as object).sort()).toEqual(…
+     74| }
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:84:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > malformed owner media stays rejected
+AssertionError: expected undefined to deeply equal { version: 'v1', route: 'fire' }
+
+- Expected:
+{
+  "route": "fire",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ safeFailure src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:72:33
+     70|   expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
+     71|   expect(result.body.code).toBe(code)
+     72|   expect(result.body.emergency).toEqual({ version: 'v1', route })
+       |                                 ^
+     73|   expect(Object.keys(result.body.emergency as object).sort()).toEqual(…
+     74| }
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:89:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > required evidence cannot be skipped by emergency advice
+AssertionError: expected undefined to deeply equal { version: 'v1', …(1) }
+
+- Expected:
+{
+  "route": "electrical_water",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ safeFailure src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:72:33
+     70|   expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
+     71|   expect(result.body.code).toBe(code)
+     72|   expect(result.body.emergency).toEqual({ version: 'v1', route })
+       |                                 ^
+     73|   expect(Object.keys(result.body.emergency as object).sort()).toEqual(…
+     74| }
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:94:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > existing rejected evidence stays rejected without writes
+AssertionError: expected undefined to deeply equal { version: 'v1', …(1) }
+
+- Expected:
+{
+  "route": "electrical_water",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ safeFailure src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:72:33
+     70|   expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
+     71|   expect(result.body.code).toBe(code)
+     72|   expect(result.body.emergency).toEqual({ version: 'v1', route })
+       |                                 ^
+     73|   expect(Object.keys(result.body.emergency as object).sort()).toEqual(…
+     74| }
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:99:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal confirmed is never reopened
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal abandoned is never reopened
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > terminal unsupported is never reopened
+AssertionError: expected undefined to deeply equal { version: 'v1', route: 'fire' }
+
+- Expected:
+{
+  "route": "fire",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ safeFailure src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:72:33
+     70|   expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
+     71|   expect(result.body.code).toBe(code)
+     72|   expect(result.body.emergency).toEqual({ version: 'v1', route })
+       |                                 ^
+     73|   expect(Object.keys(result.body.emergency as object).sort()).toEqual(…
+     74| }
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:104:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > reply persistence failure stays 500 with no business transition
+AssertionError: expected undefined to deeply equal { version: 'v1', route: 'fire' }
+
+- Expected:
+{
+  "route": "fire",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ safeFailure src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:72:33
+     70|   expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
+     71|   expect(result.body.code).toBe(code)
+     72|   expect(result.body.emergency).toEqual({ version: 'v1', route })
+       |                                 ^
+     73|   expect(Object.keys(result.body.emergency as object).sort()).toEqual(…
+     74| }
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:109:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > quota stays 429, creates no Case and still delivers guidance
+AssertionError: expected undefined to deeply equal { version: 'v1', route: 'fire' }
+
+- Expected:
+{
+  "route": "fire",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ safeFailure src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:72:33
+     70|   expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
+     71|   expect(result.body.code).toBe(code)
+     72|   expect(result.body.emergency).toEqual({ version: 'v1', route })
+       |                                 ^
+     73|   expect(Object.keys(result.body.emergency as object).sort()).toEqual(…
+     74| }
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:118:5
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > SSE emits error and no result on rejected evidence
+AssertionError: expected ': heartbeat\n\nevent: error\ndata: {"…' to contain '"emergency":{"version":"v1","route":"…'
+
+- Expected
++ Received
+
+- "emergency":{"version":"v1","route":"electrical_water"}
++ : heartbeat
++
++ event: error
++ data: {"code":"MEDIA_INTENT_INVALID","message":"Kael chưa thể phát luồng cập nhật. Bạn thử lại sau ít phút."}
++
++
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:129:18
+    127|     expect(response.headers.get('content-type')).toContain('text/event…
+    128|     expect(text).toContain('event: error'); expect(text).not.toContain…
+    129|     expect(text).toContain('"emergency":{"version":"v1","route":"elect…
+       |                  ^
+    130|     expect(text).not.toContain(ARC); expect(text).not.toContain(OWNER.…
+    131|     expect(snapshot(world)).toBe(before); noBusiness(world)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/12]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery: fixed failure matrix > replay of a rejected closed request never creates consent or duplicates turns
+AssertionError: expected undefined to deeply equal { version: 'v1', route: 'fire' }
+
+- Expected:
+{
+  "route": "fire",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ safeFailure src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:72:33
+     70|   expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
+     71|   expect(result.body.code).toBe(code)
+     72|   expect(result.body.emergency).toEqual({ version: 'v1', route })
+       |                                 ^
+     73|   expect(Object.keys(result.body.emergency as object).sort()).toEqual(…
+     74| }
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:142:33
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/12]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  12 failed | 4 passed (16)
+   Start at  18:44:39
+   Duration  15.84s (transform 12.54s, setup 0ms, import 14.82s, tests 416ms, environment 0ms)
+

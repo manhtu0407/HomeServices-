@@ -1,0 +1,36 @@
+
+> nestscout@0.1.0 lint:authority <repo>
+> node scripts/run.mjs run-node scripts/check-authority-citations.mjs
+
+  warn apps/api/scripts/kael-b3-corpus-to-sql.mjs:95 cites Plan §31, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn apps/api/scripts/kael-b3-corpus-to-sql.mjs:334 cites Plan §31, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn apps/api/scripts/kael-b5-generate-embedding-backfill.mjs:23 cites Plan §31, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn apps/api/src/__tests__/schema/kael-b3-knowledge-corpus.test.ts:10 cites Plan §31, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn apps/api/src/__tests__/schema/kael-b3-knowledge-corpus.test.ts:92 cites Plan §31, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn apps/api/src/__tests__/schema/kael-b4-knowledge-governance.test.ts:21 cites Plan §31, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn apps/api/src/__tests__/schema/kael-b5-pgvector-rag.test.ts:8 cites Plan §31, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn apps/api/src/__tests__/unit/mobile-api-kael-section32-progress.test.ts:42 cites Plan §32, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn apps/api/src/__tests__/unit/mobile-api-kael-voice-transcript.test.ts:18 cites Plan §39, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/kael-chat-ux-quickwins-20260608.md:7 cites Plan §32, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/kael-perceived-performance-streaming-20260604.md:24 cites Plan §32, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/kael-perceived-performance-streaming-20260604.md:101 cites Plan §14, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/kael-perceived-performance-streaming-20260604.md:105 cites Plan §32.0, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/kael-perceived-performance-streaming-20260604.md:105 cites Plan §32, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/kael-perceived-performance-streaming-20260604.md:118 cites Plan §14, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/kael-price-visualization-20260608.md:30 cites Plan §25, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/kael-price-visualization-20260608.md:123 cites Plan §25, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/worker-map-real-provider-20260608.md:1 cites Plan §37, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/worker-map-real-provider-20260608.md:5 cites Plan §37, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/worker-map-real-provider-20260608.md:47 cites Plan §37.4, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/design/worker-map-real-provider-20260608.md:57 cites Plan §37.5, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/foundation/kael-knowledge-corpus.md:1 cites Plan §31, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/foundation/source-trust-maintenance.md:3 cites Plan §40, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn docs/ops/section32-deploy-order.md:11 cites Plan §32, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn governance/structures/kael-workflow.md:77 cites Plan §23, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn governance/structures/kael-workflow.md:77 cites Plan §26, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn packages/shared/kael/charter/closing-confirmation.md:4 cites Plan §39, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+  warn packages/shared/kael/charter/spine-ladder.md:4 cites Plan §39, which now lives in governance/plan-archive/2026-05-20_workflow-enhancement.md — naming that file keeps the reader off a section Plan.md no longer holds
+authority citation violations:
+  - apps/mobile/lib/__tests__/normal-chat-suggestions-cache-pillar-test.tsx:31 cites Plan §3.4, which exists in neither governance/Plan.md nor the archive
+ ELIFECYCLE  Command failed with exit code 1.
+

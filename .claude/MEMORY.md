@@ -11,6 +11,11 @@ The active Recall Index is intentionally short. Full entry detail lives in `docs
 
 ## Recall Index -> `docs/memory/2026-10.md`
 
+- **2026-10-21** Owner-approved KAWA_01 integration — Backend auto-release switch verified false; exact 167-comment alignment preserves tokens/AST; conditional memory union and fresh integration checks/publication tracked in the owner-integration evidence packet; no automatic merge/deploy.
+
+- **2026-10-21** KAWA_01 closure — SSE/recovery regressions fixed at T0; full suites pass; Edge, release containment, latest-main comments and protected memory integration remain blocked; no Git publication.
+
+- **2026-10-20** KAWA Mini Plan 01 W00-W03 — isolated T0 branch; emergency routing, truthful evaluator reports, and bounded/redacted Kael observability completed; API/mobile suites passed, hosted parity and Deno/Edge check unverified; stop before Plan 02.
 - [kael-solve-conflict-maximize skill](docs/memory/2026-10.md) — zero comments on added production lines via `lint:comments --diff`/`--working`, watermarks, test-integrity Stop hook and PR-only CI ratchet, Claim→Evidence close; committed to its branch; calibrated on history (11/11 deletion sweeps blocked, 565 comment findings in 40 commits).
 - **2026-10-20** Kael recurring incident S04 (stateful E2E) — P398 26 rows through the real HTTP handler/classifier/gate with providers stubbed at fetch + P399 client parity; found D1 (WHY turn wipes `quote_blockers`/`next_action`, likely the blank-reason card) and D2 (correction not stored) and fixed both in Edge (router restore + classifier `filledSlots`/correctedSlots), mutation-checked; edge:check 7/7, api 2453 pass; T1/T2 run on an isolated stack (own project id + ports 59321+, P400 5/5, opt-in via `KAEL_INCIDENT_LOCAL_DB=1`, torn down); first run wrongly hit another session's default stack 55321, cleaned (6/6/1 synthetic rows), then made opt-in; T3 NOT RUN; UNCOMMITTED.
 - **2026-10-20** Seed fixture + price-authority test — seed.sql failure was psql-autocommit vs deferred freeze trigger (CLI single-tx loads it) PLUS missing `commission_level` (job `...0010` left with INVALID_FROZEN_COMMISSION_TERMS); fixed, test split; price property HOLDS; UNCOMMITTED, 22 other SQL reds are env (permission/segfault), CI never runs full-chain seed.

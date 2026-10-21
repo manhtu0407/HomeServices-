@@ -1,3 +1,4 @@
+import { readKaelEmergencyGuidance, type EmergencyGuidancePayload } from '@nestscout/shared'
 import Constants from 'expo-constants'
 import { Platform } from 'react-native'
 
@@ -40,7 +41,7 @@ const SCOPE_CHANGE_PREVIEW_PATH = /^\/jobs\/[^/]+\/kael-incident\/preview-scope$
 
 export type ApiResult<T> =
   | { success: true; data: T; status: number; meta?: ApiResponseMetadata }
-  | { success: false; error: string; code: string; status: number; meta?: ApiResponseMetadata }
+  | { success: false; error: string; code: string; status: number; emergency?: EmergencyGuidancePayload; meta?: ApiResponseMetadata }
 
 type ApiRequestOptions = {
   idempotencyKey?: string
@@ -161,6 +162,7 @@ async function request<T>(
         return {
           success: false,
           error: safeServerError(json?.error),
+          ...(readKaelEmergencyGuidance(json?.emergency) ? { emergency: readKaelEmergencyGuidance(json?.emergency)! } : {}),
           code: safeServerErrorCode(json?.code, response.status),
           status: response.status,
           meta: responseMetadata,

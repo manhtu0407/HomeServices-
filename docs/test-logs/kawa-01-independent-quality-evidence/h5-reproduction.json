@@ -1,0 +1,137 @@
+{
+  "schema": "kael_emergency_phrase_evaluation.v1",
+  "set": "H5",
+  "label": "REPRODUCTION",
+  "independent_validation": false,
+  "evidence_tier": "T0",
+  "sealed_sha256": "80e3e90701e4acc9418ed30209e251b613c84520c70f3f49ba73e2638052d81d",
+  "sealed_hash_matches": true,
+  "baseline_sha": "8a03e780",
+  "head_sha": "062db16094a5eb8168e9bdec9823c221aea729ae",
+  "classifier": [
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
+      "sha256": "c5d97611a2cefda9e0191384ecbc1ba633c588ab6e01004ccf01ad1cd96407cd",
+      "identical_to_baseline": true
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts",
+      "sha256": "3d8e6c173b4c33442892754571ff0bf0b5b4f74a96a0851d8f82912a5319a137",
+      "identical_to_baseline": true
+    }
+  ],
+  "tuned_on_this_set": false,
+  "metrics": {
+    "clear_rows": 59,
+    "positives": 29,
+    "negatives": 30,
+    "true_positive_routed": 11,
+    "wrong_route": 0,
+    "false_negative": 18,
+    "false_positive": 1,
+    "true_negative": 29,
+    "recall_detected": 0.3793103448275862,
+    "recall_route_exact": 0.3793103448275862,
+    "specificity": 0.9666666666666667,
+    "judgement_rows": 4
+  },
+  "misses": [
+    {
+      "id": "H5-001",
+      "expected": "fire"
+    },
+    {
+      "id": "H5-002",
+      "expected": "fire"
+    },
+    {
+      "id": "H5-005",
+      "expected": "fire"
+    },
+    {
+      "id": "H5-009",
+      "expected": "medical"
+    },
+    {
+      "id": "H5-011",
+      "expected": "medical"
+    },
+    {
+      "id": "H5-013",
+      "expected": "police"
+    },
+    {
+      "id": "H5-014",
+      "expected": "police"
+    },
+    {
+      "id": "H5-015",
+      "expected": "police"
+    },
+    {
+      "id": "H5-016",
+      "expected": "police"
+    },
+    {
+      "id": "H5-017",
+      "expected": "police"
+    },
+    {
+      "id": "H5-018",
+      "expected": "electrical_water"
+    },
+    {
+      "id": "H5-019",
+      "expected": "electrical_water"
+    },
+    {
+      "id": "H5-020",
+      "expected": "electrical_water"
+    },
+    {
+      "id": "H5-022",
+      "expected": "electrical_water"
+    },
+    {
+      "id": "H5-024",
+      "expected": "gas"
+    },
+    {
+      "id": "H5-026",
+      "expected": "gas"
+    },
+    {
+      "id": "H5-028",
+      "expected": "uncertain"
+    },
+    {
+      "id": "H5-029",
+      "expected": "uncertain"
+    }
+  ],
+  "wrong_routes": [],
+  "false_alarms": [
+    {
+      "id": "H5-040",
+      "got": "gas"
+    }
+  ],
+  "judgement": [
+    {
+      "id": "H5-060",
+      "got": null
+    },
+    {
+      "id": "H5-061",
+      "got": null
+    },
+    {
+      "id": "H5-062",
+      "got": null
+    },
+    {
+      "id": "H5-063",
+      "got": null
+    }
+  ]
+}

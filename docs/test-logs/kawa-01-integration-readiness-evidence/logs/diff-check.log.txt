@@ -1,0 +1,3 @@
+warning: in the working copy of 'apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/mobile/lib/kael-stream.ts', LF will be replaced by CRLF the next time Git touches it

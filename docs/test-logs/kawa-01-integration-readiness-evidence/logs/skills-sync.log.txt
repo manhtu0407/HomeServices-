@@ -1,0 +1,2 @@
+$ node scripts/run.mjs run-node scripts/check-skills-sync.mjs
+skills in sync: .claude/skills === .agents/skills

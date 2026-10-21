@@ -318,11 +318,13 @@ export function useCustomerKaelEvidenceActions({
         } else if (kaelRequestGuard.isCurrent(requestToken)) {
           setStreamingReply(null)
           stopProcessLines()
+          conversation.setEmergencyGuidance?.(legacy.emergency)
           setError(localizeKaelRequestFailure(legacy, language))
         }
       } else if (kaelRequestGuard.isCurrent(requestToken)) {
         setStreamingReply(null)
         stopProcessLines()
+        conversation.setEmergencyGuidance?.(result.emergency)
         setError(localizeKaelRequestFailure(result, language))
       }
     } catch {
@@ -395,6 +397,7 @@ export function useCustomerKaelEvidenceActions({
         if (!kaelRequestGuard.isCurrent(requestToken)) return
         if (!storedTranscript.success) {
           stopProcessLines()
+          conversation.setEmergencyGuidance?.(storedTranscript.emergency)
           setError(localizeKaelRequestFailure(storedTranscript, language))
           return
         }

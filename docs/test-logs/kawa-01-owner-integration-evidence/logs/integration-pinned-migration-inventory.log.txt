@@ -1,0 +1,5 @@
+
+> nestscout@0.1.0 harness:migrations:check <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-node scripts/harness/migration-inventory.mjs
+
+migration inventory ok: 463 migrations

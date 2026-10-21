@@ -1,0 +1,7 @@
+{
+  "id": "integration-type-mobile",
+  "tree": "da6555674f9847606836bfd3d3b270091cef7c8c",
+  "command": "pnpm type-check:mobile",
+  "limitation": "two unresolved memory blobs not materialized",
+  "exitCode": 0
+}

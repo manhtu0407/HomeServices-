@@ -32,6 +32,7 @@ import {
   insertKaelTurn,
   updateKaelSession,
 } from "./session-store.ts";
+import { answerCaseEmergency, resolveCaseEmergency } from "./emergency-turn.ts";
 import { persistentKaelSafetySignals } from "./intake-safety.ts";
 import { createSignedVisionUrls } from "./media-vision.ts";
 import { getKaelChat } from "./read.service.ts";
@@ -42,6 +43,9 @@ export async function decideKaelIntakeConfirmation(
   input: EdgeKaelChatIntakeConfirmationDecisionInput,
   secrets: EdgeAiSecrets,
 ) {
+  if (ctx.role !== "customer") {
+    apiFailure("AUTH_FORBIDDEN", "Chỉ khách hàng mới được xác nhận thông tin yêu cầu của mình.", 403);
+  }
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
     client
@@ -193,6 +197,17 @@ async function advanceConfirmedIntakeEstimate(
   secrets: EdgeAiSecrets,
 ) {
   const serviceType = asServiceType(confirmation.intake.service_type) as ServiceType;
+  const emergency = resolveCaseEmergency({
+    message: confirmation.intake.description,
+    language: metadata.language === "en" ? "en" : "vi",
+    serviceType,
+    persistedSafetySignals: asStringArray(metadata.intake_safety_signals),
+    actorId: ctx.user.id,
+  });
+  if (emergency) {
+    await answerCaseEmergency(db(ctx), sessionId, emergency, { entry: "confirm", identity: ctx });
+    if (emergency.stopsTurn) return;
+  }
   const safetySignals = persistentKaelSafetySignals(
     confirmation.intake.description,
     serviceType,

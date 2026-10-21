@@ -1,0 +1,13 @@
+{
+  "head": "062db16094a5eb8168e9bdec9823c221aea729ae",
+  "branch": "codex/kawa-foundation-safety-20261020",
+  "main": "111988b0ad6ec276082f6a4706866401fc887e4b",
+  "base": "ce4bd3cd98c72a46ea14d4cc60d24e53c0b91f72",
+  "candidateTree": "c35962eb9e965c57d6eea9b762fcc03b8ee5711e",
+  "mergeCommand": "git merge-tree --trivial-merge <base> <candidateTree> origin/main",
+  "mergeExit": 0,
+  "limitation": "legacy tree simulation, no real index/branch/commit changed; inspect conflict markers even when command exits 0",
+  "scope": "all approved source and prior corrections, current test-log index/ledger; current evidence folder inventoried separately",
+  "completePatchSha256": "defedae273fa50767b36980b3cc5b1690604cc00104e1930f5ebed0fa1228080",
+  "deliveryPatchSha256": "8884dac47715476d322caf507d50d6925483ef065db9528bd94b9719fdcddb5e"
+}

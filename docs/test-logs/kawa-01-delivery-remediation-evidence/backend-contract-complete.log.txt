@@ -1,0 +1,9 @@
+
+ RUN  v4.1.6 C:/Users/Phan Manh Tu/.codex/worktrees/kawa-foundation-safety-20261020/home-services/apps/api
+
+
+ Test Files  2 passed (2)
+      Tests  32 passed (32)
+   Start at  18:49:19
+   Duration  15.09s (transform 11.79s, setup 0ms, import 13.95s, tests 372ms, environment 0ms)
+

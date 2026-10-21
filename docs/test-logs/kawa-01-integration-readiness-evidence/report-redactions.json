@@ -1,0 +1,9 @@
+{
+  "reason": "same token-like fixture title as the historical delivery export triggered generic-api-key; exported report only",
+  "fields": [
+    "testResults.67.assertionResults.15.fullName",
+    "testResults.67.assertionResults.15.title"
+  ],
+  "countsPreserved": true,
+  "rawReportPreserved": true
+}

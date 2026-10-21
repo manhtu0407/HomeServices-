@@ -44,7 +44,20 @@ import {
   resolveKaelChatAddressDistrict,
   resolveKaelChatProblemChips,
 } from "./intake.ts";
-import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./intake-safety.ts";
+import {
+  answerCaseEmergency,
+  answerEmergencyOnOpenSession,
+  answerParkedEmergency,
+  customerAuthoredTexts,
+  registerCaseEmergencyDelivery,
+  ownedSessionForRefusal,
+  refuseWithEmergencyGuidance,
+  resolveCaseEmergency,
+} from "./emergency-turn.ts";
+import {
+  persistentKaelSafetySignalsFromTexts,
+  requiresImmediateKaelSafetyPath,
+} from "./intake-safety.ts";
 import { createSignedVisionUrls } from "./media-vision.ts";
 import { validateAndConsumeKaelChatEvidenceMediaRefs } from "./media-upload.ts";
 import { persistReviewedVoiceTranscripts } from "./persistence.service.ts";
@@ -54,6 +67,7 @@ import {
   assertIntakeConfirmationCompleted,
   assertKaelSessionOwnership,
   insertKaelTurn,
+  isIntakeConfirmationPending,
   updateKaelSession,
   withoutEphemeralKaelMediaUrls,
 } from "./session-store.ts";
@@ -76,7 +90,26 @@ export async function sendKaelChatTurn(
   secrets: EdgeAiSecrets,
 ) {
   if (validateFutureHcmcSchedule(input.scheduled_at, input.schedule_window) !== null) {
-    apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+    const refused = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
+    const owned = refused.length > 0 ? await ownedSessionForRefusal(ctx, sessionId) : null;
+    const refusedLanguage = input.language ?? (asRecord(owned?.safe_metadata).language === "en" ? "en" : "vi");
+    if (
+      owned &&
+      await answerEmergencyOnOpenSession(ctx, sessionId, owned, { texts: refused, language: refusedLanguage, entry: "turn" })
+    ) return getKaelChat(ctx, sessionId);
+    refuseWithEmergencyGuidance(
+      { code: "VALIDATION", message: HCMC_SCHEDULE_VALIDATION_MESSAGE, status: 400 },
+      owned
+        ? {
+          texts: refused,
+          language: refusedLanguage,
+          serviceType: owned.service_type,
+          entry: "turn",
+          identity: ctx,
+          session: owned,
+        }
+        : null,
+    );
   }
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
@@ -94,11 +127,38 @@ export async function sendKaelChatTurn(
   const session = sessionResult.data;
   assertKaelSessionOwnership(session, ctx);
   const status = asKaelChatStatus(session.status);
+  const previousMetadata = asRecord(session.safe_metadata);
+  const texts = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
+  registerCaseEmergencyDelivery(ctx, texts, session.service_type);
   if (
     status === "confirmed" || status === "abandoned" ||
     status === "unsupported"
   ) {
-    apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận tin nhắn", 409);
+    refuseWithEmergencyGuidance(
+      { code: "INVALID_STATUS", message: "Phiên Kael này không còn nhận tin nhắn", status: 409 },
+      {
+        texts,
+        language: input.language ?? (previousMetadata.language === "en" ? "en" : "vi"),
+        serviceType: session.service_type,
+        entry: "turn",
+        identity: ctx,
+        session,
+      },
+    );
+  }
+
+  const parked = input.turn_intent === "price_question" || isIntakeConfirmationPending(previousMetadata);
+  const emergency = resolveCaseEmergency({
+    message: texts,
+    language: input.language ?? (previousMetadata.language === "en" ? "en" : "vi"),
+    serviceType: session.service_type,
+    persistedSafetySignals: asStringArray(previousMetadata.intake_safety_signals),
+    actorId: ctx.user.id,
+    parked,
+  });
+  if (emergency && (parked || emergency.stopsTurn)) {
+    await answerParkedEmergency({ client, sessionId, session, texts, emergency, entry: "turn", identity: ctx });
+    return getKaelChat(ctx, sessionId);
   }
 
   if (input.turn_intent === "price_question") {
@@ -113,6 +173,14 @@ export async function sendKaelChatTurn(
     session,
     status,
   });
+  if (emergency) {
+    await answerCaseEmergency(client, sessionId, emergency, {
+      entry: "turn",
+      identity: ctx,
+      session,
+      keepOfferStatus: true,
+    });
+  }
   if (await handleIncomingKaelChatTurnBoundary({
     client,
     ctx,
@@ -203,8 +271,8 @@ async function persistIncomingKaelChatTurn(input: {
     message,
     nullableString(previousMetadata.address_district),
   );
-  const persistedSafetySignals = persistentKaelSafetySignals(
-    message,
+  const persistedSafetySignals = persistentKaelSafetySignalsFromTexts(
+    customerAuthoredTexts({ message, evidenceItems: sanitizedEvidenceItems }),
     asServiceType(input.session.service_type),
     asStringArray(previousMetadata.intake_safety_signals),
     input.ctx.user.id,

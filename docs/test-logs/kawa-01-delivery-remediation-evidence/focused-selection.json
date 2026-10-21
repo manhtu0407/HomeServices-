@@ -1,0 +1,18 @@
+[
+  "src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts",
+  "src/__tests__/kael-edge-runtime/domains/kael-case-emergency-all-fields-pillar.test.ts",
+  "src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts",
+  "src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts",
+  "src/__tests__/kael-edge-runtime/domains/kael-case-emergency-pending-confirmation-pillar.test.ts",
+  "src/__tests__/kael-edge-runtime/domains/kael-case-emergency-write-integrity-pillar.test.ts",
+  "src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts",
+  "src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts",
+  "src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts",
+  "src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts",
+  "src/__tests__/unit/kael-emergency-error-contract-pillar.test.ts",
+  "src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts",
+  "src/__tests__/unit/kael-emergency-routing-pillar.test.ts",
+  "src/__tests__/unit/kael-emergency-signal-matrix-pillar.test.ts",
+  "src/__tests__/unit/kael-eval-report-contract-pillar.test.ts",
+  "src/__tests__/unit/kael-observability-contract-pillar.test.ts"
+]

@@ -1,0 +1,31 @@
+{
+  "tier": "T0",
+  "database": "in-memory or injected transport; no PostgreSQL proof",
+  "files": [
+    {
+      "file": "kael-emergency-error-contract-pillar.test.ts",
+      "passed": 15,
+      "failed": 0
+    },
+    {
+      "file": "kael-approval-boundary-pillar.test.ts",
+      "passed": 76,
+      "failed": 0
+    },
+    {
+      "file": "kael-emergency-error-delivery-pillar.test.ts",
+      "passed": 17,
+      "failed": 0
+    },
+    {
+      "file": "kael-emergency-sentinel-matrix-pillar.test.ts",
+      "passed": 165,
+      "failed": 0
+    },
+    {
+      "file": "kael-emergency-delivery-pillar-test.tsx",
+      "passed": 29,
+      "failed": 0
+    }
+  ]
+}

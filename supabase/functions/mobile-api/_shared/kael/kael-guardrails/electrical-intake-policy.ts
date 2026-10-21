@@ -382,8 +382,8 @@ export function deterministicSafetyGuidance(
   ].filter((signal) => safetySignals.includes(signal)).length;
   if (serviceType === "electrical" && criticalCount > 0) {
     return language === "en"
-      ? "Switch off the main breaker only if the panel is dry and safely reachable. Do not do so if you must approach the hazard. Do not touch, unplug, clean, or approach the affected area. Keep people away until a qualified electrician inspects it. If smoke or flames persist, leave the area and call fire emergency 114."
-      : "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114.";
+      ? "Switch off the main breaker only if the panel is dry and safely reachable. Do not do so if you must approach the hazard. Do not touch, unplug, clean, or approach the affected area. Keep people away until a qualified electrician inspects it. If smoke or flames persist, leave the area and call fire emergency 114. If anyone is shocked or hurt, call emergency medical care 115; if you are unsure which service is needed, call 112."
+      : "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112.";
   }
   if (safetySignals.includes("sewage")) {
     return language === "en"

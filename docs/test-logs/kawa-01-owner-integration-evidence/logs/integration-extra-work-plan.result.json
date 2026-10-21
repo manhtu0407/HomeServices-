@@ -1,0 +1,7 @@
+{
+  "id": "work-plan",
+  "ended": "2026-10-21T14:46:46.7730888Z",
+  "exitCode": 1,
+  "started": "2026-10-21T14:46:46.5948748Z",
+  "command": "node scripts/check-work-plan.mjs"
+}

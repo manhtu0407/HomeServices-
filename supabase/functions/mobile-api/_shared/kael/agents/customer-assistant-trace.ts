@@ -1,4 +1,4 @@
-import { buildKaelTurnTrace, logKaelTurnTrace, type KaelTurnTraceIdentity, type KaelTurnTraceInput } from "../../platform/turn-trace.ts";
+import { buildKaelTurnTrace, hashKaelActorRole, logKaelTurnTrace, type KaelTurnTraceIdentity, type KaelTurnTraceInput } from "../../platform/turn-trace.ts";
 import type { CustomerAssistantAnswer } from "./customer-assistant.ts";
 import { classifyAssistantTopic, type CustomerAssistantSurface } from "./customer-assistant-policy.ts";
 import type { ServiceType } from "../contracts/types.ts";
@@ -24,7 +24,7 @@ export function assistantTraceFields(
   const decision = answer.decision;
   // A decline with no deterministic decision behind it is the model's own scope verdict.
   return {
-    stage: decision?.stage ?? (answer.boundary === "unsupported" ? "provider_output" : "answered"),
+    stage: decision?.stage === "emergency_routing" ? "emergency_gate" : decision?.stage ?? (answer.boundary === "unsupported" ? "provider_output" : "answered"),
     outcome: answer.boundary,
     fallbackUsed: answer.fallback_used,
     canonicalService: context.canonicalService,
@@ -41,14 +41,22 @@ export function assistantTraceFields(
 
 // Tracing is observability only. It must never be the reason a customer's turn fails, so any
 // failure to read the identity or build the trace degrades to "no trace".
-export function traceAssistantTurn(
+export async function traceAssistantTurn(
   route: "assistant_case" | "assistant_normal",
   identity: KaelTurnTraceIdentity,
   answer: Pick<CustomerAssistantAnswer, "boundary" | "fallback_used" | "decision">,
   context: { message: string; canonicalService: unknown; surface: CustomerAssistantSurface },
-): void {
+): Promise<void> {
   try {
-    logKaelTurnTrace(buildKaelTurnTrace({ identity, route, ...assistantTraceFields(answer, context) }));
+    const trace = buildKaelTurnTrace({ identity, route, ...assistantTraceFields(answer, context) });
+    const actorRoleHash = trace.stage === "answered"
+      ? undefined
+      : await hashKaelActorRole(identity.user?.id, identity.role);
+    logKaelTurnTrace(
+      trace,
+      console.warn,
+      actorRoleHash,
+    );
   } catch {
     return;
   }

@@ -33,6 +33,7 @@ type Props = {
   onRetainStreamingReply: (retain: boolean) => void
   resetReasoningReceipt: () => void
   restoreComposer: () => void
+  onEmergencyGuidance?: CustomerKaelTurnStreamOptions['onEmergencyGuidance']
   setError: (message: string | null) => void
   setLoading: (loading: boolean) => void
   setMediaDrafts: (drafts: LocalMediaUploadDraft[]) => void
@@ -66,6 +67,7 @@ export async function sendCustomerNormalTurn({
   resetReasoningReceipt,
   restoreComposer: restoreComposerText,
   setError,
+  onEmergencyGuidance,
   setLoading,
   setMediaDrafts,
   setPendingNormalImageUris,
@@ -134,6 +136,7 @@ export async function sendCustomerNormalTurn({
     const result = await conversations.sendConversationTurn(message, {
       mediaRefs: uploadedMediaRefs,
       signal: abortSignal,
+      onEmergencyGuidance,
       onOutcomeUncertain: () => { outcomeUncertain = true },
       onResponseCommitted,
       onResponseDelta,

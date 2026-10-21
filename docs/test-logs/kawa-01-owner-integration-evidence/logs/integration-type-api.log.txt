@@ -1,0 +1,30 @@
+Scope: all 5 workspace projects
+✓ Lockfile passes supply-chain policies (verified 10d ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+[EEXIST] EEXIST: file already exists, symlink '<USER>\.codex\worktrees\kawa01-integration-simulation\home-services\packages\shared' -> '<USER>\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\node_modules\@nestscout\shared'
+
+pnpm: EEXIST: file already exists, symlink '<USER>\.codex\worktrees\kawa01-integration-simulation\home-services\packages\shared' -> '<USER>\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\node_modules\@nestscout\shared'
+    at async Object.symlink (node:internal/fs/promises:1059:10)
+    at async createSymlinkAsync (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:51013:13)
+    at async forceSymlink (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:50933:7)
+    at async forceSymlink (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:50997:10)
+    at async symlinkDirectRootDependency (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:178412:22)
+    at async file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:206211:7
+    at async Promise.all (index 10)
+    at async linkDirectDepsOfProject (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:206209:3)
+    at async Promise.all (index 1)
+    at async linkDirectDeps (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:206150:30)
+[ERROR] Command failed with exit code 4294963221: "<USER>\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" "<USER>\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules\pnpm\bin\pnpm.mjs" install
+
+pnpm: Command failed with exit code 4294963221: "<USER>\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" "<USER>\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules\pnpm\bin\pnpm.mjs" install
+    at getFinalError (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:89986:14)
+    at makeError (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:92293:21)
+    at getSyncResult (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:94137:10)
+    at spawnSubprocessSync (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:94097:14)
+    at execaCoreSync (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:94027:23)
+    at callBoundExeca (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:96555:23)
+    at boundExeca (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:96532:49)
+    at sync2 (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:96691:10)
+    at runPnpmCli (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:276904:5)
+    at runDepsStatusCheck (file:///C:/Users/Phan%20Manh%20Tu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/pnpm/dist/pnpm.mjs:278122:7)

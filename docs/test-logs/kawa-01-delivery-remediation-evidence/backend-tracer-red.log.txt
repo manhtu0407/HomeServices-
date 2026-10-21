@@ -1,0 +1,63 @@
+
+ RUN  v4.1.6 C:/Users/Phan Manh Tu/.codex/worktrees/kawa-foundation-safety-20261020/home-services/apps/api
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery > preserves foreign media rejection and returns a trusted fire route without creating a Case
+harness_event {
+  p_event_id: 'dc902495-6edf-4ef9-b8e2-4e1fc09a50bf',
+  p_run_id: '9e48f916-d7c3-4f8f-bbd6-12e2c8c2644b',
+  p_trace_id: '024d2bd9-36ac-49d0-890e-217490547ca7',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.create',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 16,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'VALIDATION',
+  p_safe_metadata: { status: 400 }
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts (1 test | 1 failed) 58ms
+     × preserves foreign media rejection and returns a trusted fire route without creating a Case 56ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts > P416-kael-emergency-error-delivery > preserves foreign media rejection and returns a trusted fire route without creating a Case
+AssertionError: [P416-kael-emergency-error-delivery] authorized recognized emergencies carry only versioned deterministic route metadata through JSON and SSE business failures without changing the rejection, crossing a confirmation gate, spending on providers or revealing private Case details to another actor
+authority: governance/RULES.md #7 (customer approval gates remain authoritative) | governance/RULES.md #8 (rejected operations remain visible failures) | governance/RULES.md #9 (new metadata contains no private text or identifiers)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P412-kael-emergency-delivery, P411-kael-case-emergency-closure-paths
+detail:    foreign new media status=400: expected undefined to deeply equal { version: 'v1', route: 'fire' }
+
+- Expected:
+{
+  "route": "fire",
+  "version": "v1",
+}
+
++ Received:
+undefined
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts:58:40
+     56|     expect(result.status, why).toBe(400)
+     57|     expect(result.body, why).toMatchObject({ code: 'VALIDATION', error…
+     58|     expect(result.body.emergency, why).toEqual({ version: 'v1', route:…
+       |                                        ^
+     59|     expect(world.db.tables.kael_chat_sessions, why).toEqual([])
+     60|     expect(world.db.tables.kael_chat_turns, why).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  18:13:28
+   Duration  5.91s (transform 4.76s, setup 0ms, import 5.64s, tests 58ms, environment 0ms)
+

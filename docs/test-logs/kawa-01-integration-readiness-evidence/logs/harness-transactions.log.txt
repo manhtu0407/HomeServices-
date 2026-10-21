@@ -1,0 +1,67 @@
+$ node scripts/run.mjs run-node scripts/harness/transaction-critical-coverage.mjs
+transaction-critical catalog integrity ok: 65 actor-state entries, 53 routes, 8 system surfaces, 411 collected pillars
+behavioral verification: 0 UNVERIFIED, 0 PARTIAL; 0/445 bound assertions passed
+release evidence outside behavioral mapping: 77 item(s) across 63 entry/entries
+  RELEASE GAP customer.matching-selection: Rollback-only P110/P112 SQL and local RNTL cover persisted selection and fallback behavior; concurrent connections, hosted Edge-to-SQL, physical native relaunch and Production delivery remain unverified.
+  RELEASE GAP customer.matching-selection.read: Physical native relaunch, hosted Edge and Production proof remain unverified.
+  RELEASE GAP auth.customer.public-providers: Real provider configuration, callback exchange, hosted Auth, native browser return, and Production proof remain unverified.
+  RELEASE GAP auth.worker.email-password: Real Supabase Auth, hosted role lookup, native relaunch, concurrent account changes, and Production proof remain open.
+  RELEASE GAP worker.application.read: Separate Staging SQL proves revision lineage but does not replace hosted HTTP-to-SQL execution or real Auth. Concurrent application/review changes are not race-tested. Physical native relaunch and Production source evidence remain open.
+  RELEASE GAP worker.application.submit: P161 proves receipt integrity and retry identity with scripted DB responses; Supabase Auth login, concurrent SQL writes, current-source hosted onboarding, native relaunch, approval/revision UI, and Production proof remain open.
+  RELEASE GAP admin.worker-access.decision: Hosted Admin UI, multi-connection SQL race behavior and Production source/release proof remain open.
+  RELEASE GAP worker.kyc.draft: Hosted Edge-to-SQL execution, concurrent draft replay, physical native relaunch, and Production proof remain open.
+  RELEASE GAP worker.kyc.submit: The local HTTP test uses an authenticated fixture and scripted RPC receipt; live Auth and hosted Edge-to-SQL execution remain unverified. Concurrent Storage races, physical native relaunch, and Production source/release evidence remain open.
+  RELEASE GAP worker.kyc.command.submit: The mapped HTTP/UI assertions use scripted DB receipts; separate Staging SQL covers sequential receipt replay and partial-document preservation, not multi-connection races. Hosted HTTP-to-SQL execution, concurrent SQL/Storage behavior, physical native process-death/relaunch, and Production evidence remain open. Storage orphan retention and support-led corrupt-journal recovery require separate proof.
+  RELEASE GAP worker.kyc.command.reconcile: Hosted Edge-to-SQL execution, physical device process-death recovery, real-account Auth, and Production proof remain open.
+  RELEASE GAP admin.worker-kyc.decision: Local diagnostic codes are not hosted traces. Separate Staging rollback SQL proves 100 sequential replays, immutable history and new-round isolation. Multi-connection races, durable Admin close/relaunch recovery, parent Admin session/cache retirement, hosted HTTP-to-SQL, full readiness, native devices and Production proof remain open.
+  RELEASE GAP worker.readiness.read: The profile endpoint remains a projection; matching eligibility is covered by the separate P71 path. Current-source hosted Edge-to-SQL, native UI/recovery and Production evidence remain open.
+  RELEASE GAP customer.intake.create: Scripted local Supabase clients do not prove real Auth, hosted Edge-to-SQL execution, or multi-connection session-ownership races. Native process-death/relaunch behavior and Production source identity remain unverified.
+  RELEASE GAP customer.intake.turn: Provider interoperability is fixture-only in local tests; hosted Edge-to-SQL, native conversation recovery, and Production proof remain open.
+  RELEASE GAP customer.coverage.read: Live Postgres validation of eligible/reachable capacity and concurrent reservations, hosted Edge-to-SQL, native recovery, and Production proof remain open.
+  RELEASE GAP customer.kael-confirm: The HTTP POST boundary projects a scripted recovery_required RPC receipt into the public response and does not broadcast. P108 rollback-only Staging SQL proves persisted intent and serial replay, but not replay after that state transition; concurrent database races, legacy ownerless recovery, current-source hosted Edge, physical native relaunch, and Production proof remain open.
+  RELEASE GAP customer.confirm-operation.read: Hosted operation reads, real Auth sessions, concurrent DB state changes, physical native process death, and Production proof remain open.
+  RELEASE GAP customer.direct-confirm: Hosted Edge-to-SQL execution, multi-connection concurrency, physical native relaunch and Production proof remain unverified.
+  RELEASE GAP customer.matching-retry-recovery: Hosted Edge-to-SQL execution, multi-connection concurrency, physical native relaunch and Production proof remain unverified.
+  RELEASE GAP customer.matching-parent-read: Hosted Edge-to-SQL execution, multi-connection concurrency, physical native relaunch and Production proof remain unverified.
+  RELEASE GAP system.confirmation.atomic: Multi-connection SQL atomicity, hosted current-source Edge execution, provider delivery recovery, physical native relaunch and Production proof remain open.
+  RELEASE GAP system.matching.outbox: Rollback-only local SQL proofs cover lease authority, immutable consent, fallback atomicity and serial replay. Hosted Edge-to-SQL, simultaneous DB races, notification crash recovery, native and Production delivery proof remain open.
+  RELEASE GAP worker.reachability.heartbeat: Hosted Edge-to-SQL heartbeat persistence and concurrent lease refresh remain open. Native foreground lifecycle, real device push proof, and Production release evidence remain open.
+  RELEASE GAP worker.push.register: Real device permission/token acquisition, hosted SQL, native builds, and Production proof remain unverified.
+  RELEASE GAP worker.push.unregister: Real device-token permission and lifecycle behavior, hosted SQL, native sign-out, and Production proof remain unverified.
+  RELEASE GAP system.delivery.reconcile: Hosted maintainer scheduling, real Expo receipts, concurrent leases, native delivery, and Production proof remain open.
+  RELEASE GAP worker.offers.read: Hosted Edge-to-SQL read, physical native Worker inbox proof and Production proof remain open.
+  RELEASE GAP worker.offer.seen: Hosted SQL execution, real device delivery, and Production source/release proof remain unverified.
+  RELEASE GAP worker.delivery.ack: Hosted Auth/SQL, real device-open delivery and Production proof remain open.
+  RELEASE GAP worker.offer.accept: Hosted SQL execution, native customer-confirmation delivery, and Production source/release proof remain unverified.
+  RELEASE GAP worker.offer.decline: Hosted SQL, concurrent accept/decline races, fallback delivery, physical native Worker UI and Production proof remain open.
+  RELEASE GAP customer.candidate.read: Hosted Edge-to-SQL proof, concurrent candidate changes, physical native recovery, and Production proof remain open.
+  RELEASE GAP customer.candidate.confirm: Hosted Edge-to-SQL, concurrent candidate races, physical native relaunch and Production proof remain open.
+  RELEASE GAP customer.candidate.reject: Hosted Edge-to-SQL proof, concurrent accept/decline races, physical native relaunch, and Production proof remain open.
+  RELEASE GAP customer.apartment-access.authorize: Hosted Edge-to-SQL verification remains open. Concurrent access races, physical native relaunch and Production proof remain open.
+  RELEASE GAP worker.fulfillment.media: Hosted SQL/RLS quota and Storage behavior, concurrent upload races, native media permission and relaunch evidence, and Production proof remain open.
+  RELEASE GAP customer.fulfillment.media: Hosted Storage/RLS and quota behavior, concurrent upload races, native media permission and relaunch evidence, and Production proof remain open.
+  RELEASE GAP worker.scope-change.propose: Hosted Edge-to-SQL and concurrent scope-change races remain unverified. Real provider responses and native relaunch remain unverified. Production route identity and behavior remain unverified.
+  RELEASE GAP customer.scope-change.decide: Hosted Edge-to-SQL concurrent scope-decision races remain unverified. Native relaunch after a saved scope decision remains unverified. Production route identity and behavior remain unverified.
+  RELEASE GAP customer.completion.confirm: Hosted SQL/RLS, multi-connection concurrency, physical native relaunch, and Production source identity remain unverified.
+  RELEASE GAP customer.payment-order.read: Live Supabase Auth/SQL receipt execution, duplicate and race behavior, hosted Edge and Production proof remain open.
+  RELEASE GAP customer.payment-order.claim: Live Supabase Auth/SQL atomic receipt execution, duplicate and race behavior, hosted Edge and Production proof remain open.
+  RELEASE GAP admin.payment.reconciliation.read: Hosted Auth and SQL execution, concurrent assignment changes, native Admin UI and Production proof remain open.
+  RELEASE GAP admin.payment.reconciliation.decide: Hosted SQL/RLS, concurrent reconciliation changes, audited Admin UI/native flow, and Production proof remain unverified.
+  RELEASE GAP customer.cancellation.request: P118/P89 rollback-only SQL fixtures do not prove multi-connection cancellation or refund races. Hosted current-source Edge-to-SQL and real Supabase Auth remain unverified. Physical native relaunch and push delivery remain unverified. Production cancellation and refund-review behavior remain unverified.
+  RELEASE GAP worker.cancellation.request: Hosted Edge-to-SQL, concurrent cancellation races, physical native relaunch and Production proof remain open.
+  RELEASE GAP customer.dispute.open: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP worker.dispute.open: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP customer.dispute.counter-statement: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP worker.dispute.counter-statement: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP admin.dispute.decide: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP admin.recovery.list: Hosted Auth and SQL projection, concurrent recovery changes, native Admin UI and Production proof remain open.
+  RELEASE GAP admin.recovery.detail: Hosted Auth and SQL projection, concurrent recovery changes, durable Admin refresh, native UI and Production proof remain open.
+  RELEASE GAP admin.recovery.action: Hosted Edge-to-SQL and live RLS/service-role binding are not verified. Real multi-connection optimistic-concurrency and native Admin UI proof remain open.
+  RELEASE GAP system.recovery.scan: Hosted scanner scheduling, multi-connection leases, live SQL execution and Production recovery evidence remain open.
+  RELEASE GAP system.synthetic.terminal-payment: This isolated synthetic-terminal proof is not real-user payment evidence, hosted Production SQL proof, provider settlement, or Production health/release proof.
+  RELEASE GAP system.release.health: The current registered Production runtime predates origin/main and lacks the System Health monitor. Native readiness, hosted monitor convergence and rollout/soak evidence remain open.
+  RELEASE GAP worker.rfq-price.propose: Hosted Edge-to-SQL execution, concurrent database races, physical native relaunch, and Production evidence remain open.
+  RELEASE GAP customer.rfq-price.decide: Hosted Edge-to-SQL execution, concurrent decision races, physical native relaunch, and Production proof remain open.
+  RELEASE GAP customer.rfq-price.reconcile: Hosted Edge-to-SQL execution, concurrent proposal changes, physical native relaunch, and Production proof remain open.
+  RELEASE GAP worker.rfq-price.reconcile: Hosted SQL/RLS, concurrent proposal changes, physical native relaunch, and Production proof remain open.
+  RELEASE GAP system.release.production-promotion: The last official Production run stopped at the strict behavioral gate. The currently registered Production release predates origin/main and lacks the System Health monitor; APNs/FCM readiness, native evidence, monitor deployment, promotion and post-release soak remain open.

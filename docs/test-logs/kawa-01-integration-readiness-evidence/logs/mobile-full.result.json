@@ -1,0 +1,10 @@
+{
+  "id": "mobile-full",
+  "command": "pnpm test:mobile --runInBand --watch=false --json --outputFile=../../.scratch/kawa01-integration-20261021/mobile-jest.json",
+  "dirtyCandidate": true,
+  "exitCode": 0,
+  "ended": "2026-10-21T13:37:53.0522998Z",
+  "started": "2026-10-21T13:30:17.1931558Z",
+  "head": "910bad7dbd41f1937d326c3a0ab83552ed4c2465",
+  "lane": "T0"
+}

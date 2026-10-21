@@ -1,0 +1,7 @@
+{
+  "lane": "T0",
+  "exitCode": 0,
+  "tree": "da6555674f9847606836bfd3d3b270091cef7c8c",
+  "command": "node node_modules/jest/bin/jest.js --runInBand --watch=false --runTestsByPath components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx config/__tests__/ios-release-readiness-pillar-test.tsx",
+  "id": "integration-mobile-direct"
+}

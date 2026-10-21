@@ -1,0 +1,2092 @@
+
+> nestscout@0.1.0 doctor:react:changed <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-react-doctor changed
+
+React Doctor v0.5.8
+
+✔ Select projects › @nestscout/api, @nestscout/mobile
+No feature branch or uncommitted changes detected. Running full scan.
+
+✔ Scanned 1721 files in 21.8s
+
+  ✖ Security: socket/low-supply-chain-score
+    `supabase@2.98.2 (lowest version "^2.98.2" allows)` scored
+    0/100 on Socket's supply chain axis (minimum 50). This
+    points to risky install-time behavior — install scripts,
+    obfuscated or native code, network/filesystem/shell access,
+    or typosquatting. Other axes — vulnerability 100,
+    maintenance 98, quality 99, license 100.
+    → Confirm this is the package you meant to install, and
+    prefer a more established, audited alternative; update
+    `"supabase": "^2.98.2"` in package.json. Full report:
+    https://socket.dev/npm/package/supabase/overview/2.98.2. If
+    you've reviewed and accepted this package, raise
+    `supplyChain.minScore` (currently 50) or set
+    `supplyChain.severity: "warning"`.
+
+    package.json:38
+    ┌──────────────────────────────────────────────────────────────┐
+    │   37 |     "eslint-config-next": "16.2.6",                   │
+    │ > 38 |     "supabase": "^2.98.2",                            │
+    │      |     ^                                                 │
+    │   39 |     "tailwindcss": "^4",                              │
+    └──────────────────────────────────────────────────────────────┘
+
+  ⚠ Performance: Array lookup inside a loop ×10
+    This scales poorly because `array.includes()` inside a loop
+    scans the whole list every time. Use a Set for
+    constant-time lookups.
+    → Use a `Set` or `Map` when you check for the same items
+    over and over. `Array.includes`/`find` scans the whole list
+    each time
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/js-set-map-lookups
+
+    scripts/lib/kael-playbook-eval-core.mjs:510
+
+    scripts/lib/kael-playbook-eval-core.mjs:647
+
+    scripts/lib/kael-playbook-eval-core.mjs:657
+
+    scripts/lib/plan55-independent-holdout-agent.mjs:170
+
+    scripts/lib/plan55-production-canary-checkpoint-store.mjs:100
+
+    scripts/lib/plan55-production-canary-checkpoint-store.mjs:107
+
+    scripts/lib/plan55-production-canary-core.mjs:934-935
+
+    scripts/lib/plan55-production-canary-operations.mjs:1172
+
+    components/customer/kael-chat/agentic-estimate-evidence-display-model.ts:169
+
+  ⚠ Performance: Spread copy before sort() ×20
+    This wastes work because [...array].sort() copies the array
+    just to sort it, so use array.toSorted() to sort without
+    the extra copy (ES2023)
+    → Use `array.toSorted()` (ES2023) instead of
+    `[...array].sort()` so you sort without copying the array
+    first
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/js-tosorted-immutable
+
+    scripts/lib/kael-playbook-eval-core.mjs:606
+
+    scripts/lib/kael-playbook-eval-core.mjs:681
+
+    scripts/lib/kael-playbook-source-hash.mjs:10
+
+    scripts/lib/plan55-independent-holdout-adjudication.mjs:277
+
+    scripts/lib/plan55-independent-holdout-adjudication.mjs:309
+
+    scripts/lib/plan55-independent-holdout-adjudication.mjs:329
+
+    scripts/lib/plan55-independent-holdout-agent.mjs:118
+
+    scripts/lib/plan55-independent-holdout-agent.mjs:240-241
+
+    scripts/lib/plan55-independent-holdout-agent.mjs:341
+
+    scripts/lib/plan55-independent-holdout-agent.mjs:383
+
+    scripts/lib/plan55-independent-holdout-package.mjs:109
+
+    scripts/lib/plan55-independent-holdout-package.mjs:118
+
+    scripts/lib/plan55-independent-holdout-review.mjs:1006
+
+    scripts/lib/plan55-production-canary-checkpoint-store.mjs:395
+
+    scripts/lib/plan55-production-canary-core.mjs:415
+
+    scripts/lib/plan55-production-canary-core.mjs:443-444
+
+    scripts/lib/plan55-production-canary-operations.mjs:802
+
+  ⚠ Performance: Chained array iterations ×14
+    This loops over your list twice because .map().filter()
+    makes two passes, so do it in one pass with .reduce() or a
+    for...of loop
+    → Combine `.map().filter()` style chains into one pass with
+    `.reduce()` or a `for...of` loop, so you only loop over the
+    list once
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/js-combine-iterations
+
+    scripts/lib/kael-playbook-eval-core.mjs:618
+
+    scripts/lib/kael-playbook-eval-core.mjs:1054-1056
+
+    scripts/lib/plan55-independent-holdout-agent.mjs:184
+
+    scripts/lib/plan55-next-action.mjs:44
+
+    scripts/lib/plan55-production-canary-checkpoint-store.mjs:302
+
+    scripts/lib/plan55-production-canary-checkpoint-store.mjs:306
+
+    scripts/lib/plan55-production-canary-operations.mjs:1281
+
+    components/admin/admin-ambassador-program-workspace.tsx:138
+
+    components/customer/kael-chat/use-customer-kael-evidence-actions.ts:131
+
+    components/worker/jobs/stage-four-route-overlay.tsx:30
+
+    components/worker/profile/services-surfaces.tsx:153
+
+    lib/resource-cache/resource-cache-persistence.ts:83
+
+  ⚠ Bugs: Sequential independent awaits
+    This await doesn't use the previous result, so your users
+    wait twice as long for nothing.
+    → These two awaits don't depend on each other. Wrap them in
+    `Promise.all([...])` so they run at the same time.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/server-sequential-independent-await
+
+    scripts/lib/plan55-production-canary-checkpoint-store.mjs:90
+
+  ⚠ Performance: JSON parse/stringify deep clone ×14
+    `JSON.parse(JSON.stringify(x))` deep-clones by
+    re-serializing: it is slow on large objects and silently
+    drops `undefined`, functions, `Date`/`Map`/`Set`, and
+    cyclic references. Use `structuredClone(x)`.
+    → Replace `JSON.parse(JSON.stringify(value))` with
+    `structuredClone(value)`. It is faster and preserves Dates,
+    Maps, Sets, and cyclic references.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-json-parse-stringify-clone
+
+    scripts/lib/plan55-production-canary-checkpoint-store.mjs:372
+
+    src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts:161 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-case-context-pillar.test.ts:171 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-case-emergency-all-fields-pillar.test.ts:40 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:37 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts:60 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-case-emergency-pending-confirmation-pillar.test.ts:54 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts:43 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-price-reasoning-receipt.test.ts:504 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-price-reasoning-receipt.test.ts:523 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-price-reasoning-receipt.test.ts:543 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-price-reasoning-receipt.test.ts:555 (test file)
+
+    src/__tests__/kael-edge-runtime/domains/kael-recurring-incident-e2e-pillar.test.ts:83 (test file)
+
+    src/__tests__/kael-edge-runtime/harness/memory-db.ts:28 (test file)
+
+  ⚠ Performance: Repeated property access in a loop ×8
+    This slows the loop because before.scopeSignal.total is
+    read 3 times inside it, so read it once into a variable at
+    the top
+    → Read the value once into a variable at the top of the
+    loop: `const { x, y } = obj.deeply.nested`
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/js-cache-property-access
+
+    scripts/lib/plan55-production-canary-core.mjs:523-525
+
+    scripts/lib/plan55-production-canary-core.mjs:536-537
+
+  ⚠ Performance: await inside a loop ×38
+    This makes the for…of loop slow because each await runs one
+    after another, so collect the independent calls & run them
+    together with `await Promise.all(items.map(...))`
+    → Collect the items, then use `await
+    Promise.all(items.map(...))` so independent work runs at
+    the same time
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/async-await-in-loop
+
+    scripts/lib/plan55-production-canary-core.mjs:747
+
+    scripts/lib/plan55-production-canary-core.mjs:783
+
+    scripts/lib/plan55-production-canary-core.mjs:793
+
+    scripts/lib/plan55-production-canary-operations.mjs:656
+
+    scripts/lib/plan55-production-canary-operations.mjs:697
+
+    scripts/lib/plan55-production-canary-operations.mjs:774
+
+    scripts/lib/plan55-production-canary-operations.mjs:1012
+
+    scripts/lib/plan55-production-canary-operations.mjs:1049
+
+    scripts/lib/plan55-production-canary-operations.mjs:1065
+
+    scripts/lib/plan55-production-canary-operations.mjs:1096
+
+    scripts/lib/plan55-production-canary-operations.mjs:1180
+
+    scripts/lib/plan55-production-canary-operations.mjs:1586
+
+    scripts/lib/privileged-script-safety.mjs:60
+
+    scripts/lib/stage1-synthetic-smoke-core.mjs:134
+
+    src/lib/ai/client.ts:72
+
+    src/lib/http/request-json.ts:33
+
+    src/lib/http/response.ts:31
+
+    src/lib/jobs/broadcast.ts:137
+
+    src/lib/jobs/broadcast.ts:174
+
+    src/lib/kael/intent.ts:25
+
+    src/lib/kael/intent.ts:91
+
+    components/customer/kael-chat/customer-kael-conversation-requests.ts:31
+
+    components/customer/kael-chat/kael-progress-polling.ts:33
+
+    lib/api.ts:131
+
+    lib/app-language.ts:247
+
+    lib/frontend-workflow/compensation-evidence.ts:28
+
+    lib/frontend-workflow/use-customer-apartment-access.ts:165
+
+    lib/frontend-workflow/use-customer-job-actions.ts:141
+
+    lib/frontend-workflow/use-customer-matching-retry.ts:186
+
+    lib/frontend-workflow/use-customer-matching-selection.ts:158
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:193
+
+    lib/frontend-workflow/use-worker-violations.ts:56
+
+    lib/media-upload.ts:108
+
+    lib/media-upload.ts:288
+
+    lib/media-upload.ts:337
+
+    lib/media-upload.ts:486
+
+    lib/response-guard.ts:122
+
+    lib/theme-preference-store.ts:41
+
+  ⚠ Performance: await before an early-return guard ×93
+    This await blocks the function before an early-return that
+    doesn't use the awaited value, so the skip path waits for
+    nothing. Move the await below the guard so it only runs
+    when you need the data
+    → Move the `await` below the early-return guard so the skip
+    path stays fast and avoids unnecessary async work.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/async-defer-await
+
+    scripts/lib/plan55-production-canary-operations.mjs:354
+
+    components/admin/admin-worker-review-modal.tsx:125
+
+    components/admin/admin-worker-review-modal.tsx:141
+
+    components/admin/admin-worker-review-modal.tsx:211
+
+    components/admin/use-admin-system-detail.ts:60
+
+    components/admin/use-admin-system-resource.ts:88
+
+    components/customer/kael-chat/customer-kael-normal-turn-send.ts:136
+
+    components/customer/kael-chat/customer-kael-normal-turn-send.ts:180
+
+    components/customer/kael-chat/use-customer-kael-conversations.ts:733
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:210-213
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:229
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:238
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:302
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:348
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:429
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:434
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:479
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:554
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:564
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:651-654
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:686
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:694
+
+    components/customer/kael-chat/use-customer-kael-decision-actions.ts:739
+
+    components/customer/kael-chat/use-customer-kael-evidence-actions.ts:396
+
+    components/customer/kael-chat/use-customer-kael-evidence-actions.ts:406-409
+
+    components/customer/kael-chat/use-customer-kael-message-actions.ts:361
+
+    components/customer/kael-chat/use-customer-kael-message-actions.ts:409
+
+    components/customer/kael-chat/use-customer-kael-message-actions.ts:427
+
+    components/customer/kael-chat/use-customer-kael-message-actions.ts:452
+
+    components/customer/kael-chat/use-customer-kael-message-actions.ts:503
+
+    components/customer/kael-chat/use-customer-kael-next-actions.ts:59
+
+    components/worker/chat/kael-orb-send-action.ts:186
+
+    components/worker/chat/kael-orb-send-action.ts:216
+
+    components/worker/chat/kael-orb-send-action.ts:267
+
+    components/worker/chat/kael-orb-send-action.ts:292
+
+    components/worker/chat/kael-orb-send-action.ts:300
+
+    components/worker/chat/kael-orb-send-action.ts:319
+
+    components/worker/chat/use-kael-orb-chat.ts:394
+
+    components/worker/chat/use-kael-orb-chat.ts:462
+
+    lib/app-language.ts:299
+
+    lib/app-language.ts:306
+
+    lib/frontend-workflow/apartment-access-recovery.ts:31
+
+    lib/frontend-workflow/apartment-access-recovery.ts:51
+
+    lib/frontend-workflow/candidate-decision-recovery.ts:35
+
+    lib/frontend-workflow/candidate-decision-recovery.ts:55
+
+    lib/frontend-workflow/confirmation-reconciliation.ts:66
+
+    lib/frontend-workflow/confirmation-reconciliation.ts:76
+
+    lib/frontend-workflow/confirmation-reconciliation.ts:100
+
+    lib/frontend-workflow/legacy-confirmation-recovery.ts:10
+
+    lib/frontend-workflow/legacy-confirmation-recovery.ts:18
+
+    lib/frontend-workflow/rfq-price-recovery.ts:36
+
+    lib/frontend-workflow/use-customer-apartment-access.ts:77
+
+    lib/frontend-workflow/use-customer-apartment-access.ts:115
+
+    lib/frontend-workflow/use-customer-apartment-access.ts:130
+
+    lib/frontend-workflow/use-customer-apartment-access.ts:160
+
+    lib/frontend-workflow/use-customer-job-actions.ts:111
+
+    lib/frontend-workflow/use-customer-job-actions.ts:141
+
+    lib/frontend-workflow/use-customer-job-actions.ts:203
+
+    lib/frontend-workflow/use-customer-job-actions.ts:222
+
+    lib/frontend-workflow/use-customer-job-actions.ts:260
+
+    lib/frontend-workflow/use-customer-job-actions.ts:299
+
+    lib/frontend-workflow/use-customer-job-actions.ts:315
+
+    lib/frontend-workflow/use-customer-matching-retry.ts:72
+
+    lib/frontend-workflow/use-customer-matching-retry.ts:94
+
+    lib/frontend-workflow/use-customer-matching-retry.ts:107
+
+    lib/frontend-workflow/use-customer-matching-retry.ts:154
+
+    lib/frontend-workflow/use-customer-matching-selection.ts:91
+
+    lib/frontend-workflow/use-customer-matching-selection.ts:120
+
+    lib/frontend-workflow/use-rfq-price.ts:37
+
+    lib/frontend-workflow/use-rfq-price.ts:45
+
+    lib/frontend-workflow/use-rfq-price.ts:63
+
+    lib/frontend-workflow/use-worker-board-actions.ts:187
+
+    lib/frontend-workflow/use-worker-board-actions.ts:264
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:64
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:117
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:131
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:154
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:188
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:266
+
+    lib/frontend-workflow/worker-registration-recovery.ts:109
+
+    lib/frontend-workflow/worker-registration-recovery.ts:139
+
+    lib/frontend-workflow/worker-registration-recovery.ts:149
+
+    lib/frontend-workflow/worker-registration-recovery.ts:171
+
+    lib/frontend-workflow/worker-registration-recovery.ts:178
+
+    lib/pending-kael-chat-draft.ts:339
+
+    lib/pending-kael-chat-draft.ts:344
+
+    lib/pending-kael-chat-draft.ts:378
+
+    lib/response-guard.ts:16
+
+    lib/response-guard.ts:53
+
+    lib/use-auth-role-lookup.ts:79
+
+  ⚠ Performance: Independent awaits run sequentially
+    These 3 sequential await statements run one after another
+    even though they look independent, so the page waits longer
+    than it needs to. Run them together with Promise.all()
+    instead
+    → Use `const [a, b] = await Promise.all([fetchA(),
+    fetchB()])` so independent calls run at the same time
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/async-parallel
+
+    scripts/lib/plan55-production-canary-operations.mjs:393
+
+  ⚠ Maintainability: Non-component export in component file ×36
+    This file exports non-components, so Fast Refresh can't
+    safely preserve component state.
+    → Move non-component exports out of component files so Fast
+    Refresh can preserve component state instead of
+    full-reloading.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/only-export-components
+
+    components/admin/admin-ambassador-program-workspace.tsx:37
+
+    components/admin/admin-compensation-panel.tsx:22
+
+    components/customer/kael-chat/case-work-response.tsx:18-20
+
+    components/customer/kael-chat/completion-nudge-controls.tsx:17
+
+    components/customer/kael-chat/completion-nudge-controls.tsx:24
+
+    components/customer/kael-chat/kael-chat-mascot.tsx:37
+
+    components/customer/kael-chat/kael-next-action-chips.tsx:24
+
+    components/customer/kael-chat/quote-readiness-review-response.tsx:22
+
+    components/customer/kael-chat/use-kael-chat-transcript.tsx:73
+
+    components/customer/profile/membership-card.tsx:39
+
+    components/customer/profile/membership-card.tsx:65
+
+    components/customer/profile/membership-card.tsx:87
+
+    components/customer/report/worker-report-entry.tsx:28
+
+    components/customer/report/worker-report-sheet.tsx:40
+
+    components/job/compensation-negotiation.tsx:14
+
+    components/job/compensation-negotiation.tsx:25
+
+    components/job/compensation-negotiation.tsx:39
+
+    components/ui/launch-splash-gate.tsx:16
+
+    components/ui/liquid-pill-button.tsx:14
+
+    components/ui/offline-status-pill.tsx:14
+
+    components/ui/primary-cta-fill.tsx:12
+
+    components/worker/discipline/violation-surfaces.tsx:39
+
+    components/worker/jobs/worker-jobs-stage-two-workart.tsx:31
+
+    components/worker/jobs/worker-jobs-zip-prototype-shared.tsx:60
+
+    components/worker/jobs/worker-jobs-zip-prototype-shared.tsx:70-73
+
+    components/worker/jobs/worker-jobs-zip-prototype-shared.tsx:85
+
+    components/worker/jobs/worker-jobs-zip-prototype-shared.tsx:95
+
+    components/worker/jobs/worker-jobs-zip-prototype-surface.tsx:28
+
+    components/worker/jobs/worker-jobs-zip-prototype.tsx:21
+
+    components/worker/jobs/worker-jobs-zip-prototype.tsx:162
+
+    components/worker/profile/invite-code-surfaces.tsx:20
+
+    components/worker/profile/invite-code-surfaces.tsx:35
+
+  ⚠ Bugs: Many related useState calls ×10
+    5 useState calls in "AdminAmbassadorProgramWorkspace" can
+    each trigger a separate render.
+    → Group related state in `useReducer` so one logical update
+    does not fan out into separate renders.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/prefer-useReducer
+
+    components/admin/admin-ambassador-program-workspace.tsx:50
+
+    components/admin/admin-discipline-workspace.tsx:63
+
+    components/admin/admin-discipline-workspace.tsx:211
+
+    components/admin/admin-workflow-recovery-center.tsx:135
+
+    components/customer/compensation/compensation-section.tsx:116
+
+    components/customer/dock/liquid-tab-plane.tsx:61
+
+    components/customer/kael-chat/kael-session-menu.tsx:55
+
+    components/customer/profile/membership-card.tsx:103
+
+    components/worker/chat/worker-kael-session-list.tsx:50
+
+    components/worker/earnings/receiving-account-surfaces.tsx:59
+
+  ⚠ Bugs: Non-virtualized mapped list in ScrollView ×6
+    Your users get slow scrolling when <ScrollView> with
+    items.map(...) builds every row at once.
+    → `<ScrollView>{items.map(...)}</ScrollView>` builds every
+    row at once, which slows scrolling. Use FlashList,
+    LegendList, or FlatList instead.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-no-scrollview-mapped-list
+
+    components/admin/admin-ambassador-program-workspace.tsx:125
+
+    components/admin/admin-segmented-control.tsx:83
+
+    components/customer/history/service-history-filter-rail.tsx:277
+
+    components/customer/kael-chat/customer-kael-emergency-access.tsx:42
+
+    components/customer/report/worker-report-sheet.tsx:100
+
+    components/ui/normal-chat-starter-rail.tsx:51
+
+  ⚠ Bugs: Array index used as a key ×4
+    Your users can see & submit the wrong data when this list
+    reorders or filters, so use a stable id like
+    `key={item.id}`, not the array index "index".
+    → Use a stable id from the item, like `key={item.id}` or
+    `key={item.slug}`. Index keys break when the list reorders
+    or filters.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-array-index-as-key
+
+    components/admin/admin-ambassador-program-workspace.tsx:128
+
+    components/admin/admin-discipline-workspace.tsx:295-296
+
+    components/worker/jobs/worker-jobs-zip-prototype-work-stages.tsx:88
+
+  ⚠ Bugs: Derived value copied into state ×6
+    Storing "errors" in state when you can derive it from other
+    values costs an extra render.
+    → Work out the value while rendering (or with useMemo if
+    it's expensive) instead of copying it into useState through
+    a useEffect. See
+    https://react.dev/learn/you-might-not-need-an-effect#updating-state-based-on-props-or-state
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-derived-state
+
+    components/admin/admin-discipline-workspace.tsx:101
+
+    components/ui/use-kael-respond-stream-presentation.ts:60
+
+    components/ui/use-kael-respond-stream-presentation.ts:71-74
+
+    components/ui/use-kael-respond-stream-presentation.ts:78
+
+    components/ui/use-kael-respond-stream-presentation.ts:82
+
+  ⚠ Bugs: Inline renderItem on list ×3
+    Your users see extra row work when renderItem on <FlatList>
+    is rebuilt every time the screen redraws.
+    → Move renderItem to a named function or wrap it in
+    useCallback so it is not rebuilt every time the screen
+    redraws.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-no-inline-flatlist-renderitem
+
+    components/admin/admin-discipline-workspace.tsx:148
+
+    components/admin/admin-discipline-workspace.tsx:168
+
+    components/admin/admin-discipline-workspace.tsx:187
+
+  ⚠ Performance: JSX element passed as a prop ×6
+    This child redraws every render because the prop gets brand
+    new JSX each time.
+    → Move the JSX outside the component or wrap it in
+    `useMemo` so memoized children do not redraw every render.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/jsx-no-jsx-as-prop
+
+    components/admin/admin-discipline-workspace.tsx:208
+
+    components/customer/booking/booking-entry-stateful-surfaces.tsx:211
+
+    components/customer/kael-chat/worker-candidate-review-response.tsx:195
+
+    components/customer/profile/profile-account-utility-surfaces.tsx:332
+
+    components/customer/v21/surfaces.tsx:1465
+
+    components/worker/jobs/worker-jobs-zip-prototype-settlement-stages.tsx:115
+
+  ⚠ Performance: Intl formatter rebuilt each call ×25
+    This is slow because new Intl.NumberFormat() rebuilds on
+    every call inside a function, so move it to the top of the
+    file, or wrap it in useMemo
+    → Move `new Intl.NumberFormat(...)` to the top of the file
+    or wrap it in `useMemo`. Building one is slow, so don't
+    redo it on every call
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/js-hoist-intl
+
+    components/admin/admin-finance-formatters.ts:7
+
+    components/admin/admin-finance-formatters.ts:12
+
+    components/admin/admin-finance-formatters.ts:17
+
+    components/admin/admin-finance-formatters.ts:25
+
+    components/admin/admin-finance-formatters.ts:30
+
+    components/admin/admin-governance.tsx:368
+
+    components/admin/admin-governance.tsx:372
+
+    components/admin/admin-governance.tsx:376
+
+    components/customer/profile/membership-card.tsx:32
+
+    components/customer/profile/membership-rank.ts:17
+
+    components/customer/profile/profile-foundation-utility-surfaces.tsx:534
+
+    components/job/compensation-negotiation.tsx:15
+
+    components/worker/home/worker-home-production-model.ts:87
+
+    components/worker/home/worker-home-production-model.ts:177
+
+    components/worker/home/worker-home-production-model.ts:184
+
+    components/worker/home/worker-home-production-model.ts:190
+
+    components/worker/home/worker-home-production-model.ts:196
+
+    components/worker/jobs/acceptance.ts:106
+
+    components/worker/jobs/offer.ts:223
+
+    components/worker/jobs/stage-eleven/stage-eleven-model.ts:73
+
+    components/worker/jobs/stage-eleven/stage-eleven-model.ts:77
+
+    components/worker/jobs/stage-ten/stage-ten-model.ts:102
+
+    components/worker/jobs/stage-ten/stage-ten-model.ts:125
+
+    components/worker/jobs/stage-ten/stage-ten-model.ts:131
+
+    components/worker/jobs/stage-ten/stage-ten-model.ts:150
+
+  ⚠ Maintainability: deslop/unused-file ×25
+    Unused file is not reachable from any entry point, so it
+    adds maintenance surface without shipping any code.
+    → Delete the file if it is truly unreachable, or import it
+    from an entry point.
+
+    components/admin/admin-governance.tsx
+
+    components/admin/admin-policy-governance.tsx
+
+    components/auth/entry-access/role-selection-cards.tsx
+
+    components/customer/history/history-active-surfaces.tsx
+
+    components/customer/home/home-service-artwork.tsx
+
+    components/ui/native-kael-bottom-accessory.tsx
+
+    components/worker/home/action-styles.ts
+
+    components/worker/home/action-surfaces.tsx
+
+    components/worker/home/kael-brief-surfaces.tsx
+
+    components/worker/home/quick-action-grid-surfaces.tsx
+
+    components/worker/home/screen-surfaces.tsx
+
+    components/worker/home/worker-home-rebuild-surface.tsx
+
+    components/worker/jobs/completion-body-styles.ts
+
+    components/worker/jobs/source-styles.ts
+
+    components/worker/jobs/source-surfaces.tsx
+
+    components/worker/jobs/stage-eleven/stage-eleven-preview-fixture.ts
+
+    components/worker/jobs/worker-interactive-route-map-prototype.native.tsx
+
+    components/worker/jobs/worker-interactive-route-map-prototype.tsx
+
+    components/worker/profile/ranking-hero-surfaces.tsx
+
+    components/worker/profile/ranking-styles.ts
+
+    components/worker/profile/ranking-surfaces.tsx
+
+    components/worker/profile/reliability-hero-surfaces.tsx
+
+    components/worker/profile/reliability-styles.ts
+
+    components/worker/profile/reliability-surfaces.tsx
+
+    components/worker/prototypes/worker-profile-redesign-prototype.tsx
+
+  ⚠ Maintainability: deslop/unused-export ×87
+    Unused export: `AdminSubAdminPanel` is exported but no
+    module imports it, so it expands the public surface and can
+    mislead callers about supported API.
+    → Drop the `export` keyword (or remove the declaration) if
+    no other module uses this symbol.
+
+    components/admin/admin-operations-and-team.tsx:376
+
+    components/admin/admin-sections.tsx:651
+
+    components/auth/entry-access/components/materials.tsx:155
+
+    components/auth/entry-access/nestscout-login-gate/layout.ts:4
+
+    components/customer/compensation/compensation-section.tsx:110
+
+    components/customer/history/history-surfaces.tsx:44
+
+    components/customer/kael-chat/case-work-display-model.ts:117
+
+    components/customer/kael-chat/case-work-display-model.ts:132
+
+    components/customer/kael-chat/case-work-money-display-model.ts:61
+
+    components/customer/kael-chat/case-work-money-display-model.ts:74
+
+    components/customer/kael-chat/case-work-travel-model.ts:38
+
+    components/customer/kael-chat/case-work-travel-model.ts:124
+
+    components/customer/kael-chat/chat-surfaces.tsx:46
+
+    components/customer/kael-chat/completion-nudge-controls.tsx:17
+
+    components/customer/kael-chat/completion-nudge-controls.tsx:24
+
+    components/customer/kael-chat/customer-kael-chat-helpers.ts:217
+
+    components/customer/kael-chat/customer-kael-conversation-catalog-state.ts:11
+
+    components/customer/kael-chat/kael-chat-mascot.tsx:37
+
+    components/customer/kael-chat/kael-process-lines.ts:362
+
+    components/customer/kael-chat/on-device-voice-transcript.tsx:6
+
+    components/customer/profile/membership-card.tsx:65
+
+    components/customer/profile/membership-card.tsx:87
+
+    components/customer/profile/profile-metrics-surfaces.tsx:13
+
+    components/customer/report/worker-report-sheet.tsx:40
+
+    components/customer/ui/assets.ts:67
+
+    components/customer/ui/shared-styles.ts:4-5
+
+    components/ui/kael-composer-input-height.ts:4-5
+
+    components/ui/launch-splash-gate.tsx:12
+
+    components/ui/use-kael-composer-bottom-inset.ts:8-9
+
+    components/worker/earnings/ambassador-model.ts:24
+
+    components/worker/jobs/active-body-surfaces.tsx:75
+
+    components/worker/jobs/offer.ts:208
+
+    components/worker/jobs/shared-surfaces.tsx:44
+
+    components/worker/jobs/stage-five/travel-work/stage-five-model.ts:2-5
+
+    components/worker/jobs/stage-five/travel-work/stage-five-model.ts:19-28
+
+    components/worker/jobs/stage-five/travel-work/stage-five-model.ts:33
+
+    components/worker/jobs/stage-ratio.ts:12
+
+    components/worker/jobs/stage-ratio.ts:79
+
+    components/worker/jobs/stage-ten/stage-ten-model.ts:17
+
+    components/worker/jobs/use-stage-four-map-viewport.ts:4-6
+
+    components/worker/jobs/waiting/waiting-time.ts:3
+
+    components/worker/jobs/waiting/waiting-time.ts:15
+
+    components/worker/profile/invite-code-surfaces.tsx:20
+
+    components/worker/profile/invite-code-surfaces.tsx:35
+
+    components/worker/profile/reviews-surfaces.tsx:48
+
+    components/worker/profile/reviews-surfaces.tsx:96
+
+    components/worker/profile/reviews-surfaces.tsx:189
+
+    components/worker/profile/services-surfaces.tsx:137
+
+    components/worker/profile/settings-surfaces.tsx:52
+
+    components/worker/profile/verification-surfaces.tsx:147
+
+    components/worker/ui/aura-surfaces.tsx:255
+
+    components/worker/ui/format.ts:17
+
+    components/worker/ui/format.ts:24
+
+    components/worker/ui/format.ts:38
+
+    components/worker/ui/format.ts:77
+
+    components/worker/ui/labels.ts:140
+
+    components/worker/ui/labels.ts:148
+
+    components/worker/ui/labels.ts:170
+
+    components/worker/ui/metrics-surfaces.tsx:32
+
+    components/worker/ui/metrics-surfaces.tsx:127
+
+    components/worker/ui/metrics-surfaces.tsx:202
+
+    components/worker/ui/worker-dark-styles.ts:168
+
+    components/worker/ui/worker-dark-styles.ts:172
+
+    components/worker/ui/worker-v5-icon-assets.ts:65
+
+    components/worker/ui/worker-v5-icon-assets.ts:72
+
+    components/worker/ui/worker-v5-icon-assets.ts:85
+
+    lib/admin-data-sync.tsx:127
+
+    lib/frontend-workflow/helpers.ts:92
+
+    lib/frontend-workflow/payment-proof.ts:3
+
+    lib/frontend-workflow/snapshots.ts:32
+
+    lib/frontend-workflow/snapshots.ts:68
+
+    lib/kael-reasoning-receipt.ts:1
+
+    lib/mobile-health-state.ts:34
+
+    lib/pending-kael-chat-message.ts:2
+
+    lib/pending-worker-kael-draft.ts:4
+
+    lib/resource-cache/resource-policies.ts:41
+
+    lib/vision-image-reencode.ts:9
+
+    lib/vision-image-reencode.ts:13
+
+  ⚠ Performance: useMemo on a cheap value
+    This costs more than it saves because useMemo is wrapping a
+    value that's already cheap, so remove the useMemo
+    → Remove the useMemo. Property reads, math, and ternaries
+    are already fast, so wrapping them doesn't help
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-usememo-simple-expression
+
+    components/admin/admin-payouts.tsx:431
+
+  ⚠ Performance: array.find() inside a loop ×4
+    This gets slow as your list grows because array.find() runs
+    inside a loop, so build a Map once before the loop for
+    instant lookups
+    → Build a `Map` once before the loop instead of calling
+    `array.find(...)` inside it
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/js-index-maps
+
+    components/admin/admin-sections-production-copy.ts:285
+
+    components/customer/kael-chat/case-work-turn-media.ts:73
+
+    components/customer/kael-chat/customer-worker-travel-map.tsx:199
+
+    lib/kael-stream.ts:348
+
+  ✖ Bugs: Missing key in list
+    The `{...spread}` can overwrite this `key` & break React's
+    tracking.
+    → Add a stable `key` prop so React can keep list items
+    matched to the right data when the list changes.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/jsx-key
+
+    components/admin/admin-worker-review-modal.tsx:84
+    ┌──────────────────────────────────────────────────────────────┐
+    │   83 |   return <WorkerReviewSession {...props} worker={pro[0m… │
+    │ > 84 |     key={`${session.user.id}:${props.worker.id}:${pr[0m… │
+    │      |     ^                                                 │
+    │   85 | }                                                     │
+    └──────────────────────────────────────────────────────────────┘
+
+  ⚠ Bugs: Missing effect dependencies ×13
+    Your cleanup may read the wrong node since the ref
+    `detailRequest.current` can change before it runs.
+    → Don't blindly add missing dependencies. Read the hook
+    callback first.
+    
+    Bad:
+    useEffect(() => {
+      setCount(count + 1);
+    }, [count]);
+    
+    Better:
+    useEffect(() => {
+      setCount((currentCount) => currentCount + 1);
+    }, []);
+    
+    If the missing value is recreated every render, move it
+    inside the hook or stabilize it before adding it to deps.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/exhaustive-deps
+
+    components/admin/admin-worker-review-modal.tsx:151
+
+    components/admin/admin-worker-review-modal.tsx:156
+
+    components/admin/use-admin-system-detail.ts:29
+
+    components/admin/use-admin-system-detail.ts:72
+
+    components/admin/use-admin-system-resource.ts:52
+
+    components/worker/jobs/waiting/waiting-runtime.tsx:24
+
+    components/worker/jobs/worker-interactive-route-map-prototype.tsx:370
+
+    lib/frontend-workflow/use-customer-apartment-access.ts:27
+
+    lib/frontend-workflow/use-customer-job-actions.ts:67
+
+    lib/frontend-workflow/use-rfq-price.ts:19
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:38
+
+    lib/theme-preference-store.ts:62
+
+    lib/theme-preference-store.ts:68
+
+  ⚠ Maintainability: Large component is hard to read and change ×12
+    Component "LoginRoleSurface" is 345 lines long, which is
+    hard to read & change. Split it into a few smaller
+    components.
+    → Pull each section into its own component so the parent is
+    easier to read, test, and change.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-giant-component
+
+    components/auth/auth-surfaces.tsx:62
+
+    components/customer/booking/booking-entry-stateful-surfaces.tsx:84
+
+    components/customer/kael-chat/chat-case-thread-stateful-surfaces.tsx:48
+
+    components/customer/kael-chat/kael-chat-composer.tsx:46
+
+    components/ui/job-evidence-gallery.tsx:51
+
+    components/worker/chat/orb-screen-surfaces.tsx:72
+
+    components/worker/home/availability-surfaces.tsx:26
+
+    components/worker/jobs/in-progress-surfaces.tsx:70
+
+    components/worker/jobs/stage-six/stage-six-timeline.tsx:137
+
+    components/worker/jobs/worker-jobs-zip-prototype-stage-four.tsx:49
+
+    components/worker/profile/settings-body-surfaces.tsx:29
+
+    components/worker/worker-v5-flow.tsx:151
+
+  ⚠ Performance: State only used in handlers ×3
+    Each update to "seenResume" redraws your component for
+    nothing because this useState is set but never shown on
+    screen.
+    → Use useRef instead of useState when the value is only set
+    and never shown on screen. `ref.current = ...` updates it
+    without redrawing the component.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rerender-state-only-in-handlers
+
+    components/auth/entry-access/EntryBrandAccessFlow.tsx:93
+
+    components/customer/kael-chat/kael-chat-mascot.tsx:46
+
+    components/ui/launch-splash-gate.tsx:32
+
+  ⚠ Bugs: Prop derived into useState
+    Your users see a stale value when prop "resume" changes
+    because useState copies it once.
+    → Compute the value inline so prop changes do not leave
+    `useState` holding a stale copy.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-derived-useState
+
+    components/auth/entry-access/EntryBrandAccessFlow.tsx:93
+
+  ⚠ Bugs: Legacy platform-specific shadow styles ×83
+    Shadow styles "elevation", "shadowColor", "shadowOffset",
+    "shadowOpacity", "shadowRadius" only work on one platform,
+    so your users on the other see no shadow.
+    → Use `boxShadow` for shadows that work on both platforms
+    on the new architecture, instead of platform-specific
+    shadow properties.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-no-legacy-shadow-styles
+
+    components/auth/entry-access/role-selection-cards.tsx:146
+
+    components/customer/booking/booking-styles.ts:27
+
+    components/customer/booking/booking-styles.ts:42
+
+    components/customer/booking/booking-styles.ts:89
+
+    components/customer/booking/booking-styles.ts:206
+
+    components/customer/booking/booking-styles.ts:297
+
+    components/customer/booking/booking-styles.ts:319
+
+    components/customer/booking/booking-styles.ts:338
+
+    components/customer/booking/booking-styles.ts:418
+
+    components/customer/booking/booking-styles.ts:567
+
+    components/customer/booking/booking-styles.ts:620
+
+    components/customer/booking/booking-styles.ts:652
+
+    components/customer/booking/booking-styles.ts:691
+
+    components/customer/dock/dock-styles.ts:112
+
+    components/customer/history/history-active-styles.ts:31
+
+    components/customer/history/history-active-styles.ts:69
+
+    components/customer/history/history-active-styles.ts:105
+
+    components/customer/history/history-active-styles.ts:118
+
+    components/customer/history/history-active-styles.ts:129
+
+    components/customer/history/history-active-styles.ts:184
+
+    components/customer/history/history-active-styles.ts:242
+
+    components/customer/history/history-active-styles.ts:264
+
+    components/customer/history/history-active-styles.ts:275
+
+    components/customer/history/history-active-styles.ts:318
+
+    components/customer/history/history-active-styles.ts:326
+
+    components/customer/history/history-active-styles.ts:345
+
+    components/customer/history/history-active-styles.ts:378
+
+    components/customer/history/history-active-styles.ts:398
+
+    components/customer/history/history-active-styles.ts:417
+
+    components/customer/history/history-active-styles.ts:446
+
+    components/customer/history/history-active-styles.ts:522
+
+    components/customer/history/history-active-styles.ts:541
+
+    components/customer/history/history-styles.ts:82
+
+    components/customer/history/history-styles.ts:114
+
+    components/customer/history/history-styles.ts:193
+
+    components/customer/history/history-styles.ts:303
+
+    components/customer/history/history-styles.ts:330
+
+    components/customer/history/history-styles.ts:350
+
+    components/customer/history/history-styles.ts:402
+
+    components/customer/history/history-styles.ts:456
+
+    components/customer/history/history-styles.ts:510
+
+    components/customer/history/history-styles.ts:579
+
+    components/customer/history/history-styles.ts:605
+
+    components/customer/history/history-styles.ts:622
+
+    components/customer/history/history-styles.ts:639
+
+    components/customer/kael-chat/kael-session-menu-styles.ts:24
+
+    components/customer/profile/profile-metrics-styles.ts:48
+
+    components/customer/profile/profile-metrics-styles.ts:92
+
+    components/customer/profile/profile-utility-styles.ts:39
+
+    components/customer/profile/profile-utility-styles.ts:65
+
+    components/customer/profile/profile-utility-styles.ts:73-76
+
+    components/customer/profile/profile-utility-styles.ts:310
+
+    components/customer/profile/profile-utility-styles.ts:346
+
+    components/customer/profile/profile-utility-styles.ts:380
+
+    components/customer/profile/profile-utility-styles.ts:562
+
+    components/customer/ui/shared-styles.ts:88
+
+    components/customer/ui/shared-styles.ts:95-98
+
+    components/customer/ui/shared-styles.ts:290
+
+    components/customer/ui/shared-styles.ts:630
+
+    components/worker/chat/session-menu-styles.ts:87
+
+    components/worker/jobs/advisory-styles.ts:80
+
+    components/worker/jobs/advisory-styles.ts:174
+
+    components/worker/jobs/progress-styles.ts:80
+
+    components/worker/jobs/progress-styles.ts:118
+
+    components/worker/jobs/progress-styles.ts:161
+
+    components/worker/jobs/progress-styles.ts:171
+
+    components/worker/jobs/progress-styles.ts:214
+
+    components/worker/jobs/progress-styles.ts:232
+
+    components/worker/jobs/progress-styles.ts:239
+
+    components/worker/jobs/scope-styles.ts:129
+
+    components/worker/jobs/timeline-styles.ts:35
+
+    components/worker/profile/memory-styles.ts:125
+
+    components/worker/profile/reliability-styles.ts:70
+
+    components/worker/profile/reviews-styles.ts:125
+
+    components/worker/profile/services-styles.ts:260
+
+    components/worker/profile/settings-styles.ts:72
+
+    components/worker/profile/verification-styles.ts:43
+
+    components/worker/ui/metrics-styles.ts:183
+
+    components/worker/ui/metrics-styles.ts:202
+
+    components/worker/ui/primitives-styles.ts:108
+
+    components/worker/worker-v5-flow-styles.ts:54
+
+  ⚠ Bugs: Platform-specific shadow keys over boxShadow ×83
+    Your users on the other platform see no shadow when you use
+    elevation.
+    → These shadow keys only work on one platform. On RN v7+,
+    use the CSS `boxShadow` string instead, like `boxShadow: "0
+    2px 8px rgba(0,0,0,0.1)"`, which works on both.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-style-prefer-boxshadow
+
+    components/auth/entry-access/role-selection-cards.tsx:151
+
+    components/customer/booking/booking-styles.ts:37
+
+    components/customer/booking/booking-styles.ts:43
+
+    components/customer/booking/booking-styles.ts:99
+
+    components/customer/booking/booking-styles.ts:212
+
+    components/customer/booking/booking-styles.ts:303
+
+    components/customer/booking/booking-styles.ts:322
+
+    components/customer/booking/booking-styles.ts:347
+
+    components/customer/booking/booking-styles.ts:428
+
+    components/customer/booking/booking-styles.ts:576
+
+    components/customer/booking/booking-styles.ts:624
+
+    components/customer/booking/booking-styles.ts:658
+
+    components/customer/booking/booking-styles.ts:698
+
+    components/customer/dock/dock-styles.ts:115
+
+    components/customer/history/history-active-styles.ts:34
+
+    components/customer/history/history-active-styles.ts:77
+
+    components/customer/history/history-active-styles.ts:109
+
+    components/customer/history/history-active-styles.ts:121
+
+    components/customer/history/history-active-styles.ts:138
+
+    components/customer/history/history-active-styles.ts:193
+
+    components/customer/history/history-active-styles.ts:247
+
+    components/customer/history/history-active-styles.ts:267
+
+    components/customer/history/history-active-styles.ts:282
+
+    components/customer/history/history-active-styles.ts:321
+
+    components/customer/history/history-active-styles.ts:331
+
+    components/customer/history/history-active-styles.ts:354
+
+    components/customer/history/history-active-styles.ts:382
+
+    components/customer/history/history-active-styles.ts:407
+
+    components/customer/history/history-active-styles.ts:426
+
+    components/customer/history/history-active-styles.ts:450
+
+    components/customer/history/history-active-styles.ts:527
+
+    components/customer/history/history-active-styles.ts:549
+
+    components/customer/history/history-styles.ts:91
+
+    components/customer/history/history-styles.ts:116
+
+    components/customer/history/history-styles.ts:202
+
+    components/customer/history/history-styles.ts:311
+
+    components/customer/history/history-styles.ts:344
+
+    components/customer/history/history-styles.ts:360
+
+    components/customer/history/history-styles.ts:409
+
+    components/customer/history/history-styles.ts:464
+
+    components/customer/history/history-styles.ts:516
+
+    components/customer/history/history-styles.ts:589
+
+    components/customer/history/history-styles.ts:615
+
+    components/customer/history/history-styles.ts:628
+
+    components/customer/history/history-styles.ts:641
+
+    components/customer/kael-chat/kael-session-menu-styles.ts:24
+
+    components/customer/profile/profile-metrics-styles.ts:53
+
+    components/customer/profile/profile-metrics-styles.ts:104
+
+    components/customer/profile/profile-utility-styles.ts:44
+
+    components/customer/profile/profile-utility-styles.ts:69
+
+    components/customer/profile/profile-utility-styles.ts:74-77
+
+    components/customer/profile/profile-utility-styles.ts:315
+
+    components/customer/profile/profile-utility-styles.ts:349
+
+    components/customer/profile/profile-utility-styles.ts:388
+
+    components/customer/profile/profile-utility-styles.ts:571
+
+    components/customer/ui/shared-styles.ts:91
+
+    components/customer/ui/shared-styles.ts:96-99
+
+    components/customer/ui/shared-styles.ts:291
+
+    components/customer/ui/shared-styles.ts:633
+
+    components/worker/chat/session-menu-styles.ts:91
+
+    components/worker/jobs/advisory-styles.ts:81
+
+    components/worker/jobs/advisory-styles.ts:177
+
+    components/worker/jobs/progress-styles.ts:81
+
+    components/worker/jobs/progress-styles.ts:123
+
+    components/worker/jobs/progress-styles.ts:163
+
+    components/worker/jobs/progress-styles.ts:177
+
+    components/worker/jobs/progress-styles.ts:216
+
+    components/worker/jobs/progress-styles.ts:235
+
+    components/worker/jobs/progress-styles.ts:242
+
+    components/worker/jobs/scope-styles.ts:132
+
+    components/worker/jobs/timeline-styles.ts:37
+
+    components/worker/profile/memory-styles.ts:129
+
+    components/worker/profile/reliability-styles.ts:75
+
+    components/worker/profile/reviews-styles.ts:130
+
+    components/worker/profile/services-styles.ts:263
+
+    components/worker/profile/settings-styles.ts:76
+
+    components/worker/profile/verification-styles.ts:48
+
+    components/worker/ui/metrics-styles.ts:197
+
+    components/worker/ui/metrics-styles.ts:206
+
+    components/worker/ui/primitives-styles.ts:111
+
+    components/worker/worker-v5-flow-styles.ts:59
+
+  ⚠ Bugs: Event logic handled in an effect ×28
+    Faking an event handler with a prop plus a useEffect costs
+    an extra render & runs late.
+    → Run the side effect in the event handler that triggers
+    it, instead of watching its state from a useEffect. See
+    https://react.dev/learn/you-might-not-need-an-effect#sharing-logic-between-event-handlers
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-event-handler
+
+    components/customer/booking/use-booking-address-lookup.ts:108-109
+
+    components/customer/kael-chat/kael-liquid-pressable.tsx:47
+
+    components/customer/kael-chat/kael-liquid-reveal.tsx:29
+
+    components/customer/kael-chat/kael-session-menu.tsx:63
+
+    components/customer/kael-chat/kael-session-menu.tsx:69
+
+    components/customer/kael-chat/use-customer-kael-mode-menu.ts:125
+
+    components/ui/launch-splash-gate.tsx:47
+
+    components/ui/use-kael-respond-stream-presentation.ts:58
+
+    components/ui/use-kael-respond-stream-presentation.ts:67
+
+    components/worker/chat/use-latest-worker-session-restore.ts:30
+
+    components/worker/earnings/period-selection-lens.tsx:37-38
+
+    components/worker/earnings/period-selection-lens.tsx:69
+
+    lib/frontend-workflow/use-customer-job-actions.ts:367
+
+    lib/frontend-workflow/use-worker-candidate-actions.ts:227
+
+    lib/normal-chat-suggestions.ts:128
+
+    lib/resource-cache/use-cached-resource.ts:36
+
+    lib/use-session-push-registration.ts:58
+
+  ⚠ Bugs: PanResponder over react-native-gesture-handler ×3
+    PanResponder runs gesture handling on the JS thread, which
+    stutters under load. Use react-native-gesture-handler
+    (`Gesture.Pan()`) so gestures run on the native UI thread.
+    → Use `react-native-gesture-handler` (`Gesture.Pan()`)
+    instead of `PanResponder`. It runs gestures on the native
+    UI thread, so they stay smooth even when the JS thread is
+    busy.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-no-panresponder
+
+    components/customer/dock/liquid-tab-plane.tsx:2
+
+    components/customer/history/service-history-filter-rail.tsx:3
+
+    components/worker/jobs/use-stage-four-map-viewport.ts:2
+
+  ⚠ Performance: Empty default prop breaks memo ×5
+    This keeps redrawing children that compare props because
+    default prop value [] makes a brand new array every render,
+    so move it to a constant at the top of the file
+    → Move it to the top of the file: `const EMPTY_ITEMS:
+    Item[] = []`, then use that as the default value
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rerender-memo-with-default-value
+
+    components/customer/kael-chat/apartment-access-controls.tsx:17
+
+    components/worker/jobs/stage-five/travel-work/stage-five-ui.tsx:23-26
+
+    components/worker/jobs/stage-five/travel-work/stage-five-ui.tsx:32
+
+    components/worker/jobs/stage-six/stage-six-timeline.tsx:139
+
+  ⚠ Bugs: JS-thread animation instead of Reanimated ×5
+    Your users see stutter when Animated from react-native runs
+    on the JS thread.
+    → Use `import Animated from 'react-native-reanimated'` so
+    animations run on the UI thread instead of the JS thread,
+    which keeps them smooth.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-prefer-reanimated
+
+    components/customer/kael-chat/customer-payment-rail-surface.tsx:4
+
+    components/customer/kael-chat/customer-worker-travel-map.tsx:3
+
+    components/worker/jobs/stage-eleven/stage-eleven-success.tsx:2
+
+    components/worker/jobs/stage-five/travel-work/stage-five-ui.tsx:2
+
+    components/worker/jobs/waiting/waiting-content.tsx:2
+
+  ⚠ Performance: Ref initializer runs on every render ×20
+    useRef(new Value()) rebuilds this value on every render &
+    throws it away.
+    → Initialize the ref lazily so expensive values are not
+    rebuilt and discarded on every render.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rerender-lazy-ref-init
+
+    components/customer/kael-chat/customer-payment-rail-surface.tsx:390
+
+    components/customer/kael-chat/customer-worker-travel-map.tsx:225
+
+    components/customer/kael-chat/kael-fresh-row.tsx:37
+
+    components/customer/kael-chat/use-customer-kael-conversations.ts:63-64
+
+    components/customer/kael-chat/use-customer-kael-conversations.ts:69
+
+    components/customer/kael-chat/use-customer-kael-pre-agentic-state.ts:16
+
+    components/customer/kael-chat/use-customer-kael-session-catalog.ts:77
+
+    components/worker/chat/use-kael-orb-chat.ts:52-57
+
+    lib/frontend-workflow/use-customer-apartment-access.ts:28
+
+    lib/frontend-workflow/use-customer-apartment-access.ts:33
+
+    lib/frontend-workflow/use-customer-matching-retry.ts:40-42
+
+    lib/frontend-workflow/use-customer-matching-selection.ts:38-40
+
+  ⚠ Maintainability: Multiple components in one file ×14
+    This file declares several components, so each component is
+    harder to find, test, and change.
+    → Move secondary components into their own files so each
+    component stays easier to find, test, and change.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-multi-comp
+
+    components/customer/kael-chat/finding-workers-receipt.tsx:331
+
+    components/customer/kael-chat/finding-workers-receipt.tsx:350
+
+    components/customer/profile/profile-metrics-surfaces.tsx:48
+
+    components/customer/profile/profile-metrics-surfaces.tsx:95
+
+    components/ui/kael-session-rename-icons.tsx:8
+
+    components/ui/kael-session-rename-icons.tsx:12
+
+    components/worker/jobs/active-body-surfaces.tsx:75
+
+    components/worker/jobs/active-body-surfaces.tsx:180
+
+    components/worker/jobs/worker-jobs-zip-prototype-work-stages.tsx:114
+
+    components/worker/jobs/worker-jobs-zip-prototype-work-stages.tsx:183
+
+    components/worker/profile/grouped-list-surfaces.tsx:54
+
+    components/worker/profile/grouped-list-surfaces.tsx:59
+
+    components/worker/ui/screen-atoms-surfaces.tsx:47
+
+    components/worker/ui/screen-atoms-surfaces.tsx:70
+
+  ⚠ Bugs: Data fetching inside an effect ×2
+    fetch() inside useEffect can race, double-fire, or leak.
+    Use a data-fetching layer or Server Component instead.
+    → Use a data-fetching layer or Server Component so fetches
+    do not race, double-fire, or leak from `useEffect`.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-fetch-in-effect
+
+    components/customer/kael-chat/use-customer-case-hydration.ts:46
+
+    lib/normal-chat-suggestions.ts:140
+
+  ⚠ Bugs: Data passed to parent via effect ×2
+    Handing data back to a parent from a useEffect costs your
+    users an extra render.
+    → Fetch the data in the parent and pass it down as a prop
+    (or return it from the hook), instead of handing it back up
+    through a prop callback in a useEffect. See
+    https://react.dev/learn/you-might-not-need-an-effect#passing-data-to-the-parent
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-pass-data-to-parent
+
+    components/customer/kael-chat/use-customer-kael-session-catalog.ts:180
+
+    components/worker/jobs/worker-interactive-route-map-prototype.tsx:428
+
+  ⚠ Bugs: Multiple setState calls in one effect ×5
+    3 setState calls in one useEffect redraw your screen each
+    time they run together.
+    → Combine related updates in `useReducer` so one effect
+    does not redraw the screen once per `setState` call.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-cascading-set-state
+
+    components/customer/kael-chat/work-progress-details.tsx:17
+
+    components/ui/use-kael-respond-stream-presentation.ts:56
+
+    components/worker/jobs/worker-interactive-route-map-prototype.tsx:370
+
+    lib/admin-activation-provider.tsx:60
+
+    lib/normal-chat-suggestions.ts:140
+
+  ✖ Bugs: State synced to a prop inside an effect ×3
+    This effect adjusts state after a prop changes, so users
+    briefly see the stale value.
+    → Adjust the state inline during render with a `prev`-prop
+    comparison (`if (prop !== prevProp) { setPrevProp(prop);
+    setX(...); }`), or refactor to remove the duplicated state.
+    Routing the adjustment through a useEffect forces an extra
+    render with a stale UI between the two commits. See
+    https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-adjust-state-on-prop-change
+
+    components/customer/kael-chat/work-progress-details.tsx:26-27
+    ┌──────────────────────────────────────────────────────────────┐
+    │   25 |     }                                                 │
+    │ > 26 |     setNow(Date.now())                                │
+    │ > 27 |     schedule()                                        │
+    │   28 |     const subscription = AppState.addEventListener('[0m… │
+    └──────────────────────────────────────────────────────────────┘
+
+    lib/normal-chat-suggestions.ts:142
+    ┌──────────────────────────────────────────────────────────────┐
+    │   141 |     if (!enabled || !scope || !key) {                │
+    │ > 142 |       setState(null)                                 │
+    │       |       ^                                              │
+    │   143 |       return                                         │
+    └──────────────────────────────────────────────────────────────┘
+
+  ⚠ Bugs: Pressable animates on the JS thread ×2
+    Your users feel a choppy press when <Pressable> onPressIn
+    animates on the JS thread.
+    → This press animation runs on the JS thread, so it can
+    stutter. Wrap it in <GestureDetector
+    gesture={Gesture.Tap()...}> to run it on the UI thread.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-pressable-shared-value-mutation
+
+    components/ui/liquid-pop-up-button.tsx:124-127
+
+  ⚠ Bugs: Time or random value in JSX
+    This can cause a hydration mismatch because Date.now()
+    reached from JSX gives a different value on the server than
+    in the browser. Move it into useEffect+useState to run only
+    in the browser, or add suppressHydrationWarning to the
+    parent if it's on purpose.
+    → Move time or random values into useEffect+useState so
+    they only run in the browser, or add
+    suppressHydrationWarning to the parent if it's intentional
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rendering-hydration-mismatch-time
+
+    components/worker/discipline/__tests__/violations-screen-pillar-test.tsx:108 (test file)
+
+  ⚠ Performance: sort() to find min or max ×5
+    This is slow because array.sort()[0] sorts the whole list
+    just to grab the smallest or largest, so use
+    Math.min(...array) instead
+    → Use `Math.min(...array)` or `Math.max(...array)` instead
+    of sorting the whole list just to read the first or last
+    item
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/js-min-max-loop
+
+    components/worker/home/worker-home-production-model.ts:356
+
+    components/worker/jobs/stage-eleven/stage-eleven-model.ts:33
+
+    components/worker/jobs/stage-ten/stage-ten-model.ts:47
+
+    components/worker/jobs/stage-ten/stage-ten-runtime.ts:25
+
+    lib/normal-chat-suggestions.ts:33
+
+  ⚠ Bugs: react-native Image instead of expo-image ×3
+    Your users watch images reload often because Image from
+    react-native has no caching.
+    → Use `<Image>` from `expo-image` instead of
+    `react-native`. Same props, plus caching, placeholders, and
+    crossfades for faster image loading.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-prefer-expo-image
+
+    components/worker/jobs/evidence/stage-eight-evidence.tsx:3
+
+    components/worker/jobs/stage-five/travel-work/stage-five-work.tsx:2
+
+    components/worker/jobs/waiting/waiting-content.tsx:2
+
+  ⚠ Bugs: Dynamic padding on contentContainerStyle
+    Your users see rows jump when a changing paddingBottom on
+    contentContainerStyle shifts the whole list.
+    → Use `contentInset={{ bottom: dynamicValue }}` so the OS
+    shifts the content instead of relaying it out, which avoids
+    the jump.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-scrollview-dynamic-padding
+
+    components/worker/jobs/evidence/stage-eight-evidence.tsx:336
+
+  ⚠ Maintainability: Large inline style object rebuilds every render ×7
+    This inline style has 8 properties, which is hard to read &
+    rebuilds every render. Move it to a CSS class, CSS module,
+    or styled component.
+    → Move the styles to a CSS class, CSS module, Tailwind
+    utilities, or a styled component. Big inline objects are
+    hard to read and rebuild on every update.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-inline-exhaustive-style
+
+    components/worker/jobs/in-progress-surfaces.tsx:630
+
+    components/worker/jobs/stage-five/travel-work/stage-five-ui.tsx:40
+
+    components/worker/jobs/stage-nine/stage-nine-empty-stage.tsx:194
+
+    components/worker/jobs/stage-nine/stage-nine-submitted-stage.tsx:83
+
+    components/worker/jobs/stage-ten/stage-ten-content.tsx:261
+
+    components/worker/jobs/worker-jobs-zip-prototype-shared.tsx:513
+
+    components/worker/jobs/worker-jobs-zip-prototype-shared.tsx:564
+
+  ⚠ Maintainability: Component rendered by inline function call ×6
+    Your users lose state because "renderInfoRow()" builds UI
+    from an inline call that React remounts, so pull it into
+    its own component instead.
+    → Make it a named component so React preserves its identity
+    and does not remount its state.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-render-in-render
+
+    components/worker/jobs/scope-surfaces.tsx:87
+
+    components/worker/jobs/scope-surfaces.tsx:94
+
+    components/worker/jobs/scope-surfaces.tsx:101
+
+    components/worker/jobs/scope-surfaces.tsx:108
+
+    components/worker/jobs/scope-surfaces.tsx:115
+
+    components/worker/profile/reliability-surfaces.tsx:88
+
+  ⚠ Bugs: setState in componentDidUpdate ×2
+    Calling setState in componentDidUpdate can trigger another
+    update immediately, loop forever, and freeze the component.
+    → Setting state in `componentDidUpdate` causes another
+    render and can loop. Use `getDerivedStateFromProps` instead.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-did-update-set-state
+
+    components/worker/jobs/stage-eleven/stage-eleven-content.tsx:42-45
+
+  ⚠ Bugs: Dimensions.get over useWindowDimensions ×6
+    Your users see a stale layout on rotation or resize because
+    Dimensions.get() does not update.
+    → Use `const { width, height } = useWindowDimensions()` so
+    the size updates automatically on rotation and resize.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rn-no-dimensions-get
+
+    components/worker/jobs/stage-eleven/stage-eleven-content.tsx:67
+
+    components/worker/jobs/stage-five/travel-work/stage-five-ui.tsx:57
+
+    components/worker/jobs/waiting/waiting-content.tsx:75
+
+    components/worker/jobs/worker-jobs-zip-prototype-stage-four-styles.ts:23
+
+    components/worker/jobs/worker-jobs-zip-prototype-stage-four-styles.ts:212
+
+    components/worker/jobs/worker-jobs-zip-prototype-stage-four-styles.ts:262
+
+  ✖ Accessibility: Invalid ARIA role ×17
+    This `role` is not a valid ARIA role, so assistive tech
+    cannot expose it correctly. Use a real, non-abstract role.
+    `headline` is not one.
+    → Use a real, non-abstract ARIA role so assistive tech can
+    expose the element correctly.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/aria-role
+
+    components/worker/jobs/stage-five/travel-work/stage-five-ui.tsx:40-44
+
+    components/worker/jobs/stage-five/travel-work/stage-five-work.tsx:26
+
+    components/worker/jobs/stage-five/travel-work/stage-five-work.tsx:33-35
+    ┌──────────────────────────────────────────────────────────────┐
+    │   32 |  <View style={{flex:1,gap:6*s}}>                      │
+    │ > 33 |  <Copy role="footnote" weight="600" color="#009A83" [0m… │
+    │ > 34 |  <Copy role="body" weight="400" lines={2} windowWidt[0m… │
+    │ > 35 |  <View style={{flexDirection:'row',gap:6*s,alignItem[0m… │
+    │   36 |  </View>                                              │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/jobs/stage-five/travel-work/stage-five-work.tsx:39
+
+    components/worker/jobs/stage-five/travel-work/stage-five-work.tsx:44-45
+    ┌──────────────────────────────────────────────────────────────┐
+    │   43 |  <View style={{flex:1.25,gap:0}}>                     │
+    │ > 44 |  <Copy role="footnote" color={TW.color.body} windowW[0m… │
+    │ > 45 |  <View testID="work-timer"><Copy role="title2" weigh[0m… │
+    │   46 |  </View>                                              │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/jobs/stage-five/travel-work/stage-five-work.tsx:49-50
+    ┌──────────────────────────────────────────────────────────────┐
+    │   48 |  <View style={{flex:1,gap:0}}>                        │
+    │ > 49 |  <Copy role="footnote" color={TW.color.body} windowW[0m… │
+    │ > 50 |  <Copy role="title2" weight="600" style={{fontVarian[0m… │
+    │   51 |  </View>                                              │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/jobs/stage-five/travel-work/stage-five-work.tsx:55
+
+  ⚠ Maintainability: Static value rebuilt every render
+    `evidenceSlots` inside
+    `WorkerJobsLegacyPrototypeStageFiveBody` uses no local
+    state but is rebuilt every render, so it looks new each
+    time & breaks memoized children. Move it to the top of the
+    file, outside the component.
+    → Move the value above the component, at the top of the
+    file. It doesn't use local state, so rebuilding it each
+    update is wasted and makes it look new every time.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/prefer-module-scope-static-value
+
+    components/worker/jobs/worker-jobs-zip-prototype-work-stages.tsx:62
+
+  ✖ Bugs: Hook called conditionally ×15
+    `useWorkerThemeMode` changes Hook order between renders
+    when called conditionally, so React can attach state to the
+    wrong Hook.
+    → Call hooks at the top level of a React function component
+    or custom Hook so React sees the same hook order on every
+    render.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/rules-of-hooks
+
+    components/worker/ui/aura-surfaces.tsx:71
+    ┌──────────────────────────────────────────────────────────────┐
+    │   70 | export function WorkerV5FormulaMintCardAura(props: P[0m… │
+    │ > 71 |   return useWorkerThemeMode() === 'dark' ? null : <W[0m… │
+    │      |          ^                                            │
+    │   72 | }                                                     │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:114
+    ┌──────────────────────────────────────────────────────────────┐
+    │   113 | export function WorkerV5CustomerCaseWideMintAura(pr[0m… │
+    │ > 114 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   115 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:160
+    ┌──────────────────────────────────────────────────────────────┐
+    │   159 | export function WorkerV5SourceCardSkin(props: Param[0m… │
+    │ > 160 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   161 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:194
+    ┌──────────────────────────────────────────────────────────────┐
+    │   193 | export function WorkerV5CustomerCaseWorkCardAura(pr[0m… │
+    │ > 194 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   195 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:225
+    ┌──────────────────────────────────────────────────────────────┐
+    │   224 | export function WorkerV5CustomerZipMintAura(props: [0m… │
+    │ > 225 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   226 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:256
+    ┌──────────────────────────────────────────────────────────────┐
+    │   255 | export function WorkerV5KaelChatScreenAura(props: P[0m… │
+    │ > 256 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   257 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:295
+    ┌──────────────────────────────────────────────────────────────┐
+    │   294 | export function WorkerV5CustomerMapMintAura(props: [0m… │
+    │ > 295 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   296 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:325
+    ┌──────────────────────────────────────────────────────────────┐
+    │   324 | export function WorkerV5HomeHeroSourceAura() {       │
+    │ > 325 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   326 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:351
+    ┌──────────────────────────────────────────────────────────────┐
+    │   350 | export function WorkerV5HomeQuickActionsAura() {     │
+    │ > 351 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   352 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:377
+    ┌──────────────────────────────────────────────────────────────┐
+    │   376 | export function WorkerV5EarningsHomeHeroAura(props:[0m… │
+    │ > 377 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   378 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/aura-surfaces.tsx:403
+    ┌──────────────────────────────────────────────────────────────┐
+    │   402 | export function WorkerV5EarningsHomeListAura(props:[0m… │
+    │ > 403 |   return useWorkerThemeMode() === 'dark' ? null : <[0m… │
+    │       |          ^                                           │
+    │   404 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/worker-dark-styles.ts:117
+    ┌──────────────────────────────────────────────────────────────┐
+    │   116 | export function useWorkerThemedStyles<T extends Rec[0m… │
+    │ > 117 |   return useWorkerThemeMode() === 'dark' ? deriveWo[0m… │
+    │       |          ^                                           │
+    │   118 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    components/worker/ui/worker-dark-styles.ts:164
+    ┌──────────────────────────────────────────────────────────────┐
+    │   163 | export function useWorkerThemedTokens<T extends obj[0m… │
+    │ > 164 |   return useWorkerThemeMode() === 'dark' ? deriveWo[0m… │
+    │       |          ^                                           │
+    │   165 | }                                                    │
+    └──────────────────────────────────────────────────────────────┘
+
+    lib/frontend-workflow/use-rfq-price.ts:59
+    ┌──────────────────────────────────────────────────────────────┐
+    │   58 |           session.notified = result.data.id           │
+    │ > 59 |           void changed()                              │
+    │      |                ^                                      │
+    │   60 |         }                                             │
+    └──────────────────────────────────────────────────────────────┘
+
+    lib/frontend-workflow/use-rfq-price.ts:69
+    ┌──────────────────────────────────────────────────────────────┐
+    │   68 |         session.notified = result.data.proposal.id    │
+    │ > 69 |         void changed()                                │
+    │      |              ^                                        │
+    │   70 |       }                                               │
+    └──────────────────────────────────────────────────────────────┘
+
+  ⚠ Maintainability: React 19 API migration can break callers
+    useContext is replaced by `use()` in React 19, which reads
+    context inside ifs & loops too, so switch to `import { use
+    } from 'react'`.
+    → Pass `ref` as a normal prop on function components, since
+    `forwardRef` isn't needed in React 19. Replace
+    `useContext(X)` with `use(X)`. Only runs on React 19+
+    projects.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/no-react19-deprecated-apis
+
+    lib/admin-data-sync.tsx:1
+
+  ⚠ Performance: Unstable context provider value
+    Every reader of this context redraws on each render because
+    you build its `value` inline.
+    → Wrap the context value in `useMemo` or move it outside
+    the component so consumers do not redraw every render.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/jsx-no-constructed-context-values
+
+    lib/admin-data-sync.tsx:111
+
+  ⚠ Maintainability: Zod 3 schema API breaks in Zod 4 ×5
+    This Zod 3 schema API changed in Zod 4, so this schema can
+    fail after the upgrade.
+    → Switch to the Zod 4 versions: top-level factories like
+    `z.enum()`, object helpers like `z.strictObject()`, the new
+    `z.function({ input, output })` form, and explicit
+    key/value schemas for `z.record()`.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/zod-v4-no-deprecated-schema-apis
+
+    lib/frontend-workflow/apartment-access-recovery.ts:9
+
+    lib/frontend-workflow/candidate-decision-recovery.ts:9-12
+
+    lib/frontend-workflow/matching-retry-recovery.ts:15
+
+    lib/frontend-workflow/matching-selection-recovery.ts:13
+
+  ⚠ Maintainability: Format method on z.string() ×19
+    This `z.string().<format>()` check is deprecated in Zod 4,
+    so it can break during the upgrade.
+    → Use the Zod 4 top-level format checks like `z.email()`,
+    `z.uuid()`, or `z.ipv4()` instead of
+    `z.string().<format>()`.
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/zod-v4-prefer-top-level-string-formats
+
+    lib/frontend-workflow/apartment-access-recovery.ts:10
+
+    lib/frontend-workflow/apartment-access-recovery.ts:64
+
+    lib/frontend-workflow/candidate-decision-recovery.ts:10-13
+
+    lib/frontend-workflow/candidate-decision-recovery.ts:68
+
+    lib/frontend-workflow/confirmation-reconciliation.ts:14
+
+    lib/frontend-workflow/matching-retry-recovery.ts:16
+
+    lib/frontend-workflow/matching-retry-recovery.ts:78
+
+    lib/frontend-workflow/matching-selection-recovery.ts:14
+
+    lib/frontend-workflow/matching-selection-recovery.ts:76
+
+    lib/frontend-workflow/rfq-price-recovery.ts:6
+
+  ⚠ Performance: .map().filter(Boolean) loops twice
+    This loops over your list twice because
+    .map().filter(Boolean) makes two passes, so use .flatMap()
+    to change & drop items in one pass
+    → Use `.flatMap(item => condition ? [value] : [])` to
+    change and drop items in one pass, instead of building a
+    throwaway array in between
+    Curl with no cache & follow the canonical fix and false positive check recipe before fixing: https://react.doctor/docs/rules/react-doctor/js-flatmap-filter
+
+    lib/kael-response-stream.ts:220
+
+  ⚠ Maintainability: deslop/unused-dev-dependency
+    Unused devDependency: `@babel/generator`
+    → An unused devDependency adds install time and
+    supply-chain surface without being used; remove it from
+    package.json if it is genuinely unused.
+
+
+  ────────────────────────────────────────────────────────────
+
+  All 790 issues
+
+  Security > 1 error
+  Bugs > 19 errors, 270 warnings
+  Performance > 269 warnings
+  Accessibility > 17 errors
+  Maintainability > 214 warnings
+
+  ⚠ Migration-scale change: sample before you sweep
+    deslop/unused-export ×87 across 54 files
+    Fixing all of them at once is hard to review and prone to
+    subtle mistakes across the whole repo. Fix a representative
+    few first and confirm the recipe holds. Then get the code
+    owner's sign-off before changing the rest.
+    Scope it down one area at a time: npx react-doctor@latest <path>
+
+  React Doctor (https://react.doctor)
+  Score unavailable.
+
+  Full diagnostics written to <USER>\AppData\Local\Temp\react-doctor-4b99cc05-3f07-469d-b50f-5a9dfbed99af
+
+  @nestscout/api     no score  85 issues
+  @nestscout/mobile  no score  705 issues
+
+  ────────────────────────────────────────────────────────────
+
+  Docs: https://react.doctor/docs
+  Learn more about fixing issues, setting up CI/CD, and
+  configuring rules with a config file
+
+  GitHub: https://github.com/millionco/react-doctor
+  Report issues and star the repository!

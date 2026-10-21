@@ -1,0 +1,6 @@
+Auto-merging .claude/MEMORY.md
+CONFLICT (content): Merge conflict in .claude/MEMORY.md
+Auto-merging docs/memory/2026-10.md
+CONFLICT (content): Merge conflict in docs/memory/2026-10.md
+Auto-merging governance/protocols/test-pillars.md
+Automatic merge failed; fix conflicts and then commit the result.

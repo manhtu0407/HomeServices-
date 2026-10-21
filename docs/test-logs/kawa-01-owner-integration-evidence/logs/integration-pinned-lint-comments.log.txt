@@ -1,0 +1,19 @@
+
+> nestscout@0.1.0 lint:comments <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-node scripts/check-comment-discipline.mjs "--diff" "origin/main"
+
+comment-discipline: 5 violation(s) in 2 file(s)
+
+supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
+  191: [comment on an added production line] // New evidence, scope adjustments and safety turns are case information by definition; on
+  192: [comment on an added production line] // plain text turn is asked what the customer wants before price research runs again.
+
+supabase/functions/mobile-api/_shared/platform/turn-trace.ts
+  285: [comment on an added production line] // Per isolate: enough to see a pattern, too little to flood the function logs on a burst.
+  288: [comment on an added production line] // Answered turns are persisted on the reply row only; the log line exists for refusals an
+  289: [comment on an added production line] // redirects, which are the turns an operator is asked about.
+
+Move dates, phase/status/plan/audit banners, AI attribution, and first-person narration to the git commit message or docs/.
+Production source takes no comment on an added line: put the reason in the commit message or docs/.
+See the kael-core-hygiene skill / governance/protocols/code-hygiene.md.
+ ELIFECYCLE  Command failed with exit code 1.

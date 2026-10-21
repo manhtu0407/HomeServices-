@@ -1,0 +1,27 @@
+Client:
+ Version:           29.9.1
+ API version:       1.56
+ Go version:        go1.26.9
+ Git commit:        dfc520d
+ Built:             Wed Oct 14 18:34:24 2026
+ OS/Arch:           windows/amd64
+ Context:           desktop-linux
+
+Server: Docker Desktop 4.96.0 (243774)
+ Engine:
+  Version:          29.9.1
+  API version:      1.56 (minimum version 1.40)
+  Go version:       go1.26.9
+  Git commit:       b26fb77
+  Built:            Wed Oct 14 18:32:24 2026
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          v2.4.2
+  GitCommit:        b7a25261e029d68978bbf290df0a62fc819b3c51
+ runc:
+  Version:          1.5.2
+  GitCommit:        v1.5.2-0-g29dd3dc2
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0

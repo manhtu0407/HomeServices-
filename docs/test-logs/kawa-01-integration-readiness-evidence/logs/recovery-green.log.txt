@@ -1,0 +1,29 @@
+PASS components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx (12.259 s)
+  P418-kael-emergency-mobile-delivery
+    √ preserves the rejected JSON response and the recognized emergency field (54 ms)
+    √ delivers a rejected create into the actual request action and conversation reducer (44 ms)
+  P418-kael-emergency-mobile-delivery: actual error state and local access
+    √ preserves a JSON failure received by the real stream transport (4 ms)
+    √ renders trusted guidance after HTTP 400 without changing the existing Case (496 ms)
+    √ renders trusted guidance after HTTP 409 without changing the existing Case (11 ms)
+    √ renders trusted guidance after HTTP 500 without changing the existing Case (10 ms)
+    √ keeps SSE errors as failures and repeated reports occupy one guidance slot (7 ms)
+    √ missing or hostile guidance never becomes a safety message: undefined (6 ms)
+    √ missing or hostile guidance never becomes a safety message: {"version":"v1","route":"fire","text":"untrusted"} (5 ms)
+    √ missing or hostile guidance never becomes a safety message: {"version":"v9","route":"fire"} (4 ms)
+    √ offline manual access uses static vi copy without any request (22 ms)
+    √ offline manual access uses static en copy without any request (17 ms)
+    √ clears guidance when the conversation mode changes (4 ms)
+    √ an interrupted request keeps the Case unchanged and never renders transport exception text (11 ms)
+    √ a connection timeout ends loading without inventing guidance or a successful turn (9 ms)
+  P418-kael-emergency-mobile-delivery: partial-output terminal failures
+    √ retains the received emergency when an error observer throws after deltas (3 ms)
+  P418-kael-emergency-mobile-delivery: recovered state must not erase an explicit safety failure
+    √ does not turn an explicit emergency failure into a successful Case recovery (1 ms)
+    √ keeps normal conversation guidance and failure even if a stored partial exchange exists (19 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       18 passed, 18 total
+Snapshots:   0 total
+Time:        12.722 s, estimated 13 s
+Ran all test suites within paths "components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx".

@@ -1,4 +1,5 @@
 import type { KaelPurpose } from "../contracts/types.ts";
+import { safeKaelProgressFailureReason } from "../../platform/kael-progress-safety.ts";
 
 export type KaelProgressStatus = "queued" | "running" | "completed" | "failed";
 export type KaelProgressStage = KaelPurpose | "scope_reviewing" | "scope_estimating";
@@ -91,7 +92,7 @@ export async function updateKaelProgress(
     current_stage: update.stage,
     status: update.status,
     progress,
-    failure_reason: update.failureReason ?? null,
+    failure_reason: safeKaelProgressFailureReason(update.failureReason),
     updated_at: new Date().toISOString(),
   };
   notifyKaelProgress(progressTarget, kaelProgress);

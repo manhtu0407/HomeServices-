@@ -1,0 +1,5 @@
+$ node scripts/run.mjs run-package-script @nestscout/api type-check
+
+> @nestscout/api@0.1.0 type-check [WORKSPACE]\apps\api
+> tsc --noEmit
+

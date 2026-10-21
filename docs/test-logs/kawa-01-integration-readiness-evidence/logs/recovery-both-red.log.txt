@@ -1,0 +1,107 @@
+FAIL components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx (12.702 s)
+  P418-kael-emergency-mobile-delivery
+    √ preserves the rejected JSON response and the recognized emergency field (49 ms)
+    √ delivers a rejected create into the actual request action and conversation reducer (41 ms)
+  P418-kael-emergency-mobile-delivery: actual error state and local access
+    √ preserves a JSON failure received by the real stream transport (4 ms)
+    √ renders trusted guidance after HTTP 400 without changing the existing Case (413 ms)
+    √ renders trusted guidance after HTTP 409 without changing the existing Case (12 ms)
+    √ renders trusted guidance after HTTP 500 without changing the existing Case (12 ms)
+    √ keeps SSE errors as failures and repeated reports occupy one guidance slot (9 ms)
+    √ missing or hostile guidance never becomes a safety message: undefined (6 ms)
+    √ missing or hostile guidance never becomes a safety message: {"version":"v1","route":"fire","text":"untrusted"} (6 ms)
+    √ missing or hostile guidance never becomes a safety message: {"version":"v9","route":"fire"} (5 ms)
+    √ offline manual access uses static vi copy without any request (25 ms)
+    √ offline manual access uses static en copy without any request (26 ms)
+    √ clears guidance when the conversation mode changes (3 ms)
+    √ an interrupted request keeps the Case unchanged and never renders transport exception text (8 ms)
+    √ a connection timeout ends loading without inventing guidance or a successful turn (9 ms)
+  P418-kael-emergency-mobile-delivery: partial-output terminal failures
+    √ retains the received emergency when an error observer throws after deltas (2 ms)
+  P418-kael-emergency-mobile-delivery: recovered state must not erase an explicit safety failure
+    × does not turn an explicit emergency failure into a successful Case recovery (9 ms)
+    × keeps normal conversation guidance and failure even if a stored partial exchange exists (12 ms)
+
+  ● P418-kael-emergency-mobile-delivery: recovered state must not erase an explicit safety failure › does not turn an explicit emergency failure into a successful Case recovery
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  6
+    + Received  + 26
+
+      Object {
+    -   "code": "STREAM_NETWORK",
+    -   "emergency": Object {
+    -     "route": "fire",
+    -     "version": "v1",
+    +   "data": Object {
+    +     "session": Object {
+    +       "id": "case-delivery-test",
+    +       "status": "active",
+    +       "total_turns": 0,
+          },
+    -   "error": "failed",
+    +     "turns": Array [
+    +       Object {
+    +         "role": "customer",
+    +         "turn_index": 1,
+    +       },
+    +       Object {
+    +         "role": "kael",
+    +         "turn_index": 2,
+    +       },
+    +     ],
+    +   },
+    +   "meta": Object {
+    +     "clientDiagnosticCode": "NSL-F9CEA548",
+    +     "clientRequestId": "2a91ba9e-81cb-4618-9240-7370f9cea548",
+    +     "operationId": null,
+    +     "releaseId": null,
+    +     "runId": null,
+    +     "supportCode": null,
+    +     "traceId": null,
+    +   },
+        "status": 200,
+    -   "success": false,
+    +   "success": true,
+      }
+
+      247 |     ] }))
+      248 |     const failure = { success: false as const, code: 'STREAM_NETWORK', error: 'failed', status: 200, emergency: { version: 'v1' as const, route: 'fire' as const } }
+    > 249 |     expect(await reconcileCommittedKaelTurn(chatBefore, failure)).toEqual(failure)
+          |                                                                   ^
+      250 |     expect(mockFetch).not.toHaveBeenCalled()
+      251 |   })
+      252 |   it('keeps normal conversation guidance and failure even if a stored partial exchange exists', async () => {
+
+      at Object.toEqual (components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx:249:67)
+      at asyncGeneratorStep (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● P418-kael-emergency-mobile-delivery: recovered state must not erase an explicit safety failure › keeps normal conversation guidance and failure even if a stored partial exchange exists
+
+    expect(received).toEqual(expected) // deep equality
+
+    Expected: {"route": "fire", "version": "v1"}
+    Received: null
+
+      269 |     await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
+      270 |     expect(requestId).not.toBe('')
+    > 271 |     expect(result.current.conversation.emergencyGuidance).toEqual(emergency)
+          |                                                           ^
+      272 |     expect(result.current.conversation.loading).toBe(false)
+      273 |     expect(result.current.conversations.activeResponse?.turns).toEqual([])
+      274 |     expect(result.current.conversation.streamingReply).toBeNull()
+
+      at Object.toEqual (components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx:271:59)
+      at asyncGeneratorStep (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 16 passed, 18 total
+Snapshots:   0 total
+Time:        13.122 s
+Ran all test suites within paths "components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx".
+undefined
+[WORKSPACE]\apps\mobile:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: jest --runInBand "--watch=false" --runTestsByPath components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx

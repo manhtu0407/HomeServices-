@@ -1,0 +1,5 @@
+
+> nestscout@0.1.0 skills:contracts <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-node scripts/check-skill-contracts.mjs
+
+skill contracts ok: 52 skills (48 autonomous, 4 gated; 37 report, 15 inline) — paths resolve, commands exist, readiness/lanes and closeout match, every skill carries a Codex descriptor

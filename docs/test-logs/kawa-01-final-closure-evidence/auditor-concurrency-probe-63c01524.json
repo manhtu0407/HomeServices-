@@ -1,0 +1,44 @@
+{
+  "statuses": [
+    200,
+    200
+  ],
+  "emergency_reply_count": 2,
+  "customer_fire_count": 2,
+  "total_turns": 6,
+  "turns": [
+    {
+      "index": 1,
+      "role": "customer",
+      "text": "Mình cần vệ sinh máy lạnh trong nhà."
+    },
+    {
+      "index": 2,
+      "role": "kael",
+      "text": "Máy treo tường hay âm trần, mấy bộ, công suất khoảng bao nhiêu HP?"
+    },
+    {
+      "index": 3,
+      "role": "customer",
+      "text": "Máy lạnh đang cháy"
+    },
+    {
+      "index": 4,
+      "role": "kael",
+      "text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+      "emergency_route": "fire"
+    },
+    {
+      "index": 5,
+      "role": "customer",
+      "text": "Máy lạnh đang cháy"
+    },
+    {
+      "index": 6,
+      "role": "kael",
+      "text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+      "emergency_route": "fire"
+    }
+  ],
+  "model_calls": 0
+}

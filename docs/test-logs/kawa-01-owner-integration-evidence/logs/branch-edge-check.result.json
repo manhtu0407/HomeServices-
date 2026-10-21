@@ -1,0 +1,5 @@
+{
+  "versionGate": "updated-or-current; Docker29.9.2 Compose5.6.0",
+  "exitCode": 0,
+  "command": "pnpm edge:check"
+}

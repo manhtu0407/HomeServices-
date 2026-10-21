@@ -1,0 +1,5 @@
+$ node scripts/run.mjs run-package-script @nestscout/shared type-check
+
+> @nestscout/shared@0.1.0 type-check C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\packages\shared
+> tsc --noEmit
+

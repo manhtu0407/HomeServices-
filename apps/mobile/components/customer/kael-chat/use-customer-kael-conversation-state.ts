@@ -1,3 +1,4 @@
+import { readKaelEmergencyGuidance, type EmergencyGuidancePayload } from '@nestscout/shared'
 import { useCallback, useEffect, useReducer, type Dispatch, type SetStateAction } from 'react'
 
 import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
@@ -31,6 +32,7 @@ type CustomerKaelConversationState = {
   assistantTurns: CustomerAssistantLocalTurn[]
   chat: KaelChatResponse | null
   composerMediaDrafts: LocalMediaUploadDraft[]
+  emergencyGuidance: EmergencyGuidancePayload | null
   error: string | null
   intakeDisplayMessage: string | null
   loading: boolean
@@ -45,6 +47,7 @@ type CustomerKaelConversationState = {
 }
 
 type CustomerKaelConversationAction =
+  | { type: 'set-emergency-guidance'; value: unknown }
   | { type: 'set-assistant-turns'; value: SetStateAction<CustomerAssistantLocalTurn[]> }
   | { type: 'set-chat'; value: SetStateAction<KaelChatResponse | null> }
   | { type: 'set-composer-media-drafts'; value: SetStateAction<LocalMediaUploadDraft[]> }
@@ -76,14 +79,16 @@ export function customerKaelConversationReducer(
   action: CustomerKaelConversationAction,
 ): CustomerKaelConversationState {
   switch (action.type) {
+    case 'set-emergency-guidance':
+      return { ...state, emergencyGuidance: readKaelEmergencyGuidance(action.value) }
     case 'set-assistant-turns':
       return { ...state, assistantTurns: resolveStateAction(state.assistantTurns, action.value) }
     case 'set-chat':
-      return { ...state, chat: resolveStateAction(state.chat, action.value) }
+      return { ...state, chat: resolveStateAction(state.chat, action.value), emergencyGuidance: null }
     case 'set-composer-media-drafts':
       return { ...state, composerMediaDrafts: resolveStateAction(state.composerMediaDrafts, action.value) }
     case 'set-error':
-      return { ...state, error: resolveStateAction(state.error, action.value) }
+      return { ...state, error: resolveStateAction(state.error, action.value), ...(action.value === null ? { emergencyGuidance: null } : {}) }
     case 'set-loading':
       return { ...state, loading: resolveStateAction(state.loading, action.value) }
     case 'set-local-mode': {
@@ -95,6 +100,7 @@ export function customerKaelConversationReducer(
         ...state,
         error: clearsMissingServiceError ? null : state.error,
         localMode,
+        emergencyGuidance: localMode === state.localMode ? state.emergencyGuidance : null,
         pendingNormalImageUris: localMode === state.localMode ? state.pendingNormalImageUris : [],
         pendingNormalMessage: localMode === state.localMode ? state.pendingNormalMessage : null,
         reasoningReceipt: localMode === state.localMode
@@ -153,6 +159,7 @@ export function customerKaelConversationReducer(
         chat: action.response,
         composerMediaDrafts: action.consumePendingDraft ? [] : state.composerMediaDrafts,
         error: null,
+        emergencyGuidance: null,
         loading: false,
         pendingDraft: action.consumePendingDraft ? null : state.pendingDraft,
         pendingNormalImageUris: [],
@@ -175,6 +182,7 @@ export function customerKaelConversationReducer(
         chat: null,
         composerMediaDrafts: [],
         error: null,
+        emergencyGuidance: null,
         intakeDisplayMessage: null,
         loading: false,
         localMode: action.mode,
@@ -207,6 +215,7 @@ export function createCustomerKaelConversationState(input: {
         ? readCustomerKaelMediaDrafts(initialScopeKey)
         : [],
     error: null,
+    emergencyGuidance: null,
     intakeDisplayMessage: input.pendingDraft?.message ?? null,
     loading: input.initialLoading,
     localMode: input.initialMode,
@@ -245,6 +254,9 @@ export function useCustomerKaelConversationState(input: {
   }, [])
   const setComposerMediaDrafts: Dispatch<SetStateAction<LocalMediaUploadDraft[]>> = useCallback((value) => {
     dispatch({ type: 'set-composer-media-drafts', value })
+  }, [])
+  const setEmergencyGuidance = useCallback((value: unknown) => {
+    dispatch({ type: 'set-emergency-guidance', value })
   }, [])
   const setError: Dispatch<SetStateAction<string | null>> = useCallback((value) => {
     dispatch({ type: 'set-error', value })
@@ -313,6 +325,7 @@ export function useCustomerKaelConversationState(input: {
     setChat,
     setComposerMediaDrafts,
     setError,
+    setEmergencyGuidance,
     setLoading,
     setLocalMode,
     setPendingDraftState,

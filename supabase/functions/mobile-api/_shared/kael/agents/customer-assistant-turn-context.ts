@@ -6,6 +6,21 @@ import {
   normalizeText,
 } from "./customer-assistant-policy.ts";
 import { scrubSensitiveForLLM } from "../pipeline/utils.ts";
+import { sanitizeCustomerCaseEvidenceText } from "../evidence/untrusted-evidence.ts";
+
+export function assistantQuestion(input: CustomerAssistantInput) {
+  const language = input.language ?? "vi";
+  const surface = input.surface ?? "customer_normal";
+  const sourceMessage = input.message.trim() || (input.imageUrls?.length
+    ? language === "en" ? "Please analyze the attached image(s)." : "Hãy phân tích ảnh đính kèm."
+    : input.message);
+  const cleanQuestion = (
+    surface === "customer_case"
+      ? sanitizeCustomerCaseEvidenceText(sourceMessage)
+      : scrubSensitiveForLLM(sourceMessage)
+  ).slice(0, 2000);
+  return { language, surface, sourceMessage, cleanQuestion };
+}
 
 const recentImageMemorySchema = z.object({
   recent_image_analysis: z.array(z.object({

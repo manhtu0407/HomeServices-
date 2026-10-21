@@ -1,0 +1,17 @@
+
+> nestscout@0.1.0 test:shared <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-package-script @nestscout/shared test
+
+
+> @nestscout/shared@0.1.0 test <USER>\.codex\worktrees\kawa01-integration-simulation\home-services\packages\shared
+> vitest run
+
+
+ RUN  v4.1.6 <USER>/.codex/worktrees/kawa01-integration-simulation/home-services/packages/shared
+
+
+ Test Files  10 passed (10)
+      Tests  189 passed (189)
+   Start at  21:37:51
+   Duration  1.36s (transform 2.70s, setup 0ms, import 6.24s, tests 281ms, environment 2ms)
+

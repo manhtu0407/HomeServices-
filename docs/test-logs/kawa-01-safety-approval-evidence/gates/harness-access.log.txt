@@ -1,0 +1,6 @@
+
+> nestscout@0.1.0 harness:access:check <repo>
+> node scripts/run.mjs run-node scripts/harness/access-matrix.mjs
+
+access matrix ok: 210 tables, 380 functions
+

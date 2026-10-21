@@ -1,0 +1,144 @@
+{
+  "workflow": ".github/workflows/release-backend-system-health.yml",
+  "workflowSHA256": "12e7f9b49eb938bb6b056241f87103d6259811d2b25608187686a7055233d9bf",
+  "expressions": {
+    "quality": "(github.event_name != 'pull_request' || github.event.pull_request.draft == false) && ((github.event_name == 'pull_request' && github.base_ref == 'main') || (github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend')))",
+    "release-config-gate": "needs.quality.result == 'success' && github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend')",
+    "production-release": "needs.quality.result == 'success' && needs.release-config-gate.result == 'success' && github.ref == 'refs/heads/main' && vars.NESTSCOUT_BACKEND_RELEASE_ENABLED == 'true' && (github.event_name == 'push' || inputs.confirm == 'release-cloudflare-backend')"
+  },
+  "rows": [
+    {
+      "enabled": "false",
+      "event": "push",
+      "confirm": "release-cloudflare-backend",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": false,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    },
+    {
+      "enabled": "false",
+      "event": "push",
+      "confirm": "verify-disabled-containment",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": false,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    },
+    {
+      "enabled": "false",
+      "event": "workflow_dispatch",
+      "confirm": "release-cloudflare-backend",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": false,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    },
+    {
+      "enabled": "false",
+      "event": "workflow_dispatch",
+      "confirm": "verify-disabled-containment",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": false,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    },
+    {
+      "enabled": "false",
+      "event": "pull_request",
+      "confirm": "release-cloudflare-backend",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": true,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    },
+    {
+      "enabled": "false",
+      "event": "pull_request",
+      "confirm": "verify-disabled-containment",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": true,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    },
+    {
+      "enabled": "true",
+      "event": "push",
+      "confirm": "release-cloudflare-backend",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": true,
+        "release-config-gate": true,
+        "production-release": true
+      }
+    },
+    {
+      "enabled": "true",
+      "event": "push",
+      "confirm": "verify-disabled-containment",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": true,
+        "release-config-gate": true,
+        "production-release": true
+      }
+    },
+    {
+      "enabled": "true",
+      "event": "workflow_dispatch",
+      "confirm": "release-cloudflare-backend",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": true,
+        "release-config-gate": true,
+        "production-release": true
+      }
+    },
+    {
+      "enabled": "true",
+      "event": "workflow_dispatch",
+      "confirm": "verify-disabled-containment",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": false,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    },
+    {
+      "enabled": "true",
+      "event": "pull_request",
+      "confirm": "release-cloudflare-backend",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": true,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    },
+    {
+      "enabled": "true",
+      "event": "pull_request",
+      "confirm": "verify-disabled-containment",
+      "needsAssumedSuccess": true,
+      "jobs": {
+        "quality": true,
+        "release-config-gate": false,
+        "production-release": false
+      }
+    }
+  ],
+  "limitations": "Local evaluation of exact conditions plus separate safe invalid-confirm GitHub probe. Probe alone does not isolate variable causality. No production deployment was dispatched with valid release confirmation."
+}

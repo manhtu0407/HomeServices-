@@ -1,0 +1,14 @@
+$ node scripts/run.mjs run-package-script @nestscout/shared test
+
+> @nestscout/shared@0.1.0 test C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\packages\shared
+> vitest run
+
+
+ RUN  v4.1.6 C:/Users/Phan Manh Tu/.codex/worktrees/kawa-foundation-safety-20261020/home-services/packages/shared
+
+
+ Test Files  10 passed (10)
+      Tests  189 passed (189)
+   Start at  17:14:35
+   Duration  1.08s (transform 2.44s, setup 0ms, import 4.41s, tests 271ms, environment 1ms)
+

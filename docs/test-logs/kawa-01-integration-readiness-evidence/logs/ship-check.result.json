@@ -1,0 +1,9 @@
+{
+  "id": "ship-check",
+  "command": "pnpm ship:check",
+  "exitCode": 1,
+  "source": "final child output reports ELIFECYCLE exit 1; wrapper lingered with no live node children and was interrupted after final output",
+  "machineGatesPassed": 10,
+  "gitState": "4 uncommitted source paths",
+  "wrapperInterrupted": true
+}

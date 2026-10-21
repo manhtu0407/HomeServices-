@@ -1,0 +1,45 @@
+  - containment: still open — a slice closes before the next one opens
+  - comment-alignment: still open — a slice closes before the next one opens
+  - memory-integration: still open — a slice closes before the next one opens
+  - .agents/skills/kael-core-hygiene/SKILL.md: changed but outside every slice read-window
+  - .agents/skills/kael-ship/SKILL.md: changed but outside every slice read-window
+  - .agents/skills/kael-ship/agents/openai.yaml: changed but outside every slice read-window
+  - .agents/skills/kael-solve-conflict-maximize/SKILL.md: changed but outside every slice read-window
+  - .agents/skills/kael-solve-conflict-maximize/agents/openai.yaml: changed but outside every slice read-window
+  - .claude/hooks/verify-test-integrity.mjs: changed but outside every slice read-window
+  - .claude/settings.json: changed but outside every slice read-window
+  - .claude/skills/kael-core-hygiene/SKILL.md: changed but outside every slice read-window
+  - .claude/skills/kael-ship/SKILL.md: changed but outside every slice read-window
+  - .claude/skills/kael-ship/agents/openai.yaml: changed but outside every slice read-window
+  - .claude/skills/kael-solve-conflict-maximize/SKILL.md: changed but outside every slice read-window
+  - .claude/skills/kael-solve-conflict-maximize/agents/openai.yaml: changed but outside every slice read-window
+  - .easignore: changed but outside every slice read-window
+  - AGENTS.md: changed but outside every slice read-window
+  - CLAUDE.md: changed but outside every slice read-window
+  - apps/mobile/app.json: changed but outside every slice read-window
+  - apps/mobile/components/customer/kael-chat/customer-kael-conversation-requests.ts: changed but outside every slice read-window
+  - apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts: changed but outside every slice read-window
+  - apps/mobile/config/__tests__/ios-release-readiness-pillar-test.tsx: changed but outside every slice read-window
+  - apps/mobile/config/release-client-policy.json: changed but outside every slice read-window
+  - apps/mobile/lib/kael-stream.ts: changed but outside every slice read-window
+  - docs/INDEX.md: changed but outside every slice read-window
+  - docs/agent-lessons.md: changed but outside every slice read-window
+  - docs/INDEX.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - docs/agent-lessons.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - docs/memory/2026-10.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - docs/ops/github-actions-cost.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - docs/ops/harness/local-production-release.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - docs/ops/harness/verification-release.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - docs/test-logs/INDEX.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - docs/test-logs/kawa-execution-ledger.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - governance/critical.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - governance/protocols/code-hygiene.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - governance/protocols/solve-conflict-maximize.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - governance/protocols/test-pillars.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - governance/protocols/work-router.md: reads as `docs` (governance or docs) but no slice declared that domain
+  - supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts: reads as `ai` (kael pipeline) but no slice declared that domain
+  - supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts: reads as `ai` (kael pipeline) but no slice declared that domain
+  - supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts: reads as `ai` (kael pipeline) but no slice declared that domain
+  - supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts: reads as `ai` (kael pipeline) but no slice declared that domain
+
+43 work-router violation(s). Canonical rules: governance/protocols/work-router.md

@@ -1,0 +1,8 @@
+
+> nestscout@0.1.0 sandbox:type-check <USER>\.codex\worktrees\kawa01-integration-simulation\home-services
+> node scripts/run.mjs run-package-script @nestscout/sandbox type-check
+
+
+> @nestscout/sandbox@0.1.0 type-check <USER>\.codex\worktrees\kawa01-integration-simulation\home-services\sandbox\agent
+> node --check ./src/sandbox-check.mjs
+

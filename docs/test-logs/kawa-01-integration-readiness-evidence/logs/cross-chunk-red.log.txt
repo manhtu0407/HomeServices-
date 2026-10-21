@@ -1,0 +1,79 @@
+Scope: all 5 workspace projects
+✓ Lockfile passes supply-chain policies (verified 9d ago)
+Lockfile is up to date, resolution step is skipped
+Already up to date
+
+Done in 2.5s using pnpm v11.25.0
+FAIL components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx (9.309 s)
+  × keeps reading after an interrupted delta callback so the later emergency frame is delivered (5 ms)
+  P418-kael-emergency-mobile-delivery
+    √ preserves the rejected JSON response and the recognized emergency field (29 ms)
+    √ delivers a rejected create into the actual request action and conversation reducer (22 ms)
+  P418-kael-emergency-mobile-delivery: actual error state and local access
+    √ preserves a JSON failure received by the real stream transport (2 ms)
+    √ renders trusted guidance after HTTP 400 without changing the existing Case (218 ms)
+    √ renders trusted guidance after HTTP 409 without changing the existing Case (4 ms)
+    √ renders trusted guidance after HTTP 500 without changing the existing Case (4 ms)
+    √ keeps SSE errors as failures and repeated reports occupy one guidance slot (4 ms)
+    √ missing or hostile guidance never becomes a safety message: undefined (3 ms)
+    √ missing or hostile guidance never becomes a safety message: {"version":"v1","route":"fire","text":"untrusted"} (2 ms)
+    √ missing or hostile guidance never becomes a safety message: {"version":"v9","route":"fire"} (2 ms)
+    √ offline manual access uses static vi copy without any request (10 ms)
+    √ offline manual access uses static en copy without any request (8 ms)
+    √ clears guidance when the conversation mode changes (1 ms)
+    √ an interrupted request keeps the Case unchanged and never renders transport exception text (4 ms)
+    √ a connection timeout ends loading without inventing guidance or a successful turn (4 ms)
+  P418-kael-emergency-mobile-delivery: partial-output terminal failures
+    √ retains the received emergency when an error observer throws after deltas (1 ms)
+  P418-kael-emergency-mobile-delivery: recovered state must not erase an explicit safety failure
+    √ does not turn an explicit emergency failure into a successful Case recovery
+    √ keeps normal conversation guidance and failure even if a stored partial exchange exists (9 ms)
+  P418-kael-emergency-mobile-delivery: terminal outcome after partial output
+    √ keeps emergency available with absent callbacks (1 ms)
+    √ keeps emergency available with interrupted-delta callbacks (1 ms)
+    √ keeps emergency available with interrupted-error callbacks (1 ms)
+    √ never commits a result callback if a later frame reports emergency failure (1 ms)
+    √ emits one success callback for repeated valid results after a clean close (1 ms)
+    √ a clean close without result cannot commit partial content (1 ms)
+    √ a clean close without result cannot commit partial content (1 ms)
+    √ a disconnect after deltas stays failed without inventing guidance (1 ms)
+    √ partial-output failures reach the real Case reducer without duplicate success turns (3 ms)
+    √ ordinary ambiguous Case recovery still accepts a confirmed stored exchange (1 ms)
+
+  ● keeps reading after an interrupted delta callback so the later emergency frame is delivered
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 5
+    + Received  + 1
+
+      Object {
+    -   "code": "DB_ERROR",
+    -   "emergency": Object {
+    -     "route": "fire",
+    -     "version": "v1",
+    -   },
+    +   "code": "STREAM_NETWORK",
+        "success": false,
+      }
+
+      356 |   const result = await streamKaelChatTurn('case-delivery-test', { message: 'smoke', photo_urls: [] }, { onResponseDelta, onResult }, undefined, mockFetch)
+      357 |   expect(onResponseDelta).toHaveBeenCalledTimes(1)
+    > 358 |   expect(result).toMatchObject({ success: false, code: 'DB_ERROR', emergency })
+          |                  ^
+      359 |   expect(onResult).not.toHaveBeenCalled()
+      360 | })
+      361 |
+
+      at Object.toMatchObject (components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx:358:18)
+      at asyncGeneratorStep (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 28 passed, 29 total
+Snapshots:   0 total
+Time:        10.234 s
+Ran all test suites within paths "components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx".
+undefined
+[WORKSPACE]\apps\mobile:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: jest --runInBand "--watch=false" --runTestsByPath components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
