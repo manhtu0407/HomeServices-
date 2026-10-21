@@ -1,0 +1,10 @@
+
+> nestscout@0.1.0 lint:workplan <repo>
+> node scripts/run.mjs run-node scripts/check-work-plan.mjs
+
+  - apps/api/fixtures/kael-eval/evaluation-blueprint-100.json: changed but outside every slice read-window
+  - apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts: changed but outside every slice read-window
+  - docs/test-logs/kawa-01-final-closure-evidence/h5-reproduction.json: changed but outside every slice read-window
+
+3 work-router violation(s). Canonical rules: governance/protocols/work-router.md
+ ELIFECYCLE  Command failed with exit code 1.

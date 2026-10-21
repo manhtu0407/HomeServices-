@@ -48,6 +48,8 @@ import {
   answerCaseEmergency,
   answerParkedEmergency,
   customerAuthoredTexts,
+  ownedSessionForRefusal,
+  refuseWithEmergencyGuidance,
   resolveCaseEmergency,
 } from "./emergency-turn.ts";
 import {
@@ -86,7 +88,23 @@ export async function sendKaelChatTurn(
   secrets: EdgeAiSecrets,
 ) {
   if (validateFutureHcmcSchedule(input.scheduled_at, input.schedule_window) !== null) {
-    apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+    // The schedule is refused as before, but a reported emergency is not hidden behind that refusal: its owner gets
+    // the guidance in the same error. Anyone else gets the plain refusal.
+    const refused = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
+    const owned = refused.length > 0 ? await ownedSessionForRefusal(ctx, sessionId) : null;
+    refuseWithEmergencyGuidance(
+      { code: "VALIDATION", message: HCMC_SCHEDULE_VALIDATION_MESSAGE, status: 400 },
+      owned
+        ? {
+          texts: refused,
+          language: input.language ?? (asRecord(owned.safe_metadata).language === "en" ? "en" : "vi"),
+          serviceType: owned.service_type,
+          entry: "turn",
+          identity: ctx,
+          session: owned,
+        }
+        : null,
+    );
   }
   const client = db(ctx);
   const sessionResult = await dbQuery<Record<string, unknown>>(
@@ -104,11 +122,25 @@ export async function sendKaelChatTurn(
   const session = sessionResult.data;
   assertKaelSessionOwnership(session, ctx);
   const status = asKaelChatStatus(session.status);
+  const previousMetadata = asRecord(session.safe_metadata);
+  const texts = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
   if (
     status === "confirmed" || status === "abandoned" ||
     status === "unsupported"
   ) {
-    apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận tin nhắn", 409);
+    // A closed Case takes no message and is never written to, but its owner's reported emergency is still answered
+    // in the refusal.
+    refuseWithEmergencyGuidance(
+      { code: "INVALID_STATUS", message: "Phiên Kael này không còn nhận tin nhắn", status: 409 },
+      {
+        texts,
+        language: input.language ?? (previousMetadata.language === "en" ? "en" : "vi"),
+        serviceType: session.service_type,
+        entry: "turn",
+        identity: ctx,
+        session,
+      },
+    );
   }
 
   // Every text the customer wrote (the message, a reviewed transcript or note, an evidence summary) is read
@@ -116,8 +148,6 @@ export async function sendKaelChatTurn(
   // A turn the Case cannot take yet (its booking confirmation is pending, or the price-question chip persists
   // nothing) still answers a reported emergency before it is refused or ignored; any other emergency that ends
   // the turn is answered without touching evidence or the phase.
-  const previousMetadata = asRecord(session.safe_metadata);
-  const texts = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
   const parked = input.turn_intent === "price_question" || isIntakeConfirmationPending(previousMetadata);
   const emergency = resolveCaseEmergency({
     message: texts,

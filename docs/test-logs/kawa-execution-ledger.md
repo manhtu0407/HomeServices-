@@ -558,3 +558,114 @@ A first full run in this checkpoint showed 3,049 passed and 7 skipped. Docker De
 **ROLLBACK:** revert the files listed in the manifest (all uncommitted). No migration, RPC, contract, secret or flag was touched.
 **OUTCOME:** W00 VERIFIED (preserved). W01, W02 and W03 are REMEDIATED AT T0 and AWAIT INDEPENDENT RE-AUDIT; they are not claimed closed. T1, T2 and T3 are NOT_RUN.
 **NEXT:** Stop. Request an independent re-audit. KAWA_02 requires a new instruction.
+
+## Checkpoint CLOSURE-FINAL — Targeted final remediation (2026-10-21)
+
+**TASK_ID:** CLOSURE-FINAL — "NESTSCOUT KAWA_01 — FINAL CLOSURE EXECUTION", after an independent re-audit of `63c01524`
+**BASELINE:** branch `codex/kawa-foundation-safety-20261020`; base and HEAD `63c01524ed6b11bdd059f58c64421d8cbdb79017` (REMEDIATION-02, committed and pushed at the owner's request). All source work of this checkpoint is uncommitted. Nothing here is committed, pushed, merged or deployed.
+**AUTHORIZATION (owner, this session):** close the confirmed T0 acceptance blockers inside W00–W03. No commit, push, PR, merge, deploy, hosted database change, new RPC, migration, idempotency contract, release-control change, credential, flag change, paid call, production operation or KAWA_02 work was authorized and none occurred. `scripts/harness/*` is untouched.
+**INPUTS READ:** `KAWA_01_Foundation_Safety_Evaluation.pdf` and the Master Plan v1.1 (text extracted locally with `pdftotext`), and the independent re-audit folder (`<auditor-artifacts>`, outside the repository) (H5 first-run log, HTTP probes, concurrency probe, focused and full test logs, a mock playbook run). The auditor's written findings were not supplied; what the probe files show is what was treated as confirmed. Copies of the probe files are in the evidence folder.
+**EVIDENCE_TIER:** T0 only (deterministic tests, an in-memory PostgREST stand-in, a pinned-container compile of the seven Edge functions). No real Postgres, RLS, device, hosted Edge or live model ran. Nothing here is T1, T2 or T3 evidence.
+**REVIEW:** reviewed by the author only. No separate reviewer or agent was used, so this checkpoint is NOT independently reviewed.
+
+### Confirmed defects, root cause and smallest fix
+
+| # | Defect (baseline `63c01524`, from the auditor's probes and reproduced here) | Root cause | Smallest fix | Red → green |
+|---|---|---|---|---|
+| 1 | `POST /kael/chat` with an existing `session_id`, no typed `message` and an emergency voice transcript returned 201 with the unchanged chat and no guidance (`voice_only_existing_session`) | `createKaelChat` returned `getKaelChat` for a session id with no message before any gate ran | `answerEmergencyOnOwnedSession`: after the ownership check, read the transcripts, notes, summaries and booking description and answer an emergency with the parked reply; an ordinary request still returns the chat with no write | P411: 19 of 31 red on the first version, 24 of 67 red (P411 + P403) on the old implementation with the final tests, 37 of 37 green |
+| 2 | An emergency sent with an invalid schedule got the plain 400 on the turn route, on the create route with a session id, and on a new-Case create (`invalid_schedule_turn`, `invalid_schedule_create`) | The schedule refusal ran before any text was read | `refuseWithEmergencyGuidance`: the same code (`VALIDATION`) and status (400), the deterministic guidance in front of the message, nothing written, nothing created. Only the Case owner gets the guidance (`ownedSessionForRefusal`); anyone else, or a missing Case, gets the plain refusal exactly as before | P411 rows for turn, voice-only create, new-Case create, stranger and missing Case |
+| 3 | An emergency sent to an abandoned, confirmed or unsupported Case got the plain 409 (`terminal_status_emergency`) | The closed-status refusal ran before any text was read | The same helper on the turn and evidence routes and the voice-only create: `INVALID_STATUS` 409 with the guidance in front of the message. The terminal guard is not bypassed and a closed Case is never written to | P411 closed-Case rows for turn, evidence (transcript and skip reason), voice-only create, and a stranger's plain 404 |
+| 4 | A classified emergency whose reply could not be written became a bare `DB_ERROR` with no guidance and no trace | `answerParkedEmergency` and `answerCaseEmergency` rethrew the raw error | `emergencyWriteFailure`: log a redacted `emergency_write_failed` trace and rethrow the same code and status with the guidance in front of the message | P411 failure rows (parked path, advice path, correlation and release identity, no text, no actor hash) |
+| 5 | W02 asks to "prepare a 100-case evaluation blueprint, groups 20/20/15/20/15/10"; none existed | Deliverable never produced | `apps/api/fixtures/kael-eval/evaluation-blueprint-100.json`: six groups, required case fields, `authored_cases: 0`, status `blueprint_only`; the deterministic report now says it is a plan with 0 authored cases and the 99-case suite is not it | P402 +3 blueprint rows and the report row |
+| 6 | `source_tree_hash` could be read as binding more than it does | The 70-file list is a curated set; the transitive import closure of the gate callers is 301 files (shared barrels) and the manifest holds 100 | Claim narrowed, not widened: a scope comment above `SOURCE_FILES` and a P402 row that pins it. The classifier closure (`emergency-guidance.ts`, `emergency-signal-text.ts`, 2 files) is proven fully hashed. The manifest already carries `source_scope: local_curated_source_set` | P402 +2 rows |
+
+Classification: items 1–4 are product defects; item 5 is a missing deliverable; item 6 is an evidence-claim issue. Nothing was changed for the reliability items (see below).
+
+### W01 sentinel and negative matrix
+
+The 647 tests of the eleven emergency pillars (P401, P402, P403, P405–P411) pass, including: fire → 114, medical → 115, police → 113, gas, uncertain escalation and unsafe-DIY refusal; negation and cooking-guard negatives; voice-only, multi-field and multi-hazard inputs; refused actors (stranger 404, worker 403, admin 403) writing nothing; pending confirmation left pending; no model call on any emergency path; no Job, quote, match or payment created. The new P411 adds the existing-session voice-only create, the three terminal statuses, invalid schedules, the failure path, and the plain refusal for a non-owner.
+
+### W02 H5 (sealed holdout)
+
+- The auditor's `H5-first-run-63c01524.log` shows `1 passed | 19 skipped` and no metrics. The original first-run metrics were never captured and are **not recovered** by anything in this checkpoint.
+- A run on the frozen classifier (`emergency-guidance.ts` and `emergency-signal-text.ts` byte-identical to `63c01524`; H5 sealed hash `80e3e907…` matched; no row used for tuning) is saved as `h5-reproduction.json` with `label: REPRODUCTION`, `independent_validation: false`. It was run twice; the metrics were identical (the second run only fixed a metadata comparison).
+- Result on the 59 clear rows: 29 labelled emergencies, 30 labelled non-emergencies. Detected and exactly routed 11 of 29 (recall 37.9 %); missed 18; wrong route 0; false alarms 1; specificity 29 of 30 (96.7 %). Four judgement rows are listed separately and excluded from every rate.
+- H5 is no longer a holdout after this run. The classifier was not changed.
+- This recall is the most important residual risk of KAWA_01 (see below).
+
+### W03 observability
+
+Case emergency traces now cover four outcomes: `emergency_stop`, `emergency_advice`, `emergency_guidance_only` (a refusal that carried the guidance) and `emergency_write_failed`. Each carries correlation id, gate version, entry, bounded `EMERGENCY_<ROUTE>` reason and release identity; none carries customer text or an actor hash. `summarizeCaseEmergencyTraces` counts each outcome separately, so a refusal or a failure never inflates the answered counts, and the rate stays `null` without a valid denominator. The success response shape and the progress stream are unchanged. A trace is a log line subject to a per-isolate allowance, so a burst can drop log lines; the persisted reply row is the durable record of an answer.
+
+### Reliability boundaries
+
+| Class | Item |
+|---|---|
+| Confirmed T0 defect, fixed | A failed write lost the guidance and left no trace (item 4) |
+| Recoverable limitation | Tail read, stranded-turn reuse, one retry and a single session update (REMEDIATION-02) heal a half-written exchange. The auditor's concurrency probe returned 200/200 with unique turn indexes and a matching counter; two identical messages are still two customer turns, because there is no idempotency key |
+| Needs T1 PostgreSQL | Unique `(session_id, turn_index)` under real concurrency, RLS, lock behaviour |
+| Needs owner approval (not implemented) | The atomic append-exchange RPC with an idempotency key and a client message id (security-definer, row lock, ownership check, unique index). Exactly-once is **not** claimed from in-memory tests |
+
+### Mutation testing
+
+18 mutants of the new code (guidance dropped from a refusal, refusal trace removed, closed-Case check removed, ownership removed on both paths, failure trace and failure guidance removed, wrapper removed on both write paths, soft flag ignored, description not read, plain new-Case refusal, owner lookup removed, closed-Case text emptied on turn and evidence, outcome mis-counted, vocabulary missing, voice-only text emptied). 17 were killed on the first pass. M11 (booking description not read on a voice-only create) survived, a test was added, and it was killed on the rerun. 18 of 18 killed. Sources were restored byte-identical after each mutant.
+
+### Commands and exit codes (raw logs in `kawa-01-final-closure-evidence/gates/`)
+
+| Command | Exit | Result |
+|---|---|---|
+| `pnpm type-check:api` (first run) | 2 | 5 implicit-any errors in the new P411 file; fixed |
+| `pnpm type-check:api` (after the fix) | 0 | no diagnostics |
+| `pnpm type-check:mobile` | 0 | no diagnostics |
+| `pnpm edge:check` | 0 | discovered 7, checked 7, failed 0 (Docker running) |
+| `pnpm test:api` | 0 | 193 files passed, 2 skipped; 3,097 passed, 6 skipped (was 3,050); node contracts 114 passed, 1 skipped |
+| `pnpm test:mobile` | 0 | 284 suites, 2,631 passed |
+| `pnpm lint:structure` / `lint:comments` / `lint:playbooks` / `lint:test-collection` / `harness:pillars:check` / `lint:edge-db` / `harness:migrations:check` / `lint:baseline` | 0 each | |
+| `pnpm lint:workplan` (first run) | 1 | new files outside every slice; scope extended in the gitignored plan |
+| `pnpm lint:workplan` (after) | 0 | 9 slices, 45 files in the read window |
+| `git diff --check` | 0 | |
+| `pnpm lint:authority` | 1 | existing failure only, unchanged from `ce4bd3cd`; not introduced here |
+| Eleven emergency pillars, JSON reporter | 0 | 647 passed, 0 failed, 0 pending |
+| `kael-eval.mjs --mode deterministic` | 0 | T0, fixture agreement, `modelAccuracy: null`, n=99; report names the blueprint as a plan with 0 authored cases |
+| `kael-playbook-eval.mjs --mock … --allow-failures` | 0 | fixture replay only, not model quality; `source_tree_hash` `2fbb2075…` (was `704cc6af…`, it moved because gate files changed), 71 files, `playbook_hash` unchanged, `deployment_attestation: not_performed`; output files deleted, manifest kept |
+
+Test-count reconciliation: API passes 3,050 → 3,097 (+47) = P411 +37, P402 +5, P410 +3, P403 +2. Skipped stays 6 (the same six as before).
+
+**Unexplained historical run:** the first run after `63c01524` reported 599 passed and 1 failed in the ten pillars. The failing test was not captured, and 7 later runs of the same files (4 sequential, 3 parallel) and one more in this checkpoint all passed. The cause is **unresolved**. No explanation is offered.
+
+### Acceptance matrix (original KAWA_01 criteria only)
+
+| Item | Status | Basis |
+|---|---|---|
+| W00 reproducible baseline and authority | VERIFIED (preserved) | Earlier checkpoints untouched |
+| W01 decision matrix, zero critical sentinel misses | T0 evidence complete for the defined sentinel suite | P405–P411; unseen-wording recall is a separate residual risk |
+| W02 truthful taxonomy and provenance | T0 evidence complete | Tier tags, n, denominators, `modelAccuracy: null`, narrowed hash claim, blueprint, H5 labelled REPRODUCTION |
+| W03 redacted trace, progress and observability contracts | T0 evidence complete | P403, P404, P408, P411 |
+| G0 repository authority | PASS | Locked docs and `scripts/harness/*` untouched |
+| G1 isolation | N/A | No T1 used |
+| G2 before/after regression evidence | PASS at T0 | Red on the old implementation, green on the new, mutants killed; model quality NOT_RUN |
+| G3 safety and privacy | PASS at T0 with residual risks | No text, PII or actor hash in the new traces; guidance only to the Case owner |
+| G6 complete, truthful ledger | This checkpoint | Nothing renamed or deleted from earlier checkpoints |
+| T1 / T2 / T3 | NOT_RUN | Master Plan permits |
+
+### Residual risks and deferred work
+
+| Risk | Severity | Tier needed | Note |
+|---|---|---|---|
+| Classifier recall on unseen wording | P1 for any field or model-quality claim | T0 data first, then owner decision | H5 REPRODUCTION recall 11/29 (37.9 %); earlier first runs on the development sets 53–54 % where split out. A bounded rule set, not a guarantee; no tuning was done here |
+| Guidance carried in an error message | P2, contract | Owner decision | Same code and status, text in the existing message field. A structured field in the error envelope would be a public contract change and was not made |
+| Atomicity and exactly-once | P1 for T1 | T1 + approval | Needs the RPC above |
+| Excluded fields (`apartment_access_profile`, `address_label`, `problem_chips`) | P2 | Owner decision | Scanning would lock a Case on one old phrase |
+| LPG, fire and health wording | P2 | Domain review | Fixed server copy |
+| Confirmation description gated only at create | P3 | — | The confirm route re-reads the stored description; no new customer text enters there |
+| `evaluate-release.mjs` null→0 | P2 | Owner approval | Release-control code, unchanged |
+| Manifest cap of 100 | P3 | Contract change | 71 used |
+| All behaviour ran against an in-memory stand-in | P1 for T1/T2 | T1/T2 | No Docker database, RLS, device, hosted Edge or live model |
+| `lint:authority` | pre-existing | — | Unchanged |
+
+**Backlog (outside the original KAWA_01 boundary, no P0/P1 safety, privacy or authorization violation found in scope):** author the 100 blueprint cases; map the 99 fixtures to the groups; a structured emergency field in the error envelope; the idempotency design above.
+
+**COST:** actual_calls=0; actual_usd=NOT_RUN; approval_ref=none.
+**ROLLBACK:** revert the files in `file-digests.txt` (all uncommitted). Compatibility: success responses, the progress stream and the shared contracts are unchanged; the only visible change is extra text at the front of an existing error message when a Case owner reports an emergency in a request that was going to be refused anyway. No migration, RPC, contract, secret or flag was touched, so no data rollback exists.
+**OUTCOME:** ACCEPTANCE CANDIDATE (T0). Not independently reviewed; T1, T2 and T3 are NOT_RUN.
+**NEXT:** Stop. Request an independent acceptance review. KAWA_02 requires a new instruction.

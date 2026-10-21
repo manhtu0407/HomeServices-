@@ -1,0 +1,5 @@
+
+> nestscout@0.1.0 lint:structure <repo>
+> node scripts/run.mjs run-node scripts/lint-structure.mjs
+
+structure ok: 1452 source files; 9 grandfathered oversize, 120 grandfathered dup-type groups

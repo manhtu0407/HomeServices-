@@ -36,8 +36,10 @@ import {
 import { findExistingKaelSessionByClientRequest, insertKaelTurn, updateKaelSession } from "./session-store.ts";
 import {
   answerCaseEmergency,
+  answerEmergencyOnOwnedSession,
   answerParkedEmergency,
   customerAuthoredTexts,
+  refuseWithEmergencyGuidance,
   resolveCaseEmergency,
 } from "./emergency-turn.ts";
 import {
@@ -71,15 +73,27 @@ export async function createKaelChat(
     input.scheduled_at,
     input.schedule_window,
   );
-  if (
-    scheduleValidation !== null &&
+  const createTexts = customerAuthoredTexts({
+    message: input.message,
+    intakeDescription: input.intake_description,
+    evidenceItems: input.evidence_items,
+  });
+  const scheduleRefused = scheduleValidation !== null &&
     input.intake_source !== "booking" &&
-    (!input.client_request_id || input.session_id)
-  ) {
-    apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
-  }
+    (!input.client_request_id || Boolean(input.session_id));
   if (input.session_id) {
-    if (!input.message) return getKaelChat(ctx, input.session_id);
+    if (!input.message) {
+      // Nothing here is a turn the Case takes, but a reported emergency in a voice transcript or note is still
+      // answered (after the ownership check) before the request is ignored or refused for its schedule.
+      const answered = await answerEmergencyOnOwnedSession(ctx, input.session_id, {
+        texts: createTexts,
+        language: input.language ?? "vi",
+        soft: scheduleRefused,
+      });
+      if (answered) return getKaelChat(ctx, input.session_id);
+      if (scheduleRefused) apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+      return getKaelChat(ctx, input.session_id);
+    }
     return sendKaelChatTurn(ctx, input.session_id, {
       message: input.message,
       problem_chips: input.problem_chips,
@@ -94,6 +108,7 @@ export async function createKaelChat(
     }, secrets);
   }
 
+  if (scheduleRefused) refuseCreateSchedule(ctx, input, createTexts);
   const client = db(ctx);
   const language = input.language ?? "vi";
   const safeProblemChips = sanitizeUntrustedEvidenceList(input.problem_chips);
@@ -133,7 +148,7 @@ export async function createKaelChat(
       );
     }
     if (scheduleValidation !== null && input.intake_source !== "booking") {
-      apiFailure("VALIDATION", HCMC_SCHEDULE_VALIDATION_MESSAGE, 400);
+      refuseCreateSchedule(ctx, input, createTexts);
     }
   }
 
@@ -199,6 +214,22 @@ export async function createKaelChat(
   }
 
   return getKaelChat(ctx, createdSessionId);
+}
+
+// The schedule refusal of a new Case. A reported emergency in the request is answered in the same error, and nothing
+// is created: a Case is never opened or scheduled by a refused request.
+function refuseCreateSchedule(ctx: MobileApiContext, input: KaelChatCreateInput, texts: readonly string[]): never {
+  refuseWithEmergencyGuidance(
+    { code: "VALIDATION", message: HCMC_SCHEDULE_VALIDATION_MESSAGE, status: 400 },
+    {
+      texts,
+      language: input.language ?? "vi",
+      serviceType: input.service_type,
+      entry: "create",
+      identity: ctx,
+      session: { service_type: input.service_type, case_phase: "analysis" },
+    },
+  );
 }
 
 async function enforceCreateKaelChatRateLimit(

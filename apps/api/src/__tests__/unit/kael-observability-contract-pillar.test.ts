@@ -214,10 +214,33 @@ describe(`${PILLAR.id}: the Case emergency trace has a denominator and a closed 
       emergency_turns: 3,
       stopped_turns: 2,
       advised_turns: 1,
+      guidance_only_turns: 0,
+      write_failed_turns: 0,
       by_route: { gas: 1, fire: 1, electrical_water: 1 },
       by_entry: { turn: 2, evidence: 1 },
       emergency_rate: 3 / 40,
     })
+  })
+
+  it('counts a refusal that carried the guidance and a reply that could not be written as classified emergencies, never as answered turns', () => {
+    const summary = summarizeCaseEmergencyTraces([
+      emergencyTrace(),
+      emergencyTrace({ outcome: 'emergency_guidance_only', permissionReason: 'EMERGENCY_FIRE', gateEntry: 'create' }),
+      emergencyTrace({ outcome: 'emergency_write_failed', permissionReason: 'EMERGENCY_GAS', gateEntry: 'turn' }),
+      emergencyTrace({ outcome: 'emergency_write_failed', permissionReason: 'EMERGENCY_GAS', gateEntry: 'evidence' }),
+    ], 50)
+    const why = pillarWhy(PILLAR, 'a failure or a refusal is its own count and never inflates the answered ones')
+    expect(summary.stopped_turns, why).toBe(1)
+    expect(summary.advised_turns, why).toBe(0)
+    expect(summary.guidance_only_turns, why).toBe(1)
+    expect(summary.write_failed_turns, why).toBe(2)
+    expect(summary.emergency_turns, why).toBe(4)
+    expect(summary.emergency_rate, why).toBe(4 / 50)
+  })
+
+  it('ignores an outcome the contract does not define instead of counting it as an answer', () => {
+    const summary = summarizeCaseEmergencyTraces([emergencyTrace({ outcome: 'emergency_succeeded' }), emergencyTrace({ outcome: 'emergency_write_failed_maybe' })], 10)
+    expect(summary.emergency_turns, pillarWhy(PILLAR, 'an unknown outcome is not a classified emergency')).toBe(0)
   })
 
   it.each([null, undefined, 0, Number.NaN, -4, 2.5, '12', {}])('keeps the rate null, never 0, when the evaluated-turn count is %j', (evaluated) => {

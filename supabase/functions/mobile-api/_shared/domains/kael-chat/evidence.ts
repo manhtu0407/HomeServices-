@@ -31,6 +31,7 @@ import {
   answerCaseEmergency,
   answerParkedEmergency,
   customerAuthoredTexts,
+  refuseWithEmergencyGuidance,
   resolveCaseEmergency,
   type CaseEmergency,
 } from "./emergency-turn.ts";
@@ -79,22 +80,34 @@ export async function submitKaelChatEvidence(
   const session = sessionResult.data;
   assertKaelSessionOwnership(session, ctx);
   const status = asKaelChatStatus(session.status);
-  if (
-    status === "confirmed" ||
-    status === "abandoned" ||
-    status === "unsupported"
-  ) {
-    apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận bằng chứng", 409);
-  }
-  // Every text the customer wrote is read before any validation, media consumption or phase change: a reported
-  // emergency is answered even when the same submission would otherwise be refused (a pending booking, or
-  // required evidence that cannot be skipped), and the Case keeps waiting exactly as it was.
   const previousSafeMetadata = asRecord(session.safe_metadata);
   const texts = customerAuthoredTexts({
     message: input.message,
     skipReason: input.skip_reason,
     evidenceItems: input.evidence_items,
   });
+  if (
+    status === "confirmed" ||
+    status === "abandoned" ||
+    status === "unsupported"
+  ) {
+    // A closed Case takes no evidence and is never written to, but its owner's reported emergency is still answered
+    // in the refusal.
+    refuseWithEmergencyGuidance(
+      { code: "INVALID_STATUS", message: "Phiên Kael này không còn nhận bằng chứng", status: 409 },
+      {
+        texts,
+        language: input.language ?? (previousSafeMetadata.language === "en" ? "en" : "vi"),
+        serviceType: session.service_type,
+        entry: "evidence",
+        identity: ctx,
+        session,
+      },
+    );
+  }
+  // Every text the customer wrote is read before any validation, media consumption or phase change: a reported
+  // emergency is answered even when the same submission would otherwise be refused (a pending booking, or
+  // required evidence that cannot be skipped), and the Case keeps waiting exactly as it was.
   const parked = isIntakeConfirmationPending(previousSafeMetadata);
   const emergency = resolveCaseEmergency({
     message: texts,

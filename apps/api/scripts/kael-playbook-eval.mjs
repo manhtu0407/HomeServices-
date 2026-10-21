@@ -50,6 +50,11 @@ const CLIENT_CONTRACT_EPOCH_PATTERN = /^[1-9][0-9]{0,8}$/
 const CLIENT_EAS_BUILD_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const CLIENT_GIT_SHA_PATTERN = /^[0-9a-f]{40}$/i
 const CLIENT_IDENTITY_PATTERN = /^[A-Za-z0-9._:-]{1,160}$/
+// source_tree_hash binds the bytes of the files listed here and nothing else: every Edge file that decides or
+// delivers a Case emergency reply, each file it imports directly, and the service playbook. It is not the transitive
+// import closure (the shared barrels pull in hundreds of files and the manifest holds 100), and it does not cover the
+// corpus, the mock fixture, the environment or any model. A report therefore proves which listed bytes ran, not that
+// nothing else changed.
 const SOURCE_FILES = [
   'apps/api/scripts/kael-playbook-eval.mjs',
   'apps/api/scripts/lib/kael-playbook-eval-core.mjs',

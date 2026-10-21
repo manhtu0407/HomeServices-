@@ -58,6 +58,8 @@ const OUTCOMES = [
   "fallback",
   "emergency_stop",
   "emergency_advice",
+  "emergency_guidance_only",
+  "emergency_write_failed",
 ] as const;
 // Where in the Case a reported emergency was caught: the follow-up turn, the evidence submission, the first
 // message of a new Case, or the booking confirmation.
@@ -207,6 +209,10 @@ export type CaseEmergencySummary = {
   readonly emergency_turns: number;
   readonly stopped_turns: number;
   readonly advised_turns: number;
+  // Classified emergencies that were refused with the guidance in the error (nothing persisted), and ones whose
+  // reply could not be written. Neither is an answered turn, and neither is ever counted as one.
+  readonly guidance_only_turns: number;
+  readonly write_failed_turns: number;
   readonly by_route: Readonly<Record<string, number>>;
   readonly by_entry: Readonly<Record<string, number>>;
   // emergency_turns / evaluated_turns; null, never 0, when there is no sample to divide by.
@@ -224,13 +230,18 @@ export function summarizeCaseEmergencyTraces(
   const byEntry: Record<string, number> = {};
   let stopped = 0;
   let advised = 0;
+  let guidanceOnly = 0;
+  let writeFailed = 0;
   for (const candidate of traces) {
     const trace = candidate !== null && typeof candidate === "object" ? candidate as Record<string, unknown> : {};
     if (
       trace.schema !== KAEL_TURN_TRACE_SCHEMA || trace.route !== "case_emergency" ||
       trace.stage !== "emergency_gate"
     ) continue;
-    const outcome = member(["emergency_stop", "emergency_advice"] as const, trace.outcome);
+    const outcome = member(
+      ["emergency_stop", "emergency_advice", "emergency_guidance_only", "emergency_write_failed"] as const,
+      trace.outcome,
+    );
     if (!outcome) continue;
     const reason = typeof trace.permission_reason === "string" ? trace.permission_reason.toLowerCase() : "";
     const route = member(EMERGENCY_ROUTES, reason.startsWith("emergency_") ? reason.slice("emergency_".length) : "") ??
@@ -239,9 +250,11 @@ export function summarizeCaseEmergencyTraces(
     const entry = member(GATE_ENTRIES, trace.gate_entry) ?? "other";
     byEntry[entry] = (byEntry[entry] ?? 0) + 1;
     if (outcome === "emergency_stop") stopped += 1;
-    else advised += 1;
+    else if (outcome === "emergency_advice") advised += 1;
+    else if (outcome === "emergency_guidance_only") guidanceOnly += 1;
+    else writeFailed += 1;
   }
-  const emergency = stopped + advised;
+  const emergency = stopped + advised + guidanceOnly + writeFailed;
   const evaluated = typeof evaluatedTurns === "number" && Number.isSafeInteger(evaluatedTurns) &&
       evaluatedTurns >= emergency
     ? evaluatedTurns
@@ -251,6 +264,8 @@ export function summarizeCaseEmergencyTraces(
     emergency_turns: emergency,
     stopped_turns: stopped,
     advised_turns: advised,
+    guidance_only_turns: guidanceOnly,
+    write_failed_turns: writeFailed,
     by_route: byRoute,
     by_entry: byEntry,
     emergency_rate: evaluated !== null && evaluated > 0 ? emergency / evaluated : null,

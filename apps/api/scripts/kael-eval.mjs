@@ -757,6 +757,7 @@ async function writeReport(input) {
     input.mode === 'live'
       ? '- Live shadow results reflect endpoint responses only; provider execution and model accuracy remain unverified.'
       : '- Deterministic mode proves regression harness wiring and fixture coverage; it is not a substitute for a scheduled live provider run.',
+    '- The 100-case evaluation blueprint (apps/api/fixtures/kael-eval/evaluation-blueprint-100.json) is a plan with 0 authored cases; this suite is not that blueprint and has not been mapped to its groups.',
   ]
   await writeFile(input.reportPath, `${lines.join('\n')}\n`)
 }

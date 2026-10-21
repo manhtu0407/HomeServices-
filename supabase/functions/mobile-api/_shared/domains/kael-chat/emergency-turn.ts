@@ -8,9 +8,10 @@ import {
   resolveReportedEmergencyGuidanceFromTexts,
   type EmergencyGuidance,
 } from "../../kael/kael-guardrails/emergency-guidance.ts";
-import { apiFailure } from "../../platform/api-failure.ts";
+import { ApiFailure, apiFailure } from "../../platform/api-failure.ts";
+import type { MobileApiContext } from "../../platform/auth.ts";
 import { asKaelChatStatus, asNumber, asRecord, nullableServiceType } from "../../platform/coercions.ts";
-import { dbQuery, type DbClient } from "../../platform/db.ts";
+import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import {
   buildKaelTurnTrace,
   logKaelTurnTrace,
@@ -18,7 +19,12 @@ import {
   type KaelTurnTraceIdentity,
 } from "../../platform/turn-trace.ts";
 import { requiresImmediateKaelSafetyPathForTexts } from "./intake-safety.ts";
-import { appendKaelSystemTurn, insertKaelTurn, updateKaelSession } from "./session-store.ts";
+import {
+  appendKaelSystemTurn,
+  assertKaelSessionOwnership,
+  insertKaelTurn,
+  updateKaelSession,
+} from "./session-store.ts";
 
 export type CaseEmergency = {
   readonly guidance: EmergencyGuidance;
@@ -98,11 +104,14 @@ export function resolveCaseEmergency(input: CaseEmergencyInput): CaseEmergency |
   return { guidance, stopsTurn: !hazardOnly };
 }
 
+type EmergencyOutcome = "emergency_stop" | "emergency_advice" | "emergency_guidance_only" | "emergency_write_failed";
+
 function emergencyTrace(
   emergency: CaseEmergency,
   entry: CaseEmergencyEntry,
   identity: KaelTurnTraceIdentity | undefined,
   session: Record<string, unknown> | undefined,
+  outcome: EmergencyOutcome = emergency.stopsTurn ? "emergency_stop" : "emergency_advice",
 ): KaelTurnTrace | undefined {
   // Tracing is observability only: it must never be the reason a customer's emergency goes unanswered.
   try {
@@ -110,7 +119,7 @@ function emergencyTrace(
       identity,
       route: "case_emergency",
       stage: "emergency_gate",
-      outcome: emergency.stopsTurn ? "emergency_stop" : "emergency_advice",
+      outcome,
       canonicalService: session?.service_type,
       casePhase: session?.case_phase,
       permissionReason: `EMERGENCY_${emergency.guidance.route.toUpperCase()}`,
@@ -130,6 +139,126 @@ function logEmergencyTrace(trace: KaelTurnTrace | undefined) {
   } catch {
     return;
   }
+}
+
+// What a request that cannot take the turn answers when its customer reported an emergency: the same error code and
+// status the contract already gives that refusal, with the deterministic guidance in front of its message. Nothing is
+// written, so a closed Case stays closed and an invalid schedule is applied nowhere. With no scope (the caller could
+// not establish who owns the Case) the refusal is the plain one, so guidance is never handed to someone else's request.
+export type EmergencyRefusalScope = {
+  readonly texts: readonly string[];
+  readonly language: "vi" | "en";
+  readonly serviceType: unknown;
+  readonly entry: CaseEmergencyEntry;
+  readonly identity?: KaelTurnTraceIdentity;
+  readonly session?: Record<string, unknown>;
+};
+
+export function refuseWithEmergencyGuidance(
+  refusal: { readonly code: string; readonly message: string; readonly status: number },
+  scope?: EmergencyRefusalScope | null,
+): never {
+  const emergency = scope
+    ? resolveCaseEmergency({
+      message: scope.texts,
+      language: scope.language,
+      serviceType: scope.serviceType,
+      parked: true,
+    })
+    : null;
+  if (!scope || !emergency) apiFailure(refusal.code, refusal.message, refusal.status);
+  logEmergencyTrace(
+    emergencyTrace(emergency, scope.entry, scope.identity, scope.session, "emergency_guidance_only"),
+  );
+  apiFailure(refusal.code, `${emergency.guidance.response}\n\n${refusal.message}`, refusal.status);
+}
+
+const SESSION_COLUMNS = "id, customer_id, service_type, status, case_phase, total_turns, safe_metadata";
+
+// The Case when the caller owns it; null for a missing Case, someone else's Case or a failed read. A request already
+// bound for a refusal uses it so that looking the Case up never changes which refusal the caller gets.
+export async function ownedSessionForRefusal(
+  ctx: MobileApiContext,
+  sessionId: string,
+): Promise<Record<string, unknown> | null> {
+  try {
+    const result = await dbQuery<Record<string, unknown>>(
+      db(ctx).from("kael_chat_sessions").select(SESSION_COLUMNS).eq("id", sessionId).single(),
+    );
+    if (result.error || !result.data) return null;
+    assertKaelSessionOwnership(result.data, ctx);
+    return result.data;
+  } catch {
+    return null;
+  }
+}
+
+const CLOSED_STATUSES = new Set(["confirmed", "abandoned", "unsupported"]);
+
+// A request that carries customer-authored text but no typed message (a create on an existing session) is not a turn
+// the Case takes, so nothing about it changes unless the text reports an emergency. Returns true when it was answered.
+// `soft` is for a request that is already bound for a refusal: a Case it cannot reach is then simply not answered.
+export async function answerEmergencyOnOwnedSession(
+  ctx: MobileApiContext,
+  sessionId: string,
+  input: { readonly texts: readonly string[]; readonly language: "vi" | "en"; readonly soft: boolean },
+): Promise<boolean> {
+  if (input.texts.length === 0) return false;
+  let session: Record<string, unknown> | null;
+  if (input.soft) {
+    session = await ownedSessionForRefusal(ctx, sessionId);
+  } else {
+    const result = await dbQuery<Record<string, unknown>>(
+      db(ctx).from("kael_chat_sessions").select(SESSION_COLUMNS).eq("id", sessionId).single(),
+    );
+    if (result.error || !result.data) apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
+    assertKaelSessionOwnership(result.data, ctx);
+    session = result.data;
+  }
+  if (!session) return false;
+  const emergency = resolveCaseEmergency({
+    message: input.texts,
+    language: input.language,
+    serviceType: session.service_type,
+    parked: true,
+  });
+  if (!emergency) return false;
+  if (CLOSED_STATUSES.has(asKaelChatStatus(session.status))) {
+    refuseWithEmergencyGuidance(
+      { code: "INVALID_STATUS", message: "Phiên Kael này không còn nhận tin nhắn", status: 409 },
+      { texts: input.texts, language: input.language, serviceType: session.service_type, entry: "create", identity: ctx, session },
+    );
+  }
+  await answerParkedEmergency({
+    client: db(ctx),
+    sessionId,
+    session,
+    texts: input.texts,
+    emergency,
+    entry: "create",
+    identity: ctx,
+  });
+  return true;
+}
+
+// A classified emergency whose reply could not be written: the failure is traced (route, entry, gate version and
+// correlation only, never a word of the customer's text) and the error the caller already raises keeps its code and
+// status but carries the guidance, so the customer is not left with a bare failure while the Case may be in danger.
+function emergencyWriteFailure(
+  error: unknown,
+  emergency: CaseEmergency,
+  entry: CaseEmergencyEntry,
+  identity: KaelTurnTraceIdentity | undefined,
+  session: Record<string, unknown> | undefined,
+): ApiFailure {
+  logEmergencyTrace(emergencyTrace(emergency, entry, identity, session, "emergency_write_failed"));
+  const known = error instanceof ApiFailure ? error : null;
+  return new ApiFailure(
+    known?.code ?? "DB_ERROR",
+    `${emergency.guidance.response}\n\n${known?.message ?? "Không thể lưu phản hồi khẩn cấp"}`,
+    known?.status ?? 500,
+    known?.extra,
+  );
 }
 
 type TurnRow = {
@@ -173,7 +302,9 @@ export async function answerParkedEmergency(input: {
       await writeParkedExchange(input, recorded, trace);
       break;
     } catch (error) {
-      if (attempt >= 2) throw error;
+      if (attempt >= 2) {
+        throw emergencyWriteFailure(error, input.emergency, input.entry, input.identity, input.session);
+      }
     }
   }
   logEmergencyTrace(trace);
@@ -258,18 +389,22 @@ export async function answerCaseEmergency(
   },
 ) {
   const trace = emergencyTrace(emergency, options.entry, options.identity, options.session);
-  await appendKaelSystemTurn(client, sessionId, {
-    contentType: "analysis",
-    text: emergency.guidance.response,
-    nextStatus: options.keepOfferStatus && asKaelChatStatus(options.session?.status) === "estimate_ready"
-      ? "estimate_ready"
-      : "active",
-    telemetry: { replySource: "template" },
-    metadata: {
-      safety_source: "deterministic_emergency",
-      emergency_route: emergency.guidance.route,
-      ...(trace ? { turn_trace: trace } : {}),
-    },
-  });
+  try {
+    await appendKaelSystemTurn(client, sessionId, {
+      contentType: "analysis",
+      text: emergency.guidance.response,
+      nextStatus: options.keepOfferStatus && asKaelChatStatus(options.session?.status) === "estimate_ready"
+        ? "estimate_ready"
+        : "active",
+      telemetry: { replySource: "template" },
+      metadata: {
+        safety_source: "deterministic_emergency",
+        emergency_route: emergency.guidance.route,
+        ...(trace ? { turn_trace: trace } : {}),
+      },
+    });
+  } catch (error) {
+    throw emergencyWriteFailure(error, emergency, options.entry, options.identity, options.session);
+  }
   logEmergencyTrace(trace);
 }

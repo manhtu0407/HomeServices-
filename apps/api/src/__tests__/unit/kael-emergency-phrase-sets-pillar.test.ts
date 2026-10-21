@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
-import { readFileSync, readdirSync } from 'node:fs'
-import { join, relative, resolve } from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
@@ -44,6 +45,38 @@ type Row = {
   currently?: string | null
 }
 type PhraseSet = { set: string; status?: string; rows: Row[] }
+
+type RowResult = { id: string; kind: string; expected: string | null; got: string | null }
+
+// Confusion counts over the clear rows only. An emergency is "detected" when any route is returned, and "routed
+// correctly" when the route is the labelled one; both recalls are reported because a wrong route is still an answer
+// but not the right one. Specificity is the share of labelled non-emergencies that stayed quiet. A ratio with no rows
+// to divide is null, never 0 and never 1.
+export function confusionMetrics(results: readonly RowResult[]) {
+  const clear = results.filter((row) => row.kind === 'clear')
+  const positives = clear.filter((row) => row.expected !== null)
+  const negatives = clear.filter((row) => row.expected === null)
+  const truePositiveRouted = positives.filter((row) => row.got === row.expected).length
+  const wrongRoute = positives.filter((row) => row.got !== null && row.got !== row.expected).length
+  const falseNegative = positives.filter((row) => row.got === null).length
+  const falsePositive = negatives.filter((row) => row.got !== null).length
+  const trueNegative = negatives.length - falsePositive
+  const ratio = (numerator: number, denominator: number) => (denominator > 0 ? numerator / denominator : null)
+  return {
+    clear_rows: clear.length,
+    positives: positives.length,
+    negatives: negatives.length,
+    true_positive_routed: truePositiveRouted,
+    wrong_route: wrongRoute,
+    false_negative: falseNegative,
+    false_positive: falsePositive,
+    true_negative: trueNegative,
+    recall_detected: ratio(positives.length - falseNegative, positives.length),
+    recall_route_exact: ratio(truePositiveRouted, positives.length),
+    specificity: ratio(trueNegative, negatives.length),
+    judgement_rows: results.length - clear.length,
+  }
+}
 
 const load = (name: string): PhraseSet => JSON.parse(readFileSync(join(PHRASES, name), 'utf8')) as PhraseSet
 const routeOf = (row: Row) => resolveReportedEmergencyGuidance(row.text, 'vi', { serviceType: row.service ?? null })?.route ?? null
@@ -115,21 +148,84 @@ describe(`${PILLAR.id}: the sealed set stays sealed`, () => {
 
   it('is evaluated only when asked for, and the result is reported, never asserted', () => {
     if (process.env.KAEL_EVALUATE_SEALED_H5 !== '1') return
-    const clear = sealed.rows.filter((row) => row.kind === 'clear')
-    const positives = clear.filter((row) => row.expected !== null)
-    const negatives = clear.filter((row) => row.expected === null)
-    const missed = positives.filter((row) => routeOf(row) !== row.expected)
-    const falseAlarms = negatives.filter((row) => routeOf(row) !== null)
-    // eslint-disable-next-line no-console
-    console.log(JSON.stringify({
+    const results: RowResult[] = sealed.rows.map((row) => ({ id: row.id, kind: row.kind, expected: row.expected, got: routeOf(row) }))
+    const metrics = confusionMetrics(results)
+    const git = (...args: string[]) => {
+      try {
+        return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' })
+      } catch {
+        return null
+      }
+    }
+    const classifierFiles = [
+      'supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts',
+      'supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts',
+    ]
+    const sha = (text: string) => createHash('sha256').update(text.replace(/\r\n/g, '\n')).digest('hex')
+    const baselineSha = process.env.KAEL_H5_BASELINE_SHA ?? null
+    const classifier = classifierFiles.map((path) => {
+      const baselineText = baselineSha ? git('show', `${baselineSha}:${path}`) : null
+      const current = sha(readFileSync(join(REPO_ROOT, path), 'utf8'))
+      return { path, sha256: current, identical_to_baseline: baselineText === null ? null : sha(baselineText) === current }
+    })
+    const report = {
+      schema: 'kael_emergency_phrase_evaluation.v1',
       set: 'H5',
-      clear: clear.length,
-      recall: `${positives.length - missed.length}/${positives.length}`,
-      specificity: `${negatives.length - falseAlarms.length}/${negatives.length}`,
-      missed: missed.map((row) => `${row.id} ${row.expected} got ${routeOf(row)}`),
-      falseAlarms: falseAlarms.map((row) => `${row.id} got ${routeOf(row)}`),
-    }, null, 1))
-    expect(clear.length).toBeGreaterThan(0)
+      // Not an original first run: this set was sealed by the same author who wrote the classifier fixes, no record of an
+      // earlier evaluation exists in the repository, and the result below was produced by that author. It is a
+      // reproduction on a frozen classifier, never independent validation, and the set is no longer a holdout after it.
+      label: 'REPRODUCTION',
+      independent_validation: false,
+      evidence_tier: 'T0',
+      sealed_sha256: createHash('sha256').update(sealedBytes).digest('hex'),
+      sealed_hash_matches: createHash('sha256').update(sealedBytes).digest('hex') === SEALED_H5_SHA256,
+      baseline_sha: baselineSha,
+      head_sha: git('rev-parse', 'HEAD')?.trim() ?? null,
+      classifier,
+      tuned_on_this_set: false,
+      metrics,
+      misses: results.filter((row) => row.kind === 'clear' && row.expected !== null && row.got === null).map((row) => ({ id: row.id, expected: row.expected })),
+      wrong_routes: results.filter((row) => row.kind === 'clear' && row.expected !== null && row.got !== null && row.got !== row.expected).map((row) => ({ id: row.id, expected: row.expected, got: row.got })),
+      false_alarms: results.filter((row) => row.kind === 'clear' && row.expected === null && row.got !== null).map((row) => ({ id: row.id, got: row.got })),
+      judgement: results.filter((row) => row.kind !== 'clear').map((row) => ({ id: row.id, got: row.got })),
+    }
+    const out = process.env.KAEL_H5_OUT
+    if (out) {
+      mkdirSync(dirname(out), { recursive: true })
+      writeFileSync(out, `${JSON.stringify(report, null, 2)}\n`)
+    }
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify(report, null, 1))
+    expect(metrics.clear_rows).toBeGreaterThan(0)
+  })
+
+  describe('the measurement arithmetic, on synthetic rows that are not H5', () => {
+    const rows = (...spec: Array<[string, string | null, string | null]>): RowResult[] =>
+      spec.map(([kind, expected, got], index) => ({ id: `S-${index}`, kind, expected, got }))
+
+    it('separates a missed emergency, a wrong route, a false alarm and a correct quiet', () => {
+      const metrics = confusionMetrics(rows(
+        ['clear', 'gas', 'gas'], ['clear', 'fire', null], ['clear', 'medical', 'fire'], ['clear', null, 'fire'], ['clear', null, null], ['clear', null, null], ['judgement', 'fire', null],
+      ))
+      expect(metrics, pillarWhy(PILLAR, 'confusion counts')).toMatchObject({
+        clear_rows: 6, positives: 3, negatives: 3, true_positive_routed: 1, wrong_route: 1, false_negative: 1, false_positive: 1, true_negative: 2, judgement_rows: 1,
+      })
+      expect(metrics.recall_detected, pillarWhy(PILLAR, 'detected = routed or wrongly routed')).toBeCloseTo(2 / 3)
+      expect(metrics.recall_route_exact).toBeCloseTo(1 / 3)
+      expect(metrics.specificity).toBeCloseTo(2 / 3)
+    })
+
+    it('reports null, never 0 or 1, for a ratio with nothing to divide', () => {
+      const none = confusionMetrics(rows(['judgement', 'fire', 'fire']))
+      expect([none.recall_detected, none.recall_route_exact, none.specificity], pillarWhy(PILLAR, 'no clear rows means no ratio')).toEqual([null, null, null])
+      const onlyNegatives = confusionMetrics(rows(['clear', null, null]))
+      expect([onlyNegatives.recall_detected, onlyNegatives.specificity], pillarWhy(PILLAR, 'no positives means no recall')).toEqual([null, 1])
+    })
+
+    it('excludes judgement rows from every ratio', () => {
+      const metrics = confusionMetrics(rows(['clear', 'gas', 'gas'], ['judgement', 'gas', null], ['judgement', null, 'fire']))
+      expect([metrics.recall_detected, metrics.specificity, metrics.false_positive], pillarWhy(PILLAR, 'a contestable row never moves a rate')).toEqual([1, null, 0])
+    })
   })
 })
 

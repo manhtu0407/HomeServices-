@@ -234,6 +234,39 @@ describe('P402 Kael evaluator report contract', () => {
     expect(report).toContain('Measurement scope: fixture_agreement')
     expect(report).toContain('Model accuracy: not measured')
     expect(report).toContain('100% means fixture agreement')
+    expect(report, pillarWhy(PILLAR, 'the report says the 100-case blueprint has no authored cases and this suite is not it')).toContain('plan with 0 authored cases')
+  })
+
+  describe('the 100-case evaluation blueprint', () => {
+    const blueprint = JSON.parse(readFileSync(resolve(repoRoot, 'apps/api/fixtures/kael-eval/evaluation-blueprint-100.json'), 'utf8')) as {
+      status: string
+      planned_cases: number
+      authored_cases: number
+      required_case_fields: string[]
+      groups: Array<{ id: string; planned_cases: number; authored_cases: number; focus: string[] }>
+    }
+
+    it('plans exactly 100 cases in the six groups 20/20/15/20/15/10 the Master Plan defines', () => {
+      expect(blueprint.groups.map((group) => group.planned_cases), pillarWhy(PILLAR, 'group quotas')).toEqual([20, 20, 15, 20, 15, 10])
+      expect(blueprint.groups.reduce((sum, group) => sum + group.planned_cases, 0), pillarWhy(PILLAR, 'the quotas add up')).toBe(100)
+      expect(blueprint.planned_cases, pillarWhy(PILLAR, 'the stated total equals the sum')).toBe(100)
+      expect(new Set(blueprint.groups.map((group) => group.id)).size, pillarWhy(PILLAR, 'group ids are unique')).toBe(6)
+      expect(blueprint.groups.every((group) => group.focus.length > 0), pillarWhy(PILLAR, 'every group says what it covers')).toBe(true)
+    })
+
+    it('requires gold conditions, an evaluator and negative conditions on every case', () => {
+      for (const field of ['gold_conditions', 'evaluator', 'negative_conditions', 'evidence_tier']) {
+        expect(blueprint.required_case_fields, pillarWhy(PILLAR, `a case without ${field} cannot be judged`)).toContain(field)
+      }
+    })
+
+    it('claims no authored case and no measurement: it is a plan, and the 99-case suite is not it', () => {
+      expect(blueprint.status, pillarWhy(PILLAR, 'blueprint only')).toBe('blueprint_only')
+      expect(blueprint.authored_cases, pillarWhy(PILLAR, 'no case has been written, so none is claimed')).toBe(0)
+      expect(blueprint.groups.every((group) => group.authored_cases === 0), pillarWhy(PILLAR, 'per group')).toBe(true)
+      const golden = JSON.parse(readFileSync(resolve(repoRoot, 'apps/api/fixtures/kael-eval/golden-cases.json'), 'utf8')) as unknown[]
+      expect(golden.length, pillarWhy(PILLAR, 'the deterministic suite is a different, smaller thing than the planned 100')).not.toBe(blueprint.planned_cases)
+    })
   })
 })
 
@@ -306,6 +339,27 @@ describe('P402 the playbook evaluator binds a report to the emergency behavior i
     const unhashed = [...needed].filter((path) => !sources.includes(path)).sort()
     expect(gate.length, pillarWhy(PILLAR, 'the scan found the known callers (turn, create, evidence, confirm, assistant, the gate and its classifier)')).toBeGreaterThanOrEqual(7)
     expect(unhashed, pillarWhy(PILLAR, 'a file the emergency gate depends on is not in the hashed set, so changing it would not change source_tree_hash')).toEqual([])
+  })
+
+  it('hashes the whole transitive import closure of the emergency classifier, so the routing it decides is fully bound to the hash', () => {
+    const sources = listed()
+    const closure = new Set<string>()
+    const visit = (file: string) => {
+      if (closure.has(file)) return
+      closure.add(file)
+      for (const dependency of directImports(file)) visit(dependency)
+    }
+    visit('supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts')
+    visit('supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts')
+    expect(closure.size, pillarWhy(PILLAR, 'the classifier stays a small self-contained unit; a new import is a new thing the hash must cover or the claim must be narrowed')).toBeLessThanOrEqual(4)
+    expect([...closure].filter((path) => !sources.includes(path)), pillarWhy(PILLAR, 'a classifier dependency outside the hashed set would change routing without changing source_tree_hash')).toEqual([])
+  })
+
+  it('states in the evaluator source what the hash does and does not bind, so a report is not read as more than that', () => {
+    const source = readFileSync(scriptPath, 'utf8')
+    const comment = source.slice(0, source.indexOf('const SOURCE_FILES')).replace(/\r?\n\/\/ ?/g, ' ')
+    expect(comment, pillarWhy(PILLAR, 'the scope statement sits directly above the list it describes')).toContain('source_tree_hash binds the bytes of the files listed here and nothing else')
+    expect(comment, pillarWhy(PILLAR, 'the limits are named, not implied')).toContain('not the transitive import closure')
   })
 
   it('stays inside the manifest limit, with the service playbook as the one extra path', () => {

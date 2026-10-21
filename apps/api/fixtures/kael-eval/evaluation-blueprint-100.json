@@ -1,0 +1,53 @@
+{
+  "schema": "kael_evaluation_blueprint.v1",
+  "status": "blueprint_only",
+  "authority": "NestScout_Kael_KAWA_Master_Implementation_Plan_v1.1.pdf, 100-case evaluation blueprint; KAWA_01 W02 (prepare a 100-case blueprint in groups 20/20/15/20/15/10)",
+  "planned_cases": 100,
+  "authored_cases": 0,
+  "note": "A plan for a suite, not a suite. No case below exists yet, none has been run, and nothing here is evidence of model quality. The 99-case deterministic fixture suite (golden-cases.json) is a regression harness for local rules and is not mapped to these groups.",
+  "required_case_fields": ["id", "group", "gold_conditions", "evaluator", "negative_conditions", "evidence_tier", "lane"],
+  "groups": [
+    {
+      "id": "intake_intent_correction",
+      "name": "Intake / intent / correction",
+      "planned_cases": 20,
+      "authored_cases": 0,
+      "focus": ["intent across the six services", "ambiguity", "multi-turn edits", "no data"]
+    },
+    {
+      "id": "rag_grounding_safety",
+      "name": "RAG / grounding / safety",
+      "planned_cases": 20,
+      "authored_cases": 0,
+      "focus": ["relevant sources", "unsafe prompts", "no match", "114 routing"]
+    },
+    {
+      "id": "memory_role_isolation",
+      "name": "Memory / role isolation",
+      "planned_cases": 15,
+      "authored_cases": 0,
+      "focus": ["cross-session", "cross-role", "delete", "stale fact", "image context"]
+    },
+    {
+      "id": "approval_workflow_pricing",
+      "name": "Approval / workflow / pricing",
+      "planned_cases": 20,
+      "authored_cases": 0,
+      "focus": ["job create", "scope", "confirmation", "authorization", "double submit"]
+    },
+    {
+      "id": "resilience_payment_learning",
+      "name": "Resilience / payment / learning",
+      "planned_cases": 15,
+      "authored_cases": 0,
+      "focus": ["429 and timeouts", "retry", "app restart", "webhook", "candidate promotion"]
+    },
+    {
+      "id": "adversarial_multilingual",
+      "name": "Adversarial / multilingual",
+      "planned_cases": 10,
+      "authored_cases": 0,
+      "focus": ["injection", "Vietnamese dialect", "no accents", "code switch", "source manipulation"]
+    }
+  ]
+}

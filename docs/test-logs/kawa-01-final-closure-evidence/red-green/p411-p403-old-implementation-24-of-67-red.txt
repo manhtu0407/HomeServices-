@@ -1,0 +1,200 @@
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:172:32
+    170|     const result = await createOn(world, { evidence_items: [voice(GAS)…
+    171|     const why = pillarWhy(PILLAR, `status=${result.status} body=${fail…
+    172|     expect(result.status, why).toBe(409)
+       |                                ^
+    173|     expect(failureText(result), `${why} (the same code, now with the g…
+    174|     expect(failureText(result), why).toContain('114')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a create on an existing session with no typed message > refuses a unsupported Case with the guidance in the same 409, and writes nothing
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    status=201 body={"session":{"id":"39800000-0000-4000-8000-000000000001","job_id":null,"customer_id":"39800000-0000-4000-8000-0000000000a1","service_type":"hvac","status":"unsup: expected 201 to be 409 // Object.is equality
+
+- Expected
++ Received
+
+- 409
++ 201
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:172:32
+    170|     const result = await createOn(world, { evidence_items: [voice(GAS)…
+    171|     const why = pillarWhy(PILLAR, `status=${result.status} body=${fail…
+    172|     expect(result.status, why).toBe(409)
+       |                                ^
+    173|     expect(failureText(result), `${why} (the same code, now with the g…
+    174|     expect(failureText(result), why).toContain('114')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: an invalid schedule does not hide an emergency > answers a turn whose message reports a danger with the guidance in the same 400, and writes nothing
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    status=400 body={"code":"VALIDATION","error":"Thời gian hẹn phải ở tương lai và khớp múi giờ TP.HCM"}: expected '{"code":"VALIDATION","error":"Thời gi…' to contain '114'
+
+Expected: "114"
+Received: "{"code":"VALIDATION","error":"Thời gian hẹn phải ở tương lai và khớp múi giờ TP.HCM"}"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:231:38
+    229|     const why = pillarWhy(PILLAR, `status=${result.status} body=${fail…
+    230|     expect(result.status, why).toBe(400)
+    231|     expect(failureText(result), why).toContain('114')
+       |                                      ^
+    232|     expect(failureText(result), `${why} (the schedule is still reporte…
+    233|     expect(snapshot(world), why).toEqual(before)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: an invalid schedule does not hide an emergency > reads a voice transcript on that turn the same way
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    the guidance is in the refusal: expected '{"code":"VALIDATION","error":"Thời gi…' to contain '114'
+
+Expected: "114"
+Received: "{"code":"VALIDATION","error":"Thời gian hẹn phải ở tương lai và khớp múi giờ TP.HCM"}"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:242:86
+    240|     const result = await world.request('', { message: BENIGN, language…
+    241|     expect(result.status, pillarWhy(PILLAR, `status=${result.status}`)…
+    242|     expect(failureText(result), pillarWhy(PILLAR, 'the guidance is in …
+       |                                                                                      ^
+    243|   })
+    244|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: an invalid schedule does not hide an emergency > answers a new Case whose description reports a danger with the guidance in the 400, and creates nothing
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    status=400 body={"code":"VALIDATION","error":"Thời gian hẹn phải ở tương lai và khớp múi giờ TP.HCM"}: expected '{"code":"VALIDATION","error":"Thời gi…' to contain '114'
+
+Expected: "114"
+Received: "{"code":"VALIDATION","error":"Thời gian hẹn phải ở tương lai và khớp múi giờ TP.HCM"}"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:281:38
+    279|     const why = pillarWhy(PILLAR, `status=${result.status} body=${fail…
+    280|     expect(result.status, why).toBe(400)
+    281|     expect(failureText(result), why).toContain('114')
+       |                                      ^
+    282|     expect(world.db.tables.kael_chat_sessions.length, `${why} (no Case…
+    283|     expect(world.modelCalls, why).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a closed Case refuses with the guidance and stays closed > turn on a confirmed Case
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a closed Case refuses with the guidance and stays closed > turn on a abandoned Case
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a closed Case refuses with the guidance and stays closed > turn on a unsupported Case
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    status=409: expected '{"code":"INVALID_STATUS","error":"Phi…' to contain '114'
+
+Expected: "114"
+Received: "{"code":"INVALID_STATUS","error":"Phiên Kael này không còn nhận tin nhắn"}"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:307:41
+    305|     expect(emergency.status, why).toBe(409)
+    306|     expect(failureText(emergency), why).toContain('INVALID_STATUS')
+    307|     expect(failureText(emergency), why).toContain('114')
+       |                                         ^
+    308|     expect(snapshot(world), why).toEqual(before)
+    309|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a closed Case refuses with the guidance and stays closed > evidence on a confirmed Case, including a transcript and a skip reason
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a closed Case refuses with the guidance and stays closed > evidence on a abandoned Case, including a transcript and a skip reason
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a closed Case refuses with the guidance and stays closed > evidence on a unsupported Case, including a transcript and a skip reason
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    statuses=409,409: expected '{"code":"INVALID_STATUS","error":"Phi…' to contain '114'
+
+Expected: "114"
+Received: "{"code":"INVALID_STATUS","error":"Phiên Kael này không còn nhận bằng chứng"}"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:324:42
+    322|     const why = pillarWhy(PILLAR, `statuses=${transcript.status},${ski…
+    323|     expect([transcript.status, skipped.status], why).toEqual([409, 409…
+    324|     expect(failureText(transcript), why).toContain('114')
+       |                                          ^
+    325|     expect(failureText(skipped), why).toContain('113')
+    326|     expect(snapshot(world), why).toEqual(before)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a refusal that carries the guidance is traced without the words that triggered it > logs one redacted guidance-only trace for a closed Case, with no text and no actor pseudonym
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    status=409: expected +0 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:348:32
+    346|     expect(result.status, why).toBe(409)
+    347|     const logged = warn.mock.calls.filter((call) => call[0] === 'kael_…
+    348|     expect(logged.length, why).toBe(1)
+       |                                ^
+    349|     expect(logged[0], why).toMatchObject({
+    350|       route: 'case_emergency',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a classified emergency whose write fails > still carries the guidance in the error, and leaves a redacted failure trace
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    status=500 body={"code":"DB_ERROR","error":"Không thể cập nhật phiên Kael"} (the guidance is not lost with the write): expected '{"code":"DB_ERROR","error":"Không thể…' to contain '114'
+
+Expected: "114"
+Received: "{"code":"DB_ERROR","error":"Không thể cập nhật phiên Kael"}"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:377:85
+    375|     const why = pillarWhy(PILLAR, `status=${result.status} body=${fail…
+    376|     expect(result.status, why).toBe(500)
+    377|     expect(failureText(result), `${why} (the guidance is not lost with…
+       |                                                                                     ^
+    378|     const logged = traces(warn)
+    379|     expect(logged.length, why).toBe(1)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/24]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts > P411-kael-case-emergency-closure-paths: a classified emergency whose write fails > carries the advice and a failure trace when the reply to advice-only wiring words cannot be written
+AssertionError: [P411-kael-case-emergency-closure-paths] a reported emergency is never lost to a path that ends the request before the gate reads it: a create on an existing session with no typed message, an invalid schedule, a closed Case, or a write that fails. After authentication and ownership, such a request is answered with deterministic guidance through a response the contract already allows (the existing chat, or the same error code and status with the guidance in its message), writes nothing a closed or invalid request could not write, never confirms or moves the Case, asks no model, and an ordinary request is refused or ignored exactly as before; a classified emergency whose write fails leaves a redacted failure trace and still carries the guidance
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #8 (a refusal or a failed write is visible, never a fabricated success) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity, P407-kael-case-emergency-pending-confirmation
+detail:    status=500 body={"code":"DB_ERROR","error":"Không thể lưu lượt chat Kael"} (the advice itself is not lost with the write): expected 'Không thể lưu lượt chat Kael' to contain 'Không chạm vào dây điện, ổ điện, thiế…'
+
+Expected: "Không chạm vào dây điện, ổ điện, thiết bị hoặc nước gần nguồn điện. Tránh xa và giữ người khác tránh xa; không tự ngắt điện nếu phải đi tới khu vực nguy hiểm. Nếu có khói hoặc lửa, gọi 114; nếu có người bị điện giật hoặc bị thương, gọi 115. Nếu nguy cơ khẩn cấp chưa rõ, gọi 112."
+Received: "Không thể lưu lượt chat Kael"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts:415:96
+    413|     const why = pillarWhy(PILLAR, `status=${result.status} body=${fail…
+    414|     expect(result.status, why).toBe(500)
+    415|     expect(String(result.body.error), `${why} (the advice itself is no…
+       |                                                                                                ^
+    416|     const logged = traces(warn)
+    417|     expect(logged.map((trace) => trace.outcome), why).toEqual(['emerge…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/24]⎯
+
