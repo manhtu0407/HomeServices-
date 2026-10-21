@@ -107,7 +107,7 @@ test('the release quality job fails on an unmapped transaction before it spends 
   const gates = release.indexOf('Whole-workspace quality gates')
   assert.ok(quality >= 0 && mapped > quality, 'the precheck belongs to the quality job')
   assert.ok(mapped < install && install < gates, 'the precheck runs before install and the whole-workspace gates')
-  assert.ok(mapped < release.indexOf('  release-config-gate:'))
+  assert.ok(mapped < gates, 'the precheck remains before installing dependencies and running workspace gates')
 })
 
 function completeFixture(entryId = 'worker.fulfillment.advance') {

@@ -161,8 +161,8 @@
           "id": "system-release-production-promotion-workflow",
           "pillar": "P56-stage1-production-release-workflow",
           "file": "apps/api/src/__tests__/harness/stage1-production-release-workflow-pillar.test.ts",
-          "owner": ".github/workflows/release-production.yml",
-          "invocation": "official Production release workflow",
+          "owner": "scripts/harness/production-release-runner.mjs",
+          "invocation": "reviewed local Production release runner",
           "seam": "system", "actor": "system",
           "from": ["reviewed"], "to": ["closed"],
           "success_tests": ["Stage 1 production release workflow binds before one candidate deploy and attests the exact redownloaded source before smoke"],
@@ -172,7 +172,7 @@
           "id": "system-release-native-readiness-gates",
           "pillar": "P72-native-push-release-readiness",
           "file": "apps/api/src/__tests__/unit/native-push-release-readiness-pillar.test.ts",
-          "owner": ".github/workflows/release-production.yml",
+          "owner": "scripts/harness/production-release-steps.yml",
           "invocation": "Production native push readiness gates",
           "seam": "system", "actor": "system",
           "from": ["reviewed"], "to": ["closed"],
@@ -2737,8 +2737,10 @@
       "authority": "main_merge_and_three_production_smokes",
       "from": ["reviewed"],
       "to": ["closed"],
-      "sources": [
+        "sources": [
         ".github/workflows/release-production.yml",
+        "scripts/harness/production-release-runner.mjs",
+        "scripts/harness/production-release-steps.yml",
         "scripts/harness/promotion.mjs"
       ],
       "pillars": ["P56-stage1-production-release-workflow", "P72-native-push-release-readiness", "P55-stage1-release-cohort-canary"]

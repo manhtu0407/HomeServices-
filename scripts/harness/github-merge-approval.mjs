@@ -124,6 +124,7 @@ async function fetchAllJson(baseUrl, token, fetchImpl) {
         Authorization: `Bearer ${token}`,
         'X-GitHub-Api-Version': '2022-11-28',
       },
+      signal: AbortSignal.timeout(12_000),
     })
     if (!response?.ok) throw new Error(`GitHub merge approval lookup failed with HTTP ${response?.status ?? 'unknown'}`)
     const pageValues = await response.json()

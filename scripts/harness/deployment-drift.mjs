@@ -140,11 +140,33 @@ where environment = 'production'`,
 
   const release = health?.release ?? {}
   const releaseControl = hostedReleaseControlState(normalizeRows(releaseControlResult))
+  let clientCompatibility = release.client_compatibility ?? null
+  if (releaseControl.activeReleaseId !== null) {
+    const activeReleaseResult = await fetchJson(fetchImpl, `${managementOrigin}/database/query/read-only`, {
+      method: 'POST',
+      headers: managementHeaders,
+      signal: AbortSignal.timeout(10_000),
+      body: JSON.stringify({
+        query: `
+select release_id, git_sha, release_artifact->'activeClientCompatibility' as client_compatibility
+from public.harness_releases
+where environment = 'production' and release_id = $1`,
+        parameters: [releaseControl.activeReleaseId],
+      }),
+    })
+    const rows = normalizeRows(activeReleaseResult)
+    const activeRelease = rows[0]
+    if (rows.length !== 1 || !activeRelease ||
+        activeRelease.release_id !== releaseControl.activeReleaseId ||
+        activeRelease.release_id !== release.release_id || activeRelease.git_sha !== release.git_sha ||
+        release.registered !== true || !activeRelease.client_compatibility ||
+        typeof activeRelease.client_compatibility !== 'object' || Array.isArray(activeRelease.client_compatibility)) {
+      throw new Error('hosted active release client compatibility evidence is invalid')
+    }
+    clientCompatibility = activeRelease.client_compatibility
+  }
   return {
     environment: health?.environment?.name ?? input.environment,
-    // Unlike `environment`, this fell back to a bare null rather than the already-validated
-    // `input.projectRef` above, so a tolerated health-probe failure (fetchHealthOrNull) produced
-    // a hosted baseline that no caller could recognize as the Production target it actually is.
     // Unlike `environment`, this fell back to a bare null rather than the already-validated
     // `input.projectRef` above, so a tolerated health-probe failure (fetchHealthOrNull) produced
     // a hosted baseline that no caller could recognize as the Production target it actually is.
@@ -164,7 +186,7 @@ where environment = 'production'`,
     priceEvidenceBundleSha256: release.price_evidence_bundle_sha256 ?? null,
     providerReadinessFingerprintSha256: release.provider_readiness_fingerprint_sha256 ?? null,
     providerReadiness: release.provider_readiness ?? null,
-    clientCompatibility: release.client_compatibility ?? null,
+    clientCompatibility,
     registered: release.registered === true,
     controlActiveReleaseId: releaseControl.activeReleaseId,
     revision: releaseControl.revision,

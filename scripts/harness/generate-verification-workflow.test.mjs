@@ -1,200 +1,78 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { test } from 'node:test'
 
-import {
-  CONFIRMATION_PHRASE,
-  STRICT_WORKFLOW,
-  VERIFICATION_WORKFLOW,
-  deriveVerificationWorkflow,
-} from './generate-verification-workflow.mjs'
+import { parseProductionReleasePlan } from './production-release-runner.mjs'
 
-const read = (path) => readFileSync(resolve(path), 'utf8').replace(/\r\n/gu, '\n')
-const strict = read(STRICT_WORKFLOW)
-const verification = read(VERIFICATION_WORKFLOW)
+const pipeline = readFileSync('scripts/harness/production-release-steps.yml', 'utf8')
+const plan = parseProductionReleasePlan(pipeline)
+const workflow = readFileSync('.github/workflows/release-production.yml', 'utf8').replace(/\r\n/gu, '\n')
+const runner = readFileSync('scripts/harness/production-release-runner.mjs', 'utf8')
 
-function steps(text) {
-  return new Map(text.split('\n      - ').slice(1).flatMap((block) => {
-    const name = block.match(/^name: (.+)$/mu)?.[1]
-    return name ? [[name, `      - ${block}`.trimEnd()]] : []
-  }))
+function productionWorkflowJobNames(source) {
+  const jobsStart = source.indexOf('\njobs:\n')
+  if (jobsStart < 0) throw new Error('release-production workflow has no jobs block')
+  return [...source.slice(jobsStart + '\njobs:\n'.length).matchAll(/^ {2}([a-z][a-z0-9-]*):$/gmu)]
+    .map((match) => match[1])
 }
 
-test('the collector auth secret reaches both Edge runtime and Vault before Cron is enabled', () => {
-  const collectorStep = steps(strict).get('Deploy and attest the system health collector before its observer') ?? ''
-  assert.match(collectorStep, /SYSTEM_HEALTH_MONITOR_SECRET=\$SYSTEM_HEALTH_MONITOR_SECRET/u)
-  assert.match(collectorStep, /supabase secrets set --env-file/u)
-  assert.match(collectorStep, /configure-vault-secret\.mjs/u)
+test('the local Stage 1 pipeline preserves its ordered release and recovery steps', () => {
+  assert.equal(plan.steps[0].name, 'actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4')
+  assert.equal(plan.steps[1].name, 'pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4')
+  assert.equal(plan.steps[2].name, 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4')
+  assert.equal(plan.steps[3].name, 'pnpm install --frozen-lockfile')
+  assert.equal(plan.steps[4].name, 'Verify immutable main source')
+  assert.equal(plan.steps[5].name, 'Build immutable production release manifest')
+  assert.equal(plan.steps[6].name, 'Verify Cloudflare target and capture independent rollback state')
+  assert.equal(plan.steps[7].name, 'Reuse or build exact iOS and Android store binaries for this merge')
+  assert.equal(plan.steps[8].name, 'Download and attest exact EAS binary artifacts')
+  assert.equal(plan.steps[9].name, 'Collect hosted production baseline')
+  assert.equal(plan.steps[10].name, 'Reconcile a stale cancelled candidate before starting a new release')
+  assert.equal(plan.steps[11].name, 'Download and bind rollback_source')
+  assert.equal(plan.steps[12].name, 'Assert hosted inventory and expand-only migration set')
+  assert.equal(plan.steps[13].name, 'Apply exact expand-only migration inventory')
+  assert.equal(plan.steps[14].name, 'Verify hosted migration watermark')
+  assert.equal(plan.steps[15].name, 'Register immutable release')
+  assert.equal(plan.steps[16].name, 'Verify the registered system monitor baseline before changing schedules')
+  assert.equal(plan.steps[17].name, 'Apply pinned Cloudflare D1 migrations without deleting evidence')
+  assert.equal(plan.steps[18].name, 'Configure exact synthetic cohort canary')
+  assert.equal(plan.steps[19].name, 'Bind candidate release identity before one Edge deploy')
+  assert.equal(plan.steps[20].name, 'Deploy and attest the system health collector before its observer')
+  assert.equal(plan.steps[21].name, 'Deploy Cloudflare observer and verify its live D1 tick')
+  assert.equal(plan.steps[22].name, 'Verify hosted candidate identity and bundle state')
+  assert.equal(plan.steps[23].name, 'Redownload and byte-prove the exact hosted candidate import closure')
+  assert.equal(plan.steps[24].name, 'Attest provider-owned deployment identity after byte proof')
+  assert.equal(plan.steps[25].name, 'Provision and permanently classify dedicated synthetic actors')
+  assert.equal(plan.steps[26].name, 'Warm the freshly deployed candidate before timed smokes')
+  assert.equal(plan.steps[27].name, 'Run and record three consecutive full synthetic smokes')
+  assert.equal(plan.steps[28].name, 'Recheck exact hosted deployment immediately before promotion')
+  assert.equal(plan.steps[29].name, 'Prove the final synthetic cohort is clean before promotion')
+  assert.equal(plan.steps[30].name, 'Atomically promote the proven release')
+  assert.equal(plan.steps[31].name, 'Record the final Dev-review result in Supabase Production')
+  assert.equal(plan.steps[32].name, 'Roll back system monitor schedules while preserving D1 evidence')
+  assert.equal(plan.steps[33].name, 'Abort canary, restore identity, and redeploy downloaded rollback')
+  assert.equal(plan.steps[34].name, 'Upload immutable release, smoke, and rollback evidence')
 })
 
-test('the committed verification workflow is exactly what the generator derives from the strict one', () => {
-  assert.equal(
-    verification,
-    deriveVerificationWorkflow(strict),
-    'run node scripts/harness/generate-verification-workflow.mjs and commit the result',
-  )
-})
-
-test('every mutation and rollback step is the strict workflow text, byte for byte', () => {
-  const shared = [
-    'Collect hosted production baseline',
-    'Reconcile a stale cancelled candidate before starting a new release',
-    'Download and bind rollback_source',
-    'Apply exact expand-only migration inventory',
-    'Verify hosted migration watermark',
-    'Register immutable release',
-    'Verify the registered system monitor baseline before changing schedules',
-    'Apply pinned Cloudflare D1 migrations without deleting evidence',
-    'Configure exact synthetic cohort canary',
-    'Bind candidate release identity before one Edge deploy',
-    'Deploy and attest the system health collector before its observer',
-    'Deploy Cloudflare observer and verify its live D1 tick',
-    'Verify hosted candidate identity and bundle state',
-    'Redownload and byte-prove the exact hosted candidate import closure',
-    'Attest provider-owned deployment identity after byte proof',
-    'Provision and permanently classify dedicated synthetic actors',
-    'Run and record three consecutive full synthetic smokes',
-    'Recheck exact hosted deployment immediately before promotion',
-    'Prove the final synthetic cohort is clean before promotion',
-    'Atomically promote the proven release',
-    'Record the final Dev-review result in Supabase Production',
-    'Roll back system monitor schedules while preserving D1 evidence',
-    'Abort canary, restore identity, and redeploy downloaded rollback',
-    'Upload immutable release, smoke, and rollback evidence',
-  ]
-  const strictSteps = steps(strict)
-  const verificationSteps = steps(verification)
-  for (const name of shared) {
-    assert.ok(strictSteps.has(name), `strict workflow lost the step: ${name}`)
-    const expected = name === 'Upload immutable release, smoke, and rollback evidence'
-      ? strictSteps.get(name).replace('stage1-production-release-', 'stage1-verification-release-')
-      : strictSteps.get(name)
-    assert.equal(verificationSteps.get(name), expected, name)
-  }
-})
-
-test('candidate and rollback counts include exact backend, retained-client, and lane bindings', () => {
-  for (const workflow of [strict, verification]) {
-    assert.match(workflow, /test "\$\{#release_bindings\[@\]\}" -eq "\$expected_binding_count"/u)
-    assert.match(workflow, /\[ "\$\{#rollback_bindings\[@\]\}" -eq "\$expected_rollback_binding_count" \]/u)
-    assert.equal((workflow.match(/includes\(r\.releaseLane\);process\.stdout\.write\(String\(retained\?30:r\.releaseLane\?28:27\)\)/gu) ?? []).length, 2)
-  }
-})
-
-test('it can only be dispatched by hand on main with the confirmation phrase', () => {
-  assert.match(verification, /^on:\n {2}workflow_dispatch:\n {4}inputs:\n {6}confirm:\n/mu)
-  for (const trigger of ['push:', 'schedule:', 'pull_request', 'workflow_run', 'repository_dispatch']) {
-    assert.equal(verification.includes(trigger), false, trigger)
-  }
-  const guard = `if: github.ref == 'refs/heads/main' && inputs.confirm == '${CONFIRMATION_PHRASE}'`
-  assert.equal(verification.split(guard).length - 1, 2, 'both the quality and the release job must carry the guard')
-  assert.equal(verification.includes('github.event_name'), false)
-  assert.match(verification, /concurrency:\n {2}group: production-release\n {2}cancel-in-progress: false/u)
-})
-
-test('verification release uses and attests only store binaries from its own release commit', () => {
-  const step = steps(verification).get('Reuse or build exact iOS and Android store binaries for this merge')
-  assert.ok(step, 'the binary step must keep its build-if-missing shell')
-  assert.ok(step.includes('--git-commit-hash "$GITHUB_SHA"'))
-  assert.ok(step.includes('if [ -n "$missing" ]; then'))
-  assert.ok(step.includes('eas-cli@22.0.0 build --platform "$platform"'))
-  assert.ok(step.includes('--app-version "$app_version"'))
-  assert.ok(step.includes('release-client-policy.json'))
-  assert.ok(step.includes('eas-release-build-profile.mjs'))
-  assert.ok(step.includes('trap restore_eas_profile EXIT'))
-  assert.equal(verification.includes('--relation latest_existing'), false)
-  assert.ok(steps(verification).has('Download and attest exact EAS binary artifacts'))
-  assert.equal(steps(strict).get('Reuse or build exact iOS and Android store binaries for this merge').includes('--git-commit-hash "$GITHUB_SHA"'), true)
-})
-
-test('it keeps every strict gate that still applies and says what it acknowledges', () => {
-  for (const forbidden of ['--require-behavioral', 'stale-canary-reconciler']) {
-    assert.equal(verification.includes(forbidden), false, forbidden)
-  }
-  for (const required of [
-    '--require-bound-assertions',
-    'transaction-behavior-receipt.mjs',
-    '--lane verification',
-    '--transaction-behavior artifacts/transactions-receipt/transaction-behavior-receipt.json',
-    ',transaction-bound-assertions',
-    'supabase --workdir "$GITHUB_WORKSPACE/artifacts/empty-reset" db reset --local',
-    'node scripts/harness/prepare-migration-workdir.mjs \\\n            --empty-reset',
-    'run-sql-tests',
-    'gitleaks/gitleaks-action',
-    'deployment-drift.mjs',
-    'three consecutive full synthetic smokes',
-    "PRODUCTION_SUPABASE_SERVICE_ROLE_KEY",
-  ]) assert.ok(verification.includes(required), required)
-})
-
-test('push readiness is recorded as it is instead of being required, and nothing else is relaxed', () => {
-  for (const flag of ['NESTSCOUT_ANDROID_FCM_V1_READY', 'NESTSCOUT_IOS_APNS_READY', 'NESTSCOUT_PUSH_RECEIPT_RECONCILER_READY']) {
-    assert.equal(verification.includes(`test "$${flag}" = "true"`), false, flag)
-    assert.equal(strict.includes(`test "$${flag}" = "true"`), true, `${flag} is still required by the strict workflow`)
-    assert.ok(verification.includes(`${flag}: \${{ vars.${flag} }}`), `${flag} must still reach the manifest build`)
-  }
-  for (const secret of [
-    'SUPABASE_ACCESS_TOKEN', 'PRODUCTION_SUPABASE_ANON_KEY', 'PRODUCTION_SUPABASE_SERVICE_ROLE_KEY', 'ANTHROPIC_API_KEY',
-    'DEEPSEEK_API_KEY', 'PERPLEXITY_API_KEY', 'VIETMAP_API_KEY', 'EXPO_TOKEN', 'CLOUDFLARE_API_TOKEN',
-    'SYSTEM_HEALTH_MONITOR_SECRET', 'SYSTEM_HEALTH_OBSERVER_SECRET', 'PRODUCTION_SYNTHETIC_CUSTOMER_EMAIL',
-    'PRODUCTION_SYNTHETIC_CUSTOMER_PASSWORD', 'PRODUCTION_SYNTHETIC_WORKER_EMAIL', 'PRODUCTION_SYNTHETIC_WORKER_PASSWORD',
-  ].filter((secret) => !secret.startsWith('SYSTEM_HEALTH_'))) {
-    assert.ok(verification.includes(`test -n "$${secret}"`), `${secret} must still be required`)
-  }
-  assert.ok(verification.includes('test -n "$CLOUDFLARE_API_TOKEN"'), 'Cloudflare deploy access must still be required')
-  assert.ok(verification.includes('[[ "$SYSTEM_HEALTH_MONITOR_SECRET" =~ ^[0-9a-f]{64}$ ]]'))
-  assert.ok(verification.includes('[[ "$SYSTEM_HEALTH_OBSERVER_SECRET" =~ ^[0-9a-f]{64}$ ]]'))
-})
-
-test('every action is pinned to a full commit SHA and no step persists credentials', () => {
-  const uses = [...verification.matchAll(/^\s*(?:-\s*)?uses:\s*([^\s#]+)/gmu)].map((match) => match[1])
-  assert.ok(uses.length > 0)
-  for (const action of uses) assert.match(action, /^[^/\s]+\/[^@\s]+@[a-f0-9]{40}$/u, action)
-  const checkouts = verification.split(/^\s*- uses: /mu).slice(1).filter((step) => step.startsWith('actions/checkout@'))
-  assert.ok(checkouts.length >= 2)
-  for (const step of checkouts) assert.match(step, /persist-credentials:\s*false/u)
-})
-
-test('the strict workflow is untouched by the verification lane', () => {
-  for (const kept of [
-    'branches: [main]',
-    '--require-behavioral',
-    '--require-mapped',
-    'eas-cli@22.0.0 build --platform',
-    'stale-canary-reconciler',
-    'name: release-production\n',
-  ]) assert.ok(strict.includes(kept), kept)
-  assert.match(strict, /^\s+- cron: '[^']+'$/mu, 'the strict workflow keeps a schedule trigger, whatever its cadence')
-  for (const absent of ['--lane', 'latest_existing', 'workflow_dispatch', 'transaction-behavior-receipt', 'release-production-verification', 'verification-transaction']) {
-    assert.equal(strict.includes(absent), false, absent)
-  }
-})
-
-test('the verification lane does not carry the strict fail-fast on unmapped transaction entries', () => {
-  assert.equal(verification.includes('--require-mapped'), false, 'PARTIAL entries are the reason this lane exists')
-  assert.ok(verification.includes('--require-bound-assertions'), 'bound assertions must still have executed and passed')
-})
-
-test('derivation does not depend on the strict schedule cadence or the comments in its trigger block', () => {
-  const retimed = strict.replace(/^(\s+- cron: )'[^']+'$/mu, "$1'5 4 * * 1'")
-  assert.notEqual(retimed, strict)
-  const derived = deriveVerificationWorkflow(retimed)
-  assert.equal(derived, verification)
-  const triggers = derived.split('\npermissions:\n', 1)[0]
-  assert.doesNotMatch(triggers, /^\s+- cron:/mu)
-  assert.match(derived, /^on:\n  workflow_dispatch:\n/mu)
-})
-
-test('derivation refuses a strict workflow that lost its trigger block', () => {
-  assert.throws(() => deriveVerificationWorkflow(strict.replace('\non:\n', '\ntriggers:\n')), /top-level block/u)
-})
-
-test('derivation refuses a strict workflow whose anchors have drifted', () => {
-  assert.throws(() => deriveVerificationWorkflow(strict.replace('name: release-production\n', 'name: release\n')), /no longer contains exactly one/u)
-  assert.throws(() => deriveVerificationWorkflow(`${strict}\n${strict}`), /no longer contains exactly one/u)
-  assert.throws(
-    () => deriveVerificationWorkflow(strict.replace('  stale-canary-reconciler:\n', '  reconciler:\n')),
-    /job layout changed/u,
-  )
+test('GitHub stays read-only while the local runner owns the reviewed Production lane', () => {
+  assert.equal(plan.jobEnv.PRODUCTION_PROJECT_REF, 'iwevizmsedyqozxlawwl')
+  assert.equal(plan.jobEnv.PRODUCTION_PROJECT_URL, 'https://iwevizmsedyqozxlawwl.supabase.co')
+  assert.match(plan.steps[4].run, /test "\$\(git rev-parse HEAD\)" = "\$GITHUB_SHA"[\s\S]*test "\$GITHUB_REF" = "refs\/heads\/main"[\s\S]*test -z "\$\(git status --porcelain=v1 --untracked-files=all\)"/u)
+  assert.deepEqual(productionWorkflowJobNames(workflow), ['stale-canary-reconciler', 'quality'])
+  assert.doesNotMatch(workflow, /^ {2}(?:pull_request|workflow_dispatch):/mu)
+  assert.doesNotMatch(workflow, /functions deploy|db push --linked|--action (?:configure|promote)|eas-cli@\S+ submit/u)
+  assert.ok(workflow.includes("if: github.event_name != 'schedule' && github.ref == 'refs/heads/main'"))
+  assert.ok(runner.includes('github-merge-approval.mjs'))
+  assert.doesNotMatch(runner, /\bgh\s+pr\s+merge\b/u)
+  assert.equal(Object.hasOwn(plan.jobEnv, 'SUPABASE_ACCESS_TOKEN'), false)
+  assert.equal(plan.steps[7].env.EXPO_TOKEN, '${{ secrets.EXPO_TOKEN }}')
+  assert.ok(plan.steps[7].run.includes('eas-cli@22.0.0'))
+  assert.ok(plan.steps[7].run.includes('--git-commit-hash "$GITHUB_SHA"'))
+  assert.equal(plan.steps[8].name, 'Download and attest exact EAS binary artifacts')
+  assert.ok(plan.steps[27].run.includes('for sequence in 1 2 3'))
+  const recoveryCondition = "always() && (failure() || cancelled()) && steps.configure.outcome != 'skipped'"
+  assert.deepEqual(plan.steps.filter((step) => step.condition.includes('failure()')).map((step) => step.condition), [
+    recoveryCondition,
+    recoveryCondition,
+  ])
 })

@@ -7,16 +7,26 @@
 // in the git commit message and docs/ — never baked into the source.
 //
 // Modes:
-//   node scripts/check-comment-discipline.mjs            full scan of code dirs
+//   node scripts/check-comment-discipline.mjs            full scan of code dirs (banner rules only)
 //   node scripts/check-comment-discipline.mjs --diff REF only added lines vs REF
 //   node scripts/check-comment-discipline.mjs --working  only the uncommitted change (Stop hook)
 //   node scripts/check-comment-discipline.mjs --warn     report but exit 0
 //
-// Exit: 0 clean, 1 violations found (unless --warn), 2 git/infra failure. Zero runtime deps.
+// The diff and working modes also enforce zero comments on added production lines
+// (apps/, packages/, supabase/functions/, .ts and .tsx, excluding tests) per
+// governance/protocols/solve-conflict-maximize.md. The full scan does not, so legacy
+// comments are cleaned when a line is touched, never in one sweep.
+//
+// Exit: 0 clean, 1 violations found (unless --warn), 2 git/infra failure.
 
 import { readdirSync, readFileSync, statSync } from 'node:fs'
-import { join, sep } from 'node:path'
+import { join, resolve, sep } from 'node:path'
 import { execFileSync } from 'node:child_process'
+import { pathToFileURL } from 'node:url'
+import { commentLines } from './lib/comment-lines.mjs'
+import { TEST_FILE } from './lib/unified-diff.mjs'
+
+const ZERO_COMMENT_SCOPE = /^(apps|packages|supabase\/functions)\/.*\.(ts|tsx)$/
 
 const ROOTS = ['apps', 'packages', 'supabase/functions', 'scripts', '.claude/hooks']
 const EXTS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']
@@ -104,6 +114,23 @@ function scanContent(content, includedLines = null) {
   return found
 }
 
+// Zero-comment ratchet for production source. Every comment token on an added line counts,
+// including authority citations and JSDoc; `includedLines` null means the whole file is new.
+export function zeroCommentViolations(path, content, includedLines = null) {
+  if (!ZERO_COMMENT_SCOPE.test(path) || TEST_FILE.test(path)) return []
+  const lines = content.split('\n')
+  const found = []
+  for (const lineNumber of commentLines(path, content)) {
+    if (includedLines && !includedLines.has(lineNumber)) continue
+    found.push({
+      line: lineNumber,
+      hits: ['comment on an added production line'],
+      snippet: (lines[lineNumber - 1] ?? '').trim().slice(0, 90),
+    })
+  }
+  return found.sort((a, b) => a.line - b.line)
+}
+
 function eligible(path) {
   return EXTS.some((e) => path.endsWith(e))
 }
@@ -174,6 +201,9 @@ function parseAddedViolations(raw) {
     for (const violation of scanContent(content, addedLines)) {
       violations.push({ file: path, ...violation })
     }
+    for (const violation of zeroCommentViolations(path, content, addedLines)) {
+      violations.push({ file: path, ...violation })
+    }
   }
   return violations
 }
@@ -217,6 +247,7 @@ function workingScan() {
       continue
     }
     for (const v of scanContent(content)) violations.push({ file: rel.split(sep).join('/'), ...v })
+    for (const v of zeroCommentViolations(rel, content)) violations.push({ file: rel.split(sep).join('/'), ...v })
   }
   return violations
 }
@@ -248,8 +279,11 @@ function main() {
     console.error('')
   }
   console.error('Move dates, phase/status/plan/audit banners, AI attribution, and first-person narration to the git commit message or docs/.')
+  console.error('Production source takes no comment on an added line: put the reason in the commit message or docs/.')
   console.error('See the kael-core-hygiene skill / governance/protocols/code-hygiene.md.')
   if (!warn) process.exit(1)
 }
 
-main()
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main()
+}

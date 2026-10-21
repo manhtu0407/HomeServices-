@@ -3,6 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 production_project_ref="iwevizmsedyqozxlawwl"
+if [[ "${1:-}" == -- ]]; then shift; fi
 # shellcheck source=scripts/resolve-workspace-pnpm.sh
 . "$root/scripts/resolve-workspace-pnpm.sh"
 
@@ -12,8 +13,30 @@ reject_locked_target() {
 }
 
 assert_production_target() {
-  local candidate linked_ref linked_ref_file argument next index
+  local candidate linked_ref linked_ref_file argument next index linked_workdir candidate_workdir
   local -a args=("$@")
+  linked_workdir="$root"
+  for ((index = 0; index < ${#args[@]}; index += 1)); do
+    argument="${args[index]}"
+    if [[ "$argument" == --workdir && $((index + 1)) -lt ${#args[@]} ]]; then
+      candidate_workdir="${args[index + 1]}"
+      if [[ -n "$candidate_workdir" && "$candidate_workdir" != --* ]]; then
+        if [[ "$candidate_workdir" = /* ]]; then
+          if [[ -d "$candidate_workdir" ]]; then linked_workdir="$candidate_workdir"; fi
+        else
+          if [[ -d "$root/$candidate_workdir" ]]; then linked_workdir="$root/$candidate_workdir"; fi
+        fi
+      fi
+    elif [[ "$argument" == --workdir=* ]]; then
+      candidate_workdir="${argument#*=}"
+      if [[ "$candidate_workdir" = /* ]]; then
+        if [[ -d "$candidate_workdir" ]]; then linked_workdir="$candidate_workdir"; fi
+      else
+        if [[ -d "$root/$candidate_workdir" ]]; then linked_workdir="$root/$candidate_workdir"; fi
+      fi
+    fi
+  done
+
   for candidate in "${SUPABASE_PROJECT_REF:-}" "${SUPABASE_PROJECT_ID:-}" \
     "${STAGE1_SUPABASE_PROJECT_REF:-}" "${STAGING_SUPABASE_PROJECT_REF:-}"; do
     if [[ -n "$candidate" && "${candidate,,}" != "$production_project_ref" ]]; then
@@ -43,7 +66,7 @@ assert_production_target() {
         reject_locked_target 'Supabase CLI database URL overrides are locked; use the registered Production project or --local.'
         ;;
       --linked)
-        linked_ref_file="$root/supabase/.temp/project-ref"
+        linked_ref_file="$linked_workdir/supabase/.temp/project-ref"
         if [[ ! -f "$linked_ref_file" ]]; then
           reject_locked_target 'Supabase linked target is locked until the exact Production project ref is recorded.'
         fi

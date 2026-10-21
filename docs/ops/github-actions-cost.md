@@ -50,7 +50,7 @@ The caps are inferred from these crossings, not read from GitHub. The Billing pa
 |---|---|---|
 | Push to a draft pull request | nothing | everything |
 | Push to a ready pull request, or marking a draft ready | `ci` job `controls` (secret scan, classification, every ratchet once), plus `workspace` and `database` when the changed paths select them | lanes no changed path selects |
-| Push to `main` | `ci` job `controls` only | `workspace`, `database`, and `release-production` unless its switch is on (below) |
+| Push to `main` | `ci` job `controls`, plus `release-production` quality | `workspace` and `database` in `ci.yml` |
 | Sunday 18:00 UTC, on `main` | `ci` with every lane: whole-workspace type-check, tests, build, Kael evals, Edge checks, database replay, SQL matrix, generated types, integration suite | |
 | Daily 03:17 UTC, on `main` | the stale-canary reconciler | |
 
@@ -58,11 +58,11 @@ The caps are inferred from these crossings, not read from GitHub. The Billing pa
 
 - `controls` always runs (except on drafts). It does the gitleaks scan, one `pnpm install`, the path classification the other jobs read, and every script-level ratchet, including the comment-discipline full report, which is a superset of the added-lines check.
 - `workspace` does one type-check and one test pass. It covers all four workspaces when the change crosses workspaces or reaches Kael (with the JSON reports the transaction gate binds), and only the touched workspace otherwise. It also runs the build, the Kael deterministic evals, one Edge `deno check` of every function, and the protected-boundary check.
-- `database` starts one local Supabase for the empty-reset replay, the SQL matrix, the generated-type drift check, the schema lint, and the integration suite. It replays again before the suite, because not every SQL verification file rolls back. It checks out the pull request head, because the suite's release preflight binds that SHA; `release-production` reruns the schema gates on the merged tree before any deploy.
+- `database` starts one local Supabase for the empty-reset replay, the SQL matrix, the generated-type drift check, the schema lint, and the integration suite. It replays again before the suite, because not every SQL verification file rolls back. It checks out the pull request head, because the suite's release preflight binds that SHA. The local release runner requires the merged SHA's successful `release-production` quality job before writes.
 
-**The strict release lane is paused by a switch.** `release-production` still triggers on every push to `main` (pillar P56 forbids a manual dispatch for it). Its jobs run only when the repository variable `NESTSCOUT_STRICT_RELEASE_ENABLED` is `true`. While transaction entries are unmapped its gate cannot pass, so the variable stays unset, every job is skipped at no cost, and `main` no longer shows a red run per merge. The dispatch lane `release-production-verification` is the release path meanwhile. Set the variable (Settings, then Secrets and variables, then Actions, then Variables) once the strict gate can pass.
+**Production releases run locally.** `release-production.yml` runs quality checks on pushes to `main` and the scheduled stale-canary reconciler. It has no Production deploy job. The former `release-production-verification` dispatch lane was removed; use the read-only preflight and explicit local execution in `docs/ops/harness/local-production-release.md`.
 
-A push to `main` carries a tree its pull request already ran the heavy lanes on. What still runs there is what a merge can break without conflicting: the registries and ratchets (pillar ids, manifests, structure baseline), the secret scan, and the release gate. `release-production` is the post-merge authority once its gate can pass; until then nothing is deployed from `main`, and the weekly runs catch a semantic conflict between two pull requests that each passed alone. Reinstate the conditional lanes on pushes if the release gate is ever disabled or weakened.
+A push to `main` carries a tree its pull request already ran the heavy lanes on. The release workflow's merged-SHA quality job is an additional fail-closed gate for the local runner. The weekly runs catch semantic conflicts between pull requests that each passed alone. Production writes require the local runner's exact-source preflight and an explicitly requested release.
 
 ## Guardrails
 
@@ -74,7 +74,7 @@ A push to `main` carries a tree its pull request already ran the heavy lanes on.
 - adds a `pull_request` workflow with no `concurrency` block that cancels superseded runs;
 - adds a `pull_request` workflow that omits `ready_for_review` from its `types` or has a job with no `needs` that does not skip drafts.
 
-A deliberate exception is added to `EXCEPTIONS` in that script with a reason. An exception that no longer excuses anything fails, so the list cannot become the hole. Today there are two, both the `production-release` job, which waits on EAS store builds: one in `release-production.yml` and the same job in `release-production-verification.yml`, which is derived from it.
+A deliberate exception is added to `EXCEPTIONS` in that script with a reason. An exception that no longer excuses anything fails, so the list cannot become the hole. The local Production runner does not consume GitHub-hosted minutes or Actions exceptions.
 
 Lane selection lives in `scripts/harness/classify-ci-changes.mjs`. Documentation, rules (`governance/**`), skills, commands, and `.claude/MEMORY.md` select no conditional lane, because the ratchets that always run already prove them and nothing compiles or tests them. Hooks, settings, workflows, `scripts/harness/**`, `config/harness/**`, and root manifests still select everything, and any path no lane claims still selects everything. Across all 3,418 tracked paths at the time of the change, only the 349 documentation, rule, skill, and command paths changed classification; no source path did.
 
@@ -91,7 +91,7 @@ Every push to a ready pull request re-runs the lanes chosen by the whole pull re
 - Before a burst of pushes, run `node scripts/ci-usage-report.mjs --month <YYYY-MM> --budget <cap>`. If fewer than three full pushes of headroom remain, stop and tell Tu instead of pushing.
 - A failing run is not a reason to rerun it repeatedly, and jobs that fail in seconds having run no steps are a billing block, not a code fault.
 - Check `gh pr view <n> --json mergeStateStatus` before waiting on checks. A `CONFLICTING` pull request gets no CI at all, so waiting on it only burns session time.
-- Do not re-dispatch `release-production-verification` after a failed smoke until the failure is diagnosed. Each run bills 28 to 58 minutes.
+- After a local release smoke fails, review the redacted run evidence and verified rollback state before starting another release.
 - When a billing block appears, run the report above and give Tu the real figures. Do not guess.
 
 ## Measuring

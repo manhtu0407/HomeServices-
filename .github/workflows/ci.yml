@@ -115,6 +115,22 @@ jobs:
       - name: Comment discipline
         if: ${{ !cancelled() }}
         run: node scripts/check-comment-discipline.mjs
+      # Pull requests only: a push has no reviewed base to diff against.
+      - name: Test integrity ratchet
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-test-integrity.mjs --diff "$CI_BASE_SHA"
+      - name: Added-line hygiene ratchet
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-added-source-hygiene.mjs --diff "$CI_BASE_SHA"
+      - name: Zero-comment ratchet
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-comment-discipline.mjs --diff "$CI_BASE_SHA"
       - name: Skills single-source check
         if: ${{ !cancelled() }}
         run: node scripts/check-skills-sync.mjs
@@ -346,6 +362,11 @@ jobs:
               '.github/workflows/comment-discipline.yml'|'.github/workflows/harness-assurance.yml'|\
               '.github/workflows/integration.yml'|'.github/workflows/kael-agentic-completeness.yml'|\
               '.github/workflows/security.yml')
+                ;;
+              # The local release runner replaces the standard automatic Stage 1 deploy workflow.
+              '.github/workflows/release-production-verification.yml'|\
+              'scripts/harness/generate-verification-workflow.mjs'|\
+              'scripts/harness/generate-verification-workflow.test.mjs')
                 ;;
               # Retired UI surfaces/assets are intentionally removed by this
               # publication and replaced by the current production surfaces.

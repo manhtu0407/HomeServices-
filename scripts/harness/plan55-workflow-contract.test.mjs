@@ -70,6 +70,19 @@ test('protected-boundary checks compare against the current pull request base', 
     'protected-boundary checks must not retain a stale Plan 55 base branch')
 })
 
+test('retired standard Stage 1 workflow tooling is an exact deletion exception', () => {
+  const start = ci.indexOf('      - name: Confirm protected boundaries')
+  assert.notEqual(start, -1, 'CI must keep the protected-boundary check')
+  const next = ci.indexOf('\n      - name:', start + 1)
+  const protectedBoundaries = ci.slice(start, next === -1 ? ci.length : next)
+
+  expectWorkflowMatch(protectedBoundaries,
+    /'\.github\/workflows\/release-production-verification\.yml'\|\\\r?\n\s*'scripts\/harness\/generate-verification-workflow\.mjs'\|\\\r?\n\s*'scripts\/harness\/generate-verification-workflow\.test\.mjs'\)/u,
+    'the retired deploy workflow and its generator files must be explicitly allowlisted together')
+  expectWorkflowMatch(protectedBoundaries, /echo "tracked file deletion detected: \$deleted_file"/u,
+    'all other tracked deletions must remain blocked')
+})
+
 test('Plan 55 release dispatches from default main and enforces Production-base ancestry without targeting Staging', () => {
   expectWorkflowMatch(release, /^on:\r?\n  workflow_call:/mu, 'release must be callable by the registered CI workflow')
   assert.ok(!/^  (?:push|pull_request|schedule|workflow_dispatch):/mu.test(release),
@@ -1000,7 +1013,6 @@ test('API JSON evidence is emitted by Vitest without dropping the Node contract 
 
   for (const path of [
     '.github/workflows/release-production.yml',
-    '.github/workflows/release-production-verification.yml',
   ]) {
     const workflow = readFileSync(path, 'utf8')
     assert.match(workflow, /pnpm test:api --reporter=default --reporter=json/u, path)

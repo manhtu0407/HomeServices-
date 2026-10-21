@@ -2,6 +2,11 @@
   "algorithm": "sha256",
   "files": [
     {
+      "path": "actual-integration-source-identity.json",
+      "bytes": 711,
+      "sha256": "d18c847ee4226912806831656df2838d75fcfd2068e735451aebda526d9d13d5"
+    },
+    {
       "path": "api-skipped-tests.json",
       "bytes": 1845,
       "sha256": "fc98081d5a0e58bb24791cf7dfd2d1075f3c832ddccf048af2138e9bb2bdca8e"
@@ -20,6 +25,11 @@
       "path": "log-export-provenance.json",
       "bytes": 38222,
       "sha256": "47d34a30a917dc5ac3af64acd1062bb3c284b0ae8fb7bb165bddfd64c44fee4c"
+    },
+    {
+      "path": "logs/actual-integration-merge.log.txt",
+      "bytes": 306,
+      "sha256": "408cbb4a1627da1191a5880bbe7aef2caad3358e18cb9702634462af90041f26"
     },
     {
       "path": "logs/branch-backend-runs-before.json",
@@ -648,8 +658,8 @@
     },
     {
       "path": "report.md",
-      "bytes": 10391,
-      "sha256": "6c7526d8cb87aa341393bc5215daf306b916db2ad1b81112852c0676d158e596"
+      "bytes": 11008,
+      "sha256": "dfad03a9f4377bfb185c7f101d6577b773fcb936f12e2bbea33bbe943b2e7b79"
     },
     {
       "path": "safety-approval-results.json",

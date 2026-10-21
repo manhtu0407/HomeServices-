@@ -1,4 +1,4 @@
 interface:
-  display_name: "Kael Ship"
-  short_description: "Delivery gate before push or pull request"
-  default_prompt: "Use $kael-ship before pushing or opening a pull request: run pnpm ship:check, then apply the judgment half."
+  display_name: "Kael Ship and Release"
+  short_description: "Pre-push checks and gated local Production release"
+  default_prompt: "Use $kael-ship for pre-push review or an explicitly requested local Production release: run pnpm ship:check for delivery, and use the read-only release preflight before any authorized --execute run."
