@@ -1,0 +1,2106 @@
+{
+  "summary": {
+    "schema": "nestscout.diagnostic_h5_diagnosis.v1",
+    "label": "REPRODUCTION (diagnostic read of an existing set; the set is no longer a holdout and this is not independent validation)",
+    "rows_total": 63,
+    "rows_sealed_sha256_lf": "80e3e90701e4acc9418ed30209e251b613c84520c70f3f49ba73e2638052d81d",
+    "classifier_source_note": "AFTER snapshot 42daced1; emergency-guidance.ts differs in bytes from the 63c01524 evidence only by the 167 comment lines removed at integration; the route results are identical (11/29, 1/30)",
+    "clear_rows": 59,
+    "positives": 29,
+    "negatives": 30,
+    "true_positive_routed": 11,
+    "false_negative": 18,
+    "wrong_route": 0,
+    "false_positive": 1,
+    "true_negative": 29,
+    "recall_route_exact": 0.3793103448275862,
+    "recall_wilson95": [
+      0.2268779573086734,
+      0.5599777379071503
+    ],
+    "judgement_rows_missed": 4,
+    "category_frequency_all_failures": {
+      "LEXICAL_COVERAGE": 23
+    },
+    "sub_mechanism_frequency_clear_misses": {
+      "LC-SPAN": 4,
+      "LC-SYN": 5,
+      "LC-ORDER": 1,
+      "LC-CLASS": 6,
+      "LC-SPAN+LC-SYN": 1,
+      "LC-MORPH": 1,
+      "LC-ORDER (negative side)": 1
+    },
+    "earliest_failure_stage_frequency": {
+      "cue matching (stage 4 of 9)": 23
+    },
+    "negatives_correctly_held_by_context_filters": {
+      "past": 3
+    },
+    "rows_where_normalisation_or_segmentation_or_negation_or_routing_was_the_cause": 0,
+    "rows_where_entry_point_or_delivery_lost_a_detected_emergency": 0,
+    "e2e_after": {
+      "positives_with_number": 11,
+      "negatives_with_number": 1
+    },
+    "e2e_before": {
+      "positives_with_number": 0,
+      "negatives_with_number": 0,
+      "caveat": "providers stubbed; any model-assisted safety in the BEFORE pipeline was not exercised; playbook flags off"
+    },
+    "label_review": "No clear-row label was changed or found wrong. H5-009 (obstetric emergency) is arguably outside home-service scope but 115 is the right number. Labels are untouched.",
+    "counterfactual_probes": [
+      {
+        "id": "H5-024",
+        "variant_route": "gas",
+        "variant_expected": "gas",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-018",
+        "variant_route": "electrical_water",
+        "variant_expected": "electrical_water",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-005",
+        "variant_route": "fire",
+        "variant_expected": "fire",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-001",
+        "variant_route": "fire",
+        "variant_expected": "fire",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-002",
+        "variant_route": "fire",
+        "variant_expected": "fire",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-011",
+        "variant_route": "medical",
+        "variant_expected": "medical",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-019",
+        "variant_route": null,
+        "variant_expected": "electrical_water",
+        "as_hypothesised": false
+      },
+      {
+        "id": "H5-028",
+        "variant_route": "uncertain",
+        "variant_expected": "uncertain",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-013",
+        "variant_route": "police",
+        "variant_expected": "police",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-014",
+        "variant_route": "police",
+        "variant_expected": "police",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-040",
+        "variant_route": null,
+        "variant_expected": null,
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-019-round2-span",
+        "variant_route": "electrical_water",
+        "variant_expected": "electrical_water",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-019-round2-control",
+        "variant_route": null,
+        "variant_expected": null,
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-001-round3",
+        "variant_route": "fire",
+        "variant_expected": "fire",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-013-round3-verb",
+        "variant_route": null,
+        "variant_expected": "police",
+        "as_hypothesised": false
+      },
+      {
+        "id": "H5-013-round3-clause",
+        "variant_route": null,
+        "variant_expected": null,
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-014-round3-threat",
+        "variant_route": "police",
+        "variant_expected": "police",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-014-round3-weapon",
+        "variant_route": null,
+        "variant_expected": null,
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-028-round3",
+        "variant_route": "uncertain",
+        "variant_expected": "uncertain",
+        "as_hypothesised": true
+      },
+      {
+        "id": "H5-015",
+        "variant_route": "police",
+        "variant_expected": "police",
+        "as_hypothesised": true
+      }
+    ]
+  },
+  "rows": [
+    {
+      "id": "H5-001",
+      "text": "Em vừa mở cửa tủ điện thì thấy lửa xanh lè bùng lên rồi khói trắng mù mịt",
+      "expected": "fire",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "em vua mo cua tu dien thi thay lua xanh le bung len roi khoi trang mu mit",
+      "segments": [
+        "em vua mo cua tu dien thi thay lua xanh le bung len roi khoi trang mu mit"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SPAN",
+      "mechanism": "a colour adjective (\"xanh lè\") separates \"lửa\" from \"bùng\"; the trailing smoke phrase (\"khói trắng mù mịt\") has no cue either",
+      "evidence": [
+        "trace empty",
+        "round-3 single-change probe H5-001-round3 routes fire"
+      ]
+    },
+    {
+      "id": "H5-002",
+      "text": "Căn bên cạnh nổ bình, cháy dữ dội, khói đang vào nhà em",
+      "expected": "fire",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "can ben canh no binh, chay du doi, khoi dang vao nha em",
+      "segments": [
+        "can ben canh no binh, chay du doi, khoi dang vao nha em"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SYN",
+      "mechanism": "\"cháy lớn\" is a cue, \"cháy dữ dội\" is not; \"khói đang vào\" is not \"khói bay vào\"",
+      "evidence": [
+        "trace empty",
+        "probe H5-002 (cháy dữ dội to cháy lớn only) routes fire"
+      ]
+    },
+    {
+      "id": "H5-003",
+      "text": "The smoke alarm is blaring and the corridor is filling with thick grey smoke",
+      "expected": "fire",
+      "kind": "clear",
+      "classifier_route": "fire",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "the smoke alarm is blaring and the corridor is filling with thick grey smoke",
+      "segments": [
+        "the smoke alarm is blaring and the corridor is filling with thick grey smoke"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "114"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-004",
+      "text": "Our rice cooker caught fire and the flames reached the cupboard",
+      "expected": "fire",
+      "kind": "clear",
+      "classifier_route": "fire",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "our rice cooker caught fire and the flames reached the cupboard",
+      "segments": [
+        "our rice cooker caught fire and the flames reached the cupboard"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "114"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-005",
+      "text": "Điều hòa phòng ngủ chập rồi bốc lửa, em đang ôm con chạy xuống cầu thang",
+      "expected": "fire",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "dieu hoa phong ngu chap roi boc lua, em dang om con chay xuong cau thang",
+      "segments": [
+        "dieu hoa phong ngu chap roi boc lua, em dang om con chay xuong cau thang"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-ORDER",
+      "mechanism": "cues hold \"lửa bốc\" (fire erupts); the row says \"bốc lửa\"",
+      "evidence": [
+        "trace empty",
+        "probe H5-005 routes fire"
+      ]
+    },
+    {
+      "id": "H5-006",
+      "text": "Phòng kỹ thuật tầng hầm đang cháy, khói đen cuồn cuộn",
+      "expected": "fire",
+      "kind": "clear",
+      "classifier_route": "fire",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "phong ky thuat tang ham dang chay, khoi den cuon cuon",
+      "segments": [
+        "phong ky thuat tang ham dang chay, khoi den cuon cuon"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "114"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-007",
+      "text": "Anh bảo vệ bị điện giật khi sửa ổ cắm hành lang, anh nằm co giật",
+      "expected": "medical",
+      "kind": "clear",
+      "classifier_route": "medical",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "anh bao ve bi dien giat khi sua o cam hanh lang, anh nam co giat",
+      "segments": [
+        "anh bao ve bi dien giat khi sua o cam hanh lang, anh nam co giat"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "115"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-008",
+      "text": "Thợ lắp máy lạnh bị ngã từ giàn giáo xuống, chân gãy, đầu chảy máu",
+      "expected": "medical",
+      "kind": "clear",
+      "classifier_route": "medical",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "tho lap may lanh bi nga tu gian giao xuong, chan gay, dau chay mau",
+      "segments": [
+        "tho lap may lanh bi nga tu gian giao xuong, chan gay, dau chay mau"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "115"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-009",
+      "text": "My wife is eight months pregnant and her waters broke, she is in severe pain",
+      "expected": "medical",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "my wife is eight months pregnant and her waters broke, she is in severe pain",
+      "segments": [
+        "my wife is eight months pregnant and her waters broke, she is in severe pain"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS",
+      "mechanism": "no obstetric emergency family (waters broke, labour, severe pain); the medical cues are shock, collapse, breathing, bleeding, ingestion",
+      "evidence": [
+        "trace empty",
+        "cue list read: no obstetric cue"
+      ]
+    },
+    {
+      "id": "H5-010",
+      "text": "The old man next door collapsed in the lift and is not responding",
+      "expected": "medical",
+      "kind": "clear",
+      "classifier_route": "medical",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "the old man next door collapsed in the lift and is not responding",
+      "segments": [
+        "the old man next door collapsed in the lift and is not responding"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "115"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-011",
+      "text": "Cháu bé nhà em nuốt phải pin cúc áo, đang ho sặc sụa",
+      "expected": "medical",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "chau be nha em nuot phai pin cuc ao, dang ho sac sua",
+      "segments": [
+        "chau be nha em nuot phai pin cuc ao, dang ho sac sua"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SYN",
+      "mechanism": "ingestion cue is \"nuốt nhầm\"; \"nuốt phải\" means the same and is absent; \"ho sặc sụa\" (choking) is not a cue",
+      "evidence": [
+        "trace empty",
+        "probe H5-011 routes medical"
+      ]
+    },
+    {
+      "id": "H5-012",
+      "text": "Bố em bị đột quỵ, miệng méo và không nói được",
+      "expected": "medical",
+      "kind": "clear",
+      "classifier_route": "medical",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "bo em bi dot quy, mieng meo va khong noi duoc",
+      "segments": [
+        "bo em bi dot quy, mieng meo va khong noi duoc"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "115"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-013",
+      "text": "Có người lạ mặc áo mưa đang cố mở cửa căn hộ em lúc nửa đêm",
+      "expected": "police",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "co nguoi la mac ao mua dang co mo cua can ho em luc nua dem",
+      "segments": [
+        "co nguoi la mac ao mua dang co mo cua can ho em luc nua dem"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SPAN+LC-SYN",
+      "mechanism": "two independent gaps: \"cố mở cửa\" (trying to open) is not a break-in verb, and the clothing clause between subject and verb breaks the span",
+      "evidence": [
+        "trace empty",
+        "round-3: verb-only change still misses; clause-only removal still misses; both changed routes police"
+      ]
+    },
+    {
+      "id": "H5-014",
+      "text": "Chồng cũ em đứng trước cửa, cầm gậy và hét sẽ đánh em",
+      "expected": "police",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "chong cu em dung truoc cua, cam gay va het se danh em",
+      "segments": [
+        "chong cu em dung truoc cua, cam gay va het se danh em"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SYN",
+      "mechanism": "threat cue is \"sẽ giết\" (will kill); \"sẽ đánh\" (will hit) is absent. \"cầm gậy\" is irrelevant to the miss",
+      "evidence": [
+        "trace empty",
+        "round-3 single-change probe: giết routes police; weapon removal alone still misses"
+      ]
+    },
+    {
+      "id": "H5-015",
+      "text": "Someone is trying to climb through my kitchen window right now",
+      "expected": "police",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "someone is trying to climb through my kitchen window right now",
+      "segments": [
+        "someone is trying to climb through my kitchen window right now"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-MORPH",
+      "mechanism": "the English cue enumerates \"climbed\" (past); \"is trying to climb\" is not enumerated",
+      "evidence": [
+        "trace empty",
+        "probe H5-015 routes police"
+      ]
+    },
+    {
+      "id": "H5-016",
+      "text": "Two masked men just ran out of the neighbour's flat carrying bags and I heard screaming",
+      "expected": "police",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "two masked men just ran out of the neighbour s flat carrying bags and i heard screaming",
+      "segments": [
+        "two masked men just ran out of the neighbour s flat carrying bags and i heard screaming"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS",
+      "mechanism": "indirect description of a burglary (masked men, carrying bags, heard screaming): no cue names the event",
+      "evidence": [
+        "trace empty",
+        "cue list read"
+      ]
+    },
+    {
+      "id": "H5-017",
+      "text": "Em nghe tiếng súng nổ ở tầng dưới",
+      "expected": "police",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "em nghe tieng sung no o tang duoi",
+      "segments": [
+        "em nghe tieng sung no o tang duoi"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS",
+      "mechanism": "\"tiếng súng\" (gunshots) has no cue; weapon cues require a person carrying a gun or knife",
+      "evidence": [
+        "trace empty",
+        "cue list read"
+      ]
+    },
+    {
+      "id": "H5-018",
+      "text": "Nước từ tầng trên chảy ròng ròng vào hộp điện của nhà em",
+      "expected": "electrical_water",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "nuoc tu tang tren chay rong rong vao hop dien cua nha em",
+      "segments": [
+        "nuoc tu tang tren chay rong rong vao hop dien cua nha em"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SPAN",
+      "mechanism": "the reduplicated adverb \"ròng ròng\" sits between the verb and the preposition, which the cue expects adjacent",
+      "evidence": [
+        "trace empty",
+        "probe H5-018 routes electrical_water"
+      ]
+    },
+    {
+      "id": "H5-019",
+      "text": "Ổ cắm trong nhà tắm bị ướt sũng và nghe tiếng tí tách",
+      "expected": "electrical_water",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "o cam trong nha tam bi uot sung va nghe tieng ti tach",
+      "segments": [
+        "o cam trong nha tam bi uot sung va nghe tieng ti tach"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SPAN",
+      "mechanism": "at most two words may sit between the outlet and \"ngâm nước\"; \"trong nhà tắm\" is three. The round-1 synonym hypothesis was refuted (\"ngâm nước\" alone does not fix it)",
+      "evidence": [
+        "trace empty",
+        "round-2: two-word gap routes, three-word control misses"
+      ]
+    },
+    {
+      "id": "H5-020",
+      "text": "A cable is hanging loose from the ceiling and touching the wet floor",
+      "expected": "electrical_water",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "a cable is hanging loose from the ceiling and touching the wet floor",
+      "segments": [
+        "a cable is hanging loose from the ceiling and touching the wet floor"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS",
+      "mechanism": "an indirect hazard (a loose cable touching a wet floor) has no cue; English cues name sparking, exposed live wire or water near an outlet",
+      "evidence": [
+        "trace empty",
+        "cue list read"
+      ]
+    },
+    {
+      "id": "H5-021",
+      "text": "The washing machine plug is sparking and the cord is melting",
+      "expected": "electrical_water",
+      "kind": "clear",
+      "classifier_route": "electrical_water",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "the washing machine plug is sparking and the cord is melting",
+      "segments": [
+        "the washing machine plug is sparking and the cord is melting"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-022",
+      "text": "Em thấy dây điện đứt rơi xuống vũng nước trước cổng",
+      "expected": "electrical_water",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "em thay day dien dut roi xuong vung nuoc truoc cong",
+      "segments": [
+        "em thay day dien dut roi xuong vung nuoc truoc cong"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS",
+      "mechanism": "a snapped wire falling into a puddle (\"dây điện đứt\", \"vũng nước\") has no cue",
+      "evidence": [
+        "trace empty",
+        "cue list read"
+      ]
+    },
+    {
+      "id": "H5-023",
+      "text": "Mùi gas nồng lắm, em nghe cả tiếng xì ở sau bếp",
+      "expected": "gas",
+      "kind": "clear",
+      "classifier_route": "gas",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "mui gas nong lam, em nghe ca tieng xi o sau bep",
+      "segments": [
+        "mui gas nong lam, em nghe ca tieng xi o sau bep"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "114"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-024",
+      "text": "Bình gas 12kg nhà em bị rò ở cổ van, đang xì mạnh",
+      "expected": "gas",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "binh gas 12kg nha em bi ro o co van, dang xi manh",
+      "segments": [
+        "binh gas 12kg nha em bi ro o co van, dang xi manh"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SPAN",
+      "mechanism": "the filler span of the gas-object cue accepts letters only; the digit-bearing token \"12kg\" breaks it",
+      "evidence": [
+        "trace empty",
+        "probe H5-024 (\"12kg\" to \"lon\") routes gas"
+      ]
+    },
+    {
+      "id": "H5-025",
+      "text": "I smell gas strongly in the flat and my head hurts, the stove is off",
+      "expected": "gas",
+      "kind": "clear",
+      "classifier_route": "gas",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "i smell gas strongly in the flat and my head hurts, the stove is off",
+      "segments": [
+        "i smell gas strongly in the flat and my head hurts, the stove is off"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "114"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-026",
+      "text": "The kitchen is full of gas, the pilot light is out",
+      "expected": "gas",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "the kitchen is full of gas, the pilot light is out",
+      "segments": [
+        "the kitchen is full of gas, the pilot light is out"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS",
+      "mechanism": "\"full of gas\" without a leak, smell or hiss word has no cue",
+      "evidence": [
+        "trace empty",
+        "cue list read"
+      ]
+    },
+    {
+      "id": "H5-027",
+      "text": "Ống dẫn gas phía sau tủ bếp bị chuột cắn thủng, em ngửi thấy mùi gas",
+      "expected": "gas",
+      "kind": "clear",
+      "classifier_route": "gas",
+      "outcome": "TRUE_POSITIVE_ROUTED",
+      "schema_ok": true,
+      "normalised_plain": "ong dan gas phia sau tu bep bi chuot can thung, em ngui thay mui gas",
+      "segments": [
+        "ong dan gas phia sau tu bep bi chuot can thung, em ngui thay mui gas"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "114"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-028",
+      "text": "Em hoảng quá, hình như có chuyện rất nguy hiểm nhưng em không biết nên báo ai",
+      "expected": "uncertain",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "em hoang qua, hinh nhu co chuyen rat nguy hiem nhung em khong biet nen bao ai",
+      "segments": [
+        "em hoang qua, hinh nhu co chuyen rat nguy hiem ",
+        " em khong biet nen bao ai"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SYN",
+      "mechanism": "the uncertainty cue is built on \"gọi\" (call); the row says \"báo\" (notify)",
+      "evidence": [
+        "trace empty",
+        "round-3 single-change probe routes uncertain"
+      ]
+    },
+    {
+      "id": "H5-029",
+      "text": "Something dangerous is happening and I cannot tell if I need the fire service or the police",
+      "expected": "uncertain",
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "FALSE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "something dangerous is happening and i cannot tell if i need the fire service or the police",
+      "segments": [
+        "something dangerous is happening and i cannot tell if i need the fire service or the police"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-SYN",
+      "mechanism": "paraphrase of \"not sure who to call\" (\"cannot tell if I need the fire service or the police\") is not enumerated",
+      "evidence": [
+        "trace empty",
+        "cue list read"
+      ]
+    },
+    {
+      "id": "H5-030",
+      "text": "Chung cư tổ chức tập huấn thoát hiểm cuối tuần, em muốn mua mặt nạ phòng khói",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "chung cu to chuc tap huan thoat hiem cuoi tuan, em muon mua mat na phong khoi",
+      "segments": [
+        "chung cu to chuc tap huan thoat hiem cuoi tuan, em muon mua mat na phong khoi"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-031",
+      "text": "Em cần thợ lắp thêm ổ cắm cho phòng bếp mới sửa",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "em can tho lap them o cam cho phong bep moi sua",
+      "segments": [
+        "em can tho lap them o cam cho phong bep moi sua"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-032",
+      "text": "Nhà em từng cháy hồi 2019, giờ cần làm lại toàn bộ hệ thống điện",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "nha em tung chay hoi 2019, gio can lam lai toan bo he thong dien",
+      "segments": [
+        "nha em tung chay hoi 2019, gio can lam lai toan bo he thong dien"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-033",
+      "text": "Con em chơi trò chữa cháy với đồ chơi, nhờ thợ sửa chiếc xe cứu hỏa nhựa",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "con em choi tro chua chay voi do choi, nho tho sua chiec xe cuu hoa nhua",
+      "segments": [
+        "con em choi tro chua chay voi do choi, nho tho sua chiec xe cuu hoa nhua"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-034",
+      "text": "Cảm ơn thợ hôm qua, nhà em hết mùi gas máy lạnh rồi",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "cam on tho hom qua, nha em het mui gas may lanh roi",
+      "segments": [
+        "cam on tho hom qua, nha em het mui gas may lanh roi"
+      ],
+      "cue_regex_matches": 2,
+      "cue_matches_rejected_by": [
+        "gas_smell#0:past",
+        "gas_smell#0:past"
+      ],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": "cue matched but correctly rejected: gas_smell#0 «mui gas» past; gas_smell#0 «mui gas» past",
+      "evidence": []
+    },
+    {
+      "id": "H5-035",
+      "text": "Khói từ đồ chiên của hàng xóm bay sang nhà em, nhờ lắp quạt thông gió",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "khoi tu do chien cua hang xom bay sang nha em, nho lap quat thong gio",
+      "segments": [
+        "khoi tu do chien cua hang xom bay sang nha em, nho lap quat thong gio"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-036",
+      "text": "Em muốn hỏi giá thay bình nước nóng 30 lít",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "em muon hoi gia thay binh nuoc nong 30 lit",
+      "segments": [
+        "em muon hoi gia thay binh nuoc nong 30 lit"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-037",
+      "text": "Bác sĩ dặn mẹ em tránh bụi nên em muốn vệ sinh thảm",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "bac si dan me em tranh bui nen em muon ve sinh tham",
+      "segments": [
+        "bac si dan me em tranh bui nen em muon ve sinh tham"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-038",
+      "text": "Thợ nói nếu dây này bị hở thì có nguy cơ chập, em nên thay sớm",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "tho noi neu day nay bi ho thi co nguy co chap, em nen thay som",
+      "segments": [
+        "tho noi neu day nay bi ho thi co nguy co chap, em nen thay som"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-039",
+      "text": "Máy lạnh phòng khách chạy rất lâu mới mát, nhờ kiểm tra",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "may lanh phong khach chay rat lau moi mat, nho kiem tra",
+      "segments": [
+        "may lanh phong khach chay rat lau moi mat, nho kiem tra"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-040",
+      "text": "Tôi muốn lắp thiết bị báo gas rò trong bếp",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": "gas",
+      "outcome": "FALSE_POSITIVE",
+      "schema_ok": true,
+      "normalised_plain": "toi muon lap thiet bi bao gas ro trong bep",
+      "segments": [
+        "toi muon lap thiet bi bao gas ro trong bep"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [
+          "114"
+        ],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-ORDER (negative side)",
+      "mechanism": "FALSE ALARM: the prevention list holds \"báo rò gas\"; the row says \"báo gas rò\" (install a gas-leak detector). The leak cue fires because the benign context is recognised only by enumerated word order",
+      "evidence": [
+        "trace: gas_bare_vi#0 affirmed",
+        "probe H5-040 (\"gas rò\" to \"rò gas\") stays quiet"
+      ]
+    },
+    {
+      "id": "H5-041",
+      "text": "Em cần thợ sửa cửa bị kẹt, khóa không mở được, mong thợ đến nhanh",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "em can tho sua cua bi ket, khoa khong mo duoc, mong tho den nhanh",
+      "segments": [
+        "em can tho sua cua bi ket, khoa khong mo duoc, mong tho den nhanh"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-042",
+      "text": "Xin báo giá giặt rèm và thảm cho căn hộ 70m2",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "xin bao gia giat rem va tham cho can ho 70m2",
+      "segments": [
+        "xin bao gia giat rem va tham cho can ho 70m2"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-043",
+      "text": "Hôm qua em làm đổ nước lên bàn phím, đã lau khô rồi",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "hom qua em lam do nuoc len ban phim, da lau kho roi",
+      "segments": [
+        "hom qua em lam do nuoc len ban phim, da lau kho roi"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-044",
+      "text": "Ổ cắm này em dùng từ 2015, giờ hơi lỏng",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "o cam nay em dung tu 2015, gio hoi long",
+      "segments": [
+        "o cam nay em dung tu 2015, gio hoi long"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-045",
+      "text": "The smoke detector in the hall keeps chirping, I need the battery replaced",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "the smoke detector in the hall keeps chirping, i need the battery replaced",
+      "segments": [
+        "the smoke detector in the hall keeps chirping, i need the battery replaced"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-046",
+      "text": "Can you install a fire blanket and an extinguisher in the kitchen",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "can you install a fire blanket and an extinguisher in the kitchen",
+      "segments": [
+        "can you install a fire blanket and an extinguisher in the kitchen"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-047",
+      "text": "My brother is a firefighter and he told me to check the wiring",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "my brother is a firefighter and he told me to check the wiring",
+      "segments": [
+        "my brother is a firefighter and he told me to check the wiring"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-048",
+      "text": "The AC refrigerant pipe is dripping water, I need it re-insulated",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "the ac refrigerant pipe is dripping water, i need it re-insulated",
+      "segments": [
+        "the ac refrigerant pipe is dripping water, i need it re-insulated"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-049",
+      "text": "There was a gas leak at the shop last year but it was fixed",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "there was a gas leak at the shop last year but it was fixed",
+      "segments": [
+        "there was a gas leak at the shop last year ",
+        " it was fixed"
+      ],
+      "cue_regex_matches": 1,
+      "cue_matches_rejected_by": [
+        "gas_bare_en#0:past"
+      ],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": "cue matched but correctly rejected: gas_bare_en#0 «gas leak» past",
+      "evidence": []
+    },
+    {
+      "id": "H5-050",
+      "text": "We are planning a barbecue on the balcony and need the exhaust fan checked",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "we are planning a barbecue on the balcony and need the exhaust fan checked",
+      "segments": [
+        "we are planning a barbecue on the balcony and need the exhaust fan checked"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-051",
+      "text": "Please check the electric panel before the inspection tomorrow",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "please check the electric panel before the inspection tomorrow",
+      "segments": [
+        "please check the electric panel before the inspection tomorrow"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-052",
+      "text": "The toddler has a cold and keeps coughing, the humidifier needs repair",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "the toddler has a cold and keeps coughing, the humidifier needs repair",
+      "segments": [
+        "the toddler has a cold and keeps coughing, the humidifier needs repair"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-053",
+      "text": "A stranger asked me for directions in the lobby yesterday",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "a stranger asked me for directions in the lobby yesterday",
+      "segments": [
+        "a stranger asked me for directions in the lobby yesterday"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-054",
+      "text": "My neighbour is noisy at night, can you add soundproofing to the wall",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "my neighbour is noisy at night, can you add soundproofing to the wall",
+      "segments": [
+        "my neighbour is noisy at night, can you add soundproofing to the wall"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-055",
+      "text": "The plumber said the pipe is at risk of bursting, I want to replace it",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "the plumber said the pipe is at risk of bursting, i want to replace it",
+      "segments": [
+        "the plumber said the pipe is at risk of bursting, i want to replace it"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-056",
+      "text": "I spilled water on the carpet, can you steam clean it",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "i spilled water on the carpet, can you steam clean it",
+      "segments": [
+        "i spilled water on the carpet, can you steam clean it"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-057",
+      "text": "I need an electrician to move two outlets, nothing urgent",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "i need an electrician to move two outlets, nothing urgent",
+      "segments": [
+        "i need an electrician to move two outlets, nothing urgent"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-058",
+      "text": "Hôm nay em hơi mệt nên nhờ thợ vào làm giúp phần sofa, em nằm nghỉ",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "hom nay em hoi met nen nho tho vao lam giup phan sofa, em nam nghi",
+      "segments": [
+        "hom nay em hoi met nen nho tho vao lam giup phan sofa, em nam nghi"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-059",
+      "text": "Cháu em hay nghịch diêm nên em muốn mua bình chữa cháy cho nhà",
+      "expected": null,
+      "kind": "clear",
+      "classifier_route": null,
+      "outcome": "TRUE_NEGATIVE",
+      "schema_ok": true,
+      "normalised_plain": "chau em hay nghich diem nen em muon mua binh chua chay cho nha",
+      "segments": [
+        "chau em hay nghich diem nen em muon mua binh chua chay cho nha"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": null,
+      "category": null,
+      "sub_mechanism": null,
+      "mechanism": null,
+      "evidence": []
+    },
+    {
+      "id": "H5-060",
+      "text": "Chuột cắn dây điện trong trần, em nghe tiếng lẹt xẹt",
+      "expected": "electrical_water",
+      "kind": "judgement",
+      "classifier_route": null,
+      "outcome": "JUDGEMENT_MISS",
+      "schema_ok": true,
+      "normalised_plain": "chuot can day dien trong tran, em nghe tieng let xet",
+      "segments": [
+        "chuot can day dien trong tran, em nghe tieng let xet"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS (label contested)",
+      "mechanism": "onomatopoeia \"lẹt xẹt\" and animal damage have no cue",
+      "evidence": [
+        "trace empty",
+        "excluded from every rate"
+      ]
+    },
+    {
+      "id": "H5-061",
+      "text": "Em ngửi thấy mùi cao su cháy từ máy sấy",
+      "expected": "electrical_water",
+      "kind": "judgement",
+      "classifier_route": null,
+      "outcome": "JUDGEMENT_MISS",
+      "schema_ok": true,
+      "normalised_plain": "em ngui thay mui cao su chay tu may say",
+      "segments": [
+        "em ngui thay mui cao su chay tu may say"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS (label contested)",
+      "mechanism": "burning-rubber smell from a dryer has no cue",
+      "evidence": [
+        "trace empty",
+        "excluded from every rate"
+      ]
+    },
+    {
+      "id": "H5-062",
+      "text": "Gas có mùi nhẹ khi em bật bếp lần đầu sau kỳ nghỉ",
+      "expected": "gas",
+      "kind": "judgement",
+      "classifier_route": null,
+      "outcome": "JUDGEMENT_MISS",
+      "schema_ok": true,
+      "normalised_plain": "gas co mui nhe khi em bat bep lan dau sau ky nghi",
+      "segments": [
+        "gas co mui nhe khi em bat bep lan dau sau ky nghi"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS (label contested)",
+      "mechanism": "faint gas smell at first ignition has no cue (and its severity is contestable)",
+      "evidence": [
+        "trace empty",
+        "excluded from every rate"
+      ]
+    },
+    {
+      "id": "H5-063",
+      "text": "Cầu dao tổng nóng bất thường khi chạm vào",
+      "expected": "electrical_water",
+      "kind": "judgement",
+      "classifier_route": null,
+      "outcome": "JUDGEMENT_MISS",
+      "schema_ok": true,
+      "normalised_plain": "cau dao tong nong bat thuong khi cham vao",
+      "segments": [
+        "cau dao tong nong bat thuong khi cham vao"
+      ],
+      "cue_regex_matches": 0,
+      "cue_matches_rejected_by": [],
+      "e2e_after": {
+        "status": 200,
+        "numbers": [],
+        "matches_classifier": true
+      },
+      "e2e_before": {
+        "status": 200,
+        "numbers": []
+      },
+      "earliest_failure_stage": "cue matching (stage 4 of 9)",
+      "category": "LEXICAL_COVERAGE",
+      "sub_mechanism": "LC-CLASS (label contested)",
+      "mechanism": "overheated main breaker has no cue",
+      "evidence": [
+        "trace empty",
+        "excluded from every rate"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,1414 @@
+{
+  "schema": "nestscout.diagnostic_comparison.v1",
+  "matrix_sha256": "dd8392cbcc2fec7ad4f0b1611a52abea0cb7ed86fc681972fec9707c74a51dd7",
+  "generated_utc": "2026-10-21T16:24:33.382Z",
+  "executions_scored": 72,
+  "executions_repeated_for_determinism": 72,
+  "classification_counts": {
+    "UNCHANGED": 13,
+    "IMPROVED": 23
+  },
+  "verdict_counts": {
+    "before": {
+      "PASS": 10,
+      "FAIL": 26
+    },
+    "after": {
+      "PASS": 26,
+      "FAIL": 4,
+      "BLOCKED": 6
+    }
+  },
+  "nondeterministic": [],
+  "aggregate": {
+    "before": {
+      "hazard_steps": 21,
+      "detected_any_number": 0,
+      "escalated_acceptable": 0,
+      "route_exact": 0,
+      "delivered_via_2xx": 0,
+      "gate_bypass": 16,
+      "missed_hazards": [
+        "ELEC-S3/main/1",
+        "ELEC-S4/main/4",
+        "PLMB-S3/main/1",
+        "PLMB-S4/main/4",
+        "CLEN-S3/main/1",
+        "CLEN-S4/main/4",
+        "HVAC-S3/main/1",
+        "HVAC-S4/main/4",
+        "UPHO-S3/main/1",
+        "UPHO-S4/main/4",
+        "HAND-S3/main/1",
+        "HAND-S4/main/4",
+        "C1/main/1",
+        "C2/main/1",
+        "C3/main/1",
+        "C4/confirmed/1",
+        "C4/abandoned/1",
+        "C4/unsupported/1",
+        "C5/main/1",
+        "C6/main/1",
+        "C6/main/2"
+      ],
+      "model_before_safety_on_acceptable_hazards": 0,
+      "non_hazard_steps": 30,
+      "false_emergency_steps": 0,
+      "scenarios_with_business_action": [],
+      "trace_outcomes": {},
+      "evidence_steps_with_gating": 6,
+      "evidence_handled_true": 5,
+      "state_consistent_scenarios": "29/29",
+      "wrong_out_of_scope_declines": [
+        "ELEC-S2/1",
+        "PLMB-S2/1",
+        "PLMB-S4/3"
+      ],
+      "non_2xx_steps": [
+        "PLMB-S4/main/4:409",
+        "C3/main/1:400",
+        "C4/confirmed/1:409",
+        "C4/abandoned/1:409",
+        "C4/unsupported/1:409",
+        "C6/main/1:500"
+      ]
+    },
+    "after": {
+      "hazard_steps": 21,
+      "detected_any_number": 20,
+      "escalated_acceptable": 20,
+      "route_exact": 20,
+      "delivered_via_2xx": 16,
+      "gate_bypass": 1,
+      "missed_hazards": [
+        "ELEC-S4/main/4"
+      ],
+      "model_before_safety_on_acceptable_hazards": 1,
+      "non_hazard_steps": 30,
+      "false_emergency_steps": 0,
+      "scenarios_with_business_action": [],
+      "trace_outcomes": {
+        "emergency_stop": 15,
+        "emergency_advice": 1,
+        "emergency_guidance_only": 4
+      },
+      "evidence_steps_with_gating": 6,
+      "evidence_handled_true": 5,
+      "state_consistent_scenarios": "29/29",
+      "wrong_out_of_scope_declines": [
+        "ELEC-S2/1",
+        "PLMB-S2/1",
+        "PLMB-S4/3"
+      ],
+      "non_2xx_steps": [
+        "PLMB-S4/main/4:409",
+        "C4/confirmed/1:409",
+        "C4/abandoned/1:409",
+        "C4/unsupported/1:409"
+      ]
+    }
+  },
+  "scenarios": [
+    {
+      "id": "ELEC-S1",
+      "service": "electrical",
+      "class": "S1",
+      "title": "Normal intake: loose bedroom sockets",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "0b074f4853d4bc44"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "0b074f4853d4bc44"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Question relevance and wording are deterministic fallbacks here; model-written replies were not exercised (providers stubbed).",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "ELEC-S2",
+      "service": "electrical",
+      "class": "S2",
+      "title": "Ambiguous: intermittent power, conflicting attribution",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "2cd8cf081556ccd7"
+      },
+      "after": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "2cd8cf081556ccd7"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [
+        "asks_clarifying_question:FAIL->FAIL"
+      ],
+      "attribution": [],
+      "unverified_at_t0": "Whether a live model would ask a better clarifying question is unverified; only the deterministic server path ran.",
+      "before_failures": [
+        "asks_clarifying_question:FAIL"
+      ],
+      "after_failures": [
+        "asks_clarifying_question:FAIL"
+      ]
+    },
+    {
+      "id": "ELEC-S3",
+      "service": "electrical",
+      "class": "S3",
+      "title": "Genuine emergency: smoking outlet beside the kitchen sink",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "c189d2c4245a191d"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "946606ef31f057c7"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Recall on wording nobody has seen is not measured by authored phrases.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "ELEC-S4",
+      "service": "electrical",
+      "class": "S4",
+      "title": "Voice and multi-turn: flickering hallway lights, correction, then hot panel with sparks",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "29b516d2a1fdb192"
+      },
+      "after": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "29b516d2a1fdb192"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [
+        "emergency_escalated_acceptable:FAIL->FAIL"
+      ],
+      "attribution": [],
+      "unverified_at_t0": "Understanding of the customer correction is unverified (classifier scripted); only persistence, ordering and the final safety turn are measured.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ]
+    },
+    {
+      "id": "PLMB-S1",
+      "service": "plumbing",
+      "class": "S1",
+      "title": "Normal intake: dripping kitchen tap",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "9705f27f9334e19e"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "9705f27f9334e19e"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Question relevance and wording are deterministic fallbacks here; model-written replies were not exercised (providers stubbed).",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "PLMB-S2",
+      "service": "plumbing",
+      "class": "S2",
+      "title": "Ambiguous: weak water pressure, pipe versus building pump",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "051a4b4c39566b34"
+      },
+      "after": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "051a4b4c39566b34"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [
+        "asks_clarifying_question:FAIL->FAIL"
+      ],
+      "attribution": [],
+      "unverified_at_t0": "Whether a live model would ask a better clarifying question is unverified; only the deterministic server path ran.",
+      "before_failures": [
+        "asks_clarifying_question:FAIL"
+      ],
+      "after_failures": [
+        "asks_clarifying_question:FAIL"
+      ]
+    },
+    {
+      "id": "PLMB-S3",
+      "service": "plumbing",
+      "class": "S3",
+      "title": "Genuine emergency: burst ceiling pipe water reaching breaker box and outlet",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "4834b9d6cac65d05"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "3c91a5d3c6202f47"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=electrical_water, trace.outcome=emergency_advice",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Recall on wording nobody has seen is not measured by authored phrases.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "PLMB-S4",
+      "service": "plumbing",
+      "class": "S4",
+      "title": "Voice and multi-turn: shower temperature, correction, then scalded child",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "65628e9d60115b7c"
+      },
+      "after": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "444bf6a3e5a646a5"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [
+        "http_ok:FAIL->FAIL",
+        "evidence_handled:FAIL->FAIL"
+      ],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "trace.outcome=emergency_guidance_only",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Understanding of the customer correction is unverified (classifier scripted); only persistence, ordering and the final safety turn are measured.",
+      "before_failures": [
+        "http_ok:FAIL",
+        "evidence_handled:FAIL",
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": [
+        "http_ok:FAIL",
+        "evidence_handled:FAIL"
+      ]
+    },
+    {
+      "id": "CLEN-S1",
+      "service": "cleaning",
+      "class": "S1",
+      "title": "Normal intake: general clean of a two-bedroom flat",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "f0f1e8461a92d429"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "f0f1e8461a92d429"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Question relevance and wording are deterministic fallbacks here; model-written replies were not exercised (providers stubbed).",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "CLEN-S2",
+      "service": "cleaning",
+      "class": "S2",
+      "title": "Ambiguous: scope and floor area conflicting",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "f0f1e8461a92d429"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "f0f1e8461a92d429"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Whether a live model would ask a better clarifying question is unverified; only the deterministic server path ran.",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "CLEN-S3",
+      "service": "cleaning",
+      "class": "S3",
+      "title": "Genuine emergency: mixed cleaning chemicals, people dizzy and one unconscious",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "23e316c98888a91c"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "fe2555e57a4dfebc"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=medical, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Recall on wording nobody has seen is not measured by authored phrases.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "CLEN-S4",
+      "service": "cleaning",
+      "class": "S4",
+      "title": "Voice and multi-turn: post-renovation clean, area correction, then strong gas smell",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "e9073b5cd1843d82"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "800cebffa57c29e2"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=gas, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Understanding of the customer correction is unverified (classifier scripted); only persistence, ordering and the final safety turn are measured.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "HVAC-S1",
+      "service": "hvac",
+      "class": "S1",
+      "title": "Normal intake (English): clean two wall-mounted air conditioners",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "a97ab875e49de520"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "a97ab875e49de520"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Question relevance and wording are deterministic fallbacks here; model-written replies were not exercised (providers stubbed).",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "HVAC-S2",
+      "service": "hvac",
+      "class": "S2",
+      "title": "Ambiguous: not cooling right after cleaning, customer guesses refrigerant gas",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "996233eaddf08df9"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "996233eaddf08df9"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Whether a live model would ask a better clarifying question is unverified; only the deterministic server path ran.",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "HVAC-S3",
+      "service": "hvac",
+      "class": "S3",
+      "title": "Genuine emergency (English): air conditioner explodes and pours black smoke",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "fca079dcd320145a"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "47c1938f25f27333"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Recall on wording nobody has seen is not measured by authored phrases.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "HVAC-S4",
+      "service": "hvac",
+      "class": "S4",
+      "title": "Voice and multi-turn: noisy unit, rating correction, then outdoor unit on fire",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "5952d6c075db9703"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "e89dc0dbd18f6ff5"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Understanding of the customer correction is unverified (classifier scripted); only persistence, ordering and the final safety turn are measured.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "UPHO-S1",
+      "service": "upholstery",
+      "class": "S1",
+      "title": "Normal intake: three-seat fabric sofa with old coffee stains",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "9b3d23cfc8949a90"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "9b3d23cfc8949a90"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Question relevance and wording are deterministic fallbacks here; model-written replies were not exercised (providers stubbed).",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "UPHO-S2",
+      "service": "upholstery",
+      "class": "S2",
+      "title": "Ambiguous (English): strange smell, mold or pet, package undecided",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "e8fc10a13de7f2f7"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "e8fc10a13de7f2f7"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Whether a live model would ask a better clarifying question is unverified; only the deterministic server path ran.",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "UPHO-S3",
+      "service": "upholstery",
+      "class": "S3",
+      "title": "Genuine emergency: visiting cleaner threatens the customer and refuses to leave",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "017661f9ebbb1f8d"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "109eb07e4404a921"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=police, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Recall on wording nobody has seen is not measured by authored phrases.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "UPHO-S4",
+      "service": "upholstery",
+      "class": "S4",
+      "title": "Voice and multi-turn: curtains and carpet, size correction, then vacuum cable smoking beside carpet",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "fc8f4192bd75f3ec"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "bd14c50ca5662b38"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Understanding of the customer correction is unverified (classifier scripted); only persistence, ordering and the final safety turn are measured.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "HAND-S1",
+      "service": "handyman",
+      "class": "S1",
+      "title": "Normal intake: mount a wooden shelf and hang curtains",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "3f3fd48860f099b4"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "3f3fd48860f099b4"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Question relevance and wording are deterministic fallbacks here; model-written replies were not exercised (providers stubbed).",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "HAND-S2",
+      "service": "handyman",
+      "class": "S2",
+      "title": "Ambiguous: wall material and fixing method unknown",
+      "before": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "3f3fd48860f099b4"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "3f3fd48860f099b4"
+      },
+      "classification": "UNCHANGED",
+      "improved": [],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [],
+      "unverified_at_t0": "Whether a live model would ask a better clarifying question is unverified; only the deterministic server path ran.",
+      "before_failures": [],
+      "after_failures": []
+    },
+    {
+      "id": "HAND-S3",
+      "service": "handyman",
+      "class": "S3",
+      "title": "Genuine emergency: drilled into a live cable, worker thrown and unconscious",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "032acab0b6504b9b"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "a206de667e875cde"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=medical, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Recall on wording nobody has seen is not measured by authored phrases.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "HAND-S4",
+      "service": "handyman",
+      "class": "S4",
+      "title": "Voice and multi-turn: kitchen cabinet hinge, cabinet correction, then ladder touches power line",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "b87b6ee700ed3d77"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "97161442f2b99ba5"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=medical, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Understanding of the customer correction is unverified (classifier scripted); only persistence, ordering and the final safety turn are measured.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "ELEC-S5",
+      "service": "electrical",
+      "class": "S5",
+      "title": "Stage smoke journey at the supported T0 layer",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "34ede25eabd9c02a"
+      },
+      "after": {
+        "verdict": "BLOCKED",
+        "deterministic": true,
+        "fingerprint": "7e9d09b2918d92a7"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "J04",
+        "J05",
+        "J11"
+      ],
+      "regressed": [],
+      "failing_in_both": [
+        "J03:BLOCKED->BLOCKED"
+      ],
+      "attribution": [
+        {
+          "assertion": "J04",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/intake-confirmation.service.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J05",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/evidence.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J11",
+          "kawa01_owner": "KAWA_01 D-04 worker-only guard: domains/matching/accept.ts and decline.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "J03 needs PostgreSQL (T1); J14 payment rail and J15 atomicity/RLS/concurrency are BLOCKED at T0; UI rendering of stages is T3.",
+      "before_failures": [
+        "J03:BLOCKED",
+        "J04:FAIL",
+        "J05:FAIL",
+        "J11:FAIL"
+      ],
+      "after_failures": [
+        "J03:BLOCKED"
+      ]
+    },
+    {
+      "id": "PLMB-S5",
+      "service": "plumbing",
+      "class": "S5",
+      "title": "Stage smoke journey at the supported T0 layer",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "4b3551430546bc1d"
+      },
+      "after": {
+        "verdict": "BLOCKED",
+        "deterministic": true,
+        "fingerprint": "68610116370a2cad"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "J04",
+        "J05",
+        "J11"
+      ],
+      "regressed": [],
+      "failing_in_both": [
+        "J03:BLOCKED->BLOCKED"
+      ],
+      "attribution": [
+        {
+          "assertion": "J04",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/intake-confirmation.service.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J05",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/evidence.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J11",
+          "kawa01_owner": "KAWA_01 D-04 worker-only guard: domains/matching/accept.ts and decline.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "J03 needs PostgreSQL (T1); J14 payment rail and J15 atomicity/RLS/concurrency are BLOCKED at T0; UI rendering of stages is T3.",
+      "before_failures": [
+        "J03:BLOCKED",
+        "J04:FAIL",
+        "J05:FAIL",
+        "J11:FAIL"
+      ],
+      "after_failures": [
+        "J03:BLOCKED"
+      ]
+    },
+    {
+      "id": "CLEN-S5",
+      "service": "cleaning",
+      "class": "S5",
+      "title": "Stage smoke journey at the supported T0 layer",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "5eb31368b618f97a"
+      },
+      "after": {
+        "verdict": "BLOCKED",
+        "deterministic": true,
+        "fingerprint": "20a277e9ef2210cb"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "J04",
+        "J05",
+        "J11"
+      ],
+      "regressed": [],
+      "failing_in_both": [
+        "J03:BLOCKED->BLOCKED"
+      ],
+      "attribution": [
+        {
+          "assertion": "J04",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/intake-confirmation.service.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J05",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/evidence.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J11",
+          "kawa01_owner": "KAWA_01 D-04 worker-only guard: domains/matching/accept.ts and decline.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "J03 needs PostgreSQL (T1); J14 payment rail and J15 atomicity/RLS/concurrency are BLOCKED at T0; UI rendering of stages is T3.",
+      "before_failures": [
+        "J03:BLOCKED",
+        "J04:FAIL",
+        "J05:FAIL",
+        "J11:FAIL"
+      ],
+      "after_failures": [
+        "J03:BLOCKED"
+      ]
+    },
+    {
+      "id": "HVAC-S5",
+      "service": "hvac",
+      "class": "S5",
+      "title": "Stage smoke journey at the supported T0 layer",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "3d5b4cdd3b656a88"
+      },
+      "after": {
+        "verdict": "BLOCKED",
+        "deterministic": true,
+        "fingerprint": "05500f6473ed456d"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "J04",
+        "J05",
+        "J11"
+      ],
+      "regressed": [],
+      "failing_in_both": [
+        "J03:BLOCKED->BLOCKED"
+      ],
+      "attribution": [
+        {
+          "assertion": "J04",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/intake-confirmation.service.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J05",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/evidence.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J11",
+          "kawa01_owner": "KAWA_01 D-04 worker-only guard: domains/matching/accept.ts and decline.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "J03 needs PostgreSQL (T1); J14 payment rail and J15 atomicity/RLS/concurrency are BLOCKED at T0; UI rendering of stages is T3.",
+      "before_failures": [
+        "J03:BLOCKED",
+        "J04:FAIL",
+        "J05:FAIL",
+        "J11:FAIL"
+      ],
+      "after_failures": [
+        "J03:BLOCKED"
+      ]
+    },
+    {
+      "id": "UPHO-S5",
+      "service": "upholstery",
+      "class": "S5",
+      "title": "Stage smoke journey at the supported T0 layer",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "3ef6b0d3702ac4db"
+      },
+      "after": {
+        "verdict": "BLOCKED",
+        "deterministic": true,
+        "fingerprint": "87357054f8e7825d"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "J04",
+        "J05",
+        "J11"
+      ],
+      "regressed": [],
+      "failing_in_both": [
+        "J03:BLOCKED->BLOCKED"
+      ],
+      "attribution": [
+        {
+          "assertion": "J04",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/intake-confirmation.service.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J05",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/evidence.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J11",
+          "kawa01_owner": "KAWA_01 D-04 worker-only guard: domains/matching/accept.ts and decline.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "J03 needs PostgreSQL (T1); J14 payment rail and J15 atomicity/RLS/concurrency are BLOCKED at T0; UI rendering of stages is T3.",
+      "before_failures": [
+        "J03:BLOCKED",
+        "J04:FAIL",
+        "J05:FAIL",
+        "J11:FAIL"
+      ],
+      "after_failures": [
+        "J03:BLOCKED"
+      ]
+    },
+    {
+      "id": "HAND-S5",
+      "service": "handyman",
+      "class": "S5",
+      "title": "Stage smoke journey at the supported T0 layer",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "b0eab8028851b321"
+      },
+      "after": {
+        "verdict": "BLOCKED",
+        "deterministic": true,
+        "fingerprint": "d9b23d3540ba4df7"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "J04",
+        "J05",
+        "J11"
+      ],
+      "regressed": [],
+      "failing_in_both": [
+        "J03:BLOCKED->BLOCKED"
+      ],
+      "attribution": [
+        {
+          "assertion": "J04",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/intake-confirmation.service.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J05",
+          "kawa01_owner": "KAWA_01 D-03 customer-only guard: domains/kael-chat/evidence.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        },
+        {
+          "assertion": "J11",
+          "kawa01_owner": "KAWA_01 D-04 worker-only guard: domains/matching/accept.ts and decline.ts",
+          "execution_path_marker": "refusal that the BEFORE source cannot produce (BEFORE accepted the same call)",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "J03 needs PostgreSQL (T1); J14 payment rail and J15 atomicity/RLS/concurrency are BLOCKED at T0; UI rendering of stages is T3.",
+      "before_failures": [
+        "J03:BLOCKED",
+        "J04:FAIL",
+        "J05:FAIL",
+        "J11:FAIL"
+      ],
+      "after_failures": [
+        "J03:BLOCKED"
+      ]
+    },
+    {
+      "id": "C1",
+      "service": "plumbing",
+      "class": "C",
+      "title": "Voice-only request on an existing session (no typed message)",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "0ff68f4faf1cccca"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "3f2502a97cc0d6b1"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=medical, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Exactly-once writes need an idempotency key and PostgreSQL (T1); guidance carried in an error response is not rendered by the shipped client.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "C2",
+      "service": "electrical",
+      "class": "C",
+      "title": "Emergency inside a price-question turn (early-return path)",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "87ea66122c890916"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "946606ef31f057c7"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Exactly-once writes need an idempotency key and PostgreSQL (T1); guidance carried in an error response is not rendered by the shipped client.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "C3",
+      "service": "plumbing",
+      "class": "C",
+      "title": "Invalid (past) scheduling together with an emergency",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "bf973633364f11a6"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "24bce5b8f135ee41"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "http_ok",
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "http_ok",
+          "kawa01_owner": "KAWA_01 schedule-refusal bypass: domains/kael-chat/turn.ts and create.ts answer an emergency before the invalid-schedule 400",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        },
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Exactly-once writes need an idempotency key and PostgreSQL (T1); guidance carried in an error response is not rendered by the shipped client.",
+      "before_failures": [
+        "http_ok:FAIL",
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "C4",
+      "service": "plumbing",
+      "class": "C",
+      "title": "Emergency reported on a closed Case (confirmed, abandoned, unsupported)",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "ca45d637b0e563f1"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "6d58b70e9bfbaf93"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "confirmed/emergency_escalated_acceptable",
+        "abandoned/emergency_escalated_acceptable",
+        "unsupported/emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "confirmed/emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "trace.outcome=emergency_guidance_only",
+          "attributable": true
+        },
+        {
+          "assertion": "abandoned/emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "trace.outcome=emergency_guidance_only",
+          "attributable": true
+        },
+        {
+          "assertion": "unsupported/emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "trace.outcome=emergency_guidance_only",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Exactly-once writes need an idempotency key and PostgreSQL (T1); guidance carried in an error response is not rendered by the shipped client.",
+      "before_failures": [
+        "confirmed/emergency_escalated_acceptable:FAIL",
+        "abandoned/emergency_escalated_acceptable:FAIL",
+        "unsupported/emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "C5",
+      "service": "plumbing",
+      "class": "C",
+      "title": "Multiple emergency signals across message, reviewed voice transcript and a text note",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "ce3f56d1cf420a7f"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "c2eea018a8bc072e"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "emergency_escalated_acceptable"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "emergency_escalated_acceptable",
+          "kawa01_owner": "KAWA_01 emergency gate: domains/kael-chat/emergency-turn.ts + kael-guardrails/emergency-guidance.ts + emergency-signal-text.ts (all new in KAWA_01), wired from turn.ts, create.ts, evidence.ts, intake-confirmation.service.ts",
+          "execution_path_marker": "emergency_route=uncertain, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Exactly-once writes need an idempotency key and PostgreSQL (T1); guidance carried in an error response is not rendered by the shipped client.",
+      "before_failures": [
+        "emergency_escalated_acceptable:FAIL"
+      ],
+      "after_failures": []
+    },
+    {
+      "id": "C6",
+      "service": "electrical",
+      "class": "C",
+      "title": "Emergency reply write fails, customer retries; recovery and trace integrity",
+      "before": {
+        "verdict": "FAIL",
+        "deterministic": true,
+        "fingerprint": "5aa2867e20dbc1ac"
+      },
+      "after": {
+        "verdict": "PASS",
+        "deterministic": true,
+        "fingerprint": "44fa55ad393d3972"
+      },
+      "classification": "IMPROVED",
+      "improved": [
+        "failure_observable",
+        "recovery_delivers"
+      ],
+      "regressed": [],
+      "failing_in_both": [],
+      "attribution": [
+        {
+          "assertion": "failure_observable",
+          "kawa01_owner": "KAWA_01 emergency write-failure trace: platform/turn-trace.ts + emergency-turn.ts emergencyWriteFailure",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        },
+        {
+          "assertion": "recovery_delivers",
+          "kawa01_owner": "KAWA_01 stranded-turn recovery and guidance replay: domains/kael-chat/session-store.ts + emergency-turn.ts",
+          "execution_path_marker": "emergency_route=fire, trace.outcome=emergency_stop",
+          "attributable": true
+        }
+      ],
+      "unverified_at_t0": "Exactly-once writes need an idempotency key and PostgreSQL (T1); guidance carried in an error response is not rendered by the shipped client.",
+      "before_failures": [
+        "failure_observable:FAIL",
+        "recovery_delivers:FAIL"
+      ],
+      "after_failures": []
+    }
+  ]
+}

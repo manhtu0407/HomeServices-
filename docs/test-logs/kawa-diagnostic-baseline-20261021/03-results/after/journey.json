@@ -1,0 +1,1390 @@
+{
+  "schema": "nestscout.diagnostic_results.v1",
+  "kind": "journey",
+  "harness_version": "kawa-diag-harness.v1",
+  "snapshot": "after",
+  "matrix_sha256": "dd8392cbcc2fec7ad4f0b1611a52abea0cb7ed86fc681972fec9707c74a51dd7",
+  "executed_at": "2026-10-21T16:22:14.935Z",
+  "runs": [
+    {
+      "scenario": "ELEC-S5",
+      "service": "electrical",
+      "class": "S5",
+      "run": 1,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=electrical case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=electric_diagnose scope.profile_id=electric_diagnose"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "ELEC-S5",
+      "service": "electrical",
+      "class": "S5",
+      "run": 2,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=electrical case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=electric_diagnose scope.profile_id=electric_diagnose"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "PLMB-S5",
+      "service": "plumbing",
+      "class": "S5",
+      "run": 1,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=plumbing case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=water_diagnose scope.profile_id=water_diagnose"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "PLMB-S5",
+      "service": "plumbing",
+      "class": "S5",
+      "run": 2,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=plumbing case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=water_diagnose scope.profile_id=water_diagnose"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "CLEN-S5",
+      "service": "cleaning",
+      "class": "S5",
+      "run": 1,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=cleaning case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=clean_scope scope.profile_id=clean_scope"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "CLEN-S5",
+      "service": "cleaning",
+      "class": "S5",
+      "run": 2,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=cleaning case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=clean_scope scope.profile_id=clean_scope"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "HVAC-S5",
+      "service": "hvac",
+      "class": "S5",
+      "run": 1,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=hvac case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=air_scope scope.profile_id=air_scope"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "HVAC-S5",
+      "service": "hvac",
+      "class": "S5",
+      "run": 2,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=hvac case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=air_scope scope.profile_id=air_scope"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "UPHO-S5",
+      "service": "upholstery",
+      "class": "S5",
+      "run": 1,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=upholstery case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=fabric_scope scope.profile_id=fabric_scope"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "UPHO-S5",
+      "service": "upholstery",
+      "class": "S5",
+      "run": 2,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=upholstery case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=fabric_scope scope.profile_id=fabric_scope"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "HAND-S5",
+      "service": "handyman",
+      "class": "S5",
+      "run": 1,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=handyman case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=task_scope scope.profile_id=task_scope"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    },
+    {
+      "scenario": "HAND-S5",
+      "service": "handyman",
+      "class": "S5",
+      "run": 2,
+      "verdict": "BLOCKED",
+      "events_enumerated": 21,
+      "checkpoints": [
+        {
+          "id": "J01",
+          "name": "basic_intake_accepted",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "status=201 service_type=handyman case_phase=analysis"
+        },
+        {
+          "id": "J02",
+          "name": "service_profile_resolved",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "profile=task_scope scope.profile_id=task_scope"
+        },
+        {
+          "id": "J03",
+          "name": "no_offer_before_quote_ready",
+          "expected": "PASS",
+          "result": "BLOCKED",
+          "detail": "the Edge layer delegated the quote-readiness decision to confirm_kael_chat_durable_authorized_v6 (status=500 from the in-memory stand-in, which cannot decide); needs T1 PostgreSQL. No Edge pre-check refused a non-quote-ready Case. other-writes=[]"
+        },
+        {
+          "id": "J04",
+          "name": "offer_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "fixture=pending admin=403 metadata-unchanged=true owner=200"
+        },
+        {
+          "id": "J05",
+          "name": "evidence_decision_is_customer_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "admin status=403 turns-written=0"
+        },
+        {
+          "id": "J06",
+          "name": "job_lifecycle_legal_path",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "13 event-gated pairs accepted by some event; draft->analyzing has no event and is checked against the lifecycle table only (events enumerated: 21). DOC DRIFT: confirmed_by_customer->payment_pending: documented event kael_decided_payment does not exist in code; accepted by [customer_started_payment]"
+        },
+        {
+          "id": "J07",
+          "name": "job_lifecycle_illegal_refused",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "all probed illegal pairs refused under every event"
+        },
+        {
+          "id": "J08",
+          "name": "customer_gates_hold",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "worker_matched (from a pre-match status) producers=[customer_confirmed_worker]; payment_pending producers=[customer_started_payment] worker-fired among them=[]. Interpretation register I3: scope-change resumes into an on-site status are not matching steps; 'a Kael or payment event' is read as 'an event not fired by a worker'"
+        },
+        {
+          "id": "J09",
+          "name": "scope_change_gate",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "entering producers=[scope_change_requested] direct-to-completed=[] reachable-from-all-five-on-site=true"
+        },
+        {
+          "id": "J10",
+          "name": "cancel_and_rematch",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "cancel_requested allowed from on-site=[] kael_processed_cancellation re-match from all five=true"
+        },
+        {
+          "id": "J11",
+          "name": "worker_accept_is_worker_only",
+          "expected": "PASS",
+          "result": "PASS",
+          "detail": "accept: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}; decline: {\"rejected\":true,\"status\":403,\"calls\":[],\"code\":\"AUTH_FORBIDDEN\"}"
+        },
+        {
+          "id": "J12",
+          "name": "payment_skip_edge",
+          "expected": "KNOWN_GAP_IF_REACHABLE_ONLY_BY_DISPUTE",
+          "result": "PASS",
+          "detail": "events permitting confirmed_by_customer->reviewed: []; lifecycle table alone allows it=false"
+        },
+        {
+          "id": "J13",
+          "name": "worker_ui_stage_projection",
+          "expected": "INVENTORY",
+          "result": "INVENTORY",
+          "detail": "statuses=18 phases=20 unmapped=[] (worker UI stage ids are inventoried from mobile source in 04-workflows, not from rendering)"
+        },
+        {
+          "id": "J14",
+          "name": "payment_rail_and_callback",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 has no payment rail, provider callback or ledger table"
+        },
+        {
+          "id": "J15",
+          "name": "atomicity_rls_concurrency",
+          "expected": "BLOCKED",
+          "result": "BLOCKED",
+          "detail": "T0 stand-in cannot prove unique indexes, RLS, locks or RPC atomicity"
+        }
+      ]
+    }
+  ]
+}

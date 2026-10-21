@@ -1,0 +1,7 @@
+{
+  "source": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
+  "source_sha256_lf_normalised": "68569488bd54dd1cd09e24a138c354340c4052b862b10113bf01ca13055279ce",
+  "clone_sha256": "a34ad3a64d6687ad39eaf0ac88e416d88e30dcf360c5626562521eca7142c535",
+  "transformation": "only the import path of emergency-signal-text and the hasAffirmedCue function body (same control flow; one record() call per rejection reason; same return values) plus the label registration appended at the end of the module",
+  "worktree": "C:/ns-diag/after"
+}

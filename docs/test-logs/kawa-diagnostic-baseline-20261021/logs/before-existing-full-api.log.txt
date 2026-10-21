@@ -1,0 +1,3 @@
+JSON report written to <repo>/docs/test-logs/kawa-diagnostic-baseline-20261021/06-existing-suites/before-full-api.vitest.json
+
+----- stderr -----

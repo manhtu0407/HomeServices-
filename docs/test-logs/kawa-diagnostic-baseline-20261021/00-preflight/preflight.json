@@ -1,0 +1,83 @@
+{
+  "schema": "nestscout.diagnostic_preflight.v1",
+  "recorded_utc_date": "2026-10-21",
+  "executor": "Claude Code (Sonnet 5.5), session branch claude/nestscout-kawa-01-diagnostic-bd0158",
+  "mission": "Six-service baseline and H5 root-cause investigation (bounded diagnostic; no production-source change)",
+  "governance_read": [
+    "CLAUDE.md (router)",
+    "governance/RULES.md (full)",
+    "governance/critical.md (full)",
+    "governance/protocols/code-hygiene.md (full)",
+    ".claude/MEMORY.md (recall index)",
+    "governance/STRUCTURES.md section 1.5 and structures/state-machines.md section 12",
+    "docs/test-logs/kawa-execution-ledger.md (AFTER snapshot, full read of W00..SAFETY-APPROVAL..final)",
+    "docs/test-logs/kawa-01-final-closure-evidence/README.txt and h5-reproduction.json",
+    "docs/test-logs/kawa-01-owner-integration-evidence/report.md",
+    "docs/test-logs/kawa-01-safety-approval-evidence/safety-coverage-matrix.md"
+  ],
+  "governance_not_found": [
+    "KAWA_02 and KAWA_05 requirement documents are not in the repository at either snapshot. The only in-repo references are in the ledger: 'KAWA_02 approval receipt' (scope-change decision carries no version of what was shown) and 'KAWA_02 requires a new instruction'. KAWA_05 is not referenced anywhere. KAWA_02 readiness is therefore assessed against the ledger's own residual-risk and owner-decision list, not against a KAWA_02 spec."
+  ],
+  "snapshots": {
+    "before": {
+      "sha": "ce4bd3cd98c72a46ea14d4cc60d24e53c0b91f72",
+      "object_type": "commit",
+      "ancestor_of_after": true,
+      "worktree": "C:/ns-diag/before (detached, git worktree)",
+      "install": "corepack pnpm 10.16.1 install --offline --frozen-lockfile --ignore-scripts, exit 0"
+    },
+    "after": {
+      "sha": "42daced1a52ca5b8e5ee2e0b982c28e697f184c9",
+      "object_type": "commit",
+      "subject": "#403 preserve safety guidance and customer approval boundaries",
+      "on_origin_main": true,
+      "origin_main_head_at_check": "42daced1a52ca5b8e5ee2e0b982c28e697f184c9",
+      "worktree": "C:/ns-diag/after (detached, git worktree)",
+      "install": "corepack pnpm 10.16.1 install --offline --frozen-lockfile --ignore-scripts, exit 0"
+    },
+    "session_worktree_head": "111988b0ad6ec276082f6a4706866401fc887e4b",
+    "session_worktree_head_note": "Session worktree sits on the main commit immediately before the KAWA_01 merge; it was not checked out to either snapshot. Both snapshots are separate detached worktrees so the session branch and the original KAWA_01 implementation are untouched.",
+    "commits_in_range": 19,
+    "first_parent_commits": [
+      "42daced1 #403 preserve safety guidance and customer approval boundaries",
+      "111988b0 Merge pull request #402 (hosted release historical artifact validation)",
+      "4ffb3eaf fix(release): isolate Stage 1 quality concurrency (#401)",
+      "503913eb feat(kael-ship): add local production release runner (#398)",
+      "ae292c20 fix(release): trust registered active client baseline (#400)",
+      "5d447418 fix(release): bind active client baseline to registered release (#399)",
+      "24b0e124 feat(governance): kael-solve-conflict-maximize skill with zero-comment ratchet",
+      "648c909b chore(ios): reserve build 57 for TestFlight (#396)"
+    ]
+  },
+  "attribution_surface": {
+    "non_kawa_product_source_drift_before_to_111988b0": "5 files: apps/mobile/app.json, apps/mobile/config/release-client-policy.json and three release-readiness tests. No supabase/, packages/shared or Kael source changed between BEFORE and the main commit that precedes the KAWA_01 merge.",
+    "kawa01_product_source_delta_111988b0_to_42daced1": "58 non-test product-source files (44 Edge/shared, 14 mobile, plus eval scripts). Therefore every Edge-behaviour difference between the two snapshots is attributable to KAWA_01 at the source level; per-scenario attribution still requires an execution-path marker (see REPORT_A).",
+    "diffstat_before_to_after": "743 files changed, 230078 insertions, 2934 deletions (the large majority is evidence under docs/test-logs)"
+  },
+  "production_release_containment": {
+    "method": "read-only GitHub API and gh run view; no dispatch, no variable write, no workflow re-run",
+    "repo_variable_NESTSCOUT_BACKEND_RELEASE_ENABLED": {"value": "false", "updated_at": "2026-10-21T14:26:13Z"},
+    "production_environment_protection_rules": 0,
+    "main_push_runs_at_after_sha_42daced1": [
+      {"workflow": "release-backend-system-health", "run_id": 39629020562, "conclusion": "skipped"},
+      {"workflow": "ci", "run_id": 39629020804, "conclusion": "success"},
+      {"workflow": "release-production", "run_id": 39629020606, "conclusion": "failure", "detail": "single gate job failed at step 'Start isolated local Supabase' (after quality gates, secret scan and Edge Deno checks passed); the second job (reconcile cancelled/timed-out Stage 1 candidate) was skipped; no release-mutation job ran"}
+    ],
+    "same_pattern_on_previous_main_pushes": "release-production failure and backend release failure/skip recorded for 111988b0 and 4ffb3eaf on 2026-10-20 (before the variable was set to false)",
+    "verdict": "EFFECTIVE for the backend release path (variable false, deployment workflow skipped on the main push). RESIDUAL: the production environment has zero protection rules, so the containment is a single repository variable plus a pre-mutation CI gate that currently fails; it is not an approval barrier. release-production on main push failing in a gate job is containment by accident of a red gate, not by design.",
+    "not_checked": "Supabase Production Edge deployment state and EAS state were not queried (out of scope; no production access in this run)"
+  },
+  "environment": {
+    "os": "Windows 11 Home 10.0.26200",
+    "node": "v24.19.0",
+    "package_manager": "corepack pnpm 10.16.1 (repository-pinned)",
+    "vitest": "4.1.6",
+    "docker": "not used in this run (T0 only; kael-docker degraded lane: no Edge compile, no database)",
+    "deno": "not installed on host; Edge code is executed under Node/vitest exactly as the repository's own kael-edge-runtime pillars do"
+  },
+  "restrictions_honoured_so_far": [
+    "no production source change in either snapshot or the session branch",
+    "no deploy, no hosted database call, no paid provider call, no secret read",
+    "no commit, push, merge, branch change"
+  ]
+}

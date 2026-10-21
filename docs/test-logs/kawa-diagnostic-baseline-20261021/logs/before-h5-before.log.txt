@@ -1,0 +1,11 @@
+
+ RUN  v4.1.6 C:/ns-diag/before/apps/api
+
+
+ Test Files  1 passed (1)
+      Tests  63 passed (63)
+   Start at  23:30:46
+   Duration  7.02s (transform 4.98s, setup 0ms, import 5.98s, tests 786ms, environment 0ms)
+
+
+----- stderr -----

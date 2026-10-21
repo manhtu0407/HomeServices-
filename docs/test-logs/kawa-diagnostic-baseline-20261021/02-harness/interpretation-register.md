@@ -1,0 +1,13 @@
+# Interpretation register (recorded before any official run)
+
+The frozen matrix (sha256 dd8392cb...) is unchanged. These are the places where its wording had to be mapped onto what the code actually exposes. Each was decided after the harness self-test and before the first scored execution. Self-test output is preserved in 03-results/selftest/.
+
+| ID | Checkpoint | Frozen wording | What the code showed | Interpretation applied |
+|---|---|---|---|---|
+| I1 | J03 | refused with a 4xx and nothing but kael_chat_* rows is written | The Edge confirm route does not pre-check quote readiness: it calls confirm_kael_chat_durable_authorized_v6 and lets SQL decide. The in-memory stand-in cannot answer that RPC. | PASS only if refused at the Edge with a 4xx and no business RPC. If the business RPC was reached the result is BLOCKED (decision belongs to SQL, T1 needed). It is never scored PASS and is not claimed as FAIL either. |
+| I2 | J06 | accepts, with the documented event, every consecutive pair | STRUCTURES section 12.3 documents kael_decided_payment for confirmed_by_customer to payment_pending; the code has no such event (it has customer_started_payment). 21 events exist in code, 24 are documented. | A pair is accepted if any event in code accepts it. The documented-event mismatch is reported as DOC DRIFT in the checkpoint detail. |
+| I3 | J08 | customer_confirmed_worker is the only event producing worker_matched; payment_pending requires a Kael or payment event | Scope-change resume events also produce worker_matched, but from scope_change_pending. payment_pending is produced by a customer event, which matches RULES section 7 (explicit customer action). | First set restricted to pre-match origin statuses. Second condition read as: at least one producer and none fired by a worker. |
+| I4 | J12 | OBSERVE the payment skip | Code has no event for confirmed_by_customer to reviewed and the lifecycle table alone refuses it; STRUCTURES section 12.2 still calls it an open gap. | Reachable by none is scored PASS and reported as DOC DRIFT (documented gap is closed in code). |
+| I5 | J13 | INVENTORY | WORKFLOW_PHASES has 20 members; STRUCTURES documents 19. | Counts are read from code; drift reported. |
+| I6 | C6 | fail_next_kael_reply_inserts = 1 | The AFTER snapshot absorbs a single failed reply insert with an internal retry and answers 200; it cannot exercise its own failure trace. | Frozen C6 is scored as written. A supplementary persistent-failure variant (SUPP-C6b, 3 consecutive reply-insert failures, otherwise identical to C6) is pre-registered here and reported separately; it never replaces C6. |
+| I7 | all | evidence_handled / failure_observable slice rules | Implemented as 16-character normalised slices. | As frozen. |

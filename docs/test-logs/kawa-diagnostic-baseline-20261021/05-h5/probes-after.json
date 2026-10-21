@@ -1,0 +1,236 @@
+{
+  "schema": "nestscout.diagnostic_h5_probes.v1",
+  "note": "Development sets are the rows the classifier was fixed against; counterfactuals are edited copies of H5 texts used only to demonstrate a mechanism.",
+  "results": {
+    "development": {
+      "per_set": {
+        "development-h1.json": {
+          "clear_rows": 87,
+          "positives": 49,
+          "negatives": 38,
+          "route_correct": 87
+        },
+        "development-h2.json": {
+          "clear_rows": 61,
+          "positives": 38,
+          "negatives": 23,
+          "route_correct": 61
+        },
+        "development-h3.json": {
+          "clear_rows": 66,
+          "positives": 37,
+          "negatives": 29,
+          "route_correct": 66
+        },
+        "development-h4.json": {
+          "clear_rows": 53,
+          "positives": 30,
+          "negatives": 23,
+          "route_correct": 53
+        }
+      },
+      "clear_rows": 267,
+      "route_correct": 267
+    },
+    "perturbation": {
+      "rows": 154,
+      "original": {
+        "still_routed_correctly": 154,
+        "routed_to_a_different_route": 0,
+        "lost": 0
+      },
+      "no_diacritics": {
+        "still_routed_correctly": 142,
+        "routed_to_a_different_route": 0,
+        "lost": 12
+      },
+      "wrong_tone_marks": {
+        "still_routed_correctly": 91,
+        "routed_to_a_different_route": 1,
+        "lost": 62
+      },
+      "uppercase": {
+        "still_routed_correctly": 154,
+        "routed_to_a_different_route": 0,
+        "lost": 0
+      },
+      "one_letter_deleted": {
+        "still_routed_correctly": 106,
+        "routed_to_a_different_route": 2,
+        "lost": 46
+      },
+      "adjacent_letters_swapped": {
+        "still_routed_correctly": 108,
+        "routed_to_a_different_route": 2,
+        "lost": 44
+      },
+      "one_letter_doubled": {
+        "still_routed_correctly": 107,
+        "routed_to_a_different_route": 2,
+        "lost": 45
+      }
+    },
+    "counterfactuals": [
+      {
+        "id": "H5-024",
+        "original_route": null,
+        "variant_route": "gas",
+        "variant_expected": "gas",
+        "mechanism_confirmed": true,
+        "mechanism": "a digit-bearing token (\"12kg\") sits inside the filler span that the gas-object cue allows only letters in"
+      },
+      {
+        "id": "H5-018",
+        "original_route": null,
+        "variant_route": "electrical_water",
+        "variant_expected": "electrical_water",
+        "mechanism_confirmed": true,
+        "mechanism": "the reduplicated adverb \"ròng ròng\" between the verb and the preposition breaks a pattern that expects them adjacent"
+      },
+      {
+        "id": "H5-005",
+        "original_route": null,
+        "variant_route": "fire",
+        "variant_expected": "fire",
+        "mechanism_confirmed": true,
+        "mechanism": "verb-object order: cues encode \"lửa bốc\" (fire erupts), not \"bốc lửa\""
+      },
+      {
+        "id": "H5-001",
+        "original_route": null,
+        "variant_route": "fire",
+        "variant_expected": "fire",
+        "mechanism_confirmed": true,
+        "mechanism": "an intervening colour adjective (\"xanh lè\") separates the noun from its verb in the cue"
+      },
+      {
+        "id": "H5-002",
+        "original_route": null,
+        "variant_route": "fire",
+        "variant_expected": "fire",
+        "mechanism_confirmed": true,
+        "mechanism": "synonym: \"cháy lớn\" is a cue, \"cháy dữ dội\" is not"
+      },
+      {
+        "id": "H5-011",
+        "original_route": null,
+        "variant_route": "medical",
+        "variant_expected": "medical",
+        "mechanism_confirmed": true,
+        "mechanism": "synonym: the ingestion cue is \"nuốt nhầm\"; \"nuốt phải\" carries the same meaning but is absent"
+      },
+      {
+        "id": "H5-019",
+        "original_route": null,
+        "variant_route": null,
+        "variant_expected": "electrical_water",
+        "mechanism_confirmed": false,
+        "mechanism": "synonym: \"ngâm nước\" is a cue, \"ướt sũng\" is not"
+      },
+      {
+        "id": "H5-028",
+        "original_route": null,
+        "variant_route": "uncertain",
+        "variant_expected": "uncertain",
+        "mechanism_confirmed": true,
+        "mechanism": "synonym: the uncertainty cue is built on \"gọi\" (call); the row says \"báo\" (notify)"
+      },
+      {
+        "id": "H5-013",
+        "original_route": null,
+        "variant_route": "police",
+        "variant_expected": "police",
+        "mechanism_confirmed": true,
+        "mechanism": "verb coverage: \"cạy\" (pry) is a cue; \"cố mở\" (trying to open) is not, and the clothing clause breaks the subject-verb span"
+      },
+      {
+        "id": "H5-014",
+        "original_route": null,
+        "variant_route": "police",
+        "variant_expected": "police",
+        "mechanism_confirmed": true,
+        "mechanism": "threat verb: \"sẽ giết\" (will kill) is a cue; \"sẽ đánh\" (will hit) is not, and \"cầm gậy\" is not a weapon cue"
+      },
+      {
+        "id": "H5-040",
+        "original_route": "gas",
+        "variant_route": null,
+        "variant_expected": null,
+        "mechanism_confirmed": true,
+        "mechanism": "word order on the NEGATIVE side: the prevention list holds \"báo rò gas\" but the row says \"báo gas rò\""
+      },
+      {
+        "id": "H5-019-round2-span",
+        "original_route": null,
+        "variant_route": "electrical_water",
+        "variant_expected": "electrical_water",
+        "mechanism_confirmed": true,
+        "mechanism": "round 2 after the round-1 synonym hypothesis was NOT confirmed: the cue allows at most two words between the fixture and \"ngâm nước\"; \"trong nhà tắm\" is three"
+      },
+      {
+        "id": "H5-019-round2-control",
+        "original_route": null,
+        "variant_route": null,
+        "variant_expected": null,
+        "mechanism_confirmed": false,
+        "mechanism": "round 2 control: same sentence with the three-word gap kept must still miss, isolating the span limit from the synonym"
+      },
+      {
+        "id": "H5-001-round3",
+        "original_route": null,
+        "variant_route": "fire",
+        "variant_expected": "fire",
+        "mechanism_confirmed": true,
+        "mechanism": "round 3 isolation: only \"xanh lè\" removed"
+      },
+      {
+        "id": "H5-013-round3-verb",
+        "original_route": null,
+        "variant_route": null,
+        "variant_expected": "police",
+        "mechanism_confirmed": false,
+        "mechanism": "round 3 isolation: only the verb changed to \"cạy\"; clothing clause kept"
+      },
+      {
+        "id": "H5-013-round3-clause",
+        "original_route": null,
+        "variant_route": null,
+        "variant_expected": null,
+        "mechanism_confirmed": false,
+        "mechanism": "round 3 isolation: only the clothing clause removed; verb \"cố mở\" kept"
+      },
+      {
+        "id": "H5-014-round3-threat",
+        "original_route": null,
+        "variant_route": "police",
+        "variant_expected": "police",
+        "mechanism_confirmed": true,
+        "mechanism": "round 3 isolation: only the threat verb changed to \"giết\"; weapon clause kept"
+      },
+      {
+        "id": "H5-014-round3-weapon",
+        "original_route": null,
+        "variant_route": null,
+        "variant_expected": null,
+        "mechanism_confirmed": false,
+        "mechanism": "round 3 isolation: only the weapon clause removed; threat verb \"đánh\" kept"
+      },
+      {
+        "id": "H5-028-round3",
+        "original_route": null,
+        "variant_route": "uncertain",
+        "variant_expected": "uncertain",
+        "mechanism_confirmed": true,
+        "mechanism": "round 3 isolation: only \"báo\" changed to \"gọi\""
+      },
+      {
+        "id": "H5-015",
+        "original_route": null,
+        "variant_route": "police",
+        "variant_expected": "police",
+        "mechanism_confirmed": true,
+        "mechanism": "English morphology: the cue list holds the past tense \"climbed\", not \"is trying to climb\""
+      }
+    ]
+  }
+}

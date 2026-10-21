@@ -1,0 +1,34 @@
+{
+  "schema": "nestscout.diagnostic_harness_freeze.v1",
+  "harness_version": "kawa-diag-harness.v1",
+  "frozen_utc": "2026-10-21T16:21:29.544Z",
+  "matrix_sha256": "dd8392cbcc2fec7ad4f0b1611a52abea0cb7ed86fc681972fec9707c74a51dd7",
+  "files": {
+    "diag-support.ts": "71206fef72ca1400ec6c55758dd6df0ee22b28f15099ca1840822d07c979a05b",
+    "kawa-diag-matrix-pillar.test.ts": "f9f61e2b3aa079d58501407bede0f42bf05cc472700d033438f0009fe8a26a75",
+    "kawa-diag-journey-pillar.test.ts": "2e9de0780ff9fb68b56e5fa8630b3eb38db9c00273fc7463ec58778c871fb087",
+    "run-diag.mjs": "f6652d23157374751b3d9c33fa46b68629d4061bd57ffdec60af360d5043c5b5",
+    "supplementary-matrix.json": "a657eb4f61be4fe8ce7a16e0312de63acc916d868229551fab76c741cbf5d20c",
+    "interpretation-register.md": "702e5d30e97ac4ba57a90929aceffb9fc809db1ce4c38765196170bf3a7721e4"
+  },
+  "statement": "Harness frozen after the self-test and before the first scored execution. Scored runs refuse to start if the matrix hash differs. A later harness defect is recorded in the defect register and the harness is versioned (v2); v1 results are kept.",
+  "pre_registered_supplementary": [
+    "SUPP-C6b (supplementary-matrix.json)",
+    "SUPP-H5-BEFORE: run the 63 sealed H5 rows (unmodified, read-only) through the Case-turn entry in both snapshots to measure BEFORE detection on the same rows; reported as supplementary, never as part of the 72 executions and never as independent validation"
+  ],
+  "selftest_evidence": [
+    "03-results/selftest/selftest-before.json",
+    "03-results/selftest/selftest-after.json",
+    "03-results/selftest/selftest-journey-before.json",
+    "03-results/selftest/selftest-journey-after.json"
+  ],
+  "selftest_note": "The self-test journey outputs in 03-results/selftest were produced before the interpretation register and the J03/J06/J08/verdict patches; they are retained as the evidence that motivated I1-I3.",
+  "amendments": [
+    {
+      "utc": "2026-10-21T16:25:14.722Z",
+      "version": "kawa-diag-harness.v1.1",
+      "change": "diag-support.ts: optional KAWA_DIAG_PLAYBOOK_FLAGS=on sets KAEL_PLAYBOOK_<SERVICE>_ENABLED=true for the six services. Default behaviour is byte-identical (flag unset), so the scored v1 runs are unaffected. Added after the scored runs for the pre-declared sensitivity SUPP-FLAGS (BEFORE and AFTER with every playbook flag on). The v1 file hash used by the scored runs is recorded in logs/commands.jsonl.",
+      "file_sha256_after": "ed5770514c61effafa360af670fa3c633feaf3a56287540dfdf1512a104c9f72"
+    }
+  ]
+}

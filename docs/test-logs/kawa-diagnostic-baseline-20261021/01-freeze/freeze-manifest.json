@@ -1,0 +1,15 @@
+{
+  "schema": "nestscout.diagnostic_freeze.v1",
+  "frozen_utc": "2026-10-21T16:11:30.602Z",
+  "artifact": "scenario-matrix.json",
+  "sha256": "dd8392cbcc2fec7ad4f0b1611a52abea0cb7ed86fc681972fec9707c74a51dd7",
+  "bytes": 39179,
+  "scenario_count": 36,
+  "order_of_operations_attested": [
+    "1. Preflight and snapshot worktrees created; both installs completed.",
+    "2. Harness bring-up probe ran ONE neutral non-emergency sentence (plumbing and hvac) against both snapshots to prove the harness binds. Its output was identical in both snapshots. That sentence is not a frozen scenario input.",
+    "3. scenario-matrix.json authored and hashed (this record).",
+    "4. NOT YET DONE at the time of this record: any execution of a frozen scenario; reading emergency-guidance.ts, emergency-signal-text.ts, development fixtures or sealed-h5 phrase text; running the classifier on any scenario phrase."
+  ],
+  "change_policy": "Scenario ids, inputs, expected outcomes, gating and acceptance may not be edited after this hash. A harness defect found later is recorded in the harness-defect register and the harness is versioned; the matrix stays at this hash. Any structural change to the matrix requires a new version with the reason recorded and both snapshots re-run."
+}
