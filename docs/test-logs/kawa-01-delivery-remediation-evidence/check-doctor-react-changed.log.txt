@@ -1,0 +1,23 @@
+$ node scripts/run.mjs run-react-doctor changed
+React Doctor v0.5.8
+
+✔ Select projects › @nestscout/api, @nestscout/mobile
+Scanning changes: codex/kawa-foundation-safety-20261020 → main
+
+✔ Scanned 3 files in 13.4s
+  React Doctor (https://react.doctor)
+  Score unavailable.
+
+  Full diagnostics written to C:\Users\PHANMA~1\AppData\Local\Temp\react-doctor-c0c96d6d-1681-4cdd-a5bf-8911779887a3
+
+  @nestscout/api     no score  0 issues
+  @nestscout/mobile  no score  0 issues
+
+  ────────────────────────────────────────────────────────────
+
+  Docs: https://react.doctor/docs
+  Learn more about fixing issues, setting up CI/CD, and
+  configuring rules with a config file
+
+  GitHub: https://github.com/millionco/react-doctor
+  Report issues and star the repository!

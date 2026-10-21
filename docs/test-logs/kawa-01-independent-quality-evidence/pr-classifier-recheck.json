@@ -1,0 +1,32 @@
+{
+  "label": "AUTHOR_VISIBLE_PR_REGRESSION_RECHECK",
+  "evidence_tier": "T0",
+  "independent_validation": false,
+  "cases": [
+    {
+      "id": "pr-negation-vi",
+      "expected": "fire",
+      "got": null
+    },
+    {
+      "id": "pr-negation-en",
+      "expected": "fire",
+      "got": null
+    },
+    {
+      "id": "pr-normal-flowing-water",
+      "expected": null,
+      "got": null
+    },
+    {
+      "id": "pr-normal-running-hvac",
+      "expected": null,
+      "got": null
+    },
+    {
+      "id": "mixed-fire-medical",
+      "expected": "uncertain",
+      "got": "uncertain"
+    }
+  ]
+}

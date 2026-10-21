@@ -1,0 +1,9 @@
+
+    ○
+    │╲
+    │ ○
+    ○ ░
+    ░    gitleaks
+
+7:06PM INF scanned ~4799393 bytes (4.80 MB) in 257ms
+7:06PM WRN leaks found: 2

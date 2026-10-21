@@ -1,0 +1,37 @@
+
+ RUN  v4.1.6 C:/Users/Phan Manh Tu/.codex/worktrees/kawa-foundation-safety-20261020/home-services/apps/api
+
+ ❯ src/__tests__/unit/kael-observability-contract-pillar.test.ts (31 tests | 1 failed) 63ms
+     × records the real assistant emergency answer under the canonical emergency trace stage 42ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-observability-contract-pillar.test.ts > P403-kael-observability-contract: actor identifiers and progress reasons are redacted > records the real assistant emergency answer under the canonical emergency trace stage
+AssertionError: [P403-kael-observability-contract] Kael observability carries only a log-only pseudonymous actor-role hash and safe progress reason codes, while absent cost, latency, token and result measurements remain unobserved instead of becoming zero or success
+authority: governance/RULES.md #9 (logs contain safe ids and metadata only, never chat text or PII) | governance/RULES.md #8 (fallback and unobserved outcomes are never passed off as success) | governance/protocols/ai-data-security.md (no raw internal reasoning or provider secrets in user-facing progress)
+target:    supabase/functions/mobile-api/_shared/platform/turn-trace.ts and kael-usage/cost-tracking.ts
+next:      P394-kael-turn-trace, P382-kael-turn-telemetry
+detail:    an emergency must not be logged as an unknown stage: expected 'other' to be 'emergency_gate' // Object.is equality
+
+Expected: "emergency_gate"
+Received: "other"
+
+ ❯ src/__tests__/unit/kael-observability-contract-pillar.test.ts:57:99
+     55|       ...assistantTraceFields(answer!, { message: 'Nhà tôi đang cháy',…
+     56|     })
+     57|     expect(trace.stage, pillarWhy(PILLAR, 'an emergency must not be lo…
+       |                                                                                                   ^
+     58|     expect(trace.permission_reason, pillarWhy(PILLAR, 'the canonical s…
+     59|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 30 passed (31)
+   Start at  17:17:06
+   Duration  1.05s (transform 468ms, setup 0ms, import 700ms, tests 63ms, environment 0ms)
+
+undefined
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api:
+[ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL] Command failed with exit code 1: vitest run src/__tests__/unit/kael-observability-contract-pillar.test.ts

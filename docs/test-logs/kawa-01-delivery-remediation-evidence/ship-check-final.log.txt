@@ -1,0 +1,207 @@
+$ node scripts/run.mjs run-node scripts/check-ship-ready.mjs
+ship readiness on codex/kawa-foundation-safety-20261020
+
+git state
+  FAIL  181 path(s) not committed — a push carries only what is committed
+          staged     apps/api/scripts/kael-playbook-eval.mjs
+          staged     apps/api/src/__tests__/helpers/emergency-blind-eval.ts
+          staged     apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts
+          staged     apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts
+          staged     apps/api/src/__tests__/unit/kael-emergency-error-contract-pillar.test.ts
+          staged     apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts
+          staged     apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
+          staged     apps/mobile/components/customer/kael-chat/chat-stateful-surfaces.tsx
+          staged     apps/mobile/components/customer/kael-chat/customer-kael-chat-content.tsx
+          staged     apps/mobile/components/customer/kael-chat/customer-kael-chat-helpers.ts
+          staged     apps/mobile/components/customer/kael-chat/customer-kael-conversation-stream-options.ts
+          staged     apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx
+          staged     apps/mobile/components/customer/kael-chat/customer-kael-normal-turn-send.ts
+          staged     apps/mobile/components/customer/kael-chat/use-customer-kael-conversation-state.ts
+          staged     apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
+          staged     apps/mobile/components/customer/kael-chat/use-customer-kael-decision-actions.ts
+          staged     apps/mobile/components/customer/kael-chat/use-customer-kael-evidence-actions.ts
+          staged     apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts
+          staged     apps/mobile/components/customer/kael-chat/use-customer-kael-next-actions.ts
+          staged     apps/mobile/lib/api.ts
+          staged     apps/mobile/lib/kael-stream.ts
+          staged     docs/test-logs/INDEX.md
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/.gitattributes
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/api-skipped-tests.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/api-vitest-complete.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/api-vitest-complete.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/backend-baseline-result.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/backend-contract-complete.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/backend-matrix-baseline-red.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/backend-tracer-red.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/build-api.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/candidate-metadata.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/candidate-tree-merge.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-doctor-react-changed.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-gates.jsonl
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-harness-migrations-check.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-harness-pillars-check.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-lint-authority.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-lint-baseline.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-lint-edge-db.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-lint-playbooks.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-lint-test-collection.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-skills-check.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/check-skills-contracts.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/delivery-changed-paths.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/docker-reopened-compose.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/docker-reopened-version.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/docker-version.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/edge-reopened.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/fetch-main.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/final-gates.jsonl
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/final-lint-api.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/final-lint-comments.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/final-lint-mobile.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/final-lint-production-ui-copy.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/final-lint-structure.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/focused-selection.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/full-gates.jsonl
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/full-test-api-final.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/full-test-mobile.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/full-test-shared.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/full-type-check-shared.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/gitleaks-candidate.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/gitleaks-candidate.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/lint-changed-mobile.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/merge-simulation.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/mobile-final.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/mobile-matrix-isolated.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/mobile-red.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/preservation-check.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/report.md
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/safety-approval-focus-green.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/safety-approval-focus-green.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/session-memory-draft.md
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/source-files.md
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/type-api-final.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/type-mobile-complete.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/type-mobile-green.log.txt
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/work-plan.json
+          staged     docs/test-logs/kawa-01-delivery-remediation-evidence/workplan-final.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/README.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log -> docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/file-digests.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log.txt
+          staged     docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log -> docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/.gitattributes
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/baseline-gate-comparison.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/blind-route-green.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/blind-route-red.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/build-api.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/candidate-metadata.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/changed-files.tsv
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/correction-inventory.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/eas-baseline.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/eas-corrected.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/emergency-trace-green.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/emergency-trace-red.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/evidence-renames.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/final-ship-check.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/final-test-api.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/final-type-check-api.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gates-extra.jsonl
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gates-final.jsonl
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gates.jsonl
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-commits.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-commits.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-corrections.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-corrections.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-evidence.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-evidence.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-final-staged.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/gitleaks-final-staged.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/h5-reproduction.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/h5-reproduction.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/harness-access-check.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/harness-capabilities-check.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/harness-migrations-check.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/harness-pillars-check.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/harness-privileged-check.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/harness-transactions-check.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-api.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-authority.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-baseline.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-comments-working.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-corrected-api-files.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-edge-db.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-mobile.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-playbooks.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-test-collection.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/lint-workplan-final.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/memory-resolution-proposal.diff.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/merge-metadata.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/merge-simulation.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/owner-decisions.md
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/p401-p415-api-final.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/p401-p415-api-final.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/pillar-discovery.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/pillar-id-collision-check.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/pr-classifier-recheck.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/protected-integrity.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/report.md
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/reviewed-pr-inventory.tsv
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/rpc-catalog-proposal.sql.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/safety-probe.cjs.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/safety-probe.json
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/session-memory-draft.md
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/source.patch.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/test-api.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/test-mobile.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/test-shared.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/type-check-api.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/type-check-mobile.log.txt
+          staged     docs/test-logs/kawa-01-independent-quality-evidence/type-check-shared.log.txt
+          staged     docs/test-logs/kawa-execution-ledger.md
+          staged     governance/protocols/test-pillars.md
+          staged     packages/shared/src/contracts/emergency-guidance.ts
+          staged     packages/shared/src/index.ts
+          staged     supabase/functions/_shared/contracts/emergency-guidance.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts
+          staged     supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
+          staged     supabase/functions/mobile-api/_shared/http.ts
+          staged     supabase/functions/mobile-api/_shared/http/dispatch/kael.ts
+          staged     supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts
+          staged     supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts
+
+gates
+  ok    comment discipline         1.1s
+  ok    source residue             0.6s
+  ok    structure and ratchets     0.5s
+  ok    skills mirror              0.1s
+  ok    skill contracts            0.1s
+  ok    protocol routes            0.1s
+  ok    work-router coverage       0.1s
+  ok    runner parity              0.1s
+  ok    harness assurance          79.3s
+  ok    script fixture suites      73.8s
+
+not run by this command
+  pnpm type-check, test, build, lint         pnpm is on PATH; run it yourself
+  deno check on the Edge functions           deno is not on PATH here
+  migration replay and the SQL actor matrix  supabase is not on PATH here
+  CI runs all of these on the pull request. This command does not stand in for them.
+
+NOT READY — git state
+[ELIFECYCLE] Command failed with exit code 1.

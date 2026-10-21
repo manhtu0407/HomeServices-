@@ -1,0 +1,83 @@
+{
+  "comparison": "Git clean filters normalize native CRLF before content comparison",
+  "files": [
+    {
+      "path": ".claude/MEMORY.md",
+      "headBlob": "fff926d6fa458f37a8128dc887f1348202bbd8de",
+      "workingBlob": "fff926d6fa458f37a8128dc887f1348202bbd8de",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "docs/memory/2026-10.md",
+      "headBlob": "cc8c223ab4b51c10b3065584020ee5ee00c7c1b7",
+      "workingBlob": "cc8c223ab4b51c10b3065584020ee5ee00c7c1b7",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "governance/Plan.md",
+      "headBlob": "22679518b17050de3f7fa7803aca4ee6b0c7184d",
+      "workingBlob": "22679518b17050de3f7fa7803aca4ee6b0c7184d",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "governance/critical.md",
+      "headBlob": "25dd1718df469e98442783319abfc36ff1c383ab",
+      "workingBlob": "25dd1718df469e98442783319abfc36ff1c383ab",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "governance/RULES.md",
+      "headBlob": "65976f509919dbd127799a75289e0258c14f75a9",
+      "workingBlob": "65976f509919dbd127799a75289e0258c14f75a9",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "governance/STRUCTURES.md",
+      "headBlob": "7247de255e7adc0f97eac53dcc71c4f0ee4f6d7c",
+      "workingBlob": "7247de255e7adc0f97eac53dcc71c4f0ee4f6d7c",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "scripts/structure-baseline.json",
+      "headBlob": "e42c7674df9175e228df659ad68be968e8efeda2",
+      "workingBlob": "e42c7674df9175e228df659ad68be968e8efeda2",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": ".easignore",
+      "headBlob": "09753338b56c62f53ec3726990614f939657fb14",
+      "workingBlob": "09753338b56c62f53ec3726990614f939657fb14",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/.easignore",
+      "headBlob": "cbe890ae85351e3959c550f7f8eee7b5edfb60bb",
+      "workingBlob": "cbe890ae85351e3959c550f7f8eee7b5edfb60bb",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "headBlob": "96d3a58c72626cd95e6a381cbb77002fa0c9193c",
+      "workingBlob": "96d3a58c72626cd95e6a381cbb77002fa0c9193c",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
+      "headBlob": "777ac7821fff7da8898cf8a0d6bdba8700bd1978",
+      "workingBlob": "777ac7821fff7da8898cf8a0d6bdba8700bd1978",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts",
+      "headBlob": "222cfc8ef9abfe54d7366bd538153666c86e58bd",
+      "workingBlob": "222cfc8ef9abfe54d7366bd538153666c86e58bd",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/api/src/__tests__/kael-edge-runtime/fixtures/emergency-phrases/sealed-h5.json",
+      "headBlob": "1d1715ad5b85a2a054c87680fea9f4c3367915a5",
+      "workingBlob": "1d1715ad5b85a2a054c87680fea9f4c3367915a5",
+      "unchanged_from_reviewed_head": true
+    }
+  ]
+}

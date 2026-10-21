@@ -1,4 +1,6 @@
 import {
+  readKaelEmergencyGuidance,
+  type EmergencyGuidancePayload,
   type CustomerKaelConversationTurnInput,
   type KaelChatEvidenceInput,
   type KaelChatTurnInput,
@@ -80,6 +82,7 @@ type KaelStreamResultEvent = {
 }
 
 type KaelStreamErrorEvent = {
+  emergency?: EmergencyGuidancePayload
   type: 'error'
   code: string
   message: string
@@ -177,12 +180,13 @@ export async function streamKaelChatTurn(
   input: KaelChatTurnInput,
   handlers: KaelChatStreamHandlers = {},
   signal?: AbortSignal,
+  streamFetch?: typeof fetch,
 ): Promise<ApiResult<KaelChatResponse>> {
   return streamKaelTurn(`/kael/chat/${encodeURIComponent(sessionId)}/stream`, input, handlers, {
     httpErrorField: 'error',
     httpFallbackCode: (status) => `HTTP_${status}`,
     httpFallbackMessage: 'Kael streaming failed.',
-  }, isCustomerKaelStreamResult, signal)
+  }, isCustomerKaelStreamResult, signal, streamFetch)
 }
 
 export async function streamCustomerKaelConversationTurn(
@@ -303,6 +307,7 @@ async function streamKaelTurn<T>(
       return {
         success: false,
         error: safeServerError(parsed[httpError.httpErrorField], httpError.httpFallbackMessage),
+        ...(readKaelEmergencyGuidance(parsed.emergency) ? { emergency: readKaelEmergencyGuidance(parsed.emergency)! } : {}),
         code: safeCode === `HTTP_${response.status}`
           ? httpError.httpFallbackCode(response.status)
           : safeCode,
@@ -345,7 +350,7 @@ async function streamKaelTurn<T>(
         if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
         if (event.type === 'error') {
           handlers.onError?.(event)
-          return { success: false, error: event.message, code: event.code, status: response.status }
+          return { success: false, error: event.message, code: event.code, status: response.status, ...(event.emergency ? { emergency: event.emergency } : {}) }
         }
         if (event.type === 'result') {
           if (!resultGuard(event.data)) {
@@ -610,6 +615,7 @@ function parseKaelSseFrame(frame: string): KaelStreamEvent | null {
       type: 'error',
       code: code === 'HTTP_0' ? 'STREAM_ERROR' : code,
       message: safeServerError(data.message, 'Kael stream failed.'),
+      ...(readKaelEmergencyGuidance(data.emergency) ? { emergency: readKaelEmergencyGuidance(data.emergency)! } : {}),
     }
   }
   return null

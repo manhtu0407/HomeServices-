@@ -1,0 +1,36 @@
+$ node scripts/run.mjs docker/scripts/edge-check
+ Image denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498 Skipped Image is already present locally
+check kael-learning-monitor
+ Container home-services-deno-run-b58f58cd4e59 Creating 
+ Container home-services-deno-run-b58f58cd4e59 Created 
+check kael-matching-maintainer
+ Container home-services-deno-run-36b09e018ead Creating 
+ Container home-services-deno-run-36b09e018ead Created 
+check kael-media-retention
+ Container home-services-deno-run-76efeb72c70c Creating 
+ Container home-services-deno-run-76efeb72c70c Created 
+check mobile-api
+ Container home-services-deno-run-a9e7525721ad Creating 
+ Container home-services-deno-run-a9e7525721ad Created 
+Check supabase/functions/mobile-api/index.ts
+ Container home-services-deno-run-a65eb704c1fb Creating 
+ Container home-services-deno-run-a65eb704c1fb Created 
+[0m[38;5;245mrunning 4 tests from ./supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts[0m
+P388-mobile-client-contract-compatibility: accepts the immediate legacy epoch at its explicit per-platform floor ... [0m[32mok[0m [0m[38;5;245m(22ms)[0m
+P388-mobile-client-contract-compatibility: rejects the immediate legacy epoch below its floor and all older epochs ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
+P388-mobile-client-contract-compatibility: requires exact release identity for the current epoch ... [0m[32mok[0m [0m[38;5;245m(929µs)[0m
+P388-mobile-client-contract-compatibility: accepts the current release-bound iOS build while preserving the previous build floor ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
+
+[0m[32mok[0m | 4 passed | 0 failed [0m[38;5;245m(33ms)[0m
+
+check payment-maintainer
+ Container home-services-deno-run-77a6a916a5c5 Creating 
+ Container home-services-deno-run-77a6a916a5c5 Created 
+check system-monitor
+ Container home-services-deno-run-d5d6dd93ef51 Creating 
+ Container home-services-deno-run-d5d6dd93ef51 Created 
+check sepay-webhook
+ Container home-services-deno-run-c865e1a61fd3 Creating 
+ Container home-services-deno-run-c865e1a61fd3 Created 
+
+edge check: discovered=7 selected=7 checked=7 failed=0

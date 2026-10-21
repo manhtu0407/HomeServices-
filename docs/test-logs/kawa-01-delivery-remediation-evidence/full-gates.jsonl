@@ -1,0 +1,4 @@
+{"command":"pnpm test:api","exitCode":1,"ended":"2026-10-21T18:29:55.2273149+07:00","log":".scratch/kawa01-delivery-20261021/full-test-api.log.txt"}
+{"command":"pnpm test:shared","exitCode":0,"ended":"2026-10-21T18:30:00.4018867+07:00","log":".scratch/kawa01-delivery-20261021/full-test-shared.log.txt"}
+{"command":"pnpm type-check:api","exitCode":0,"ended":"2026-10-21T18:30:24.4995402+07:00","log":".scratch/kawa01-delivery-20261021/full-type-check-api.log.txt"}
+{"command":"pnpm type-check:shared","exitCode":0,"ended":"2026-10-21T18:30:31.3185432+07:00","log":".scratch/kawa01-delivery-20261021/full-type-check-shared.log.txt"}

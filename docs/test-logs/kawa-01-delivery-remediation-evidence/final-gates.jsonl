@@ -1,0 +1,6 @@
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/final-lint-structure.log.txt","command":"pnpm lint:structure","ended":"2026-10-21T18:36:40.2077463+07:00"}
+{"exitCode":1,"log":".scratch/kawa01-delivery-20261021/final-lint-workplan.log.txt","command":"pnpm lint:workplan","ended":"2026-10-21T18:36:42.4500078+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/final-lint-comments.log.txt","command":"pnpm lint:comments","ended":"2026-10-21T18:36:49.9284236+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/final-lint-production-ui-copy.log.txt","command":"pnpm lint:production-ui-copy","ended":"2026-10-21T18:37:10.7678111+07:00"}
+{"exitCode":0,"log":".scratch/kawa01-delivery-20261021/final-lint-api.log.txt","command":"pnpm lint:api","ended":"2026-10-21T18:38:13.6676709+07:00"}
+{"exitCode":1,"log":".scratch/kawa01-delivery-20261021/final-lint-mobile.log.txt","command":"pnpm lint:mobile","ended":"2026-10-21T18:40:57.1045682+07:00"}

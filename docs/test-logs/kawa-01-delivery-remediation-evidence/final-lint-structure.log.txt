@@ -1,0 +1,2 @@
+$ node scripts/run.mjs run-node scripts/lint-structure.mjs
+structure ok: 1456 source files; 9 grandfathered oversize, 120 grandfathered dup-type groups

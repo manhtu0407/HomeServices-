@@ -1,0 +1,6 @@
+$ node scripts/run.mjs docker/scripts/ensure-version
+ensure-version: stable Docker Desktop update failed (exit 124; stdout=(empty); stderr=timeout after 300 seconds); no automatic retry
+docker_version=Docker version 29.8.2, build 7fc2dff
+compose_version=Docker Compose version v5.6.0
+strategy=latest-stable result=failed update_attempts=1
+[ELIFECYCLE] Command failed with exit code 1.

@@ -233,3 +233,5 @@ export type {
   WorkerPayoutMethodSaveInput,
   WorkerWithdrawalRequestCreateInput,
 } from './payout-methods'
+
+export { kaelEmergencyGuidanceSchema, readKaelEmergencyGuidance, kaelEmergencyGuidanceCopy, type EmergencyGuidancePayload } from './contracts/emergency-guidance';

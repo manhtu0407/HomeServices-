@@ -1,0 +1,36 @@
+$ node scripts/run.mjs run-package-script @nestscout/api lint
+
+> @nestscout/api@0.1.0 lint C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api
+> eslint
+
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\scripts\lib\plan55-independent-holdout-agent.mjs
+  159:72  warning  'invocationId' is assigned a value but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\scripts\lib\plan55-production-canary-core.test.mjs
+   20:3  warning  'PLAN55_PRODUCTION_SOURCE_TARGET_BRANCH' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   32:3  warning  'PLAN55_GITHUB_ATTESTATION_VERIFICATION' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  583:9  warning  'reviewIds' is assigned a value but never used. Allowed unused vars must match /^_/u                      @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\src\__tests__\kael-edge-runtime\domains\admin-workflow-recovery-http-pillar.test.ts
+  123:13  warning  'client' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\src\__tests__\kael-edge-runtime\domains\kael-recurring-incident-e2e-pillar.test.ts
+   9:3  warning  'CASE_SESSION_ID' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  12:3  warning  'OWNER' is defined but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\src\__tests__\unit\kael-emergency-phrase-sets-pillar.test.ts
+  197:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\src\__tests__\unit\mobile-api-edge-router.test.ts
+  594:11  warning  'workerHandler' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\src\__tests__\unit\normal-chat-suggestions-pillar.test.ts
+  4:15  warning  'DbClient' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api\src\__tests__\worker-stage-five-work-session-contract-pillar.test.ts
+  5:10  warning  'pillarWhy' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+✖ 11 problems (0 errors, 11 warnings)
+  0 errors and 1 warning potentially fixable with the `--fix` option.
+

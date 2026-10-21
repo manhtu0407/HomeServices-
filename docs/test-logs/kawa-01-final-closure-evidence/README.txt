@@ -6,7 +6,7 @@ Contents
 - kawa01-final-closure-source.patch   source diff against the base (this folder excluded)
 - file-digests.txt                    SHA-256 of every changed source file and every file here except itself and the patch
 - h5-reproduction.json                sealed holdout H5 on the frozen classifier, label REPRODUCTION, not independent validation, not an original first run
-- gates/                              raw output (last 120 lines) and exit codes of each gate; type-check-api.log is the FIRST run and still shows its 5 failures, fixed afterwards (rerun exit 0 is recorded in the ledger)
+- gates/                              raw output (last 120 lines) and exit codes of each gate; type-check-api.log.txt is the FIRST run and still shows its 5 failures, fixed afterwards (rerun exit 0 is recorded in the ledger)
 - red-green/, mutation/               before/after runs and the 18 mutants
 - pillars-p401-p411.vitest.json       machine-readable result of the eleven emergency pillars (647 passed)
 - kael-eval-deterministic.*           deterministic fixture agreement, n=99, modelAccuracy null

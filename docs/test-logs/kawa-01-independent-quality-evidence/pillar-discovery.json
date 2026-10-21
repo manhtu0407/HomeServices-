@@ -1,0 +1,62 @@
+[
+  {
+    "id": "P413-kael-approval-boundary",
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts"
+  },
+  {
+    "id": "P408-kael-case-emergency-all-fields",
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-all-fields-pillar.test.ts"
+  },
+  {
+    "id": "P411-kael-case-emergency-closure-paths",
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-closure-paths-pillar.test.ts"
+  },
+  {
+    "id": "P406-kael-case-emergency-intake",
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts"
+  },
+  {
+    "id": "P407-kael-case-emergency-pending-confirmation",
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-pending-confirmation-pillar.test.ts"
+  },
+  {
+    "id": "P409-kael-case-emergency-write-integrity",
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-write-integrity-pillar.test.ts"
+  },
+  {
+    "id": "P412-kael-emergency-delivery",
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-delivery-pillar.test.ts"
+  },
+  {
+    "id": "P414-kael-emergency-sentinel-matrix",
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts"
+  },
+  {
+    "id": "P415-kael-emergency-blind-eval",
+    "path": "apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts"
+  },
+  {
+    "id": "P410-kael-emergency-phrase-sets",
+    "path": "apps/api/src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts"
+  },
+  {
+    "id": "P401-kael-emergency-routing",
+    "path": "apps/api/src/__tests__/unit/kael-emergency-routing-pillar.test.ts"
+  },
+  {
+    "id": "P405-kael-emergency-signal-matrix",
+    "path": "apps/api/src/__tests__/unit/kael-emergency-signal-matrix-pillar.test.ts"
+  },
+  {
+    "id": "P402-kael-eval-report-contract",
+    "path": "apps/api/src/__tests__/unit/kael-eval-report-contract-pillar.test.ts"
+  },
+  {
+    "id": "P403-kael-observability-contract",
+    "path": "apps/api/src/__tests__/unit/kael-observability-contract-pillar.test.ts"
+  },
+  {
+    "id": "P404-kael-progress-stream-redaction",
+    "path": "apps/mobile/lib/__tests__/kael-observability-pillar-test.tsx"
+  }
+]

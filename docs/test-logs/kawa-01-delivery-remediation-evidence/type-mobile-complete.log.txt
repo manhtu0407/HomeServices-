@@ -1,0 +1,11 @@
+$ node scripts/run.mjs run-package-script @nestscout/mobile type-check
+
+> @nestscout/mobile@0.3.2 type-check C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile
+> tsc --noEmit
+
+components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx(112,67): error TS2345: Argument of type '{ message: string; }' is not assignable to parameter of type '{ message: string; photo_urls: string[]; turn_intent?: "ask_question" | "price_question" | "scope_adjustment" | "request_reference_price" | "request_worker_quote" | undefined; problem_chips?: string[] | undefined; ... 6 more ...; apartment_access_profile?: { ...; } | undefined; }'.
+  Property 'photo_urls' is missing in type '{ message: string; }' but required in type '{ message: string; photo_urls: string[]; turn_intent?: "ask_question" | "price_question" | "scope_adjustment" | "request_reference_price" | "request_worker_quote" | undefined; problem_chips?: string[] | undefined; ... 6 more ...; apartment_access_profile?: { ...; } | undefined; }'.
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @nestscout/mobile@0.3.2 type-check: `tsc --noEmit`
+Exit status 2
+[ELIFECYCLE] Command failed with exit code 2.

@@ -279,6 +279,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
         quickActions,
         show: presentation.showComposer,
       }}
+      emergencyGuidance={conversation.emergencyGuidance}
       error={inlineError}
       onRetryJobLoad={caseHydration.failed ? caseHydration.retry : undefined}
       hiddenScrollbarStyle={customerV21HiddenScrollbar}

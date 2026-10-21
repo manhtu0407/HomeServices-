@@ -56,6 +56,8 @@ const CLIENT_IDENTITY_PATTERN = /^[A-Za-z0-9._:-]{1,160}$/
 // corpus, the mock fixture, the environment or any model. A report therefore proves which listed bytes ran, not that
 // nothing else changed.
 const SOURCE_FILES = [
+  'supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts',
+  'supabase/functions/_shared/contracts/emergency-guidance.ts',
   'apps/api/scripts/kael-playbook-eval.mjs',
   'apps/api/scripts/lib/kael-playbook-eval-core.mjs',
   'supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts',

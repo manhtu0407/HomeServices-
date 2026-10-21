@@ -24,6 +24,7 @@ import {
   validateIdempotencyKey,
   type ReliabilityClient,
 } from "../../_shared/harness/reliability.ts";
+import { clearRequestEmergencyGuidance, requestEmergencyFields } from "./platform/emergency-guidance.ts";
 import { apiFailure, ApiFailure } from "./platform/api-failure.ts";
 import { dispatchRoute } from "./http/dispatch/index.ts";
 import { delegateDomainIdempotency } from "./http/domain-idempotency.ts";
@@ -480,6 +481,7 @@ async function dispatchAuthorizedRequest(state: MobileApiRequestState): Promise<
 }
 
 async function startAuthorizedRequest(state: MobileApiRequestState): Promise<void> {
+  clearRequestEmergencyGuidance(state.ctx);
   if (!state.batchedLifecycle) {
     await recordHarnessEvent(state.trace, {
       eventClass: "request.started",
@@ -605,7 +607,7 @@ async function handleRequestError(
   if (state) await recordFailedRequest(state, error);
   if (error instanceof ApiFailure) {
     return withHarnessHeaders(
-      jsonError(error.code, error.message, error.status, error.extra),
+      jsonError(error.code, error.message, error.status, { ...error.extra, emergency: undefined, ...requestEmergencyFields(state?.ctx) }),
       activeTrace,
     );
   }
@@ -616,7 +618,7 @@ async function handleRequestError(
     traceId: activeTrace.traceId,
   });
   return withHarnessHeaders(
-    jsonError("INTERNAL_ERROR", "Hệ thống đang bận, vui lòng thử lại", 500),
+    jsonError("INTERNAL_ERROR", "Hệ thống đang bận, vui lòng thử lại", 500, requestEmergencyFields(state?.ctx)),
     activeTrace,
   );
 }

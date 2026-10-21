@@ -1,3 +1,5 @@
+import type { EmergencyGuidancePayload } from '@nestscout/shared'
+import { CustomerKaelEmergencyAccess } from './customer-kael-emergency-access'
 import { useState, type ComponentProps, type ReactNode } from 'react'
 import { Keyboard, KeyboardAvoidingView, Platform, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context'
@@ -47,6 +49,7 @@ type Props = {
     quickActions?: readonly ComposerQuickAction[]
     show: boolean
   }
+  emergencyGuidance?: EmergencyGuidancePayload | null
   error: string | null
   onRetryJobLoad?: () => void
   hiddenScrollbarStyle: StyleProp<ViewStyle>
@@ -107,6 +110,7 @@ export function KaelChatSurfaceView({
   composerMediaDrafts,
   composer,
   error,
+  emergencyGuidance,
   onRetryJobLoad,
   hiddenScrollbarStyle,
   language,
@@ -213,6 +217,7 @@ export function KaelChatSurfaceView({
             sessionMenuOpen={sessionMenuOpen}
             tokens={tokens}
           />
+          <CustomerKaelEmergencyAccess guidance={emergencyGuidance} language={language} tokens={tokens} />
           <KaelChatTranscript
             empty={emptyHeroVisible}
             hiddenScrollbarStyle={hiddenScrollbarStyle}

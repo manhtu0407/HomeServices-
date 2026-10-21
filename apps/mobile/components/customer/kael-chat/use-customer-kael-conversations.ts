@@ -499,6 +499,7 @@ export function useCustomerKaelConversations(
       ) {
         if (committed || (!sent.success && isAmbiguousKaelConversationFailure(sent))) options?.onOutcomeUncertain?.()
         if (!committed && operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
+          if (!sent.success && sent.emergency) options?.onEmergencyGuidance?.(sent.emergency)
           setCatalogStateField(
             setCatalogState,
             catalogKey,

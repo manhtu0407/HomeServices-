@@ -1,0 +1,9 @@
+{
+  "command": "pnpm ship:check",
+  "exitCode": 1,
+  "machineGatesPassed": 10,
+  "machineGatesFailed": 0,
+  "reason": "NOT READY — git state; final log records pnpm exit 1",
+  "indexRestoredAndCompared": true,
+  "wrapperNote": "PowerShell wrapper interrupted after final pnpm summary; index restored explicitly and byte-compared to original 93-path correction patch"
+}

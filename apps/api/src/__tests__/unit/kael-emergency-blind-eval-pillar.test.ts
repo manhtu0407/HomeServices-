@@ -159,6 +159,19 @@ describe(`${PILLAR.id}: recall and false positives are reported separately`, () 
     expect(report.proposed_thresholds.owner_approved, pillarWhy(PILLAR, 'the thresholds are the owner\'s to approve')).toBe(false)
   })
 
+  it('blocks a wrong emergency route even when detection, sample sizes and false positives meet the proposal', () => {
+    const positives = BLIND_ROUTES.flatMap((route) => Array.from({ length: 40 }, (_unused, index) => row(`P-${route}-${index}`, route)))
+    const negatives = Array.from({ length: 200 }, (_unused, index) => row(`N-${index}`, null))
+    const rows = [...positives, ...negatives]
+    const report = evaluateBlindSet(sealed(rows), (candidate) => candidate.expected === null ? null : 'fire', { registeredSha256: canonicalBlindHash(rows) })
+    expect(report.independent_validation, pillarWhy(PILLAR, 'synthetic attestation exercises only the scoring mechanics')).toBe(true)
+    expect(report.sample_shortfalls, pillarWhy(PILLAR, 'the result must fail on routing, not sample size')).toEqual([])
+    expect(report.unseen_wording_recall.detected.value, pillarWhy(PILLAR, 'all 240 emergencies were detected')).toBe(1)
+    expect(report.unseen_wording_recall.route_exact.numerator, pillarWhy(PILLAR, 'only the 40 fire rows were routed correctly')).toBe(40)
+    expect(report.wrong_routes, pillarWhy(PILLAR, '200 medical, police, electrical/water, gas and uncertain rows were misrouted')).toHaveLength(200)
+    expect(report.release_blocker, pillarWhy(PILLAR, 'detecting an emergency does not excuse sending the wrong guidance')).toBe(true)
+  })
+
   it('is a blocker for a perfect, independent set that is short on one stratum alone', () => {
     const positives = BLIND_ROUTES.flatMap((route) => Array.from({ length: PROPOSED_BLIND_THRESHOLDS.min_positives_per_route + 10 }, (_unused, index) => row(`P-${route}-${index}`, route)))
     const negatives = Array.from({ length: PROPOSED_BLIND_THRESHOLDS.min_negatives - 1 }, (_unused, index) => row(`N-${index}`, null))

@@ -1,0 +1,1180 @@
+$ node scripts/run.mjs run-package-script @nestscout/mobile lint:mobile
+
+> @nestscout/mobile@0.3.2 lint:mobile C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile
+> eslint .
+
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\app\(admin)\__tests__\admin-sections-test.tsx
+  317:5  warning  'mockFocusEffectCallback' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\__tests__\admin-finance-refund-obligation-pillar-test.tsx
+  2:46  warning  'C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\node_modules\@nestscout\shared\src\index.ts' imported multiple times  import/no-duplicates
+  3:36  warning  'C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\node_modules\@nestscout\shared\src\index.ts' imported multiple times  import/no-duplicates
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\__tests__\admin-team-system-workspaces-pillar-test.tsx
+  428:37  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-ambassador-program-workspace.tsx
+  73:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-ambassador-program-workspace.tsx:73:10
+  71 |
+  72 |   useEffect(() => {
+> 73 |     void load()
+     |          ^^^^ Avoid calling setState() directly within an effect
+  74 |   }, [load])
+  75 |
+  76 |   if (!program || !draft) {  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-discipline-workspace.tsx
+  101:5   error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-discipline-workspace.tsx:101:5
+   99 |
+  100 |   useEffect(() => {
+> 101 |     refreshAll()
+      |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  102 |   }, [refreshAll])
+  103 |
+  104 |   const retryActive = useCallback(() => refresh(activeKey), [activeKey, refresh])              react-hooks/set-state-in-effect
+  231:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-discipline-workspace.tsx:231:10
+  229 |
+  230 |   useEffect(() => {
+> 231 |     void load()
+      |          ^^^^ Avoid calling setState() directly within an effect
+  232 |   }, [load])
+  233 |
+  234 |   const run = async (action: () => Promise<{ success: boolean; error?: string }>, done: string) => {  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-finance.tsx
+  216:3   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-finance.tsx:216:3
+  214 |     }
+  215 |   }, [activeView, canRead, canReconcile, copy.invalidRange, copy.loadError, debouncedReconciliationQuery, patch, period, reconciliationAssignment, reconciliationMethod])
+> 216 |   loadRef.current = load
+      |   ^^^^^^^^^^^^^^^ Cannot update ref during render
+  217 |
+  218 |   const loadMoreReconciliations = useCallback(async () => {
+  219 |     if (!reconciliationNextCursor || backgroundLoadInFlightRef.current) return  react-hooks/refs
+  507:26  warning  'load' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-unused-vars
+  507:66  warning  'loadReconciliationDetail' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-governance.tsx
+  2:29  warning  'Pressable' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-payouts.tsx
+  13:3  warning  'AdminViewPayoutMethodStatus' is defined but never used       @typescript-eslint/no-unused-vars
+  16:3  warning  'AdminViewWithdrawalRequestStatus' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-sections-capability-workspace.tsx
+  11:10  warning  'AdminWorkerReviewModal' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-sections-layout-types.ts
+  1:15  warning  'AdminViewActor' is defined but never used              @typescript-eslint/no-unused-vars
+  1:31  warning  'AdminViewOverviewDetailKey' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-sections.tsx
+  18:3   warning  'AdminViewActor' is defined but never used                   @typescript-eslint/no-unused-vars
+  19:3   warning  'AdminViewOverviewDetailKey' is defined but never used       @typescript-eslint/no-unused-vars
+  24:34  warning  'AdminSectionsCopy' is defined but never used                @typescript-eslint/no-unused-vars
+  26:10  warning  'AdminOperationsOverview' is defined but never used          @typescript-eslint/no-unused-vars
+  27:10  warning  'AdminPagination' is defined but never used                  @typescript-eslint/no-unused-vars
+  28:10  warning  'AdminPayoutsPanel' is defined but never used                @typescript-eslint/no-unused-vars
+  29:10  warning  'AdminFinancePanel' is defined but never used                @typescript-eslint/no-unused-vars
+  30:10  warning  'FinanceChoiceChip' is defined but never used                @typescript-eslint/no-unused-vars
+  31:10  warning  'TransactionCard' is defined but never used                  @typescript-eslint/no-unused-vars
+  31:27  warning  'WorkerApplicationCard' is defined but never used            @typescript-eslint/no-unused-vars
+  36:10  warning  'workerReviewCopy' is defined but never used                 @typescript-eslint/no-unused-vars
+  47:8   warning  'AdminProductionCapabilityId' is defined but never used      @typescript-eslint/no-unused-vars
+  51:10  warning  'AdminOverviewDetailWorklist' is defined but never used      @typescript-eslint/no-unused-vars
+  52:10  warning  'AdminScopeChangeMonitor' is defined but never used          @typescript-eslint/no-unused-vars
+  53:10  warning  'AdminSupportCaseCenter' is defined but never used           @typescript-eslint/no-unused-vars
+  54:10  warning  'AdminAmbassadorProgramWorkspace' is defined but never used  @typescript-eslint/no-unused-vars
+  55:10  warning  'AdminDisciplineWorkspace' is defined but never used         @typescript-eslint/no-unused-vars
+  56:10  warning  'AdminSystemWorkspace' is defined but never used             @typescript-eslint/no-unused-vars
+  57:10  warning  'AdminTeamWorkspace' is defined but never used               @typescript-eslint/no-unused-vars
+  72:3   warning  'AdminUnavailableCapability' is defined but never used       @typescript-eslint/no-unused-vars
+  76:3   warning  'AdminDataSearchToolbar' is defined but never used           @typescript-eslint/no-unused-vars
+  77:3   warning  'AdminWorkspaceLoading' is defined but never used            @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-workflow-recovery-center.tsx
+  182:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\admin-workflow-recovery-center.tsx:182:10
+  180 |
+  181 |   useEffect(() => {
+> 182 |     void loadList()
+      |          ^^^^^^^^ Avoid calling setState() directly within an effect
+  183 |   }, [loadList])
+  184 |
+  185 |   const refreshSection = useCallback(async () => {  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\admin\use-admin-system-detail.ts
+  72:6  warning  React Hook useCallback has a missing dependency: 'current.error'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\__tests__\stage1-customer-intake-mode-pillar-test.tsx
+  1:15  warning  'fireEvent' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\booking\use-booking-address-lookup.ts
+  123:38  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\booking\use-booking-address-lookup.ts:123:38
+  121 |         query ? { query } : null,
+  122 |         Boolean(query),
+> 123 |         query ? carryOverSuggestions(lastResultRef.current, query) : [],
+      |                                      ^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  124 |       )
+  125 |     setSnapshot(visibleSnapshot)
+  126 |   }  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\compensation\compensation-section.tsx
+  20:8  warning  'CustomerCompensation' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-payment-rail-surface.tsx
+  390:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-payment-rail-surface.tsx:390:17
+  388 | function WaitingClock({ color }: { color: string }) {
+  389 |   const { reduceMotion } = useGlassAccessibility()
+> 390 |   const clock = useRef(new Animated.Value(0)).current
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  391 |   const [start] = useState(() => {
+  392 |     const now = new Date()
+  393 |     const minutes = now.getMinutes() + now.getSeconds() / 60                                                                                                                                                react-hooks/refs
+  390:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-payment-rail-surface.tsx:390:17
+  388 | function WaitingClock({ color }: { color: string }) {
+  389 |   const { reduceMotion } = useGlassAccessibility()
+> 390 |   const clock = useRef(new Animated.Value(0)).current
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  391 |   const [start] = useState(() => {
+  392 |     const now = new Date()
+  393 |     const minutes = now.getMinutes() + now.getSeconds() / 60                                                                                                                                                react-hooks/refs
+  417:69  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-payment-rail-surface.tsx:417:69
+  415 |         <Circle cx={12} cy={12} fill={color} r={1.2} />
+  416 |       </Svg>
+> 417 |       <Animated.View pointerEvents="none" style={[styles.glyphHand, hand(start.hour, 360)]}>
+      |                                                                     ^^^^ This function accesses a ref value
+  418 |         <Svg height={GLYPH_SIZE} viewBox="0:0 24 24" width={GLYPH_SIZE}><Path d="M12 12V7.6" {...stroke} /></Svg>
+  419 |       </Animated.View>
+  420 |       <Animated.View pointerEvents="none" style={[styles.glyphHand, hand(start.minute, 360 * CLOCK_HOURS)]}>  react-hooks/refs
+  420:69  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-payment-rail-surface.tsx:420:69
+  418 |         <Svg height={GLYPH_SIZE} viewBox="0:0 24 24" width={GLYPH_SIZE}><Path d="M12 12V7.6" {...stroke} /></Svg>
+  419 |       </Animated.View>
+> 420 |       <Animated.View pointerEvents="none" style={[styles.glyphHand, hand(start.minute, 360 * CLOCK_HOURS)]}>
+      |                                                                     ^^^^ This function accesses a ref value
+  421 |         <Svg height={GLYPH_SIZE} viewBox="0:0 24 24" width={GLYPH_SIZE}><Path d="M12 12V4.8" {...stroke} /></Svg>
+  422 |       </Animated.View>
+  423 |     </View>               react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-worker-travel-map.tsx
+  225:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-worker-travel-map.tsx:225:17
+  223 | // because Animated.loop does not restart on web.
+  224 | function WorkerPulse({ at, reduceMotion }: { at: TravelPoint; reduceMotion: boolean }) {
+> 225 |   const pulse = useRef(new Animated.Value(0)).current
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  226 |   useEffect(() => {
+  227 |     if (reduceMotion) return
+  228 |     let live = true         react-hooks/refs
+  225:17  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-worker-travel-map.tsx:225:17
+  223 | // because Animated.loop does not restart on web.
+  224 | function WorkerPulse({ at, reduceMotion }: { at: TravelPoint; reduceMotion: boolean }) {
+> 225 |   const pulse = useRef(new Animated.Value(0)).current
+      |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  226 |   useEffect(() => {
+  227 |     if (reduceMotion) return
+  228 |     let live = true         react-hooks/refs
+  249:20  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-worker-travel-map.tsx:249:20
+  247 |         {
+  248 |           left: at.x - 22,
+> 249 |           opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] }),
+      |                    ^^^^^ Passing a ref to a function may read its value during render
+  250 |           top: at.y - 22,
+  251 |           transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1.5] }) }],
+  252 |         },              react-hooks/refs
+  249:20  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-worker-travel-map.tsx:249:20
+  247 |         {
+  248 |           left: at.x - 22,
+> 249 |           opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] }),
+      |                    ^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  250 |           top: at.y - 22,
+  251 |           transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1.5] }) }],
+  252 |         },  react-hooks/refs
+  251:32  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-worker-travel-map.tsx:251:32
+  249 |           opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] }),
+  250 |           top: at.y - 22,
+> 251 |           transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1.5] }) }],
+      |                                ^^^^^ Passing a ref to a function may read its value during render
+  252 |         },
+  253 |       ]}
+  254 |     />                       react-hooks/refs
+  251:32  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\customer-worker-travel-map.tsx:251:32
+  249 |           opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0] }),
+  250 |           top: at.y - 22,
+> 251 |           transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1.5] }) }],
+      |                                ^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  252 |         },
+  253 |       ]}
+  254 |     />           react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-chat-composer.tsx
+  125:3  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-chat-composer.tsx:125:3
+  123 |     : null
+  124 |   const liveGhostContext = useRef({ draft, isComposing, selection, suggestions: normalChatSuggestions })
+> 125 |   liveGhostContext.current = { draft, isComposing, selection, suggestions: normalChatSuggestions }
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  126 |   const acceptGhost = () => {
+  127 |     const latest = liveGhostContext.current
+  128 |     const currentGhost = getNormalChatGhostSuffix(latest.draft, latest.suggestions, latest.selection, latest.isComposing)  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx
+  42:9   error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:42:9
+  40 |     if (reduceMotion) return rows as ChatTranscriptRow[]
+  41 |     const scope = threadScope(rows)
+> 42 |     if (scopeRef.current !== '' && scope !== scopeRef.current) {
+     |         ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  43 |       seenRef.current = null
+  44 |       freshRef.current = new Set()
+  45 |     }                                                                                                                                                                                                                         react-hooks/refs
+  42:46  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:42:46
+  40 |     if (reduceMotion) return rows as ChatTranscriptRow[]
+  41 |     const scope = threadScope(rows)
+> 42 |     if (scopeRef.current !== '' && scope !== scopeRef.current) {
+     |                                              ^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  43 |       seenRef.current = null
+  44 |       freshRef.current = new Set()
+  45 |     }                                                                                                                                                                                   react-hooks/refs
+  43:7   error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:43:7
+  41 |     const scope = threadScope(rows)
+  42 |     if (scopeRef.current !== '' && scope !== scopeRef.current) {
+> 43 |       seenRef.current = null
+     |       ^^^^^^^^^^^^^^^ Cannot update ref during render
+  44 |       freshRef.current = new Set()
+  45 |     }
+  46 |     if (scope !== '') scopeRef.current = scope                                                                                                                                                                                                                                            react-hooks/refs
+  44:7   error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:44:7
+  42 |     if (scopeRef.current !== '' && scope !== scopeRef.current) {
+  43 |       seenRef.current = null
+> 44 |       freshRef.current = new Set()
+     |       ^^^^^^^^^^^^^^^^ Cannot update ref during render
+  45 |     }
+  46 |     if (scope !== '') scopeRef.current = scope
+  47 |     else if (rows.length === 0) scopeRef.current = ''                                                                                                                                                                                                                         react-hooks/refs
+  46:23  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:46:23
+  44 |       freshRef.current = new Set()
+  45 |     }
+> 46 |     if (scope !== '') scopeRef.current = scope
+     |                       ^^^^^^^^^^^^^^^^ Cannot update ref during render
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+  48 |     const seen = seenRef.current
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []                                                                                                                                                                                            react-hooks/refs
+  47:33  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:47:33
+  45 |     }
+  46 |     if (scope !== '') scopeRef.current = scope
+> 47 |     else if (rows.length === 0) scopeRef.current = ''
+     |                                 ^^^^^^^^^^^^^^^^ Cannot update ref during render
+  48 |     const seen = seenRef.current
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {                                                                                                                                         react-hooks/refs
+  48:18  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:48:18
+  46 |     if (scope !== '') scopeRef.current = scope
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+> 48 |     const seen = seenRef.current
+     |                  ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+  51 |       for (const row of arrived) freshRef.current.add(row.key)                                                                                          react-hooks/refs
+  48:18  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:48:18
+  46 |     if (scope !== '') scopeRef.current = scope
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+> 48 |     const seen = seenRef.current
+     |                  ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+  51 |       for (const row of arrived) freshRef.current.add(row.key)                                                                                          react-hooks/refs
+  48:18  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:48:18
+  46 |     if (scope !== '') scopeRef.current = scope
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+> 48 |     const seen = seenRef.current
+     |                  ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+  51 |       for (const row of arrived) freshRef.current.add(row.key)                                                                                          react-hooks/refs
+  48:18  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:48:18
+  46 |     if (scope !== '') scopeRef.current = scope
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+> 48 |     const seen = seenRef.current
+     |                  ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+  51 |       for (const row of arrived) freshRef.current.add(row.key)                                                                                          react-hooks/refs
+  48:18  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:48:18
+  46 |     if (scope !== '') scopeRef.current = scope
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+> 48 |     const seen = seenRef.current
+     |                  ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+  51 |       for (const row of arrived) freshRef.current.add(row.key)                                                                                          react-hooks/refs
+  48:18  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:48:18
+  46 |     if (scope !== '') scopeRef.current = scope
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+> 48 |     const seen = seenRef.current
+     |                  ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+  51 |       for (const row of arrived) freshRef.current.add(row.key)                                                                                          react-hooks/refs
+  48:18  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:48:18
+  46 |     if (scope !== '') scopeRef.current = scope
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+> 48 |     const seen = seenRef.current
+     |                  ^^^^^^^^^^^^^^^ Cannot access ref value during render
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+  51 |       for (const row of arrived) freshRef.current.add(row.key)                                                                                          react-hooks/refs
+  49:40  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:49:40
+  47 |     else if (rows.length === 0) scopeRef.current = ''
+  48 |     const seen = seenRef.current
+> 49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+     |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+  51 |       for (const row of arrived) freshRef.current.add(row.key)
+  52 |     }                                                                          react-hooks/refs
+  51:34  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:51:34
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+> 51 |       for (const row of arrived) freshRef.current.add(row.key)
+     |                                  ^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  52 |     }
+  53 |     if (rows.length > 0) seenRef.current = new Set([...(seen ?? []), ...rows.map((row) => row.key)])
+  54 |     return rows.map((row) => (                                              react-hooks/refs
+  51:34  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:51:34
+  49 |     const arrived = seen ? rows.filter((row) => !seen.has(row.key)) : []
+  50 |     if (seen && arrived.length > 0 && arrived.length <= LIVE_BATCH_LIMIT) {
+> 51 |       for (const row of arrived) freshRef.current.add(row.key)
+     |                                  ^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  52 |     }
+  53 |     if (rows.length > 0) seenRef.current = new Set([...(seen ?? []), ...rows.map((row) => row.key)])
+  54 |     return rows.map((row) => (                                          react-hooks/refs
+  53:26  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:53:26
+  51 |       for (const row of arrived) freshRef.current.add(row.key)
+  52 |     }
+> 53 |     if (rows.length > 0) seenRef.current = new Set([...(seen ?? []), ...rows.map((row) => row.key)])
+     |                          ^^^^^^^^^^^^^^^ Cannot update ref during render
+  54 |     return rows.map((row) => (
+  55 |       freshRef.current.has(row.key) ? { ...row, node: <KaelFreshRow>{row.node}</KaelFreshRow> } : row
+  56 |     ))                                                                                                                            react-hooks/refs
+  54:21  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\kael-fresh-row.tsx:54:21
+  52 |     }
+  53 |     if (rows.length > 0) seenRef.current = new Set([...(seen ?? []), ...rows.map((row) => row.key)])
+> 54 |     return rows.map((row) => (
+     |                     ^^^^^^^^^^
+> 55 |       freshRef.current.has(row.key) ? { ...row, node: <KaelFreshRow>{row.node}</KaelFreshRow> } : row
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 56 |     ))
+     | ^^^^^^ Passing a ref to a function may read its value during render
+  57 |   }, [reduceMotion, rows])
+  58 | }
+  59 |  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\work-progress-details.tsx
+  26:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\kael-chat\work-progress-details.tsx:26:5
+  24 |       }, msToNextSecond(Date.now()))
+  25 |     }
+> 26 |     setNow(Date.now())
+     |     ^^^^^^ Avoid calling setState() directly within an effect
+  27 |     schedule()
+  28 |     const subscription = AppState.addEventListener('change', (state) => {
+  29 |       if (state === 'active') setNow(Date.now())  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\customer\v21\surfaces.tsx
+  123:78  warning  'V21TopBar' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\ui\session-offline-screen.tsx
+  23:22  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\ui\session-offline-screen.tsx:23:22
+  21 |
+  22 |   useEffect(() => {
+> 23 |     if (unreachable) setShown(true)
+     |                      ^^^^^^^^ Avoid calling setState() directly within an effect
+  24 |     else if (!roleUnknown || profileStatus !== 'loading') setShown(false)
+  25 |   }, [profileStatus, roleUnknown, unreachable])
+  26 |  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\__tests__\worker-kael-composer-layout-pillar-test.tsx
+  5:17  warning  'customerTheme' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\__tests__\worker-kael-transcript-follow-pillar-test.tsx
+  21:31  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\chat\orb-screen-surfaces.tsx
+  515:3  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\chat\orb-screen-surfaces.tsx:515:3
+  513 |     : null
+  514 |   const liveGhostContext = useRef({ draft, isComposing, selection, suggestions: normalChatSuggestions })
+> 515 |   liveGhostContext.current = { draft, isComposing, selection, suggestions: normalChatSuggestions }
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  516 |   const acceptGhost = () => {
+  517 |     const latest = liveGhostContext.current
+  518 |     const currentGhost = getNormalChatGhostSuffix(latest.draft, latest.suggestions, latest.selection, latest.isComposing)  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\discipline\compensation-section.tsx
+   1:23  warning  'useState' is defined but never used            @typescript-eslint/no-unused-vars
+  13:36  warning  'WorkerCompensation' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\evidence\stage-eight-evidence.tsx
+  15:15  warning  'AppleTypographyRole' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\stage-five\travel-work\stage-five-icons.tsx
+  2:35  warning  'Line' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\stage-five\travel-work\stage-five-work.tsx
+  24:40  warning  'reduceMotion' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\stage-six\stage-six-timeline.tsx
+  14:8  warning  'Svg' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\use-stage-four-map-viewport.ts
+  40:57  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\use-stage-four-map-viewport.ts:40:57
+  38 |   }, [apply])
+  39 |
+> 40 |   const panHandlers = useMemo(() => PanResponder.create({
+     |                                                         ^
+> 41 |     onMoveShouldSetPanResponder: (_event, gesture) => live.current.scale > MAP_MIN_ZOOM && (Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3),
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 42 |     onPanResponderGrant: () => { panStart.current = live.current.offset },
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 43 |     onPanResponderMove: (_event, gesture) => apply(live.current.scale, { x: panStart.current.x + gesture.dx, y: panStart.current.y + gesture.dy }),
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 44 |     onPanResponderTerminationRequest: () => false,
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 45 |   }).panHandlers, [apply])
+     | ^^^^ Passing a ref to a function may read its value during render
+  46 |
+  47 |   const onLayout = useCallback((event: LayoutChangeEvent) => {
+  48 |     live.current.size = { height: event.nativeEvent.layout.height, width: event.nativeEvent.layout.width }  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\waiting\waiting-runtime.tsx
+  24:7  warning  React Hook useMemo has a missing dependency: 'scope'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\worker-jobs-zip-prototype-early-stages.tsx
+  28:10  warning  'stageTwoCardTokens' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\worker-jobs-zip-prototype-settlement-stages.tsx
+  6:10  warning  'formatVnd' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\jobs\worker-jobs-zip-prototype-shared.tsx
+   22:10  warning  'STAGE_MIN_TAP_SIZE' is defined but never used    @typescript-eslint/no-unused-vars
+  545:11  warning  'metric' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  545:38  warning  'windowWidth' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  591:11  warning  'metric' is assigned a value but never used       @typescript-eslint/no-unused-vars
+  591:38  warning  'windowWidth' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\components\worker\worker-v5-flow.tsx
+  510:5  warning  'usesOpportunityInboxHandoff' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\__tests__\customer-apartment-access-pillar-test.tsx
+  281:22  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\__tests__\customer-candidate-decision-pillar-test.tsx
+   9:42  warning  'C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\api-types.ts' imported multiple times  import/no-duplicates
+  10:40  warning  'C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\api-types.ts' imported multiple times  import/no-duplicates
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\__tests__\customer-matching-retry-pillar-test.tsx
+  545:25  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  563:23  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  602:23  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\__tests__\customer-matching-selection-pillar-test.tsx
+  367:22  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\__tests__\normal-chat-suggestions-cache-pillar-test.tsx
+  3:10  warning  'withPillarContext' is defined but never used  @typescript-eslint/no-unused-vars
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\admin-data-sync.tsx
+  155:3  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\admin-data-sync.tsx:155:3
+  153 |   const retryWhenRef = useRef(retryWhen)
+  154 |   const seenSignal = useRef({ scope, signal })
+> 155 |   refreshRef.current = refresh
+      |   ^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  156 |   retryRef.current = retry
+  157 |   retryWhenRef.current = retryWhen
+  158 |  react-hooks/refs
+  156:3  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\admin-data-sync.tsx:156:3
+  154 |   const seenSignal = useRef({ scope, signal })
+  155 |   refreshRef.current = refresh
+> 156 |   retryRef.current = retry
+      |   ^^^^^^^^^^^^^^^^ Cannot update ref during render
+  157 |   retryWhenRef.current = retryWhen
+  158 |
+  159 |   useEffect(() => {                         react-hooks/refs
+  157:3  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\admin-data-sync.tsx:157:3
+  155 |   refreshRef.current = refresh
+  156 |   retryRef.current = retry
+> 157 |   retryWhenRef.current = retryWhen
+      |   ^^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  158 |
+  159 |   useEffect(() => {
+  160 |     if (seenSignal.current.scope !== scope) {                      react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\api-types\admin-program.ts
+  18:16  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  36:15  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  37:16  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  52:15  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  57:18  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  58:11  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\api-types\program.ts
+  18:16  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\api-types\system-health.ts
+  40:12  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-confirmation-reconciliation.ts
+  46:17  warning  The ref value 'lifecycle.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'lifecycle.current' to a variable inside the effect, and use that variable in the cleanup function  react-hooks/exhaustive-deps
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts
+   27:69   warning  React Hook useMemo has unnecessary dependencies: 'role' and 'sessionUserId'. Either exclude them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+  184:10   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:184:10
+  182 |     automatic.current = { inFlight: false, remaining: 20 }
+  183 |     refreshedReceipts.current.clear()
+> 184 |     void reconcile()
+      |          ^^^^^^^^^ Avoid calling setState() directly within an effect
+  185 |     const subscription = AppState.addEventListener('change', (state) => {
+  186 |       if (state === 'active') { automatic.current.remaining = 20; refreshedReceipts.current.clear(); void reconcile() }
+  187 |     })                                                                                                    react-hooks/set-state-in-effect
+  192:32   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:192:32
+  190 |   }, [role, session, sessionUserId])
+  191 |
+> 192 |   const jobId = getRemoteJobId(stateRef.current)
+      |                                ^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  193 |   const renderedContext = readApartmentContext(stateRef.current.deal?.broadcast?.addressAccess?.authorization_context)
+  194 |   const expectedWorker = renderedContext?.expected_worker_id
+  195 |   const expectedVisit = renderedContext?.expected_check_in_at                                                                                                                                                                                                                                                                                                                                                                                                                  react-hooks/refs
+  193:48   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:193:48
+  191 |
+  192 |   const jobId = getRemoteJobId(stateRef.current)
+> 193 |   const renderedContext = readApartmentContext(stateRef.current.deal?.broadcast?.addressAccess?.authorization_context)
+      |                                                ^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  194 |   const expectedWorker = renderedContext?.expected_worker_id
+  195 |   const expectedVisit = renderedContext?.expected_check_in_at
+  196 |   const authorizeApartmentAccess = useCallback(() => {                                                                                                                                                                                                                                                                                                                                                                                                  react-hooks/refs
+  193:48   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:193:48
+  191 |
+  192 |   const jobId = getRemoteJobId(stateRef.current)
+> 193 |   const renderedContext = readApartmentContext(stateRef.current.deal?.broadcast?.addressAccess?.authorization_context)
+      |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  194 |   const expectedWorker = renderedContext?.expected_worker_id
+  195 |   const expectedVisit = renderedContext?.expected_check_in_at
+  196 |   const authorizeApartmentAccess = useCallback(() => {                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/refs
+  193:48   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:193:48
+  191 |
+  192 |   const jobId = getRemoteJobId(stateRef.current)
+> 193 |   const renderedContext = readApartmentContext(stateRef.current.deal?.broadcast?.addressAccess?.authorization_context)
+      |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  194 |   const expectedWorker = renderedContext?.expected_worker_id
+  195 |   const expectedVisit = renderedContext?.expected_check_in_at
+  196 |   const authorizeApartmentAccess = useCallback(() => {                                                                                                                                                                                                                                                                                                                                                                        react-hooks/refs
+  193:48   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:193:48
+  191 |
+  192 |   const jobId = getRemoteJobId(stateRef.current)
+> 193 |   const renderedContext = readApartmentContext(stateRef.current.deal?.broadcast?.addressAccess?.authorization_context)
+      |                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  194 |   const expectedWorker = renderedContext?.expected_worker_id
+  195 |   const expectedVisit = renderedContext?.expected_check_in_at
+  196 |   const authorizeApartmentAccess = useCallback(() => {                                                                                                                                                                                                                                                                                                                          react-hooks/refs
+  212:18   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:212:18
+  210 |
+  211 |   const record = known?.session === session ? known.records.find((entry) => entry.jobId === jobId) : undefined
+> 212 |   const access = stateRef.current.deal?.broadcast?.addressAccess
+      |                  ^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  213 |   const pending = record?.resolution === 'pending'
+  214 |   const confirmed = record?.resolution === 'confirmed' && access?.authorization_context
+  215 |     && sameApartmentIntent(record.intent, access.authorization_context)                                                                                                                                                                                                                                                                                                                                                                                       react-hooks/refs
+  212:18   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:212:18
+  210 |
+  211 |   const record = known?.session === session ? known.records.find((entry) => entry.jobId === jobId) : undefined
+> 212 |   const access = stateRef.current.deal?.broadcast?.addressAccess
+      |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  213 |   const pending = record?.resolution === 'pending'
+  214 |   const confirmed = record?.resolution === 'confirmed' && access?.authorization_context
+  215 |     && sameApartmentIntent(record.intent, access.authorization_context)                                                                                                                                                                                                                                                                                                                                                                            react-hooks/refs
+  214:21   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:214:21
+  212 |   const access = stateRef.current.deal?.broadcast?.addressAccess
+  213 |   const pending = record?.resolution === 'pending'
+> 214 |   const confirmed = record?.resolution === 'confirmed' && access?.authorization_context
+      |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  215 |     && sameApartmentIntent(record.intent, access.authorization_context)
+  216 |   const customerApartmentAccessState: ApartmentAccessView = {
+  217 |     jobId, pending,                                                                                                                                                                                                                                                                                                                                                                   react-hooks/refs
+  214:59   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:214:59
+  212 |   const access = stateRef.current.deal?.broadcast?.addressAccess
+  213 |   const pending = record?.resolution === 'pending'
+> 214 |   const confirmed = record?.resolution === 'confirmed' && access?.authorization_context
+      |                                                           ^^^^^^ Cannot access ref value during render
+  215 |     && sameApartmentIntent(record.intent, access.authorization_context)
+  216 |   const customerApartmentAccessState: ApartmentAccessView = {
+  217 |     jobId, pending,                                                                                                                                                                                                                                                                                                                                                                                          react-hooks/refs
+  215:43   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:215:43
+  213 |   const pending = record?.resolution === 'pending'
+  214 |   const confirmed = record?.resolution === 'confirmed' && access?.authorization_context
+> 215 |     && sameApartmentIntent(record.intent, access.authorization_context)
+      |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  216 |   const customerApartmentAccessState: ApartmentAccessView = {
+  217 |     jobId, pending,
+  218 |     ready: Boolean(role === 'customer' && sessionAccessToken && known?.session === session && !pending && !confirmed                                                                                                                                                                                                                                                                                                         react-hooks/refs
+  218:20   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:218:20
+  216 |   const customerApartmentAccessState: ApartmentAccessView = {
+  217 |     jobId, pending,
+> 218 |     ready: Boolean(role === 'customer' && sessionAccessToken && known?.session === session && !pending && !confirmed
+      |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 219 |       && access?.worker_checked_in && !access.exact_unit_released && readApartmentContext(access.authorization_context)),
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  220 |     message: feedback?.session === session && feedback.jobId === jobId ? localizeWorkflowError(feedback.error, language) : null,
+  221 |   }
+  222 |   return { authorizeApartmentAccess, customerApartmentAccessState }                                                                                                              react-hooks/refs
+  218:20   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:218:20
+  216 |   const customerApartmentAccessState: ApartmentAccessView = {
+  217 |     jobId, pending,
+> 218 |     ready: Boolean(role === 'customer' && sessionAccessToken && known?.session === session && !pending && !confirmed
+      |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 219 |       && access?.worker_checked_in && !access.exact_unit_released && readApartmentContext(access.authorization_context)),
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  220 |     message: feedback?.session === session && feedback.jobId === jobId ? localizeWorkflowError(feedback.error, language) : null,
+  221 |   }
+  222 |   return { authorizeApartmentAccess, customerApartmentAccessState }                                                                               react-hooks/refs
+  218:20   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:218:20
+  216 |   const customerApartmentAccessState: ApartmentAccessView = {
+  217 |     jobId, pending,
+> 218 |     ready: Boolean(role === 'customer' && sessionAccessToken && known?.session === session && !pending && !confirmed
+      |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+> 219 |       && access?.worker_checked_in && !access.exact_unit_released && readApartmentContext(access.authorization_context)),
+      | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  220 |     message: feedback?.session === session && feedback.jobId === jobId ? localizeWorkflowError(feedback.error, language) : null,
+  221 |   }
+  222 |   return { authorizeApartmentAccess, customerApartmentAccessState }  react-hooks/refs
+  218:108  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:218:108
+  216 |   const customerApartmentAccessState: ApartmentAccessView = {
+  217 |     jobId, pending,
+> 218 |     ready: Boolean(role === 'customer' && sessionAccessToken && known?.session === session && !pending && !confirmed
+      |                                                                                                            ^^^^^^^^^ Cannot access ref value during render
+  219 |       && access?.worker_checked_in && !access.exact_unit_released && readApartmentContext(access.authorization_context)),
+  220 |     message: feedback?.session === session && feedback.jobId === jobId ? localizeWorkflowError(feedback.error, language) : null,
+  221 |   }                                                                                                                                                                                                                                     react-hooks/refs
+  219:10   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:219:10
+  217 |     jobId, pending,
+  218 |     ready: Boolean(role === 'customer' && sessionAccessToken && known?.session === session && !pending && !confirmed
+> 219 |       && access?.worker_checked_in && !access.exact_unit_released && readApartmentContext(access.authorization_context)),
+      |          ^^^^^^ Cannot access ref value during render
+  220 |     message: feedback?.session === session && feedback.jobId === jobId ? localizeWorkflowError(feedback.error, language) : null,
+  221 |   }
+  222 |   return { authorizeApartmentAccess, customerApartmentAccessState }                                                                                                                                                                                                                                                                                                                                     react-hooks/refs
+  219:40   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:219:40
+  217 |     jobId, pending,
+  218 |     ready: Boolean(role === 'customer' && sessionAccessToken && known?.session === session && !pending && !confirmed
+> 219 |       && access?.worker_checked_in && !access.exact_unit_released && readApartmentContext(access.authorization_context)),
+      |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  220 |     message: feedback?.session === session && feedback.jobId === jobId ? localizeWorkflowError(feedback.error, language) : null,
+  221 |   }
+  222 |   return { authorizeApartmentAccess, customerApartmentAccessState }                                                                                                                                                                                                                                                                                   react-hooks/refs
+  219:91   error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-apartment-access.ts:219:91
+  217 |     jobId, pending,
+  218 |     ready: Boolean(role === 'customer' && sessionAccessToken && known?.session === session && !pending && !confirmed
+> 219 |       && access?.worker_checked_in && !access.exact_unit_released && readApartmentContext(access.authorization_context)),
+      |                                                                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  220 |     message: feedback?.session === session && feedback.jobId === jobId ? localizeWorkflowError(feedback.error, language) : null,
+  221 |   }
+  222 |   return { authorizeApartmentAccess, customerApartmentAccessState }                                                                                                                                                                                                       react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-job-actions.ts
+  67:72  warning  React Hook useMemo has unnecessary dependencies: 'role', 'sessionAccessToken', and 'sessionUserId'. Either exclude them or remove the dependency array  react-hooks/exhaustive-deps
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-matching-retry.ts
+  215:17  warning  The ref value 'lifecycle.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'lifecycle.current' to a variable inside the effect, and use that variable in the cleanup function                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        react-hooks/exhaustive-deps
+  231:44  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-matching-retry.ts:231:44
+  229 |     confirmRemoteSearch,
+  230 |     customerMatchingRetryFeedback: feedback && feedback.ownerId === sessionUserId
+> 231 |       && feedback.jobId === getRemoteJobId(stateRef.current) && stateRef.current.deal?.status === 'broadcasting'
+      |                                            ^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  232 |       ? { jobId: feedback.jobId, message: localizeWorkflowError(feedback.error, language) }
+  233 |       : null,
+  234 |   }             react-hooks/refs
+  231:65  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-matching-retry.ts:231:65
+  229 |     confirmRemoteSearch,
+  230 |     customerMatchingRetryFeedback: feedback && feedback.ownerId === sessionUserId
+> 231 |       && feedback.jobId === getRemoteJobId(stateRef.current) && stateRef.current.deal?.status === 'broadcasting'
+      |                                                                 ^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  232 |       ? { jobId: feedback.jobId, message: localizeWorkflowError(feedback.error, language) }
+  233 |       : null,
+  234 |   }          react-hooks/refs
+  231:65  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-matching-retry.ts:231:65
+  229 |     confirmRemoteSearch,
+  230 |     customerMatchingRetryFeedback: feedback && feedback.ownerId === sessionUserId
+> 231 |       && feedback.jobId === getRemoteJobId(stateRef.current) && stateRef.current.deal?.status === 'broadcasting'
+      |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  232 |       ? { jobId: feedback.jobId, message: localizeWorkflowError(feedback.error, language) }
+  233 |       : null,
+  234 |   }  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-matching-selection.ts
+  181:17  warning  The ref value 'lifecycle.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'lifecycle.current' to a variable inside the effect, and use that variable in the cleanup function                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     react-hooks/exhaustive-deps
+  194:32  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-matching-selection.ts:194:32
+  192 |   }, [processSelection, setRemoteError, stateRef])
+  193 |
+> 194 |   const jobId = getRemoteJobId(stateRef.current)
+      |                                ^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  195 |   const known = role === 'customer' && knownSelections?.ownerId === sessionUserId
+  196 |     && knownSelections.generation === lifecycle.current.generation ? knownSelections : null
+  197 |   const record = known?.records.find((entry) => entry.jobId === jobId)                                                                                                                                                   react-hooks/refs
+  196:39  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-matching-selection.ts:196:39
+  194 |   const jobId = getRemoteJobId(stateRef.current)
+  195 |   const known = role === 'customer' && knownSelections?.ownerId === sessionUserId
+> 196 |     && knownSelections.generation === lifecycle.current.generation ? knownSelections : null
+      |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  197 |   const record = known?.records.find((entry) => entry.jobId === jobId)
+  198 |   const locked = record && (record.receipt || !record.rejectedCode || record.rejectedCode === 'MATCHING_PREFERENCE_REQUEST_CONFLICT')
+  199 |   const customerMatchingSelectionState: MatchingSelectionView = {  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-customer-profile-insights-actions.ts
+   9:1  warning  Import in body of module; reorder to top  import/first
+  10:1  warning  Import in body of module; reorder to top  import/first
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-notification-actions.ts
+  11:1  warning  Import in body of module; reorder to top  import/first
+  12:1  warning  Import in body of module; reorder to top  import/first
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-rfq-price.ts
+  19:84  warning  React Hook useMemo has unnecessary dependencies: 'jobId', 'ownerId', 'role', and 'token'. Either exclude them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/exhaustive-deps
+  59:16  error    `changed` is a function created with React Hook "useEffectEvent", and can only be called from Effects and Effect Events in the same component                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-hooks/rules-of-hooks
+  69:14  error    `changed` is a function created with React Hook "useEffectEvent", and can only be called from Effects and Effect Events in the same component                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            react-hooks/rules-of-hooks
+  81:10  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-rfq-price.ts:81:10
+  79 |   useEffect(() => {
+  80 |     session.active = true
+> 81 |     void refresh()
+     |          ^^^^^^^ Avoid calling setState() directly within an effect
+  82 |     const foreground = () => AppState.currentState === 'active' || AppState.currentState == null
+  83 |     const subscription = AppState.addEventListener('change', next => { if (next === 'active') void refresh() })
+  84 |     const timer = setInterval(() => { if (foreground()) void refresh() }, 5000)  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-ambassador.ts
+  47:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-ambassador.ts:47:10
+  45 |
+  46 |   useEffect(() => {
+> 47 |     void reload()
+     |          ^^^^^^ Avoid calling setState() directly within an effect
+  48 |   }, [reload])
+  49 |
+  50 |   // The request id survives a failed attempt, so a retry after a dropped connection replays  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-board-actions.ts
+  344:3  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-board-actions.ts:344:3
+  342 |     }
+  343 |   }, [dispatch, language, role, sessionUserId, setRemoteError, stateRef])
+> 344 |   workerRefreshRef.current = workerRefresh
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  345 |
+  346 |   const workerUpdateAvailability = useCallback(async (
+  347 |     isAvailable: boolean,  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-candidate-actions.ts
+   38:68  warning  React Hook useMemo has unnecessary dependencies: 'role' and 'sessionUserId'. Either exclude them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/exhaustive-deps
+  226:10  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-candidate-actions.ts:226:10
+  224 |   useEffect(() => {
+  225 |     session.remaining = 20
+> 226 |     void reconcile()
+      |          ^^^^^^^^^ Avoid calling setState() directly within an effect
+  227 |     if (role === 'customer' && remoteJobId && customerStatus === 'worker_candidate_pending') {
+  228 |       void loadCandidate(remoteJobId)
+  229 |     }  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-registration-actions.ts
+  14:3  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-registration-actions.ts:14:3
+  12 | }) {
+  13 |   const refreshRef = useRef(refresh)
+> 14 |   refreshRef.current = refresh
+     |   ^^^^^^^^^^^^^^^^^^ Cannot update ref during render
+  15 |   const [visible, setVisible] = useState<{ session: object; view: WorkerRegistrationRecoveryView } | null>(null)
+  16 |   const session = useMemo(() => {
+  17 |     const state = { active: false, view: INITIAL_VIEW }  react-hooks/refs
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-violations.ts
+  48:10  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\frontend-workflow\use-worker-violations.ts:48:10
+  46 |
+  47 |   useEffect(() => {
+> 48 |     void reload()
+     |          ^^^^^^ Avoid calling setState() directly within an effect
+  49 |   }, [reload])
+  50 |
+  51 |   const uploadEvidence = useCallback(async (caseId: string, images: AppealImageDraft[]) => {  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\kael-stream.ts
+  1:74  warning  'C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\node_modules\@nestscout\shared\src\index.ts' imported multiple times  import/no-duplicates
+  7:8   warning  'C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\node_modules\@nestscout\shared\src\index.ts' imported multiple times  import/no-duplicates
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\normal-chat-suggestions.ts
+  142:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\normal-chat-suggestions.ts:142:7
+  140 |   useEffect(() => {
+  141 |     if (!enabled || !scope || !key) {
+> 142 |       setState(null)
+      |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  143 |       return
+  144 |     }
+  145 |     let stale = false  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\resource-cache\resource-cache.ts
+  91:16  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\resource-cache\use-cached-resource.ts
+  91:37  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\resource-cache\use-cached-resource.ts:91:37
+  89 |   const invalidated = peeked?.invalidated === true
+  90 |   useEffect(() => {
+> 91 |     if (active && invalidated) void revalidate(false)
+     |                                     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  92 |   }, [active, invalidated, revalidate])
+  93 |
+  94 |   const entry: CacheEntry<T> | null = peeked && active ? readResource<T>(ownerId!, key!) : null  react-hooks/set-state-in-effect
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\lib\services.ts
+   6:81    warning  'C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\node_modules\@nestscout\shared\src\index.ts' imported multiple times  import/no-duplicates
+  21:762   warning  'CustomerKaelConversationArchiveResponse' is defined but never used                                                                                                     @typescript-eslint/no-unused-vars
+  21:2423  warning  'WorkerKaelChatArchiveResponse' is defined but never used                                                                                                               @typescript-eslint/no-unused-vars
+  22:1274  warning  'C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile\node_modules\@nestscout\shared\src\index.ts' imported multiple times  import/no-duplicates
+
+✖ 164 problems (75 errors, 89 warnings)
+  0 errors and 24 warnings potentially fixable with the `--fix` option.
+
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @nestscout/mobile@0.3.2 lint:mobile: `eslint .`
+Exit status 1
+[ELIFECYCLE] Command failed with exit code 1.

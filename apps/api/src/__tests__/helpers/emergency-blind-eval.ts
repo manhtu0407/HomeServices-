@@ -140,6 +140,7 @@ export function evaluateBlindSet(
   }
   if (negatives.length < thresholds.min_negatives) shortfalls.push(`${negatives.length} negatives, ${thresholds.min_negatives} needed`)
   const failing: string[] = []
+  if (routed.length < detected.length) failing.push('wrong emergency routes in clear positives')
   if (overall.wilson95 && overall.wilson95.low < thresholds.overall_recall_lower_bound) failing.push('overall recall lower bound below the proposed threshold')
   for (const route of BLIND_ROUTES) {
     const interval = perRoute[route].detected.wilson95

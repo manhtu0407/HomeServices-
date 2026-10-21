@@ -1,0 +1,155 @@
+{
+  "baseline_commit": "062db16094a5eb8168e9bdec9823c221aea729ae",
+  "reason": "Preserve historical log bytes while retaining full-source EAS release inputs; no ignore or assertion relaxation",
+  "mappings": [
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log.txt",
+      "sha256_before": "bc4856fc6c9d177f505af18b3e86535f4f5d9beb210c7c1d96b387aa35fbaafa",
+      "bytes_before": 221,
+      "sha256_after": "bc4856fc6c9d177f505af18b3e86535f4f5d9beb210c7c1d96b387aa35fbaafa",
+      "bytes_after": 221
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log.txt",
+      "sha256_before": "d35a09bfb0dac6ad69a6f318ad14d2762f1282743a814c19c8ce36b912b9dcc2",
+      "bytes_before": 1126,
+      "sha256_after": "d35a09bfb0dac6ad69a6f318ad14d2762f1282743a814c19c8ce36b912b9dcc2",
+      "bytes_after": 1126
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log.txt",
+      "sha256_before": "450ad0da29d9cc772dda31cfd0c00de0f9f8861cac06760d398dadc73763fa18",
+      "bytes_before": 2240,
+      "sha256_after": "450ad0da29d9cc772dda31cfd0c00de0f9f8861cac06760d398dadc73763fa18",
+      "bytes_after": 2240
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log.txt",
+      "sha256_before": "3f2bd5163e9033a92b9e6e072a2f93100688a944eeac07cb87bf2da2623e5883",
+      "bytes_before": 6898,
+      "sha256_after": "3f2bd5163e9033a92b9e6e072a2f93100688a944eeac07cb87bf2da2623e5883",
+      "bytes_after": 6898
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log.txt",
+      "sha256_before": "2d5f8fdc35618abba510a11bf2d01ae9f4979b6aabf7078c0992a784bc027bda",
+      "bytes_before": 156,
+      "sha256_after": "2d5f8fdc35618abba510a11bf2d01ae9f4979b6aabf7078c0992a784bc027bda",
+      "bytes_after": 156
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log.txt",
+      "sha256_before": "9148015e236a7a6e7bbb3d10cd29480a607e705215a3ef64941797979d8e859d",
+      "bytes_before": 171,
+      "sha256_after": "9148015e236a7a6e7bbb3d10cd29480a607e705215a3ef64941797979d8e859d",
+      "bytes_after": 171
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log.txt",
+      "sha256_before": "3e525a46925ebeda76689aabb3ec96808f0e79175bcd061a10035840e14500d9",
+      "bytes_before": 367,
+      "sha256_after": "3e525a46925ebeda76689aabb3ec96808f0e79175bcd061a10035840e14500d9",
+      "bytes_after": 367
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log.txt",
+      "sha256_before": "796652d9e18205ca107987ca420b50860e1e997b67495412a227e043e5298885",
+      "bytes_before": 2537,
+      "sha256_after": "796652d9e18205ca107987ca420b50860e1e997b67495412a227e043e5298885",
+      "bytes_after": 2537
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log.txt",
+      "sha256_before": "768dd352ce23042d1397b3f998821a133c947d5a8fc386be26856e5cf104417c",
+      "bytes_before": 194,
+      "sha256_after": "768dd352ce23042d1397b3f998821a133c947d5a8fc386be26856e5cf104417c",
+      "bytes_after": 194
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log.txt",
+      "sha256_before": "99e612b3f66b823e7529f0acf687e0fd85d697ee57805c7407a76f4a6d2a2456",
+      "bytes_before": 212,
+      "sha256_after": "99e612b3f66b823e7529f0acf687e0fd85d697ee57805c7407a76f4a6d2a2456",
+      "bytes_after": 212
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log.txt",
+      "sha256_before": "dc1ef03bdcaf1975a378c1ae7099382a23ac3a64cf198d2981dc02cd2caac139",
+      "bytes_before": 603,
+      "sha256_after": "dc1ef03bdcaf1975a378c1ae7099382a23ac3a64cf198d2981dc02cd2caac139",
+      "bytes_after": 603
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log.txt",
+      "sha256_before": "32fe9abe3f2ea69a500f2ca1914e8010fa8433e7e0b5b81edfd05299e742006e",
+      "bytes_before": 163,
+      "sha256_after": "32fe9abe3f2ea69a500f2ca1914e8010fa8433e7e0b5b81edfd05299e742006e",
+      "bytes_after": 163
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log.txt",
+      "sha256_before": "666a13a14c39719505151618f9902acf0bf335da33feb387fc8fc320d9a88762",
+      "bytes_before": 16268,
+      "sha256_after": "666a13a14c39719505151618f9902acf0bf335da33feb387fc8fc320d9a88762",
+      "bytes_after": 16268
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log.txt",
+      "sha256_before": "bd6b4318f4f4f289fe0ca7c34540675be159dda717e0d133d6f4c4b184133d9a",
+      "bytes_before": 15719,
+      "sha256_after": "bd6b4318f4f4f289fe0ca7c34540675be159dda717e0d133d6f4c4b184133d9a",
+      "bytes_after": 15719
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log.txt",
+      "sha256_before": "3de17f9d6a8f66da4bea36b23dedc6a73c93962959e0ae3f3380e1a8a665ec4c",
+      "bytes_before": 7065,
+      "sha256_after": "3de17f9d6a8f66da4bea36b23dedc6a73c93962959e0ae3f3380e1a8a665ec4c",
+      "bytes_after": 7065
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log.txt",
+      "sha256_before": "1843019d3df9f253d7285d96df16d0c0ed4007a54cdba0ff76bda44a71dd729d",
+      "bytes_before": 1150,
+      "sha256_after": "1843019d3df9f253d7285d96df16d0c0ed4007a54cdba0ff76bda44a71dd729d",
+      "bytes_after": 1150
+    },
+    {
+      "from": "docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log",
+      "to": "docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log.txt",
+      "sha256_before": "a27a9276ac09577d82a5d379db8d4a019add0457d7bdf264675e9a0855c7ac8f",
+      "bytes_before": 189,
+      "sha256_after": "a27a9276ac09577d82a5d379db8d4a019add0457d7bdf264675e9a0855c7ac8f",
+      "bytes_after": 189
+    }
+  ],
+  "reference_updates": [
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/README.txt",
+      "sha256_before": "da54e22547e7c13c2aad083f08a904ba986ecb30716d0038603651385823c481",
+      "sha256_after": "459638fbee99ab6e1af93f4183f3516ded5aa85c465877faa66a0d07581ec807"
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/file-digests.txt",
+      "sha256_before": "62b52f0eb6f35ef7e8c243665f8469e2cd267951f9a33ce4ed0105857529b5a4",
+      "sha256_after": "10268a2c4a92a070b2e73692f1264e40535553b0979298736dbfcf27c14ed4f3"
+    }
+  ],
+  "historical_digest_semantics": "Only the renamed paths and changed README hash are updated. Historical source hashes remain bound to their original checkpoint, not silently rebased to HEAD."
+}

@@ -1,0 +1,42 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 16796,
+  "EndColumn": 16863,
+  "Match": "keys: REDACTED\"",
+  "Secret": "REDACTED",
+  "File": "docs/test-logs/kawa-01-delivery-remediation-evidence/api-vitest-complete.json",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.674521,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "docs/test-logs/kawa-01-delivery-remediation-evidence/api-vitest-complete.json:generic-api-key:1"
+ },
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 16928,
+  "EndColumn": 16995,
+  "Match": "keys: REDACTED\"",
+  "Secret": "REDACTED",
+  "File": "docs/test-logs/kawa-01-delivery-remediation-evidence/api-vitest-complete.json",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.674521,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "docs/test-logs/kawa-01-delivery-remediation-evidence/api-vitest-complete.json:generic-api-key:1"
+ }
+]

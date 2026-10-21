@@ -39,6 +39,7 @@ import {
   answerEmergencyOnOwnedSession,
   answerParkedEmergency,
   customerAuthoredTexts,
+  registerCaseEmergencyDelivery,
   refuseWithEmergencyGuidance,
   resolveCaseEmergency,
 } from "./emergency-turn.ts";
@@ -107,6 +108,8 @@ export async function createKaelChat(
       apartment_access_profile: input.apartment_access_profile,
     }, secrets);
   }
+
+  registerCaseEmergencyDelivery(ctx, createTexts, input.service_type);
 
   // A new Case whose schedule is invalid is refused, unless the request reports an emergency: that is answered, as an
   // ordinary reply, with the schedule dropped and the analysis deferred so nothing else of the request is applied.

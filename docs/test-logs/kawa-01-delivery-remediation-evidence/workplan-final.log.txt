@@ -1,0 +1,2 @@
+$ node scripts/run.mjs run-node scripts/check-work-plan.mjs
+work plan ok: 15 slices declared (15 closed, 0 pending), 167 files changed inside the declared read-window

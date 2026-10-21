@@ -1,0 +1,1421 @@
+diff --git a/apps/api/scripts/kael-playbook-eval.mjs b/apps/api/scripts/kael-playbook-eval.mjs
+index 7acb8424..9be582b0 100644
+--- a/apps/api/scripts/kael-playbook-eval.mjs
++++ b/apps/api/scripts/kael-playbook-eval.mjs
+@@ -56,6 +56,8 @@ const CLIENT_IDENTITY_PATTERN = /^[A-Za-z0-9._:-]{1,160}$/
+ // corpus, the mock fixture, the environment or any model. A report therefore proves which listed bytes ran, not that
+ // nothing else changed.
+ const SOURCE_FILES = [
++  'supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts',
++  'supabase/functions/_shared/contracts/emergency-guidance.ts',
+   'apps/api/scripts/kael-playbook-eval.mjs',
+   'apps/api/scripts/lib/kael-playbook-eval-core.mjs',
+   'supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts',
+diff --git a/apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts b/apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts
+new file mode 100644
+index 00000000..f9bf8749
+--- /dev/null
++++ b/apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts
+@@ -0,0 +1,157 @@
++import { describe, expect, it, vi } from 'vitest'
++
++import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
++import { ApiFailure } from '../../../../../../supabase/functions/mobile-api/_shared/platform/api-failure'
++import { createMobileApiHandler } from '../../../../../../supabase/functions/mobile-api/_shared/http'
++import { CASE_SESSION_ID, OWNER, STRANGER, type Actor, type CaseWorld } from '../harness/case-world'
++import { installEdgeRuntimeTestHooks } from '../harness/hooks'
++import { activeWorld, evidenceWorld, armWriteFailures, newCaseWorld } from '../harness/emergency-fixtures'
++
++export const PILLAR = {
++  id: 'P416-kael-emergency-error-delivery',
++  invariant: 'authorized recognized emergencies carry only versioned deterministic route metadata through JSON and SSE business failures without changing the rejection, crossing a confirmation gate, spending on providers or revealing private Case details to another actor',
++  authority: [
++    'governance/RULES.md #7 (customer approval gates remain authoritative)',
++    'governance/RULES.md #8 (rejected operations remain visible failures)',
++    'governance/RULES.md #9 (new metadata contains no private text or identifiers)',
++  ],
++  target: 'supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts',
++  layer: 'integration',
++  siblings: ['P412-kael-emergency-delivery', 'P411-kael-case-emergency-closure-paths'],
++  mutation: 'remove emergency error delivery: the real handler returns the same 400 VALIDATION for foreign media but the required versioned fire route is absent',
++} as const satisfies PillarManifest
++
++installEdgeRuntimeTestHooks()
++
++const FIRE = 'Nhà tôi đang cháy'
++const photo = (owner = OWNER.id) => ({ kind: 'photo', ref: `supabase://kael-chat-media/${owner}/kael-chat/model_vision/expired.jpg`, model_eligible: true })
++
++function handlerFor(world: CaseWorld, actor: Actor = OWNER) {
++  return createMobileApiHandler({
++    authenticate: async () => ({
++      success: true as const,
++      user: { id: actor.id },
++      role: actor.role,
++      supabase: world.db.client,
++      privilegedSupabase: world.db.client,
++      userSupabase: world.db.client,
++    }) as never,
++    services: world.services,
++  })
++}
++
++async function create(world: CaseWorld, input: Record<string, unknown>, actor = OWNER) {
++  const response = await handlerFor(world, actor)(new Request('https://edge.test/mobile-api/kael/chat', {
++    method: 'POST',
++    headers: { 'content-type': 'application/json' },
++    body: JSON.stringify({ service_type: 'hvac', language: 'vi', problem_chips: [], photo_urls: [], ...input }),
++  }))
++  return { status: response.status, body: await response.json() as Record<string, unknown> }
++}
++
++describe(PILLAR.id, () => {
++  it('preserves foreign media rejection and returns a trusted fire route without creating a Case', async () => {
++    const world = newCaseWorld()
++    const result = await create(world, { message: FIRE, evidence_items: [photo(STRANGER.id)] })
++    const why = pillarWhy(PILLAR, `foreign new media status=${result.status}`)
++    expect(result.status, why).toBe(400)
++    expect(result.body, why).toMatchObject({ code: 'VALIDATION', error: expect.any(String) })
++    expect(result.body.emergency, why).toEqual({ version: 'v1', route: 'fire' })
++    expect(world.db.tables.kael_chat_sessions, why).toEqual([])
++    expect(world.db.tables.kael_chat_turns, why).toEqual([])
++    expect(world.modelCalls, why).toEqual([])
++    expect(world.unexpectedWrites(), why).toEqual([])
++    expect(vi.mocked(fetch), why).not.toHaveBeenCalled()
++  })
++})
++
++const ARC = 'Ổ cắm tóe lửa khi cắm phích'
++const snapshot = (world: CaseWorld) => JSON.stringify({ sessions: world.db.tables.kael_chat_sessions, turns: world.db.tables.kael_chat_turns })
++function safeFailure(result: {status: number; body: Record<string, unknown>}, status: number, code: string, route: string) {
++  expect(result.status, pillarWhy(PILLAR, code)).toBe(status)
++  expect(result.body.code).toBe(code)
++  expect(result.body.emergency).toEqual({ version: 'v1', route })
++  expect(Object.keys(result.body.emergency as object).sort()).toEqual(['route', 'version'])
++}
++function noBusiness(world: CaseWorld) {
++  expect(world.modelCalls).toEqual([])
++  expect(world.unexpectedWrites()).toEqual([])
++  expect(world.db.tables.kael_chat_sessions.every(row => !row.job_id)).toBe(true)
++}
++
++describe(PILLAR.id + ': fixed failure matrix', () => {
++  it('missing upload intent stays 400 without a Case or evidence acceptance', async () => {
++    const world = newCaseWorld(); const before = snapshot(world)
++    safeFailure(await create(world, { message: FIRE, evidence_items: [photo()] }), 400, 'MEDIA_INTENT_INVALID', 'fire')
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it('malformed owner media stays rejected', async () => {
++    const world = newCaseWorld(); const before = snapshot(world)
++    safeFailure(await create(world, { message: FIRE, evidence_items: [{ ...photo(), ref: 'https://foreign.test/photo.jpg' }] }), 400, 'VALIDATION', 'fire')
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it('required evidence cannot be skipped by emergency advice', async () => {
++    const world = evidenceWorld(); const before = snapshot(world)
++    safeFailure(await world.request('/evidence', { language: 'vi', decision: 'skipped', skip_reason: ARC }), 409, 'EVIDENCE_REQUIRED', 'electrical_water')
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it('existing rejected evidence stays rejected without writes', async () => {
++    const world = activeWorld(); const before = snapshot(world)
++    safeFailure(await world.request('', { message: ARC, evidence_items: [photo()] }), 400, 'MEDIA_INTENT_INVALID', 'electrical_water')
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it.each(['confirmed', 'abandoned', 'unsupported'])('terminal %s is never reopened', async (status) => {
++    const world = activeWorld('hvac', { status }); const before = snapshot(world)
++    safeFailure(await world.request('', { message: FIRE }), 409, 'INVALID_STATUS', 'fire')
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it('reply persistence failure stays 500 with no business transition', async () => {
++    const world = activeWorld(); const repliesBefore = world.kaelTurns().length; armWriteFailures(world, { replyInserts: 2 })
++    safeFailure(await world.request('', { message: FIRE }), 500, 'DB_ERROR', 'fire')
++    expect(world.session().status).toBe('active'); expect(world.kaelTurns()).toHaveLength(repliesBefore); noBusiness(world)
++  })
++  it('quota stays 429, creates no Case and still delivers guidance', async () => {
++    const world = newCaseWorld(); const before = snapshot(world)
++    const client = world.db.client as unknown as {rpc: (name: string, args?: unknown) => Promise<unknown>}
++    const original = client.rpc.bind(client)
++    client.rpc = async (name, args) => name === 'check_kael_chat_rate'
++      ? { data: [{ allowed: false, reason: 'minute', minute_count: 6, hour_count: 6 }], error: null } : original(name, args)
++    safeFailure(await create(world, { message: FIRE }), 429, 'RATE_LIMITED', 'fire')
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it('SSE emits error and no result on rejected evidence', async () => {
++    const world = activeWorld(); const before = snapshot(world)
++    const response = await handlerFor(world)(new Request('https://edge.test/mobile-api/kael/chat/' + CASE_SESSION_ID + '/stream', {
++      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: ARC, evidence_items: [photo()] }),
++    }))
++    const text = await response.text()
++    expect(response.headers.get('content-type')).toContain('text/event-stream')
++    expect(text).toContain('event: error'); expect(text).not.toContain('event: result')
++    expect(text).toContain('"emergency":{"version":"v1","route":"electrical_water"}')
++    expect(text).not.toContain(ARC); expect(text).not.toContain(OWNER.id)
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it.each([OWNER, STRANGER, { id: OWNER.id, role: 'worker' } as Actor, { id: OWNER.id, role: 'admin' } as Actor])('ordinary or unauthorized caller receives no metadata: %j', async actor => {
++    const world = activeWorld('hvac', { status: 'confirmed' }); const before = snapshot(world)
++    const result = await world.request('', { message: actor === OWNER ? 'Cần hỗ trợ máy lạnh' : FIRE }, { as: actor })
++    expect(result.status).toBe(actor === OWNER ? 409 : actor === STRANGER ? 404 : 403)
++    expect(result.body.emergency).toBeUndefined(); expect(result.body.error).not.toContain('114')
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it('replay of a rejected closed request never creates consent or duplicates turns', async () => {
++    const world = activeWorld('hvac', { status: 'confirmed' }); const before = snapshot(world)
++    for (let i = 0; i < 2; i++) safeFailure(await world.request('', { message: FIRE }), 409, 'INVALID_STATUS', 'fire')
++    expect(snapshot(world)).toBe(before); noBusiness(world)
++  })
++  it('ignores emergency fields from arbitrary exception extras while retaining other existing fields', async () => {
++    const world = newCaseWorld()
++    world.services.createKaelChat = async () => { throw new ApiFailure('VALIDATION', 'original refusal', 400, {
++      emergency: { version: 'v1', route: 'fire', transcript: 'private' }, original_detail: 'retained',
++    }) }
++    const result = await create(world, { message: 'Cần hỗ trợ máy lạnh' })
++    expect(result.status).toBe(400)
++    expect(result.body).toMatchObject({ code: 'VALIDATION', error: 'original refusal', original_detail: 'retained' })
++    expect(result.body.emergency).toBeUndefined(); noBusiness(world)
++  })
++
++})
+diff --git a/apps/api/src/__tests__/unit/kael-emergency-error-contract-pillar.test.ts b/apps/api/src/__tests__/unit/kael-emergency-error-contract-pillar.test.ts
+new file mode 100644
+index 00000000..f8f76564
+--- /dev/null
++++ b/apps/api/src/__tests__/unit/kael-emergency-error-contract-pillar.test.ts
+@@ -0,0 +1,45 @@
++import { readFileSync } from 'node:fs'
++import { describe, expect, it } from 'vitest'
++import { kaelEmergencyGuidanceCopy, readKaelEmergencyGuidance, kaelEmergencyGuidanceSchema } from '../../../../../packages/shared/src/contracts/emergency-guidance'
++import * as edge from '../../../../../supabase/functions/_shared/contracts/emergency-guidance'
++import { requestEmergencyFields, setRequestEmergencyGuidance, clearRequestEmergencyGuidance } from '../../../../../supabase/functions/mobile-api/_shared/platform/emergency-guidance'
++import { type PillarManifest } from '../pillar-manifest'
++
++export const PILLAR = {
++  id: 'P417-kael-emergency-error-contract',
++  invariant: 'both clients accept only versioned closed route metadata and render the frozen deterministic safety copy; private text and unknown fields never cross the safety contract',
++  authority: ['governance/RULES.md #9 (no private request content in new safety fields)'],
++  target: 'packages/shared/src/contracts/emergency-guidance.ts', layer: 'unit',
++  siblings: ['P416-kael-emergency-error-delivery'],
++  mutation: 'allow extra fields or change one translation: schema privacy and deterministic-copy parity turn red',
++} as const satisfies PillarManifest
++
++const routes = kaelEmergencyGuidanceSchema.shape.route.options
++const classifierSource = readFileSync('../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts', 'utf8')
++const frozenCopy = [...classifierSource.matchAll(/    (vi|en): ("[^"\n]+"),/g)].map(m => JSON.parse(m[2]) as string)
++
++describe(PILLAR.id, () => {
++  it.each(routes)('keeps exact VI/EN copy and wire compatibility for %s', route => {
++    const payload = { version: 'v1', route }
++    expect(readKaelEmergencyGuidance(payload)).toEqual(payload)
++    expect(edge.readKaelEmergencyGuidance(payload)).toEqual(payload)
++    for (const language of ['vi', 'en'] as const) {
++      expect(kaelEmergencyGuidanceCopy(route, language)).toBe(edge.kaelEmergencyGuidanceCopy(route, language))
++      expect(frozenCopy).toContain(kaelEmergencyGuidanceCopy(route, language))
++    }
++  })
++  it.each([null, {}, [], { version: 'v2', route: 'fire' }, { version: 'v1', route: 'invented' },
++    { version: 'v1', route: 'fire', text: 'private transcript' }, { version: 'v1', route: 'fire', address: 'private' },
++    { version: 'v1', route: 'fire', actor_hash: 'private' }])('rejects invalid/private metadata %j', value => {
++    expect(readKaelEmergencyGuidance(value)).toBeNull()
++    expect(edge.readKaelEmergencyGuidance(value)).toBeNull()
++  })
++  it('isolates requests and clears reused contexts without storing customer words', () => {
++    const first = {}; const other = {}
++    setRequestEmergencyGuidance(first, { version: 'v1', route: 'fire' })
++    expect(requestEmergencyFields(first)).toEqual({ emergency: { version: 'v1', route: 'fire' } })
++    expect(requestEmergencyFields(other)).toEqual({})
++    clearRequestEmergencyGuidance(first)
++    expect(requestEmergencyFields(first)).toEqual({})
++  })
++})
+diff --git a/apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx b/apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
+new file mode 100644
+index 00000000..f66446df
+--- /dev/null
++++ b/apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx
+@@ -0,0 +1,201 @@
++import { TextDecoder as NodeTextDecoder } from 'node:util'
++import { ReadableStream as NodeReadableStream } from 'node:stream/web'
++import { useRef } from 'react'
++import { act, fireEvent, render, renderHook } from '@testing-library/react-native'
++import { kaelEmergencyGuidanceCopy, type ServiceType } from '@nestscout/shared'
++import { withPillarContext, type PillarManifest } from '@/__tests__/pillar-manifest'
++
++jest.mock('@/lib/runtime-config', () => ({ mobileRuntimeConfig: {
++  apiBaseUrl: 'https://api.test/functions/v1/mobile-api', supabasePublishableKey: 'test-public',
++} }))
++jest.mock('@/lib/services', () => {
++  const actual = jest.requireActual('@/lib/services')
++  const stream = jest.requireActual('@/lib/kael-stream') as typeof import('@/lib/kael-stream')
++  return { ...actual, kaelChatStreamService: { ...actual.kaelChatStreamService,
++    sendTurn: (...args: Parameters<typeof stream.streamKaelChatTurn>) => stream.streamKaelChatTurn(args[0], args[1], args[2], args[3], mockFetch),
++  } }
++})
++jest.mock('@/lib/sentry-runtime', () => ({ Sentry: { addBreadcrumb: jest.fn() } }))
++jest.mock('@/lib/supabase', () => ({ supabase: null }))
++jest.mock('@/lib/release-client-platform', () => ({ releaseClientPlatform: () => 'ios' }))
++jest.mock('@/lib/media-upload', () => ({ cleanupKaelChatMediaRefs: jest.fn(async () => true) }))
++
++import { resetConnectivityForTests } from '@/lib/connectivity'
++import { CustomerKaelEmergencyAccess } from '../kael-chat/customer-kael-emergency-access'
++import { getCustomerThemeTokens } from '../customer-theme'
++import type { KaelChatResponse } from '@/lib/api-types'
++import { streamKaelChatTurn } from '@/lib/kael-stream'
++import { api } from '@/lib/api'
++import { useCustomerKaelChatUiState } from '../kael-chat/use-customer-kael-chat-ui-state'
++import { useCustomerKaelConversationState } from '../kael-chat/use-customer-kael-conversation-state'
++import { useCustomerKaelMessageActions } from '../kael-chat/use-customer-kael-message-actions'
++import { useCustomerKaelRequestGuard } from '../kael-chat/customer-kael-state-scope'
++
++export const PILLAR = {
++  id: 'P418-kael-emergency-mobile-delivery',
++  invariant: 'trusted emergency guidance survives rejected requests into Customer Kael without creating a chat, duplicating turns, or changing business state, and offline guidance stays reachable',
++  authority: ['governance/RULES.md #8 (no fake success)', 'governance/RULES.md #3 (validated output only)'],
++  target: 'apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts',
++  layer: 'integration',
++  siblings: ['P341-kael-stream-accepts-governed-next-actions'],
++  mutation: 'discard emergency from the API failure envelope: rejected-create guidance fails to reach the real conversation reducer',
++} as const satisfies PillarManifest
++
++const mockFetch = jest.fn()
++const emergency = { version: 'v1', route: 'fire' }
++const initialFetch = global.fetch
++const initialDecoder = globalThis.TextDecoder
++const initialReadable = globalThis.ReadableStream
++beforeAll(() => {
++  Object.defineProperty(globalThis, 'TextDecoder', { configurable: true, writable: true, value: NodeTextDecoder })
++  Object.defineProperty(globalThis, 'ReadableStream', { configurable: true, writable: true, value: NodeReadableStream })
++})
++afterAll(() => {
++  global.fetch = initialFetch
++  Object.defineProperty(globalThis, 'TextDecoder', { configurable: true, writable: true, value: initialDecoder })
++  Object.defineProperty(globalThis, 'ReadableStream', { configurable: true, writable: true, value: initialReadable })
++})
++
++function rejectedResponse(status: number, payload: unknown) {
++  return { ok: false, status, body: null, headers: { get: () => null }, text: async () => JSON.stringify(payload) }
++}
++
++function useRequestHarness(mode: 'normal' | 'case' = 'normal') {
++  const chatUi = useCustomerKaelChatUiState()
++  const conversation = useCustomerKaelConversationState({ initialLoading: false, initialMode: mode, pendingDraft: null })
++  const guard = useCustomerKaelRequestGuard('customer-emergency:normal')
++  const serviceRef = useRef<ServiceType | null>('electrical')
++  const actions = useCustomerKaelMessageActions({
++    chatUi, conversation, deal: null, hasSharedJobIncident: false,
++    jobIncidentThread: {} as Parameters<typeof useCustomerKaelMessageActions>[0]['jobIncidentThread'],
++    kaelRequestGuard: guard, language: 'vi', mode,
++    processController: { startBackendProcessLines: jest.fn(), stopProcessLines: jest.fn() } as unknown as Parameters<typeof useCustomerKaelMessageActions>[0]['processController'],
++    requestOwnerKey: 'customer-emergency:normal', selectedService: 'electrical', selectedServiceRef: serviceRef,
++  })
++  return { chatUi, conversation, actions }
++}
++
++describe(PILLAR.id, () => {
++  beforeEach(() => { mockFetch.mockReset(); global.fetch = mockFetch })
++  afterEach(() => resetConnectivityForTests())
++  afterAll(() => { global.fetch = initialFetch })
++
++  it('preserves the rejected JSON response and the recognized emergency field', async () => {
++    mockFetch.mockResolvedValue(rejectedResponse(422, { error: 'internal exception hidden by UI', code: 'INVALID_MEDIA_REF', emergency }))
++    const response = await api.post('/kael/chat', { message: 'smoke' })
++    withPillarContext(PILLAR, () => expect(response).toMatchObject({ success: false, status: 422, code: 'INVALID_MEDIA_REF', emergency }), 'safety metadata must accompany the original rejection')
++  })
++
++  it('delivers a rejected create into the actual request action and conversation reducer', async () => {
++    mockFetch.mockResolvedValue(rejectedResponse(422, { error: 'untrusted internal text', code: 'INVALID_MEDIA_REF', emergency }))
++    const { result } = renderHook(useRequestHarness)
++    await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
++    withPillarContext(PILLAR, () => {
++      expect(result.current.conversation).toMatchObject({ emergencyGuidance: emergency, chat: null, loading: false, turns: [] })
++      expect(result.current.conversation.error).not.toContain('untrusted')
++    }, 'failed create remains failed while the trusted guidance remains visible')
++  })
++})
++
++const chatBefore = { session: { id: 'case-delivery-test', status: 'active', total_turns: 0 }, turns: [] } as unknown as KaelChatResponse
++function streamResponse(frame: string) {
++  let sent = false
++  return { ok: true, status: 200, headers: { get: () => 'text/event-stream' }, body: { getReader: () => ({
++    read: async () => sent ? { done: true } : (sent = true, { done: false, value: new Uint8Array(Buffer.from(frame)) }),
++    cancel: jest.fn(async () => undefined), releaseLock: jest.fn(),
++  }) } }
++}
++
++describe(PILLAR.id + ': actual error state and local access', () => {
++  it('preserves a JSON failure received by the real stream transport', async () => {
++    mockFetch.mockResolvedValue(rejectedResponse(400, { code: 'VALIDATION', error: 'private', emergency }))
++    const result = await streamKaelChatTurn('case-delivery-test', { message: 'smoke', photo_urls: [] }, {}, undefined, mockFetch)
++    expect(result).toEqual({ success: false, status: 400, code: 'VALIDATION', error: 'private', emergency })
++  })
++  beforeEach(() => { mockFetch.mockReset(); global.fetch = mockFetch })
++  afterEach(() => resetConnectivityForTests())
++  it.each([400, 409, 500])('renders trusted guidance after HTTP %s without changing the existing Case', async status => {
++    mockFetch.mockResolvedValue(rejectedResponse(status, { code: 'DB_ERROR', error: 'private server exception', emergency }))
++    const { result } = renderHook(() => useRequestHarness('case'))
++    act(() => result.current.conversation.setChat(chatBefore))
++    await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
++    expect(result.current.conversation.chat).toEqual(chatBefore)
++    expect(result.current.conversation.turns).toEqual([])
++    expect(result.current.conversation.emergencyGuidance).toEqual(emergency)
++    expect(result.current.conversation.error).not.toContain('private')
++    const ui = render(<CustomerKaelEmergencyAccess guidance={result.current.conversation.emergencyGuidance} language="vi" tokens={getCustomerThemeTokens('light')} />)
++    expect(ui.getByTestId('kael-emergency-guidance')).toBeTruthy()
++    expect(ui.getByText(kaelEmergencyGuidanceCopy('fire', 'vi'))).toBeTruthy()
++  })
++  it('keeps SSE errors as failures and repeated reports occupy one guidance slot', async () => {
++    mockFetch.mockImplementation(async () => streamResponse('event: error\ndata: ' + JSON.stringify({ code: 'MEDIA_INTENT_INVALID', message: 'private exception', emergency }) + '\n\n'))
++    const { result } = renderHook(() => useRequestHarness('case'))
++    act(() => result.current.conversation.setChat(chatBefore))
++    for (let i = 0; i < 2; i++) await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
++    expect(result.current.conversation.emergencyGuidance).toEqual(emergency)
++    expect(result.current.conversation.chat).toEqual(chatBefore)
++    expect(result.current.conversation.turns).toEqual([])
++    expect(result.current.conversation.error).not.toContain('private')
++    expect(result.current.conversation.streamingReply).toBeNull()
++  })
++  it.each([undefined, { version: 'v1', route: 'fire', text: 'untrusted' }, { version: 'v9', route: 'fire' }])('missing or hostile guidance never becomes a safety message: %j', async value => {
++    mockFetch.mockResolvedValue(rejectedResponse(422, { code: 'VALIDATION', error: 'private', emergency: value }))
++    const { result } = renderHook(useRequestHarness)
++    await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
++    expect(result.current.conversation.emergencyGuidance).toBeNull()
++    expect(result.current.conversation.chat).toBeNull()
++    expect(result.current.conversation.turns).toEqual([])
++  })
++  it.each(['vi', 'en'] as const)('offline manual access uses static %s copy without any request', language => {
++    mockFetch.mockRejectedValue(new TypeError('offline'))
++    const ui = render(<CustomerKaelEmergencyAccess language={language} tokens={getCustomerThemeTokens('dark')} />)
++    fireEvent.press(ui.getByTestId('kael-emergency-access'))
++    expect(ui.getByText(kaelEmergencyGuidanceCopy('uncertain', language))).toBeTruthy()
++    expect(ui.getByText(kaelEmergencyGuidanceCopy('fire', language))).toBeTruthy()
++    expect(ui.getByText(kaelEmergencyGuidanceCopy('medical', language))).toBeTruthy()
++    expect(ui.getByText(kaelEmergencyGuidanceCopy('police', language))).toBeTruthy()
++    expect(mockFetch).not.toHaveBeenCalled()
++    fireEvent.press(ui.getByTestId('kael-emergency-close'))
++    expect(ui.queryByText(kaelEmergencyGuidanceCopy('fire', language))).toBeNull()
++  })
++  it('clears guidance when the conversation mode changes', () => {
++    const { result } = renderHook(useRequestHarness)
++    act(() => result.current.conversation.setEmergencyGuidance(emergency))
++    act(() => result.current.conversation.switchMode('case'))
++    expect(result.current.conversation.emergencyGuidance).toBeNull()
++  })
++  it('an interrupted request keeps the Case unchanged and never renders transport exception text', async () => {
++    mockFetch.mockImplementation(async (_url: string, options: { method?: string }) => {
++      if (options.method === 'GET') return rejectedResponse(422, { code: 'VALIDATION' })
++      throw new TypeError('private transcript and address from transport')
++    })
++    const { result } = renderHook(() => useRequestHarness('case'))
++    act(() => result.current.conversation.setChat(chatBefore))
++    await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
++    expect(result.current.conversation.chat).toEqual(chatBefore)
++    expect(result.current.conversation.loading).toBe(false)
++    expect(result.current.conversation.emergencyGuidance).toBeNull()
++    expect(result.current.conversation.error).not.toContain('private')
++    expect(result.current.conversation.turns).toEqual([])
++  })
++  it('a connection timeout ends loading without inventing guidance or a successful turn', async () => {
++    jest.useFakeTimers()
++    try {
++      mockFetch.mockImplementation((_url: string, options: { method?: string }) => options.method === 'GET'
++        ? Promise.resolve(rejectedResponse(422, { code: 'VALIDATION' })) : new Promise(() => undefined))
++      const { result } = renderHook(() => useRequestHarness('case'))
++      act(() => result.current.conversation.setChat(chatBefore))
++      await act(async () => {
++        const sending = result.current.actions.sendMessage('Ổ cắm có khói')
++        await jest.advanceTimersByTimeAsync(20_001)
++        await sending
++      })
++      expect(result.current.conversation.chat).toEqual(chatBefore)
++      expect(result.current.conversation.loading).toBe(false)
++      expect(result.current.conversation.emergencyGuidance).toBeNull()
++      expect(result.current.conversation.turns).toEqual([])
++      expect(result.current.conversation.error).toBeTruthy()
++    } finally { jest.useRealTimers() }
++  })
++
++})
+diff --git a/apps/mobile/components/customer/kael-chat/chat-stateful-surfaces.tsx b/apps/mobile/components/customer/kael-chat/chat-stateful-surfaces.tsx
+index d822fee1..caaa9c15 100644
+--- a/apps/mobile/components/customer/kael-chat/chat-stateful-surfaces.tsx
++++ b/apps/mobile/components/customer/kael-chat/chat-stateful-surfaces.tsx
+@@ -1,3 +1,5 @@
++import type { EmergencyGuidancePayload } from '@nestscout/shared'
++import { CustomerKaelEmergencyAccess } from './customer-kael-emergency-access'
+ import { useState, type ComponentProps, type ReactNode } from 'react'
+ import { Keyboard, KeyboardAvoidingView, Platform, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+ import { SafeAreaView, type Edge } from 'react-native-safe-area-context'
+@@ -47,6 +49,7 @@ type Props = {
+     quickActions?: readonly ComposerQuickAction[]
+     show: boolean
+   }
++  emergencyGuidance?: EmergencyGuidancePayload | null
+   error: string | null
+   onRetryJobLoad?: () => void
+   hiddenScrollbarStyle: StyleProp<ViewStyle>
+@@ -107,6 +110,7 @@ export function KaelChatSurfaceView({
+   composerMediaDrafts,
+   composer,
+   error,
++  emergencyGuidance,
+   onRetryJobLoad,
+   hiddenScrollbarStyle,
+   language,
+@@ -213,6 +217,7 @@ export function KaelChatSurfaceView({
+             sessionMenuOpen={sessionMenuOpen}
+             tokens={tokens}
+           />
++          <CustomerKaelEmergencyAccess guidance={emergencyGuidance} language={language} tokens={tokens} />
+           <KaelChatTranscript
+             empty={emptyHeroVisible}
+             hiddenScrollbarStyle={hiddenScrollbarStyle}
+diff --git a/apps/mobile/components/customer/kael-chat/customer-kael-chat-content.tsx b/apps/mobile/components/customer/kael-chat/customer-kael-chat-content.tsx
+index 5358b92e..1a7749d0 100644
+--- a/apps/mobile/components/customer/kael-chat/customer-kael-chat-content.tsx
++++ b/apps/mobile/components/customer/kael-chat/customer-kael-chat-content.tsx
+@@ -279,6 +279,7 @@ export function CustomerKaelChatContent({ controller }: { controller: Controller
+         quickActions,
+         show: presentation.showComposer,
+       }}
++      emergencyGuidance={conversation.emergencyGuidance}
+       error={inlineError}
+       onRetryJobLoad={caseHydration.failed ? caseHydration.retry : undefined}
+       hiddenScrollbarStyle={customerV21HiddenScrollbar}
+diff --git a/apps/mobile/components/customer/kael-chat/customer-kael-chat-helpers.ts b/apps/mobile/components/customer/kael-chat/customer-kael-chat-helpers.ts
+index 5abc9221..20abbc44 100644
+--- a/apps/mobile/components/customer/kael-chat/customer-kael-chat-helpers.ts
++++ b/apps/mobile/components/customer/kael-chat/customer-kael-chat-helpers.ts
+@@ -227,3 +227,12 @@ export function latestKaelReply(response: KaelChatResponse) {
+   }
+   return null
+ }
++
++export function applyCustomerKaelRequestFailure(
++  conversation: { setEmergencyGuidance?: (value: unknown) => void; setError: (message: string) => void },
++  result: { code?: string; error: string; status?: number; emergency?: unknown },
++  language: AppLanguage,
++): void {
++  conversation.setEmergencyGuidance?.(result.emergency)
++  conversation.setError(localizeKaelRequestFailure(result, language))
++}
+diff --git a/apps/mobile/components/customer/kael-chat/customer-kael-conversation-stream-options.ts b/apps/mobile/components/customer/kael-chat/customer-kael-conversation-stream-options.ts
+index 19d7ba64..c9919bba 100644
+--- a/apps/mobile/components/customer/kael-chat/customer-kael-conversation-stream-options.ts
++++ b/apps/mobile/components/customer/kael-chat/customer-kael-conversation-stream-options.ts
+@@ -1,8 +1,10 @@
++import type { EmergencyGuidancePayload } from '@nestscout/shared'
+ import type { KaelStreamResponseDeltaEvent } from '@/lib/kael-stream'
+ import type { KaelResponseStreamEvent } from '@/lib/kael-response-stream'
+ import type { KaelReasoningStreamEvent } from '@/lib/kael-reasoning-receipt'
+ 
+ export type CustomerKaelTurnStreamOptions = {
++  onEmergencyGuidance?: (guidance: EmergencyGuidancePayload) => void
+   mediaRefs?: readonly string[]
+   signal?: AbortSignal
+   onReasoning?: (event: KaelReasoningStreamEvent) => void
+diff --git a/apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx b/apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx
+new file mode 100644
+index 00000000..6fecee15
+--- /dev/null
++++ b/apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx
+@@ -0,0 +1,65 @@
++import { useState } from 'react'
++import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native'
++import { SafeAreaView } from 'react-native-safe-area-context'
++import { kaelEmergencyGuidanceCopy, type EmergencyGuidancePayload } from '@nestscout/shared'
++import { KaelButton } from '@/components/ui/kael-primitives'
++import { spacing, typography } from '@/design/theme'
++import type { CustomerThemeTokens } from '../customer-theme'
++
++type Route = EmergencyGuidancePayload['route']
++const ROUTES: Route[] = ['uncertain', 'fire', 'medical', 'police', 'electrical_water', 'gas']
++const LABELS: Record<Route, { vi: string; en: string }> = {
++  uncertain: { vi: 'Khẩn cấp chưa rõ — 112', en: 'Unclear emergency — 112' },
++  fire: { vi: 'Khói hoặc lửa — 114', en: 'Smoke or fire — 114' },
++  medical: { vi: 'Cấp cứu y tế — 115', en: 'Medical emergency — 115' },
++  police: { vi: 'Bị đe dọa — 113', en: 'Threat or break-in — 113' },
++  electrical_water: { vi: 'Nguy hiểm điện hoặc nước', en: 'Electrical or water hazard' },
++  gas: { vi: 'Rò rỉ gas', en: 'Fuel-gas leak' },
++}
++
++// This local sheet needs no request, classifier, phone permission or business-state change.
++export function CustomerKaelEmergencyAccess({ guidance, language, tokens }: {
++  guidance?: EmergencyGuidancePayload | null
++  language: 'vi' | 'en'
++  tokens: CustomerThemeTokens
++}) {
++  const [open, setOpen] = useState(false)
++  const title = language === 'vi' ? 'Hỗ trợ khẩn cấp' : 'Emergency help'
++  return (
++    <View style={styles.access}>
++      {guidance ? (
++        <View accessibilityLiveRegion="assertive" style={[styles.guidance, { backgroundColor: tokens.raised, borderColor: tokens.danger }]} testID="kael-emergency-guidance">
++          <Text accessibilityRole="header" style={[styles.title, { color: tokens.text }]}>{title}</Text>
++          <ScrollView><Text selectable style={[styles.body, { color: tokens.text }]}>{kaelEmergencyGuidanceCopy(guidance.route, language)}</Text></ScrollView>
++        </View>
++      ) : null}
++      <KaelButton label={title} onPress={() => setOpen(true)} size="small" variant="ghost" testID="kael-emergency-access" />
++      <Modal animationType="none" visible={open} onRequestClose={() => setOpen(false)} presentationStyle="pageSheet">
++        <SafeAreaView style={[styles.sheet, { backgroundColor: tokens.canvas }]}>
++          <View accessibilityViewIsModal style={styles.sheet}>
++            <Text accessibilityRole="header" style={[styles.title, { color: tokens.text }]}>{title}</Text>
++            <KaelButton label={language === 'vi' ? 'Đóng' : 'Close'} onPress={() => setOpen(false)} variant="secondary" testID="kael-emergency-close" />
++            <ScrollView contentContainerStyle={styles.sections}>
++              {ROUTES.map((route) => (
++                <View key={route} style={styles.section}>
++                  <Text accessibilityRole="header" style={[styles.title, { color: tokens.text }]}>{LABELS[route][language]}</Text>
++                  <Text selectable style={[styles.body, { color: tokens.text }]}>{kaelEmergencyGuidanceCopy(route, language)}</Text>
++                </View>
++              ))}
++            </ScrollView>
++          </View>
++        </SafeAreaView>
++      </Modal>
++    </View>
++  )
++}
++
++const styles = StyleSheet.create({
++  access: { paddingHorizontal: spacing.md },
++  guidance: { padding: spacing.md, borderWidth: 1, borderRadius: 16, gap: spacing.sm, maxHeight: 240 },
++  sheet: { flex: 1, padding: spacing.md, gap: spacing.md },
++  sections: { gap: spacing.lg, paddingBottom: spacing.xl },
++  section: { gap: spacing.sm },
++  title: { fontSize: typography.body.fontSize, fontWeight: '700' },
++  body: { fontSize: typography.body.fontSize, lineHeight: 24 },
++})
+diff --git a/apps/mobile/components/customer/kael-chat/customer-kael-normal-turn-send.ts b/apps/mobile/components/customer/kael-chat/customer-kael-normal-turn-send.ts
+index 3646b531..1c689715 100644
+--- a/apps/mobile/components/customer/kael-chat/customer-kael-normal-turn-send.ts
++++ b/apps/mobile/components/customer/kael-chat/customer-kael-normal-turn-send.ts
+@@ -33,6 +33,7 @@ type Props = {
+   onRetainStreamingReply: (retain: boolean) => void
+   resetReasoningReceipt: () => void
+   restoreComposer: () => void
++  onEmergencyGuidance?: CustomerKaelTurnStreamOptions['onEmergencyGuidance']
+   setError: (message: string | null) => void
+   setLoading: (loading: boolean) => void
+   setMediaDrafts: (drafts: LocalMediaUploadDraft[]) => void
+@@ -66,6 +67,7 @@ export async function sendCustomerNormalTurn({
+   resetReasoningReceipt,
+   restoreComposer: restoreComposerText,
+   setError,
++  onEmergencyGuidance,
+   setLoading,
+   setMediaDrafts,
+   setPendingNormalImageUris,
+@@ -134,6 +136,7 @@ export async function sendCustomerNormalTurn({
+     const result = await conversations.sendConversationTurn(message, {
+       mediaRefs: uploadedMediaRefs,
+       signal: abortSignal,
++      onEmergencyGuidance,
+       onOutcomeUncertain: () => { outcomeUncertain = true },
+       onResponseCommitted,
+       onResponseDelta,
+diff --git a/apps/mobile/components/customer/kael-chat/use-customer-kael-conversation-state.ts b/apps/mobile/components/customer/kael-chat/use-customer-kael-conversation-state.ts
+index 03650f88..1bb1ffb8 100644
+--- a/apps/mobile/components/customer/kael-chat/use-customer-kael-conversation-state.ts
++++ b/apps/mobile/components/customer/kael-chat/use-customer-kael-conversation-state.ts
+@@ -1,3 +1,4 @@
++import { readKaelEmergencyGuidance, type EmergencyGuidancePayload } from '@nestscout/shared'
+ import { useCallback, useEffect, useReducer, type Dispatch, type SetStateAction } from 'react'
+ 
+ import type { KaelChatResponse, KaelChatTurn } from '@/lib/api-types'
+@@ -31,6 +32,7 @@ type CustomerKaelConversationState = {
+   assistantTurns: CustomerAssistantLocalTurn[]
+   chat: KaelChatResponse | null
+   composerMediaDrafts: LocalMediaUploadDraft[]
++  emergencyGuidance: EmergencyGuidancePayload | null
+   error: string | null
+   intakeDisplayMessage: string | null
+   loading: boolean
+@@ -45,6 +47,7 @@ type CustomerKaelConversationState = {
+ }
+ 
+ type CustomerKaelConversationAction =
++  | { type: 'set-emergency-guidance'; value: unknown }
+   | { type: 'set-assistant-turns'; value: SetStateAction<CustomerAssistantLocalTurn[]> }
+   | { type: 'set-chat'; value: SetStateAction<KaelChatResponse | null> }
+   | { type: 'set-composer-media-drafts'; value: SetStateAction<LocalMediaUploadDraft[]> }
+@@ -76,14 +79,16 @@ export function customerKaelConversationReducer(
+   action: CustomerKaelConversationAction,
+ ): CustomerKaelConversationState {
+   switch (action.type) {
++    case 'set-emergency-guidance':
++      return { ...state, emergencyGuidance: readKaelEmergencyGuidance(action.value) }
+     case 'set-assistant-turns':
+       return { ...state, assistantTurns: resolveStateAction(state.assistantTurns, action.value) }
+     case 'set-chat':
+-      return { ...state, chat: resolveStateAction(state.chat, action.value) }
++      return { ...state, chat: resolveStateAction(state.chat, action.value), emergencyGuidance: null }
+     case 'set-composer-media-drafts':
+       return { ...state, composerMediaDrafts: resolveStateAction(state.composerMediaDrafts, action.value) }
+     case 'set-error':
+-      return { ...state, error: resolveStateAction(state.error, action.value) }
++      return { ...state, error: resolveStateAction(state.error, action.value), ...(action.value === null ? { emergencyGuidance: null } : {}) }
+     case 'set-loading':
+       return { ...state, loading: resolveStateAction(state.loading, action.value) }
+     case 'set-local-mode': {
+@@ -95,6 +100,7 @@ export function customerKaelConversationReducer(
+         ...state,
+         error: clearsMissingServiceError ? null : state.error,
+         localMode,
++        emergencyGuidance: localMode === state.localMode ? state.emergencyGuidance : null,
+         pendingNormalImageUris: localMode === state.localMode ? state.pendingNormalImageUris : [],
+         pendingNormalMessage: localMode === state.localMode ? state.pendingNormalMessage : null,
+         reasoningReceipt: localMode === state.localMode
+@@ -153,6 +159,7 @@ export function customerKaelConversationReducer(
+         chat: action.response,
+         composerMediaDrafts: action.consumePendingDraft ? [] : state.composerMediaDrafts,
+         error: null,
++        emergencyGuidance: null,
+         loading: false,
+         pendingDraft: action.consumePendingDraft ? null : state.pendingDraft,
+         pendingNormalImageUris: [],
+@@ -175,6 +182,7 @@ export function customerKaelConversationReducer(
+         chat: null,
+         composerMediaDrafts: [],
+         error: null,
++        emergencyGuidance: null,
+         intakeDisplayMessage: null,
+         loading: false,
+         localMode: action.mode,
+@@ -207,6 +215,7 @@ export function createCustomerKaelConversationState(input: {
+         ? readCustomerKaelMediaDrafts(initialScopeKey)
+         : [],
+     error: null,
++    emergencyGuidance: null,
+     intakeDisplayMessage: input.pendingDraft?.message ?? null,
+     loading: input.initialLoading,
+     localMode: input.initialMode,
+@@ -246,6 +255,9 @@ export function useCustomerKaelConversationState(input: {
+   const setComposerMediaDrafts: Dispatch<SetStateAction<LocalMediaUploadDraft[]>> = useCallback((value) => {
+     dispatch({ type: 'set-composer-media-drafts', value })
+   }, [])
++  const setEmergencyGuidance = useCallback((value: unknown) => {
++    dispatch({ type: 'set-emergency-guidance', value })
++  }, [])
+   const setError: Dispatch<SetStateAction<string | null>> = useCallback((value) => {
+     dispatch({ type: 'set-error', value })
+   }, [])
+@@ -313,6 +325,7 @@ export function useCustomerKaelConversationState(input: {
+     setChat,
+     setComposerMediaDrafts,
+     setError,
++    setEmergencyGuidance,
+     setLoading,
+     setLocalMode,
+     setPendingDraftState,
+diff --git a/apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts b/apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
+index d513c433..57445434 100644
+--- a/apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
++++ b/apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts
+@@ -499,6 +499,7 @@ export function useCustomerKaelConversations(
+       ) {
+         if (committed || (!sent.success && isAmbiguousKaelConversationFailure(sent))) options?.onOutcomeUncertain?.()
+         if (!committed && operationRequestRef.current === requestId && activeKeyRef.current === catalogKey) {
++          if (!sent.success && sent.emergency) options?.onEmergencyGuidance?.(sent.emergency)
+           setCatalogStateField(
+             setCatalogState,
+             catalogKey,
+diff --git a/apps/mobile/components/customer/kael-chat/use-customer-kael-decision-actions.ts b/apps/mobile/components/customer/kael-chat/use-customer-kael-decision-actions.ts
+index 3a64ba65..e9afe3d6 100644
+--- a/apps/mobile/components/customer/kael-chat/use-customer-kael-decision-actions.ts
++++ b/apps/mobile/components/customer/kael-chat/use-customer-kael-decision-actions.ts
+@@ -307,6 +307,7 @@ export function useCustomerKaelDecisionActions({
+       if (!kaelRequestGuard.isCurrent(requestToken)) return
+       if (!result.success) {
+         stopProcessLines()
++        conversation.setEmergencyGuidance?.(result.emergency)
+         setError(localizeKaelRequestFailure(result, language))
+         return
+       }
+@@ -372,6 +373,7 @@ export function useCustomerKaelDecisionActions({
+       )
+       if (!kaelRequestGuard.isCurrent(requestToken)) return
+       if (!result.success) {
++        conversation.setEmergencyGuidance?.(result.emergency)
+         setError(localizeKaelRequestFailure(result, language))
+         return
+       }
+@@ -566,6 +568,7 @@ export function useCustomerKaelDecisionActions({
+         onSuccess()
+       } else {
+         stopProcessLines()
++        conversation.setEmergencyGuidance?.(result.emergency)
+         setError(localizeKaelRequestFailure(result, language))
+       }
+     } catch {
+@@ -710,6 +713,7 @@ export function useCustomerKaelDecisionActions({
+         setCaseEditOpen(true)
+       } else {
+         stopProcessLines()
++        conversation.setEmergencyGuidance?.(result.emergency)
+         setError(localizeKaelRequestFailure(result, language))
+       }
+     } catch {
+diff --git a/apps/mobile/components/customer/kael-chat/use-customer-kael-evidence-actions.ts b/apps/mobile/components/customer/kael-chat/use-customer-kael-evidence-actions.ts
+index 69a90128..17b45e3a 100644
+--- a/apps/mobile/components/customer/kael-chat/use-customer-kael-evidence-actions.ts
++++ b/apps/mobile/components/customer/kael-chat/use-customer-kael-evidence-actions.ts
+@@ -318,11 +318,13 @@ export function useCustomerKaelEvidenceActions({
+         } else if (kaelRequestGuard.isCurrent(requestToken)) {
+           setStreamingReply(null)
+           stopProcessLines()
++          conversation.setEmergencyGuidance?.(legacy.emergency)
+           setError(localizeKaelRequestFailure(legacy, language))
+         }
+       } else if (kaelRequestGuard.isCurrent(requestToken)) {
+         setStreamingReply(null)
+         stopProcessLines()
++        conversation.setEmergencyGuidance?.(result.emergency)
+         setError(localizeKaelRequestFailure(result, language))
+       }
+     } catch {
+@@ -395,6 +397,7 @@ export function useCustomerKaelEvidenceActions({
+         if (!kaelRequestGuard.isCurrent(requestToken)) return
+         if (!storedTranscript.success) {
+           stopProcessLines()
++          conversation.setEmergencyGuidance?.(storedTranscript.emergency)
+           setError(localizeKaelRequestFailure(storedTranscript, language))
+           return
+         }
+diff --git a/apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts b/apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts
+index ce4cfc66..d686c673 100644
+--- a/apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts
++++ b/apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts
+@@ -37,7 +37,7 @@ import type { useJobChatThread } from '@/lib/use-job-chat-thread'
+ import {
+   formatAssistantAnswer,
+   isLikelyKaelIntakeRequest,
+-  localizeKaelRequestFailure,
++  applyCustomerKaelRequestFailure,
+   makeAssistantTurnId,
+   shouldFallbackCaseAssistantToJobChat,
+ } from './customer-kael-chat-helpers'
+@@ -306,6 +306,7 @@ export function useCustomerKaelMessageActions({
+     try {
+       if (mode === 'normal' && conversations) {
+         await sendCustomerNormalTurn({
++          onEmergencyGuidance: conversation.setEmergencyGuidance,
+           abortSignal: sendAbortController.signal,
+           beginReasoningReceipt: () => setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, { type: 'begin' })),
+           clearComposer: clearSubmittedComposer,
+@@ -386,7 +387,7 @@ export function useCustomerKaelMessageActions({
+               if (conversations) void conversations.syncLinkedCaseSession(result.data.session.id)
+             } else {
+               restoreSubmittedComposer()
+-              setError(localizeKaelRequestFailure(result, language))
++              applyCustomerKaelRequestFailure(conversation, result, language)
+             }
+           } finally {
+             if (kaelRequestGuard.isCurrent(requestToken)) {
+@@ -463,11 +464,11 @@ export function useCustomerKaelMessageActions({
+               commitSubmittedComposer()
+             } else {
+               restoreSubmittedComposer()
+-              setError(localizeKaelRequestFailure(stored, language))
++              applyCustomerKaelRequestFailure(conversation, stored, language)
+             }
+           } else {
+             restoreSubmittedComposer()
+-            setError(localizeKaelRequestFailure(result, language))
++            applyCustomerKaelRequestFailure(conversation, result, language)
+           }
+         } finally {
+           if (kaelRequestGuard.isCurrent(requestToken)) {
+@@ -501,6 +502,7 @@ export function useCustomerKaelMessageActions({
+       try {
+         const catalogResult = conversations
+           ? await conversations.sendConversationTurn(message, {
++              onEmergencyGuidance: conversation.setEmergencyGuidance,
+               onResponseCommitted: () => {
+                 completeLegacyStreamingReply()
+                 retainStreamingReply = receivedResponseTerminal
+@@ -538,7 +540,7 @@ export function useCustomerKaelMessageActions({
+           commitSubmittedComposer()
+         } else if (result) {
+           restoreSubmittedComposer()
+-          setError(localizeKaelRequestFailure(result, language))
++          applyCustomerKaelRequestFailure(conversation, result, language)
+         } else {
+           restoreSubmittedComposer()
+           setError(conversations?.sessionsError ?? (language === 'vi'
+@@ -772,7 +774,7 @@ export function useCustomerKaelMessageActions({
+       setLoading(false)
+       stopProcessLines()
+       restoreSubmittedComposer()
+-      setError(localizeKaelRequestFailure(result, language))
++      applyCustomerKaelRequestFailure(conversation, result, language)
+     }
+     } catch {
+       if (kaelRequestGuard.isCurrent(requestToken)) {
+diff --git a/apps/mobile/components/customer/kael-chat/use-customer-kael-next-actions.ts b/apps/mobile/components/customer/kael-chat/use-customer-kael-next-actions.ts
+index c3b79202..c16e2483 100644
+--- a/apps/mobile/components/customer/kael-chat/use-customer-kael-next-actions.ts
++++ b/apps/mobile/components/customer/kael-chat/use-customer-kael-next-actions.ts
+@@ -67,6 +67,7 @@ export function useCustomerKaelNextActions({
+         setChat(result.data)
+         setTurns(result.data.turns)
+       } else {
++        conversation.setEmergencyGuidance?.(result.emergency)
+         setError(localizeKaelRequestFailure(result, language))
+       }
+     } catch {
+diff --git a/apps/mobile/lib/api.ts b/apps/mobile/lib/api.ts
+index 3a0cf58e..31728962 100644
+--- a/apps/mobile/lib/api.ts
++++ b/apps/mobile/lib/api.ts
+@@ -1,3 +1,4 @@
++import { readKaelEmergencyGuidance, type EmergencyGuidancePayload } from '@nestscout/shared'
+ import Constants from 'expo-constants'
+ import { Platform } from 'react-native'
+ 
+@@ -40,7 +41,7 @@ const SCOPE_CHANGE_PREVIEW_PATH = /^\/jobs\/[^/]+\/kael-incident\/preview-scope$
+ 
+ export type ApiResult<T> =
+   | { success: true; data: T; status: number; meta?: ApiResponseMetadata }
+-  | { success: false; error: string; code: string; status: number; meta?: ApiResponseMetadata }
++  | { success: false; error: string; code: string; status: number; emergency?: EmergencyGuidancePayload; meta?: ApiResponseMetadata }
+ 
+ type ApiRequestOptions = {
+   idempotencyKey?: string
+@@ -161,6 +162,7 @@ async function request<T>(
+         return {
+           success: false,
+           error: safeServerError(json?.error),
++          ...(readKaelEmergencyGuidance(json?.emergency) ? { emergency: readKaelEmergencyGuidance(json?.emergency)! } : {}),
+           code: safeServerErrorCode(json?.code, response.status),
+           status: response.status,
+           meta: responseMetadata,
+diff --git a/apps/mobile/lib/kael-stream.ts b/apps/mobile/lib/kael-stream.ts
+index 5987f785..453e71ab 100644
+--- a/apps/mobile/lib/kael-stream.ts
++++ b/apps/mobile/lib/kael-stream.ts
+@@ -1,4 +1,6 @@
+ import {
++  readKaelEmergencyGuidance,
++  type EmergencyGuidancePayload,
+   type CustomerKaelConversationTurnInput,
+   type KaelChatEvidenceInput,
+   type KaelChatTurnInput,
+@@ -80,6 +82,7 @@ type KaelStreamResultEvent = {
+ }
+ 
+ type KaelStreamErrorEvent = {
++  emergency?: EmergencyGuidancePayload
+   type: 'error'
+   code: string
+   message: string
+@@ -177,12 +180,13 @@ export async function streamKaelChatTurn(
+   input: KaelChatTurnInput,
+   handlers: KaelChatStreamHandlers = {},
+   signal?: AbortSignal,
++  streamFetch?: typeof fetch,
+ ): Promise<ApiResult<KaelChatResponse>> {
+   return streamKaelTurn(`/kael/chat/${encodeURIComponent(sessionId)}/stream`, input, handlers, {
+     httpErrorField: 'error',
+     httpFallbackCode: (status) => `HTTP_${status}`,
+     httpFallbackMessage: 'Kael streaming failed.',
+-  }, isCustomerKaelStreamResult, signal)
++  }, isCustomerKaelStreamResult, signal, streamFetch)
+ }
+ 
+ export async function streamCustomerKaelConversationTurn(
+@@ -303,6 +307,7 @@ async function streamKaelTurn<T>(
+       return {
+         success: false,
+         error: safeServerError(parsed[httpError.httpErrorField], httpError.httpFallbackMessage),
++        ...(readKaelEmergencyGuidance(parsed.emergency) ? { emergency: readKaelEmergencyGuidance(parsed.emergency)! } : {}),
+         code: safeCode === `HTTP_${response.status}`
+           ? httpError.httpFallbackCode(response.status)
+           : safeCode,
+@@ -345,7 +350,7 @@ async function streamKaelTurn<T>(
+         if (isKaelReasoningStreamEvent(event)) handlers.onReasoning?.(event)
+         if (event.type === 'error') {
+           handlers.onError?.(event)
+-          return { success: false, error: event.message, code: event.code, status: response.status }
++          return { success: false, error: event.message, code: event.code, status: response.status, ...(event.emergency ? { emergency: event.emergency } : {}) }
+         }
+         if (event.type === 'result') {
+           if (!resultGuard(event.data)) {
+@@ -610,6 +615,7 @@ function parseKaelSseFrame(frame: string): KaelStreamEvent | null {
+       type: 'error',
+       code: code === 'HTTP_0' ? 'STREAM_ERROR' : code,
+       message: safeServerError(data.message, 'Kael stream failed.'),
++      ...(readKaelEmergencyGuidance(data.emergency) ? { emergency: readKaelEmergencyGuidance(data.emergency)! } : {}),
+     }
+   }
+   return null
+diff --git a/docs/test-logs/INDEX.md b/docs/test-logs/INDEX.md
+index 17ed15f1..9971dc6c 100644
+--- a/docs/test-logs/INDEX.md
++++ b/docs/test-logs/INDEX.md
+@@ -4,6 +4,7 @@ Newest test reports first.
+ 
+ | Date | Report | Result | Bugs | Notes |
+ |------|--------|--------|------|-------|
++| 2026-10-21 | [KAWA_01 final safety delivery remediation](kawa-01-delivery-remediation-evidence/report.md) | READY FOR INDEPENDENT REVIEW at T0; acceptance remains blocked | Structured JSON/SSE safety guidance, actual mobile failure state and offline access; original status/approval/media/quota preserved | H5 unchanged 11/29; Edge 7/7 after owner reopened Docker; native/T1 unverified; baseline lint/authority red; two memory conflicts; no commit/push/CI/merge/deploy |
+ | 2026-10-21 | [KAWA_01 independent quality review](kawa-01-independent-quality-evidence/report.md) | BLOCKED for acceptance; API 3,408 + Node 114, mobile 2,631, shared 189 tests pass; API build/types pass; ship-check machine gates 10/10, complete command fails only uncommitted Git state | EAS 17-log mismatch, blind wrong-route verdict and emergency trace stage corrected; recognized-hazard guidance still hidden by media/evidence refusals | D-03/D-04 confirmed at T0; H5 remains 11/29 REPRODUCTION; baseline mobile lint 75 errors and authority citation red; RLS/atomicity/native unverified; two memory conflicts and protected proposals await owner; no final CI/merge |
+ | 2026-10-20 | [KAWA Mini Plan 01 execution ledger](kawa-execution-ledger.md) | W00 G0 PASS; KAWA_01 safety and approval hardening at T0, NEEDS OWNER APPROVAL, not independently reviewed (checkpoint SAFETY-APPROVAL); API 3,406 pass + 6 skipped; Node 114 pass + 1 skipped; mobile 2,631 pass; 24 of 24 mutants killed; lint:authority FAIL pre-existing | emergency over an invalid schedule refused with a 4xx the app cannot show; gate behind the quota, job-status refusal and paid steps on the assistant and normal-chat routes; admin could decide intake and evidence and reach accept/decline; covered by P411–P414 | classifier recall on unseen wording NOT measured (H5 reproduction 11/29, not independent); guidance in failure responses not shown by the shipped app; approval atomicity, concurrency and RLS BLOCKED at T1; pre-existing: ship:check fails the harness test that no tracked file may match .easignore (17 tracked .log files in the previous evidence folder); no real-model, hosted DB, native-device, or Production evidence |
+ | 2026-10-20 | [Kael recurring incident - stateful HVAC regression](2026-10-20_kael-recurring-incident-e2e.md) | P398 26/26 + P399 2/2 at T0; API 2,453 pass; edge:check 7/7; 2 controlled regressions caught (10 and 6 red) then reverted; T1/T2 executed on an isolated local stack (P400 5/5, then torn down), T3 NOT RUN | D1 explanation turn wipes quote blocker and D2 correction not applied to typed fact - both found and fixed | Real HTTP handler + classifier + gate with providers stubbed at fetch; 18-row scope/ownership/RFQ/safety matrix; not a live-model benchmark |
+diff --git a/docs/test-logs/kawa-execution-ledger.md b/docs/test-logs/kawa-execution-ledger.md
+index 9f2d4f14..0ad28aaa 100644
+--- a/docs/test-logs/kawa-execution-ledger.md
++++ b/docs/test-logs/kawa-execution-ledger.md
+@@ -812,3 +812,11 @@ API passes 3,097 → 3,406 (+309) = P412 +52, P413 +76, P414 +165, P415 +16; P41
+ **REVIEW:** spec/rules/maintainability reviewed; four source/test files, no new production module, exported type, comment, debug code or baseline relaxation. Router overlap limited to independent audit findings and this evidence packet. Scratch size checked at 34,303,237 bytes before final packet close; no cleanup or deletion performed.
+ 
+ **OUTCOME:** BLOCKED. Await scoped Safety/fallback/error-contract, independent-reviewer/threshold, isolated T1 and memory/integration decisions. Final acceptance CI and merge remain separate owner actions. Stop before KAWA_02.
++
++## 2026-10-21 — Approved final safety delivery remediation
++
++Owner authorized a backward-compatible safety field, actual Customer Kael error handling, and local emergency access. Parent completed the work after Tu requested no further SubAgents. No classifier tuning or H5 relabelling; the frozen result remains 11/29 REPRODUCTION.
++
++New P416/P417/P418 cover all eight backend failure classes, authorization/ordinary/replay/extra-injection controls, strict route-only privacy, real mobile request/reducer state, JSON/SSE, network/timeout and local VI/EN fallback. Original-index backend matrix: 12 red/4 controls green; corrected final backend/contract 32 green. Mobile tracer 2 red, final 15 green. Full mobile 285 suites/2,646 green. Final full API Vitest 3,440 green/6 skipped; earlier full root command also passed Node 114/1 skipped. Shared 189 green; types and API build green.
++
++Release acceptance remains BLOCKED: the initial Docker updater timed out (124/wrapper 1), then Tu reopened Docker and Edge passed 7/7 with 4 client-compatibility tests; native/T1 not captured/executed, existing mobile lint and authority errors remain, and two protected memory conflicts remain. No hosted mutation, paid calls, new migrations/RPCs, commit/push, final acceptance CI, merge or deploy. [Full handoff](kawa-01-delivery-remediation-evidence/report.md). Session-memory draft is review-only; actual protected memory files remain unchanged.
+diff --git a/governance/protocols/test-pillars.md b/governance/protocols/test-pillars.md
+index 36ff4067..01bf7c60 100644
+--- a/governance/protocols/test-pillars.md
++++ b/governance/protocols/test-pillars.md
+@@ -139,7 +139,7 @@ same shape is worth looking for anywhere a validator is called with a literal it
+ 
+ <!-- @pillar-index:begin -->
+ 
+-Generated by `node scripts/harness/pillar-registry.mjs --write`. 410 pillars.
++Generated by `node scripts/harness/pillar-registry.mjs --write`. 413 pillars.
+ 
+ | id | layer | invariant | file | recorded mutation |
+ |---|---|---|---|---|
+@@ -471,6 +471,9 @@ Generated by `node scripts/harness/pillar-registry.mjs --write`. 410 pillars.
+ | `P413-kael-approval-boundary` | security-negative | every route that records a customer approval (the offer, the proposed worker, a scope or price change, completion, payment, apartment access) refuses an admin, a worker or any other wrong role before the database or a provider is touched, and every route where a worker proposes refuses an admin and a customer the same way; a request without its approval evidence fails validation before any call; and no module that answers an emergency, runs the model or lives in the Kael layer can reach a function that records an approval | `apps/api/src/__tests__/kael-edge-runtime/domains/kael-approval-boundary-pillar.test.ts` | drop the customer guard from one decision service, let an admin through a route that records an approval, or import a decision service from the emergency or Kael layer: the matching row turns red |
+ | `P414-kael-emergency-sentinel-matrix` | integration | a fixed list of fourteen unambiguous emergency reports (fire, medical, police, fuel gas, wiring or water, and an unclear emergency, in Vietnamese and English) is answered with the verified number at every customer-facing entry point that takes free text, as a 2xx reply, with no provider call for any route that ends the turn and no Job, quote, match, payment or consent written; the same entry points answer an ordinary request without any emergency reply. The list proves the plumbing of the gate, not the classifier\'s recall on wording nobody has seen | `apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-sentinel-matrix-pillar.test.ts` | remove the gate from one entry point, place it after a refusal or a paid call, or answer with the wrong number for one route: the cell for that entry point and route turns red |
+ | `P415-kael-emergency-blind-eval` | unit | a blind emergency set written and sealed by someone other than the implementer is scored with recall and false positives reported separately, per route, with sample sizes and intervals; it is called independent only when the reviewer attests the authorship and the rows match both the sealed hash and a hash the reviewer registered out of band; a report never carries a row\'s text; an absent set is not run, never passed | `apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts` | call a set independent without the registered hash, merge false positives into recall, report 0 for an empty denominator, or copy a row\'s text into the report: the matching row turns red |
++| `P416-kael-emergency-error-delivery` | integration | authorized recognized emergencies carry only versioned deterministic route metadata through JSON and SSE business failures without changing the rejection, crossing a confirmation gate, spending on providers or revealing private Case details to another actor | `apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts` | remove emergency error delivery: the real handler returns the same 400 VALIDATION for foreign media but the required versioned fire route is absent |
++| `P417-kael-emergency-error-contract` | unit | both clients accept only versioned closed route metadata and render the frozen deterministic safety copy; private text and unknown fields never cross the safety contract | `apps/api/src/__tests__/unit/kael-emergency-error-contract-pillar.test.ts` | allow extra fields or change one translation: schema privacy and deterministic-copy parity turn red |
++| `P418-kael-emergency-mobile-delivery` | integration | trusted emergency guidance survives rejected requests into Customer Kael without creating a chat, duplicating turns, or changing business state, and offline guidance stays reachable | `apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx` | discard emergency from the API failure envelope: rejected-create guidance fails to reach the real conversation reducer |
+ | `P42-auth-session-shell` | integration | a known same-account role keeps the routed shell mounted during auth refresh, while an account change blocks until its own role resolves | `apps/mobile/lib/__tests__/auth-loading-gate-pillar-test.tsx` | set loading=true during a same-account lookup — the pending refresh case blocks; dedupe by user id alone — the returning-account case skips its fresh lookup |
+ | `P43-staging-service-catalog` | integration | the configured Supabase integration target exposes exactly the six active NestScout service types declared by the shared contract | `apps/api/src/__tests__/integration/staging-service-catalog-pillar.test.ts` | filter the catalog query to the unsupported `appliance` service — PostgreSQL rejects the enum value and the query assertion turns red |
+ | `P44-admin-production-sections` | ui-visual | the real Admin surface has exactly six permission-gated sections, preserves legacy deep links, and never routes a visible Production section through Prototype data | `apps/mobile/components/admin/__tests__/admin-sections-production-shell-pillar-test.tsx` | map the legacy withdrawals deep link to Operations or add a seventh registry item — the route and exact-order assertions turn red |
+diff --git a/packages/shared/src/contracts/emergency-guidance.ts b/packages/shared/src/contracts/emergency-guidance.ts
+new file mode 100644
+index 00000000..9fd19979
+--- /dev/null
++++ b/packages/shared/src/contracts/emergency-guidance.ts
+@@ -0,0 +1,45 @@
++// Versioned route metadata carries no request text. Clients render only reviewed static copy.
++import { z } from 'zod';
++
++export const kaelEmergencyGuidanceSchema = z.object({
++  version: z.literal('v1'),
++  route: z.enum(['fire', 'medical', 'police', 'electrical_water', 'gas', 'uncertain']),
++}).strict();
++
++export type EmergencyGuidancePayload = z.infer<typeof kaelEmergencyGuidanceSchema>;
++
++export function readKaelEmergencyGuidance(value: unknown): EmergencyGuidancePayload | null {
++  const parsed = kaelEmergencyGuidanceSchema.safeParse(value);
++  return parsed.success ? parsed.data : null;
++}
++
++const GUIDANCE: Record<EmergencyGuidancePayload['route'], { vi: string; en: string }> = {
++  fire: {
++    vi: "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
++    en: "There may be active smoke or fire. Leave the area, alert others only if safe, and call 114. Do not touch the equipment or outlet.",
++  },
++  medical: {
++    vi: "Có người cần cấp cứu y tế. Gọi 115 và làm theo hướng dẫn của tổng đài. Chỉ di chuyển người đó ra xa nguy hiểm nếu việc đó an toàn.",
++    en: "Someone may need emergency medical care. Call 115 and follow the operator's instructions. Move them away from danger only if it is safe.",
++  },
++  police: {
++    vi: "Nếu đang bị đe dọa hoặc có người đột nhập, hãy tìm nơi an toàn và gọi công an 113. Không đối đầu; làm theo hướng dẫn của tổng đài.",
++    en: "If someone is threatening you or breaking in, get to a safe place and call police at 113. Do not confront them; follow the operator's instructions.",
++  },
++  electrical_water: {
++    vi: "Không chạm vào dây điện, ổ điện, thiết bị hoặc nước gần nguồn điện. Tránh xa và giữ người khác tránh xa; không tự ngắt điện nếu phải đi tới khu vực nguy hiểm. Nếu có khói hoặc lửa, gọi 114; nếu có người bị điện giật hoặc bị thương, gọi 115. Nếu nguy cơ khẩn cấp chưa rõ, gọi 112.",
++    en: "Do not touch wiring, outlets, equipment, or water near electricity. Stay back and keep others away; do not approach a breaker if that is unsafe. Call 114 for smoke or fire, 115 for electric shock or injury, and 112 if the immediate emergency response is unclear.",
++  },
++  gas: {
++    vi: "Có dấu hiệu rò rỉ gas (khí đốt). Không dùng lửa; không bật hoặc tắt công tắc, quạt hay thiết bị điện. Hãy rời khỏi khu vực, chỉ cảnh báo người xung quanh nếu an toàn, rồi gọi 114 từ nơi an toàn.",
++    en: "There may be a fuel-gas leak. Do not use flames, and do not switch lights, fans or electrical devices on or off. Leave the area, alert others only if it is safe, and call 114 from a safe place.",
++  },
++  uncertain: {
++    vi: "Nếu đang có tình huống khẩn cấp nhưng chưa rõ cần lực lượng nào, gọi 112 và mô tả ngắn gọn nguy cơ. Rời xa nguồn nguy hiểm nếu an toàn; làm theo hướng dẫn của tổng đài.",
++    en: "If there is an emergency and you are unsure which service is needed, call 112 and briefly describe the danger. Move away if safe and follow the operator's instructions.",
++  },
++};
++
++export function kaelEmergencyGuidanceCopy(route: EmergencyGuidancePayload['route'], language: 'vi' | 'en'): string {
++  return GUIDANCE[route][language];
++}
+diff --git a/packages/shared/src/index.ts b/packages/shared/src/index.ts
+index 3cbdee45..42c5e7bb 100644
+--- a/packages/shared/src/index.ts
++++ b/packages/shared/src/index.ts
+@@ -233,3 +233,5 @@ export type {
+   WorkerPayoutMethodSaveInput,
+   WorkerWithdrawalRequestCreateInput,
+ } from './payout-methods'
++
++export { kaelEmergencyGuidanceSchema, readKaelEmergencyGuidance, kaelEmergencyGuidanceCopy, type EmergencyGuidancePayload } from './contracts/emergency-guidance';
+diff --git a/supabase/functions/_shared/contracts/emergency-guidance.ts b/supabase/functions/_shared/contracts/emergency-guidance.ts
+new file mode 100644
+index 00000000..6fe3d252
+--- /dev/null
++++ b/supabase/functions/_shared/contracts/emergency-guidance.ts
+@@ -0,0 +1,45 @@
++// Versioned route metadata carries no request text. Clients render only reviewed static copy.
++import { z } from 'zod';
++
++export const kaelEmergencyGuidanceSchema = z.object({
++  version: z.literal('v1'),
++  route: z.enum(['fire', 'medical', 'police', 'electrical_water', 'gas', 'uncertain']),
++}).strict();
++
++export type EdgeEmergencyGuidancePayload = z.infer<typeof kaelEmergencyGuidanceSchema>;
++
++export function readKaelEmergencyGuidance(value: unknown): EdgeEmergencyGuidancePayload | null {
++  const parsed = kaelEmergencyGuidanceSchema.safeParse(value);
++  return parsed.success ? parsed.data : null;
++}
++
++const GUIDANCE: Record<EdgeEmergencyGuidancePayload['route'], { vi: string; en: string }> = {
++  fire: {
++    vi: "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
++    en: "There may be active smoke or fire. Leave the area, alert others only if safe, and call 114. Do not touch the equipment or outlet.",
++  },
++  medical: {
++    vi: "Có người cần cấp cứu y tế. Gọi 115 và làm theo hướng dẫn của tổng đài. Chỉ di chuyển người đó ra xa nguy hiểm nếu việc đó an toàn.",
++    en: "Someone may need emergency medical care. Call 115 and follow the operator's instructions. Move them away from danger only if it is safe.",
++  },
++  police: {
++    vi: "Nếu đang bị đe dọa hoặc có người đột nhập, hãy tìm nơi an toàn và gọi công an 113. Không đối đầu; làm theo hướng dẫn của tổng đài.",
++    en: "If someone is threatening you or breaking in, get to a safe place and call police at 113. Do not confront them; follow the operator's instructions.",
++  },
++  electrical_water: {
++    vi: "Không chạm vào dây điện, ổ điện, thiết bị hoặc nước gần nguồn điện. Tránh xa và giữ người khác tránh xa; không tự ngắt điện nếu phải đi tới khu vực nguy hiểm. Nếu có khói hoặc lửa, gọi 114; nếu có người bị điện giật hoặc bị thương, gọi 115. Nếu nguy cơ khẩn cấp chưa rõ, gọi 112.",
++    en: "Do not touch wiring, outlets, equipment, or water near electricity. Stay back and keep others away; do not approach a breaker if that is unsafe. Call 114 for smoke or fire, 115 for electric shock or injury, and 112 if the immediate emergency response is unclear.",
++  },
++  gas: {
++    vi: "Có dấu hiệu rò rỉ gas (khí đốt). Không dùng lửa; không bật hoặc tắt công tắc, quạt hay thiết bị điện. Hãy rời khỏi khu vực, chỉ cảnh báo người xung quanh nếu an toàn, rồi gọi 114 từ nơi an toàn.",
++    en: "There may be a fuel-gas leak. Do not use flames, and do not switch lights, fans or electrical devices on or off. Leave the area, alert others only if it is safe, and call 114 from a safe place.",
++  },
++  uncertain: {
++    vi: "Nếu đang có tình huống khẩn cấp nhưng chưa rõ cần lực lượng nào, gọi 112 và mô tả ngắn gọn nguy cơ. Rời xa nguồn nguy hiểm nếu an toàn; làm theo hướng dẫn của tổng đài.",
++    en: "If there is an emergency and you are unsure which service is needed, call 112 and briefly describe the danger. Move away if safe and follow the operator's instructions.",
++  },
++};
++
++export function kaelEmergencyGuidanceCopy(route: EdgeEmergencyGuidancePayload['route'], language: 'vi' | 'en'): string {
++  return GUIDANCE[route][language];
++}
+diff --git a/supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts b/supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts
+index 66d10707..024678e5 100644
+--- a/supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts
++++ b/supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts
+@@ -39,6 +39,7 @@ import {
+   answerEmergencyOnOwnedSession,
+   answerParkedEmergency,
+   customerAuthoredTexts,
++  registerCaseEmergencyDelivery,
+   refuseWithEmergencyGuidance,
+   resolveCaseEmergency,
+ } from "./emergency-turn.ts";
+@@ -108,6 +109,8 @@ export async function createKaelChat(
+     }, secrets);
+   }
+ 
++  registerCaseEmergencyDelivery(ctx, createTexts, input.service_type);
++
+   // A new Case whose schedule is invalid is refused, unless the request reports an emergency: that is answered, as an
+   // ordinary reply, with the schedule dropped and the analysis deferred so nothing else of the request is applied.
+   const emergencyOverSchedule = scheduleInvalid && resolveCaseEmergency({
+diff --git a/supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts b/supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+index f83884eb..80d3d059 100644
+--- a/supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
++++ b/supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+@@ -8,6 +8,7 @@ import {
+   resolveReportedEmergencyGuidanceFromTexts,
+   type EmergencyGuidance,
+ } from "../../kael/kael-guardrails/emergency-guidance.ts";
++import { setRequestEmergencyGuidance } from "../../platform/emergency-guidance.ts";
+ import { ApiFailure, apiFailure } from "../../platform/api-failure.ts";
+ import type { MobileApiContext } from "../../platform/auth.ts";
+ import { asKaelChatStatus, asNumber, asRecord, nullableServiceType } from "../../platform/coercions.ts";
+@@ -78,6 +79,42 @@ export function customerAuthoredTexts(input: {
+   return texts;
+ }
+ 
++// Classification for delivery is independent of which successful intake path would answer the danger.
++// Callers must first establish customer authorization and ownership of any referenced Case.
++export function registerCaseEmergencyDelivery(ctx: MobileApiContext, texts: readonly string[], serviceType: unknown): void {
++  if (ctx.role !== "customer") return;
++  const guidance = resolveReportedEmergencyGuidanceFromTexts(texts, "vi", {
++    serviceType: typeof serviceType === "string" ? serviceType : null,
++  });
++  if (guidance) setRequestEmergencyGuidance(ctx, { version: "v1", route: guidance.route });
++}
++
++// Schema failures never consume evidence or create state. Read bounded text only, and establish ownership
++// before classifying anything on an existing Case; all original validation errors stay unchanged.
++export async function registerRejectedCaseEmergencyDelivery(ctx: MobileApiContext, raw: unknown, sessionId?: string): Promise<void> {
++  if (ctx.role !== "customer" || !raw || typeof raw !== "object" || Array.isArray(raw)) return;
++  const input = raw as Record<string, unknown>;
++  const bounded = (value: unknown) => typeof value === "string" && value.length <= 5000 ? value : undefined;
++  const evidenceItems = Array.isArray(input.evidence_items) ? input.evidence_items.slice(0, 10).map(item => {
++    const value = item && typeof item === "object" ? item as Record<string, unknown> : {};
++    return { transcript: bounded(value.transcript), summary: bounded(value.summary) };
++  }) : [];
++  const texts = customerAuthoredTexts({
++    message: bounded(input.message), intakeDescription: bounded(input.intake_description),
++    skipReason: bounded(input.skip_reason), evidenceItems,
++  });
++  if (!texts.length) return;
++  const referenced = sessionId ?? input.session_id;
++  let serviceType: unknown = input.service_type;
++  if (referenced !== undefined && referenced !== null) {
++    if (typeof referenced !== "string" || referenced.length > 64) return;
++    const owned = await ownedSessionForRefusal(ctx, referenced);
++    if (!owned) return;
++    serviceType = owned.service_type;
++  }
++  registerCaseEmergencyDelivery(ctx, texts, serviceType);
++}
++
+ export function resolveCaseEmergency(input: CaseEmergencyInput): CaseEmergency | null {
+   const texts = (typeof input.message === "string" ? [input.message] : [...input.message])
+     .filter((text) => text.length > 0);
+@@ -216,6 +253,7 @@ export async function answerEmergencyOnOwnedSession(
+     session = result.data;
+   }
+   if (!session) return false;
++  registerCaseEmergencyDelivery(ctx, input.texts, session.service_type);
+   const emergency = resolveCaseEmergency({
+     message: input.texts,
+     language: input.language,
+@@ -251,6 +289,7 @@ export async function answerEmergencyOnOpenSession(
+   session: Record<string, unknown>,
+   input: { readonly texts: readonly string[]; readonly language: "vi" | "en"; readonly entry: CaseEmergencyEntry },
+ ): Promise<boolean> {
++  registerCaseEmergencyDelivery(ctx, input.texts, session.service_type);
+   if (CLOSED_STATUSES.has(asKaelChatStatus(session.status))) return false;
+   const emergency = resolveCaseEmergency({
+     message: input.texts,
+diff --git a/supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts b/supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts
+index 5a9e939c..5972009e 100644
+--- a/supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts
++++ b/supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts
+@@ -31,6 +31,7 @@ import {
+   answerCaseEmergency,
+   answerParkedEmergency,
+   customerAuthoredTexts,
++  registerCaseEmergencyDelivery,
+   refuseWithEmergencyGuidance,
+   resolveCaseEmergency,
+   type CaseEmergency,
+@@ -90,6 +91,7 @@ export async function submitKaelChatEvidence(
+     skipReason: input.skip_reason,
+     evidenceItems: input.evidence_items,
+   });
++  registerCaseEmergencyDelivery(ctx, texts, session.service_type);
+   if (
+     status === "confirmed" ||
+     status === "abandoned" ||
+diff --git a/supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts b/supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts
+index c836e414..c027661e 100644
+--- a/supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts
++++ b/supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts
+@@ -1,3 +1,4 @@
++import { requestEmergencyFields } from "../../platform/emergency-guidance.ts";
+ import { readKaelChatProgressSnapshot } from "./read.service.ts";
+ import { sendKaelChatTurn } from "./turn.ts";
+ import { submitKaelChatEvidence } from "./evidence.ts";
+@@ -121,7 +122,7 @@ async function streamKaelChatRequest(
+           close();
+         })
+         .catch((err) => {
+-          emit("error", kaelChatStreamErrorPayload(err));
++          emit("error", kaelChatStreamErrorPayload(err, ctx));
+           close();
+         });
+ 
+@@ -138,7 +139,7 @@ async function streamKaelChatRequest(
+         }
+         await resultPromise;
+       })().catch((err) => {
+-        emit("error", kaelChatStreamErrorPayload(err));
++        emit("error", kaelChatStreamErrorPayload(err, ctx));
+         close();
+       });
+     },
+@@ -165,11 +166,12 @@ function kaelProgressSignature(progress: KaelStreamProgress | null) {
+   return `${progress.current_stage}:${progress.status}:${progress.progress}:${progress.updated_at}`;
+ }
+ 
+-export function kaelChatStreamErrorPayload(err: unknown) {
++export function kaelChatStreamErrorPayload(err: unknown, ctx?: MobileApiContext) {
+   const code = typeof (err as { code?: unknown })?.code === "string"
+     ? (err as { code: string }).code
+     : "STREAM_ERROR";
+   return {
++    ...requestEmergencyFields(ctx),
+     code,
+     message:
+       "Kael ch\u01b0a th\u1ec3 ph\u00e1t lu\u1ed3ng c\u1eadp nh\u1eadt. B\u1ea1n th\u1eed l\u1ea1i sau \u00edt ph\u00fat.",
+diff --git a/supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts b/supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
+index 8d7b8819..60d772d1 100644
+--- a/supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
++++ b/supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
+@@ -49,6 +49,7 @@ import {
+   answerEmergencyOnOpenSession,
+   answerParkedEmergency,
+   customerAuthoredTexts,
++  registerCaseEmergencyDelivery,
+   ownedSessionForRefusal,
+   refuseWithEmergencyGuidance,
+   resolveCaseEmergency,
+@@ -131,6 +132,7 @@ export async function sendKaelChatTurn(
+   const status = asKaelChatStatus(session.status);
+   const previousMetadata = asRecord(session.safe_metadata);
+   const texts = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
++  registerCaseEmergencyDelivery(ctx, texts, session.service_type);
+   if (
+     status === "confirmed" || status === "abandoned" ||
+     status === "unsupported"
+diff --git a/supabase/functions/mobile-api/_shared/http.ts b/supabase/functions/mobile-api/_shared/http.ts
+index 6092c171..3c25bcda 100644
+--- a/supabase/functions/mobile-api/_shared/http.ts
++++ b/supabase/functions/mobile-api/_shared/http.ts
+@@ -24,6 +24,7 @@ import {
+   validateIdempotencyKey,
+   type ReliabilityClient,
+ } from "../../_shared/harness/reliability.ts";
++import { clearRequestEmergencyGuidance, requestEmergencyFields } from "./platform/emergency-guidance.ts";
+ import { apiFailure, ApiFailure } from "./platform/api-failure.ts";
+ import { dispatchRoute } from "./http/dispatch/index.ts";
+ import { delegateDomainIdempotency } from "./http/domain-idempotency.ts";
+@@ -480,6 +481,7 @@ async function dispatchAuthorizedRequest(state: MobileApiRequestState): Promise<
+ }
+ 
+ async function startAuthorizedRequest(state: MobileApiRequestState): Promise<void> {
++  clearRequestEmergencyGuidance(state.ctx);
+   if (!state.batchedLifecycle) {
+     await recordHarnessEvent(state.trace, {
+       eventClass: "request.started",
+@@ -605,7 +607,7 @@ async function handleRequestError(
+   if (state) await recordFailedRequest(state, error);
+   if (error instanceof ApiFailure) {
+     return withHarnessHeaders(
+-      jsonError(error.code, error.message, error.status, error.extra),
++      jsonError(error.code, error.message, error.status, { ...error.extra, emergency: undefined, ...requestEmergencyFields(state?.ctx) }),
+       activeTrace,
+     );
+   }
+@@ -616,7 +618,7 @@ async function handleRequestError(
+     traceId: activeTrace.traceId,
+   });
+   return withHarnessHeaders(
+-    jsonError("INTERNAL_ERROR", "Hệ thống đang bận, vui lòng thử lại", 500),
++    jsonError("INTERNAL_ERROR", "Hệ thống đang bận, vui lòng thử lại", 500, requestEmergencyFields(state?.ctx)),
+     activeTrace,
+   );
+ }
+diff --git a/supabase/functions/mobile-api/_shared/http/dispatch/kael.ts b/supabase/functions/mobile-api/_shared/http/dispatch/kael.ts
+index 91f653bf..c3d14e3d 100644
+--- a/supabase/functions/mobile-api/_shared/http/dispatch/kael.ts
++++ b/supabase/functions/mobile-api/_shared/http/dispatch/kael.ts
+@@ -8,6 +8,7 @@ import {
+   kaelChatMediaUploadSchema,
+   kaelChatTurnSchema,
+ } from "../../../../_shared/domain.ts";
++import { registerRejectedCaseEmergencyDelivery } from "../../domains/kael-chat/emergency-turn.ts";
+ import { apiFailure } from "../../platform/api-failure.ts";
+ import { readJson } from "../read-json.ts";
+ import type { MobileApiContext, MobileApiServices } from "../contracts.ts";
+@@ -22,8 +23,12 @@ export async function dispatchKaelRoute(
+ ): Promise<unknown> {
+   switch (route.kind) {
+     case "kael.chat.create": {
+-      const input = kaelChatCreateSchema.safeParse(await readJson(request));
+-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      const raw = await readJson(request);
++      const input = kaelChatCreateSchema.safeParse(raw);
++      if (!input.success) {
++        await registerRejectedCaseEmergencyDelivery(ctx, raw, undefined);
++        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      }
+       return services.createKaelChat(ctx, input.data);
+     }
+     case "kael.assistant": {
+@@ -46,18 +51,30 @@ export async function dispatchKaelRoute(
+     case "kael.chat.progress":
+       return services.getKaelChatProgress(ctx, route.sessionId);
+     case "kael.chat.stream": {
+-      const input = kaelChatTurnSchema.safeParse(await readJson(request));
+-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      const raw = await readJson(request);
++      const input = kaelChatTurnSchema.safeParse(raw);
++      if (!input.success) {
++        await registerRejectedCaseEmergencyDelivery(ctx, raw, route.sessionId);
++        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      }
+       return services.streamKaelChatTurn(ctx, route.sessionId, input.data);
+     }
+     case "kael.chat.evidenceStream": {
+-      const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
+-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      const raw = await readJson(request);
++      const input = kaelChatEvidenceSchema.safeParse(raw);
++      if (!input.success) {
++        await registerRejectedCaseEmergencyDelivery(ctx, raw, route.sessionId);
++        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      }
+       return services.streamKaelChatEvidence(ctx, route.sessionId, input.data);
+     }
+     case "kael.chat.turn": {
+-      const input = kaelChatTurnSchema.safeParse(await readJson(request));
+-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      const raw = await readJson(request);
++      const input = kaelChatTurnSchema.safeParse(raw);
++      if (!input.success) {
++        await registerRejectedCaseEmergencyDelivery(ctx, raw, route.sessionId);
++        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      }
+       return services.sendKaelChatTurn(ctx, route.sessionId, input.data);
+     }
+     case "kael.chat.intakeConfirmation": {
+@@ -86,8 +103,12 @@ export async function dispatchKaelRoute(
+       return services.recoverLegacyKaelConfirmation(ctx, route.sessionId, input.data);
+     }
+     case "kael.chat.evidence": {
+-      const input = kaelChatEvidenceSchema.safeParse(await readJson(request));
+-      if (!input.success) apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      const raw = await readJson(request);
++      const input = kaelChatEvidenceSchema.safeParse(raw);
++      if (!input.success) {
++        await registerRejectedCaseEmergencyDelivery(ctx, raw, route.sessionId);
++        apiFailure("VALIDATION", "Dữ liệu không hợp lệ", 400);
++      }
+       return services.submitKaelChatEvidence(ctx, route.sessionId, input.data);
+     }
+   }
+diff --git a/supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts b/supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts
+new file mode 100644
+index 00000000..b823b5ed
+--- /dev/null
++++ b/supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts
+@@ -0,0 +1,16 @@
++// Request-local safety metadata is registered only after customer authorization and Case ownership.
++import { readKaelEmergencyGuidance, type EdgeEmergencyGuidancePayload } from '../../../_shared/contracts/emergency-guidance.ts';
++
++const guidance = new WeakMap<object, EdgeEmergencyGuidancePayload>();
++
++export function clearRequestEmergencyGuidance(ctx: object): void { guidance.delete(ctx); }
++
++export function setRequestEmergencyGuidance(ctx: object, value: unknown): void {
++  const parsed = readKaelEmergencyGuidance(value);
++  if (parsed) guidance.set(ctx, parsed);
++}
++
++export function requestEmergencyFields(ctx?: object | null): { emergency?: EdgeEmergencyGuidancePayload } {
++  const value = ctx ? guidance.get(ctx) : undefined;
++  return value ? { emergency: { ...value } } : {};
++}

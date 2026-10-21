@@ -1,0 +1,5 @@
+$ node scripts/run.mjs run-package-script @nestscout/mobile type-check
+
+> @nestscout/mobile@0.3.2 type-check C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile
+> tsc --noEmit
+

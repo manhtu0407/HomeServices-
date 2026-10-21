@@ -8,6 +8,7 @@ import {
   resolveReportedEmergencyGuidanceFromTexts,
   type EmergencyGuidance,
 } from "../../kael/kael-guardrails/emergency-guidance.ts";
+import { setRequestEmergencyGuidance } from "../../platform/emergency-guidance.ts";
 import { ApiFailure, apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
 import { asKaelChatStatus, asNumber, asRecord, nullableServiceType } from "../../platform/coercions.ts";
@@ -76,6 +77,42 @@ export function customerAuthoredTexts(input: {
     texts.push(text);
   }
   return texts;
+}
+
+// Classification for delivery is independent of which successful intake path would answer the danger.
+// Callers must first establish customer authorization and ownership of any referenced Case.
+export function registerCaseEmergencyDelivery(ctx: MobileApiContext, texts: readonly string[], serviceType: unknown): void {
+  if (ctx.role !== "customer") return;
+  const guidance = resolveReportedEmergencyGuidanceFromTexts(texts, "vi", {
+    serviceType: typeof serviceType === "string" ? serviceType : null,
+  });
+  if (guidance) setRequestEmergencyGuidance(ctx, { version: "v1", route: guidance.route });
+}
+
+// Schema failures never consume evidence or create state. Read bounded text only, and establish ownership
+// before classifying anything on an existing Case; all original validation errors stay unchanged.
+export async function registerRejectedCaseEmergencyDelivery(ctx: MobileApiContext, raw: unknown, sessionId?: string): Promise<void> {
+  if (ctx.role !== "customer" || !raw || typeof raw !== "object" || Array.isArray(raw)) return;
+  const input = raw as Record<string, unknown>;
+  const bounded = (value: unknown) => typeof value === "string" && value.length <= 5000 ? value : undefined;
+  const evidenceItems = Array.isArray(input.evidence_items) ? input.evidence_items.slice(0, 10).map(item => {
+    const value = item && typeof item === "object" ? item as Record<string, unknown> : {};
+    return { transcript: bounded(value.transcript), summary: bounded(value.summary) };
+  }) : [];
+  const texts = customerAuthoredTexts({
+    message: bounded(input.message), intakeDescription: bounded(input.intake_description),
+    skipReason: bounded(input.skip_reason), evidenceItems,
+  });
+  if (!texts.length) return;
+  const referenced = sessionId ?? input.session_id;
+  let serviceType: unknown = input.service_type;
+  if (referenced !== undefined && referenced !== null) {
+    if (typeof referenced !== "string" || referenced.length > 64) return;
+    const owned = await ownedSessionForRefusal(ctx, referenced);
+    if (!owned) return;
+    serviceType = owned.service_type;
+  }
+  registerCaseEmergencyDelivery(ctx, texts, serviceType);
 }
 
 export function resolveCaseEmergency(input: CaseEmergencyInput): CaseEmergency | null {
@@ -216,6 +253,7 @@ export async function answerEmergencyOnOwnedSession(
     session = result.data;
   }
   if (!session) return false;
+  registerCaseEmergencyDelivery(ctx, input.texts, session.service_type);
   const emergency = resolveCaseEmergency({
     message: input.texts,
     language: input.language,
@@ -251,6 +289,7 @@ export async function answerEmergencyOnOpenSession(
   session: Record<string, unknown>,
   input: { readonly texts: readonly string[]; readonly language: "vi" | "en"; readonly entry: CaseEmergencyEntry },
 ): Promise<boolean> {
+  registerCaseEmergencyDelivery(ctx, input.texts, session.service_type);
   if (CLOSED_STATUSES.has(asKaelChatStatus(session.status))) return false;
   const emergency = resolveCaseEmergency({
     message: input.texts,

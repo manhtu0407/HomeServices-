@@ -1,0 +1,11 @@
+{"command":"pnpm lint:authority","exit_code":1,"log":".scratch/kawa01-quality-20261021/lint-authority.log.txt"}
+{"command":"pnpm lint:baseline","exit_code":0,"log":".scratch/kawa01-quality-20261021/lint-baseline.log.txt"}
+{"command":"pnpm lint:edge-db","exit_code":0,"log":".scratch/kawa01-quality-20261021/lint-edge-db.log.txt"}
+{"command":"pnpm lint:playbooks","exit_code":0,"log":".scratch/kawa01-quality-20261021/lint-playbooks.log.txt"}
+{"command":"pnpm lint:test-collection","exit_code":0,"log":".scratch/kawa01-quality-20261021/lint-test-collection.log.txt"}
+{"command":"pnpm harness:pillars:check","exit_code":0,"log":".scratch/kawa01-quality-20261021/harness-pillars-check.log.txt"}
+{"command":"pnpm harness:migrations:check","exit_code":0,"log":".scratch/kawa01-quality-20261021/harness-migrations-check.log.txt"}
+{"command":"pnpm harness:capabilities:check","exit_code":0,"log":".scratch/kawa01-quality-20261021/harness-capabilities-check.log.txt"}
+{"command":"pnpm harness:access:check","exit_code":0,"log":".scratch/kawa01-quality-20261021/harness-access-check.log.txt"}
+{"command":"pnpm harness:privileged:check","exit_code":0,"log":".scratch/kawa01-quality-20261021/harness-privileged-check.log.txt"}
+{"command":"pnpm harness:transactions:check","exit_code":0,"log":".scratch/kawa01-quality-20261021/harness-transactions-check.log.txt"}

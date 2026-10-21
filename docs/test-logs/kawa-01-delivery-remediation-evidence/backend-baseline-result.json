@@ -1,0 +1,14 @@
+{
+  "exitCode": 1,
+  "source": "original index before final delivery remediation",
+  "files": [
+    "supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts",
+    "supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts",
+    "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts",
+    "supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts",
+    "supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts",
+    "supabase/functions/mobile-api/_shared/http.ts",
+    "supabase/functions/mobile-api/_shared/http/dispatch/kael.ts"
+  ],
+  "restoredAfterRun": true
+}

@@ -1,0 +1,18 @@
+{
+  "scope": "New P416/P417/P418 IDs; preserved existing-ID comparison remains in the earlier independent packet",
+  "checks": [
+    {
+      "id": "P416",
+      "presentOnMain": false
+    },
+    {
+      "id": "P417",
+      "presentOnMain": false
+    },
+    {
+      "id": "P418",
+      "presentOnMain": false
+    }
+  ],
+  "collisions": []
+}

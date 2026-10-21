@@ -1,0 +1,39 @@
+const { build } = require('../../node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild')
+const path = require('node:path')
+const source = `
+import { newCaseWorld, activeWorld, evidenceWorld } from './apps/api/src/__tests__/kael-edge-runtime/harness/emergency-fixtures'
+import { OWNER, CASE_ADMIN_ID } from './apps/api/src/__tests__/kael-edge-runtime/harness/case-world'
+import { createMobileApiHandler } from './supabase/functions/mobile-api/_shared/http'
+async function main() {
+  console.info = () => {}
+  const findings = []
+  const photo = (owner = OWNER.id) => ({kind:'photo',ref:'supabase://kael-chat-media/'+owner+'/kael-chat/model_vision/expired.jpg',model_eligible:true})
+  const base = {service_type:'hvac',language:'vi',problem_chips:[],photo_urls:[],message:'Nhà tôi đang cháy'}
+  for (const [id, evidence] of [['new-fire-control',undefined],['new-fire-foreign-photo',[photo('39800000-0000-4000-8000-0000000000b2')]],['new-fire-expired-own-photo',[photo()]]]) {
+    const world = newCaseWorld()
+    const handler=createMobileApiHandler({authenticate:async()=>({success:true,user:{id:OWNER.id},role:'customer',supabase:world.db.client,privilegedSupabase:world.db.client,userSupabase:world.db.client}),services:world.services} as never)
+    const res=await handler(new Request('https://edge.test/mobile-api/kael/chat',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...base,...(evidence?{evidence_items:evidence}:{})})}))
+    const body=await res.json()
+    findings.push({id,status:res.status,code:body?.code??null,guidance_114:JSON.stringify(body).includes('114'),sessions:world.db.tables.kael_chat_sessions.length,provider_calls:world.modelCalls.length})
+  }
+  for (const [id, text] of [['required-evidence-fire-control','Nhà tôi đang cháy'],['required-evidence-electrical','Ổ cắm tóe lửa khi cắm phích']]) {
+    const world=evidenceWorld()
+    const res=await world.request('/evidence',{language:'vi',decision:'skipped',skip_reason:text})
+    findings.push({id,status:res.status,code:res.body?.code??null,guidance_114:JSON.stringify(res.body).includes('114'),new_turns:res.newTurns.length,provider_calls:world.modelCalls.length})
+  }
+  const world=activeWorld()
+  const res=await world.request('',{message:'Ổ cắm tóe lửa khi cắm phích',language:'vi',evidence_items:[photo()]})
+  findings.push({id:'existing-electrical-expired-photo',status:res.status,code:res.body?.code??null,guidance_114:JSON.stringify(res.body).includes('114'),new_turns:res.newTurns.length,provider_calls:world.modelCalls.length})
+  const adminWorld=activeWorld()
+  const admin=await adminWorld.request('',{message:'Nhà tôi đang cháy',language:'vi'},{as:{id:CASE_ADMIN_ID,role:'admin'}})
+  findings.push({id:'admin-case-turn-refused',status:admin.status,code:admin.body?.code??null,new_turns:admin.newTurns.length,provider_calls:adminWorld.modelCalls.length})
+  const failures=findings.filter(entry=>entry.id!=='admin-case-turn-refused'&&!entry.guidance_114)
+  console.log(JSON.stringify({evidence_tier:'T0',authentication:'injected',database:'in-memory; no RLS or atomicity proof',providers:'stubbed; no network',hazard_delivery_verdict:failures.length?'FAIL':'PASS',hazard_delivery_failures:failures.length,cases:findings},null,2))
+  process.exitCode=failures.length?1:0
+}
+main().catch(error=>{console.error(error.message);process.exitCode=1})
+`
+build({stdin:{contents:source,resolveDir:process.cwd(),loader:'ts'},write:false,bundle:true,platform:'node',format:'cjs',plugins:[{name:'fixture-vitest-adapter',setup(builder){builder.onResolve({filter:/^vitest$/},()=>({path:'vitest',namespace:'fixture-adapter'}));builder.onLoad({filter:/.*/,namespace:'fixture-adapter'},()=>({contents:'export const vi={stubGlobal:(key,value)=>{globalThis[key]=value},fn:(f)=>f}; export const expect=(actual,message)=>({toBe(expected){if(actual!==expected)throw Error(message??"fixture assertion failed")}});',loader:'js'}))}}]}).then(result=>{
+  const module={exports:{}}
+  new Function('require','module','exports','__dirname',result.outputFiles[0].text)(require,module,module.exports,process.cwd())
+}).catch(error=>{console.error(error.message);process.exitCode=1})

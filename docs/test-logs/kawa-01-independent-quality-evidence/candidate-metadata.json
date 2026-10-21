@@ -1,0 +1,11 @@
+{
+  "reviewed_commit": "062db16094a5eb8168e9bdec9823c221aea729ae",
+  "merge_candidate_commit": null,
+  "reason": "Commit and protected memory/integration decisions await owner approval; no commit fabricated",
+  "source_patch": "source.patch.txt",
+  "source_patch_sha256": "42e40164b80ff455574b361c9ad9f63f6452bfff6e13d5eb3665fe1b6c1cba26",
+  "public_contract_change": false,
+  "production_source_files_changed": 1,
+  "tests_added": 2,
+  "acceptance_verdict": "BLOCKED"
+}

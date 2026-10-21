@@ -24,7 +24,7 @@ export function assistantTraceFields(
   const decision = answer.decision;
   // A decline with no deterministic decision behind it is the model's own scope verdict.
   return {
-    stage: decision?.stage ?? (answer.boundary === "unsupported" ? "provider_output" : "answered"),
+    stage: decision?.stage === "emergency_routing" ? "emergency_gate" : decision?.stage ?? (answer.boundary === "unsupported" ? "provider_output" : "answered"),
     outcome: answer.boundary,
     fallbackUsed: answer.fallback_used,
     canonicalService: context.canonicalService,

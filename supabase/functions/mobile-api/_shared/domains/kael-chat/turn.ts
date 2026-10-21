@@ -49,6 +49,7 @@ import {
   answerEmergencyOnOpenSession,
   answerParkedEmergency,
   customerAuthoredTexts,
+  registerCaseEmergencyDelivery,
   ownedSessionForRefusal,
   refuseWithEmergencyGuidance,
   resolveCaseEmergency,
@@ -131,6 +132,7 @@ export async function sendKaelChatTurn(
   const status = asKaelChatStatus(session.status);
   const previousMetadata = asRecord(session.safe_metadata);
   const texts = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
+  registerCaseEmergencyDelivery(ctx, texts, session.service_type);
   if (
     status === "confirmed" || status === "abandoned" ||
     status === "unsupported"

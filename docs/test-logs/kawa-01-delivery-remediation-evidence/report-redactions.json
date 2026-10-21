@@ -1,0 +1,13 @@
+{
+  "reason": "Token-like substrings in test-title metadata triggered generic-api-key scanning; sanitize exported metadata without changing test outcomes",
+  "rule": "generic-api-key",
+  "findings": 2,
+  "distinctTokens": 1,
+  "redactedFields": [
+    "testResults.58.assertionResults.15.fullName",
+    "testResults.58.assertionResults.15.title"
+  ],
+  "countsPreserved": true,
+  "rawTextLogsUnchanged": true,
+  "internalRawReportRetainedInIgnoredScratch": true
+}

@@ -31,6 +31,7 @@ import {
   answerCaseEmergency,
   answerParkedEmergency,
   customerAuthoredTexts,
+  registerCaseEmergencyDelivery,
   refuseWithEmergencyGuidance,
   resolveCaseEmergency,
   type CaseEmergency,
@@ -90,6 +91,7 @@ export async function submitKaelChatEvidence(
     skipReason: input.skip_reason,
     evidenceItems: input.evidence_items,
   });
+  registerCaseEmergencyDelivery(ctx, texts, session.service_type);
   if (
     status === "confirmed" ||
     status === "abandoned" ||

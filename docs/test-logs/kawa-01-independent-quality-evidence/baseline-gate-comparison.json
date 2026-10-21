@@ -1,0 +1,260 @@
+{
+  "lint_mobile_summary": "162 problems (75 errors, 87 warnings)",
+  "files_in_lint_diagnostics": [
+    {
+      "path": "apps/mobile/app/(admin)/__tests__/admin-sections-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/__tests__/admin-finance-refund-obligation-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/__tests__/admin-team-system-workspaces-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-ambassador-program-workspace.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-discipline-workspace.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-finance.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-governance.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-payouts.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-sections-capability-workspace.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-sections-layout-types.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-sections.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/admin-workflow-recovery-center.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/admin/use-admin-system-detail.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/__tests__/stage1-customer-intake-mode-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/booking/use-booking-address-lookup.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/compensation/compensation-section.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/kael-chat/customer-payment-rail-surface.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/kael-chat/customer-worker-travel-map.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/kael-chat/kael-chat-composer.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/kael-chat/kael-fresh-row.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/kael-chat/work-progress-details.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/customer/v21/surfaces.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/ui/session-offline-screen.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/__tests__/worker-kael-composer-layout-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/__tests__/worker-kael-transcript-follow-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/chat/orb-screen-surfaces.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/discipline/compensation-section.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/evidence/stage-eight-evidence.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/stage-five/travel-work/stage-five-icons.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/stage-five/travel-work/stage-five-work.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/stage-six/stage-six-timeline.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/use-stage-four-map-viewport.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/waiting/waiting-runtime.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/worker-jobs-zip-prototype-early-stages.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/worker-jobs-zip-prototype-settlement-stages.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/jobs/worker-jobs-zip-prototype-shared.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/components/worker/worker-v5-flow.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/__tests__/customer-apartment-access-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/__tests__/customer-candidate-decision-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/__tests__/customer-matching-retry-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/__tests__/customer-matching-selection-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/__tests__/normal-chat-suggestions-cache-pillar-test.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/admin-data-sync.tsx",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/api-types/admin-program.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/api-types/program.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/api-types/system-health.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-confirmation-reconciliation.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-customer-apartment-access.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-customer-job-actions.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-customer-matching-retry.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-customer-matching-selection.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-customer-profile-insights-actions.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-notification-actions.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-rfq-price.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-worker-ambassador.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-worker-board-actions.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-worker-candidate-actions.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-worker-registration-actions.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/frontend-workflow/use-worker-violations.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/normal-chat-suggestions.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/resource-cache/resource-cache.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/resource-cache/use-cached-resource.ts",
+      "unchanged_from_reviewed_head": true
+    },
+    {
+      "path": "apps/mobile/lib/services.ts",
+      "unchanged_from_reviewed_head": true
+    }
+  ],
+  "all_diagnostic_files_unchanged": true,
+  "authority_failure": "apps/mobile/lib/__tests__/normal-chat-suggestions-cache-pillar-test.tsx:31 Plan section 3.4 absent",
+  "authority_source_unchanged": true
+}

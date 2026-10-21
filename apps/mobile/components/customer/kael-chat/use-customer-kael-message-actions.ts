@@ -37,7 +37,7 @@ import type { useJobChatThread } from '@/lib/use-job-chat-thread'
 import {
   formatAssistantAnswer,
   isLikelyKaelIntakeRequest,
-  localizeKaelRequestFailure,
+  applyCustomerKaelRequestFailure,
   makeAssistantTurnId,
   shouldFallbackCaseAssistantToJobChat,
 } from './customer-kael-chat-helpers'
@@ -306,6 +306,7 @@ export function useCustomerKaelMessageActions({
     try {
       if (mode === 'normal' && conversations) {
         await sendCustomerNormalTurn({
+          onEmergencyGuidance: conversation.setEmergencyGuidance,
           abortSignal: sendAbortController.signal,
           beginReasoningReceipt: () => setReasoningReceipt((current) => kaelReasoningReceiptReducer(current, { type: 'begin' })),
           clearComposer: clearSubmittedComposer,
@@ -386,7 +387,7 @@ export function useCustomerKaelMessageActions({
               if (conversations) void conversations.syncLinkedCaseSession(result.data.session.id)
             } else {
               restoreSubmittedComposer()
-              setError(localizeKaelRequestFailure(result, language))
+              applyCustomerKaelRequestFailure(conversation, result, language)
             }
           } finally {
             if (kaelRequestGuard.isCurrent(requestToken)) {
@@ -463,11 +464,11 @@ export function useCustomerKaelMessageActions({
               commitSubmittedComposer()
             } else {
               restoreSubmittedComposer()
-              setError(localizeKaelRequestFailure(stored, language))
+              applyCustomerKaelRequestFailure(conversation, stored, language)
             }
           } else {
             restoreSubmittedComposer()
-            setError(localizeKaelRequestFailure(result, language))
+            applyCustomerKaelRequestFailure(conversation, result, language)
           }
         } finally {
           if (kaelRequestGuard.isCurrent(requestToken)) {
@@ -501,6 +502,7 @@ export function useCustomerKaelMessageActions({
       try {
         const catalogResult = conversations
           ? await conversations.sendConversationTurn(message, {
+              onEmergencyGuidance: conversation.setEmergencyGuidance,
               onResponseCommitted: () => {
                 completeLegacyStreamingReply()
                 retainStreamingReply = receivedResponseTerminal
@@ -538,7 +540,7 @@ export function useCustomerKaelMessageActions({
           commitSubmittedComposer()
         } else if (result) {
           restoreSubmittedComposer()
-          setError(localizeKaelRequestFailure(result, language))
+          applyCustomerKaelRequestFailure(conversation, result, language)
         } else {
           restoreSubmittedComposer()
           setError(conversations?.sessionsError ?? (language === 'vi'
@@ -772,7 +774,7 @@ export function useCustomerKaelMessageActions({
       setLoading(false)
       stopProcessLines()
       restoreSubmittedComposer()
-      setError(localizeKaelRequestFailure(result, language))
+      applyCustomerKaelRequestFailure(conversation, result, language)
     }
     } catch {
       if (kaelRequestGuard.isCurrent(requestToken)) {

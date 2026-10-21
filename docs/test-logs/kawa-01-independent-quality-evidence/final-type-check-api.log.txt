@@ -1,0 +1,5 @@
+$ node scripts/run.mjs run-package-script @nestscout/api type-check
+
+> @nestscout/api@0.1.0 type-check C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api
+> tsc --noEmit
+

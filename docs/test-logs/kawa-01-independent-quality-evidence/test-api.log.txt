@@ -1,0 +1,157 @@
+$ node scripts/run.mjs run-package-script @nestscout/api test
+
+> @nestscout/api@0.1.0 test C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\api
+> node scripts/test-runner.mjs
+
+
+ RUN  v4.1.6 C:/Users/Phan Manh Tu/.codex/worktrees/kawa-foundation-safety-20261020/home-services/apps/api
+
+
+ Test Files  197 passed | 2 skipped (199)
+      Tests  3407 passed | 6 skipped (3413)
+   Start at  17:07:47
+   Duration  33.70s (transform 112.94s, setup 0ms, import 393.99s, tests 75.04s, environment 40ms)
+
+✔ six-service evaluator rejects hosted targets before any fetch (323.3872ms)
+✔ six-service evaluator permits loopback and calls only the intercepted adapter (84.7654ms)
+✔ blind holdout package is source-bound and omits expected labels, rationales, and details (7.6459ms)
+✔ blind holdout package rejects missing services, non-24 slices, malformed identities, and missing labels (2.4058ms)
+✔ blind holdout package fails closed on contact details and secrets in review inputs (1.4662ms)
+✔ blind holdout checksum changes when the exact reviewed source changes (5.2608ms)
+✔ blind package context binds PR head rather than the synthetic merge ref and fails closed on drift (0.8502ms)
+✔ blind package dispatch accepts only a verified PR head invoked from default main (0.3981ms)
+✔ predeployment holdout context binds the merge SHA to target main, not the pinned base ref (1.7112ms)
+✔ legacy GitHub holdout comments stay source-bound but cannot pass the v6 adjudication gate (22.1521ms)
+✔ accepts one independent holdout attestor and rejects missing attestation comments (1.3683ms)
+✔ holdout label digest is deterministic and bound to the expected labels (3.2164ms)
+✔ independent holdout proof rejects fabricated, stale, author, untrusted, and mismatched proof evidence (4.1992ms)
+✔ GitHub provider discovers exact source-bound attestation comments without requiring code approval (27.0049ms)
+✔ GitHub provider fails closed when attestation comments, merge source, or guard CI drift (93.5032ms)
+✔ Production canary holdout provider binds a local proof artifact and actor guard evidence to main SHA (31.4131ms)
+✔ pre-deployment holdout gate proves exact independent attestation and guard CI without deployment attestation (29.5851ms)
+✔ Plan 55 file checkpoints are exclusive, exact-source, and reusable only after cleanup (59.9119ms)
+✔ Plan 55 status reads are read-only and reuse only exact, cleaned source receipts (31.6568ms)
+✔ Plan 55 checkpoint preserves only the closed actor lifecycle boolean proof (27.4861ms)
+✔ Plan 55 status rejects staged receipts without their active lock (20.0732ms)
+✔ Plan 55 retains the service lock and staged receipt when cleanup proof fails (19.7563ms)
+✔ Plan 55 interrupted recovery revalidates receipts, preserves valid slices, and releases the exact lock (40.2856ms)
+✔ Plan 55 recovers a durable checkpoint commit when the exact old lock survives the rename (30.4067ms)
+✔ Plan 55 does not mistake a newer lock for an already committed recovery (25.1268ms)
+✔ Plan 55 interrupted recovery reruns only invalidated slices and requires exact receipt accounting (28.333ms)
+✔ Plan 55 interrupted recovery refuses a lock for another service or a changed lock token (7.8877ms)
+✔ Plan 55 checkpoint metrics reject free text before it reaches disk (14.7023ms)
+✔ the canary uses the pinned active client identity while attesting the newly deployed backend SHA (2.2124ms)
+✔ canary plan is the six approved services with eight 12-case slices each (1.41ms)
+✔ checkpoint status separates observed case receipts from unknown or cleaned attempts (0.9761ms)
+✔ service retry reuses only exact-source slices with proven cleanup (1.6646ms)
+✔ G5 rejects a problem-slug regression even when scope and safety are unchanged (0.991ms)
+✔ G5 hard-fails when deterministic fallback share shifts by more than 20 percentage points (0.3883ms)
+✔ independent holdout proof requires exact-source blind Codex and Perplexity evidence (2.7305ms)
+✔ slice artifacts must be confined to the exact release/service/slice folder (0.6523ms)
+✔ live Plan 55 manifests require deployed-source provenance and an attestation digest (1.1548ms)
+✔ canary preflight accepts only the dedicated Production-only release lane (1.4189ms)
+✔ canary preflight requires source-bound blind holdout evidence and actor-guard CI proof (10.8293ms)
+✔ service cleanup requires absent global and scoped flags, deleted Auth actor, zero residual rows and no worker (0.5265ms)
+﹣ Linux process snapshot uses the runner process table and sees no extra canary CLI (1.0076ms) # SKIP
+✔ Production canary environment fails closed on missing opt-in, credentials, or wrong target (1.0479ms)
+✔ canary request manifest timeout is the bounded-fetch deadline (0.9376ms)
+✔ cleanup start marker is loaded only from and must match its exact run identity (59.1849ms)
+✔ Operations construct clients only for the pinned Production project (3.9858ms)
+✔ bounded fetch enforces its deadline and preserves a caller abort signal (41.0066ms)
+✔ synthetic actor refreshes its in-memory session without changing actor identity (6.0305ms)
+✔ ambiguous Auth creation cleans the pre-recorded synthetic actor by its exact id (5.2279ms)
+✔ canary enable requires source preflight and exact actor-scoped secret readback (36.158ms)
+✔ preflight derives source-bound proofs without a plan55 field on public Production health (9.8626ms)
+✔ live chat requests retain the current Production client identity while attesting the new backend source (13.5351ms)
+✔ cleanup retries transient deletion visibility and proves scoped flags, Auth, rows, and workers are clear (6.0808ms)
+✔ abandoned cleanup fails closed before touching flags or deleting an unmarked Auth user (3.2653ms)
+✔ abandoned cleanup rejects a marker for a different deployed release before mutations (3.4045ms)
+✔ interrupted recovery rejects incomplete actor or release markers before contacting Production (2.9162ms)
+✔ CLI accepts a single ordered service and rejects an unknown service before network access (607.2319ms)
+✔ Production release preflight pins current base, absent flags, providers and read-only semantics (3.4874ms)
+✔ Production release preflight fails closed on credentials, target, source, flags or provider readiness (2.7034ms)
+✔ post-deploy preflight binds read-only flags and provider checks to the exact candidate release (2.6676ms)
+✔ RPC resolver distinguishes direct static choices from nested dynamic expressions (7.5073ms)
+✔ RPC parameter resolution requires complete direct, immutable call sites (3.5902ms)
+✔ the emitted database inventory is consumable by the RPC comparison (2306.1908ms)
+✔ an empty target inventory is a complete result, not a malformed response (2206.0046ms)
+✔ builds a source-attested inventory from exactly the applied Production migrations (22.6371ms)
+✔ selects canonical Production migrations when the source inventory contains superseded equivalents (109.6832ms)
+✔ rejects an applied Production migration missing from the source inventory (10.6616ms)
+✔ rejects target, release, duplicate, and ordering drift (15.4776ms)
+✔ rejects inventory tampering before selecting the applied subset (10.0761ms)
+✔ builds deployed-guard proofs from exact Production deployment and fail-closed live preflight artifacts (10.8541ms)
+✔ rejects wrong Production target or deployed source before issuing gate proof (3.8615ms)
+✔ rejects deployed Edge digest drift from the source proof and attestation (0.7044ms)
+✔ rejects absent scoped/global flag proof, provider readiness, and mutation evidence (1.5525ms)
+✔ rejects any applied-migration drift from the captured Production baseline (0.5629ms)
+✔ revalidates the generated proof against the exact archived source artifact bytes (1.7689ms)
+✔ requires exact source artifacts when verifying a deployed guard proof (0.9623ms)
+✔ packages all deployed-guard gates from one verified release artifact without external evidence (11.7061ms)
+✔ protected-boundary checks compare against the current pull request base (2.1537ms)
+✔ Plan 55 release dispatches from default main and enforces Production-base ancestry without targeting Staging (0.9811ms)
+✔ Plan 55 can be dispatched through the registered CI workflow without rerunning its other lanes (1.206ms)
+✔ the serialized canary timeout reserves unconditional cleanup and setup time for checkpoint recovery (0.5691ms)
+✔ preflight gate proofs bind exact source and successful CI step outcomes before artifact upload (1.7509ms)
+✔ guard deploy is rollback-protected, deploys only mobile-api, and applies no migration or global service flag (0.3934ms)
+✔ release-stage gate proofs bind the pinned hosted baseline and rollback before the deploy step (0.5787ms)
+✔ independent holdout attestation gates the OFF-only guard deployment before any Production mutation (2.2232ms)
+✔ guard deployment stays OFF-only and cannot precede independent holdout attestation (0.5741ms)
+✔ holdout review is revalidated before any service actor or scoped flag mutation (1.9274ms)
+✔ Production source attestation is bound to downloaded hosted Edge bytes and live deployment metadata (1.0075ms)
+✔ deployed guard proofs consume only exact post-deploy Production evidence before disarming rollback (1.1059ms)
+✔ service workflow preserves order and resumes only an exact-source cleaned checkpoint (2.6045ms)
+✔ release workflows are covered by the deployed evaluator source attestation (0.3729ms)
+✔ Perplexity exception remains limited to the synthetic blind Plan 55 holdout (0.7381ms)
+✔ blind holdout review packaging is source-bound, read-only, and excludes label sources (0.8154ms)
+✔ gate evidence packaging preserves exact-source evidence and has no Production write capability (1.6072ms)
+✔ post-receipt hosted drift is read-only, exact-source, and bound to immutable Production snapshots (0.5283ms)
+✔ rollback drill prerequisites can be packaged without accepting the drill result itself (1.2634ms)
+✔ post-receipt finalization consumes separately attested exact-source artifacts and cannot mutate Production (1.5533ms)
+✔ successful six-service receipts automatically package and finalize the receipts_validated packet (1.459ms)
+✔ API JSON evidence is emitted by Vitest without dropping the Node contract suite (1.8011ms)
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/helpers/emergency-blind-eval.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-blind-eval-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+✔ release source paths exclude only Git-confirmed unstaged deletions (243.3118ms)
+✔ release source paths retain missing skip-worktree files so digesting still fails closed (300.2279ms)
+✔ Edge health preserves the release manifest provider readiness contract without exposing credentials (4011.9185ms)
+✔ Edge push readiness requires explicit flags and stays false for absent or invalid values (0.8118ms)
+✔ staging native builds bind only with matching release and embedded artifact identity (2489.4299ms)
+✔ native staging evidence rejects unfinished, stale, mixed-target and incomplete artifacts (2979.409ms)
+✔ candidate bindings require the complete checksummed production release (2953.8081ms)
+✔ Plan 55 release lane is bound through runtime health and cannot be set in Staging (3105.0553ms)
+✔ Backend lane keeps Build55 as a legacy client and binds the checked-in current app policy (2571.0621ms)
+✔ Backend lane binds without native binary attestation while preserving the Build55 legacy floor (4801.5861ms)
+✔ staging bindings require explicit compatibility evidence from real EAS inventory (2401.631ms)
+✔ staging bindings reject invented or cross-environment client evidence (2368.4645ms)
+✔ rollback bindings preserve exact hosted identity and fail closed to unreleased or unknown (0.6216ms)
+✔ rollback restores each observed push capability instead of inheriting candidate flags (0.1326ms)
+✔ rollback bindings reject the wrong project and shell-unsafe values (0.2576ms)
+✔ rollback preflight accepts only a complete exact hosted Production binding snapshot (0.9892ms)
+✔ rollback preflight round-trips release-bound EAS identity only for the Backend lane (0.6387ms)
+ℹ tests 115
+ℹ suites 0
+ℹ pass 114
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 1
+ℹ todo 0
+ℹ duration_ms 28819.707

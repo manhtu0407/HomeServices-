@@ -1,0 +1,91 @@
+$ jest "--runInBand" "--runTestsByPath" "components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx"
+FAIL components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx (6.03 s)
+  P418-kael-emergency-mobile-delivery
+    × preserves the rejected JSON response and the recognized emergency field (26 ms)
+    × delivers a rejected create into the actual request action and conversation reducer (19 ms)
+
+  ● P418-kael-emergency-mobile-delivery › preserves the rejected JSON response and the recognized emergency field
+
+    [P418-kael-emergency-mobile-delivery] trusted emergency guidance survives rejected requests into Customer Kael without creating a chat, duplicating turns, or changing business state, and offline guidance stays reachable
+    authority: governance/RULES.md #8 (no fake success) | governance/RULES.md #3 (validated output only)
+    target:    apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts
+    next:      P341-kael-stream-accepts-governed-next-actions
+    detail:    safety metadata must accompany the original rejection
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 0
+
+      Object {
+        "code": "INVALID_MEDIA_REF",
+    -   "emergency": Object {
+    -     "route": "fire",
+    -     "version": "v1",
+    -   },
+        "status": 422,
+        "success": false,
+      }
+
+      57 |     mockFetch.mockResolvedValue(rejectedResponse(422, { error: 'internal exception hidden by UI', code: 'INVALID_MEDIA_REF', emergency }))
+      58 |     const response = await api.post('/kael/chat', { message: 'smoke' })
+    > 59 |     withPillarContext(PILLAR, () => expect(response).toMatchObject({ success: false, status: 422, code: 'INVALID_MEDIA_REF', emergency }), 'safety metadata must accompany the original rejection')
+         |                                                      ^
+      60 |   })
+      61 |
+      62 |   it('delivers a rejected create into the actual request action and conversation reducer', async () => {
+
+      at toMatchObject (components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx:59:54)
+      at assertion (__tests__/pillar-manifest.ts:50:5)
+      at Object.<anonymous> (components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx:59:22)
+      at asyncGeneratorStep (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+  ● P418-kael-emergency-mobile-delivery › delivers a rejected create into the actual request action and conversation reducer
+
+    [P418-kael-emergency-mobile-delivery] trusted emergency guidance survives rejected requests into Customer Kael without creating a chat, duplicating turns, or changing business state, and offline guidance stays reachable
+    authority: governance/RULES.md #8 (no fake success) | governance/RULES.md #3 (validated output only)
+    target:    apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts
+    next:      P341-kael-stream-accepts-governed-next-actions
+    detail:    failed create remains failed while the trusted guidance remains visible
+
+    expect(received).toMatchObject(expected)
+
+    - Expected  - 4
+    + Received  + 0
+
+      Object {
+        "chat": null,
+    -   "emergencyGuidance": Object {
+    -     "route": "fire",
+    -     "version": "v1",
+    -   },
+        "loading": false,
+        "turns": Array [],
+      }
+
+      65 |     await act(async () => { await result.current.actions.sendMessage('Ổ cắm có khói') })
+      66 |     withPillarContext(PILLAR, () => {
+    > 67 |       expect(result.current.conversation).toMatchObject({ emergencyGuidance: emergency, chat: null, loading: false, turns: [] })
+         |                                           ^
+      68 |       expect(result.current.conversation.error).not.toContain('untrusted')
+      69 |     }, 'failed create remains failed while the trusted guidance remains visible')
+      70 |   })
+
+      at toMatchObject (components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx:67:43)
+      at assertion (__tests__/pillar-manifest.ts:50:5)
+      at Object.<anonymous> (components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx:66:22)
+      at asyncGeneratorStep (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:3:17)
+      at _next (../../node_modules/.pnpm/@babel+runtime@7.29.2/node_modules/@babel/runtime/helpers/asyncToGenerator.js:17:9)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 2 total
+Snapshots:   0 total
+Time:        6.873 s
+Ran all test suites within paths "components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx".
+Jest did not exit one second after the test run has completed.
+
+'This usually means that there are asynchronous operations that weren't stopped in your tests. Consider running Jest with `--detectOpenHandles` to troubleshoot this issue.
+C:\Users\Phan Manh Tu\.codex\worktrees\kawa-foundation-safety-20261020\home-services\apps\mobile:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @nestscout/mobile@0.3.2 test: `jest "--runInBand" "--runTestsByPath" "components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx"`
+Exit status 1

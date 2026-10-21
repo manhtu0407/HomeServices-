@@ -1,0 +1,152 @@
+[
+  {
+    "path": "apps/api/scripts/kael-playbook-eval.mjs",
+    "bytes": 39565,
+    "sha256": "cd73331b3586232dea1794b7a6f760f43d5d2cc1b3579ba0e69ce0141d95c9dd"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/chat-stateful-surfaces.tsx",
+    "bytes": 10334,
+    "sha256": "2e85d4a97ec3f823042e1776b8f53b2044fed8bd3d1536a9a9b449bb38a9a441"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/customer-kael-chat-content.tsx",
+    "bytes": 13569,
+    "sha256": "b73703b790d0c4841fa4e3823dceb7404107a9aad935413c560b5f54d4b92f3b"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/customer-kael-chat-helpers.ts",
+    "bytes": 10665,
+    "sha256": "7ee836f3327dad7739ee9972637809ef15af07fc0fa1bd454b6cffc132d8a7ae"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/customer-kael-conversation-stream-options.ts",
+    "bytes": 1016,
+    "sha256": "21bcb6e01c5631ecd52f337d3bfd88d569016e7dc55c9570a1c789ab0462de18"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/customer-kael-normal-turn-send.ts",
+    "bytes": 7256,
+    "sha256": "7526172f9d24b16bd3237c09019f80c9af70a183ecfea0729dfc7e55d566375c"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/use-customer-kael-conversation-state.ts",
+    "bytes": 14451,
+    "sha256": "b0d7e1d2797dbb8c39a9069fe4be1e4829b07e1437dd52897692c0ebe6017389"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/use-customer-kael-conversations.ts",
+    "bytes": 32248,
+    "sha256": "78ed6f913608eec804b77e45b77f3edb71fdff2a2cdc54b9f48c08dca05e5ea7"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/use-customer-kael-decision-actions.ts",
+    "bytes": 31417,
+    "sha256": "87940c371b70d6d556814de5de5ae2153ac20b70810553318e51ba63d10dd3ec"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/use-customer-kael-evidence-actions.ts",
+    "bytes": 18569,
+    "sha256": "166c8ebd4b6fcb284371f241d27ca58a53b840ffdc80007dc210523bb0bcc86a"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/use-customer-kael-message-actions.ts",
+    "bytes": 31288,
+    "sha256": "535fc88886198c053311e0ecad4693c9c50067d3123e9f5cab0ea085e5eee9e1"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/use-customer-kael-next-actions.ts",
+    "bytes": 3426,
+    "sha256": "bb85d8c89414db786459a3a52074c8826ef985d04bbd800ff2b84e46cb984732"
+  },
+  {
+    "path": "apps/mobile/lib/api.ts",
+    "bytes": 24545,
+    "sha256": "c086c5dcc595279fcefe7d8cfa9ccc35026c3123582885a02dbb84f7aa88b4e2"
+  },
+  {
+    "path": "apps/mobile/lib/kael-stream.ts",
+    "bytes": 20925,
+    "sha256": "95371e5ba14af6a1636cd08397b26acb8174ed2ab239c7bd004e918e76509ef5"
+  },
+  {
+    "path": "governance/protocols/test-pillars.md",
+    "bytes": 229263,
+    "sha256": "0d935427fb0269b04a9d402d482dcb29e1bae292a03144780209f8fa0024497b"
+  },
+  {
+    "path": "packages/shared/src/index.ts",
+    "bytes": 7528,
+    "sha256": "ab784e48b75822ecf223a5a2dff2ffb24e266dbd94ec99c66c642932b7e1a147"
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts",
+    "bytes": 14294,
+    "sha256": "612a1d5d6f5f6063b8e85ba205acb2201009ee57a77d40eeb5e8c929083daed6"
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts",
+    "bytes": 20240,
+    "sha256": "f4a65dbca5007d7ab5e0cf5c8f7cb1535579aa41d681c29b999d5f1ef1fe9c78"
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts",
+    "bytes": 12298,
+    "sha256": "6490306d133eb0f2f05c643bbfef708abd698fa9ff9861b1d452500464df0192"
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts",
+    "bytes": 6533,
+    "sha256": "b8c4396cb72469c514d60a5e5951aff494bfa97b22b588f8aaef524976d18ffb"
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts",
+    "bytes": 15830,
+    "sha256": "c90a80a2f009ce94a188f85b2aac3e110b87841bd6ef529dca80d7a1e7a873e8"
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/http.ts",
+    "bytes": 26223,
+    "sha256": "9cf80fc212c2fe0a4dbb8872510acf7da1b8cbb9ec84a0b9d48de1efbe774024"
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/http/dispatch/kael.ts",
+    "bytes": 5174,
+    "sha256": "737273c7d407f53d4c8218e460dca146edb613b94ac3f8df8ebd9dac97b0c79a"
+  },
+  {
+    "path": "apps/api/src/__tests__/kael-edge-runtime/domains/kael-emergency-error-delivery-pillar.test.ts",
+    "bytes": 9784,
+    "sha256": "9e333f23ee3c17b1019cc589c73028940f2fe36ad108b6aa3cd4e542c2639ab0"
+  },
+  {
+    "path": "apps/api/src/__tests__/unit/kael-emergency-error-contract-pillar.test.ts",
+    "bytes": 2985,
+    "sha256": "e80e3fe3ae05054a696e6d990dce0ca61695caef2947dd6a8e38657f9fca87f7"
+  },
+  {
+    "path": "apps/mobile/components/customer/__tests__/kael-emergency-delivery-pillar-test.tsx",
+    "bytes": 13021,
+    "sha256": "9b6e9c5707a22bb84ef25987fc92c0f8c9b6f52b1897862083016d711298090b"
+  },
+  {
+    "path": "apps/mobile/components/customer/kael-chat/customer-kael-emergency-access.tsx",
+    "bytes": 3739,
+    "sha256": "012b40f1b79c0165a2fd2c021784e1fe36c7a29181efe77da563cb5972937b6a"
+  },
+  {
+    "path": "packages/shared/src/contracts/emergency-guidance.ts",
+    "bytes": 3541,
+    "sha256": "4de5e7c63c0883a22c7ca8d9cac2251c23611a33858e915023c52b3389745523"
+  },
+  {
+    "path": "supabase/functions/_shared/contracts/emergency-guidance.ts",
+    "bytes": 3557,
+    "sha256": "90e2f4995a5ca191d3088b6835f7bca58706f90fa30d0e312a5be9acead4e7fa"
+  },
+  {
+    "path": "supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts",
+    "bytes": 784,
+    "sha256": "1f0e2e05ee6cbdc24b7ce6023c3fc5c6e7726ae860aa6ef8f29cb8043e86630c"
+  }
+]

@@ -1,0 +1,83 @@
+{
+  "renames": [
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-comments.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-edge-db.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-playbooks.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-structure.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-test-collection.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/lint-workplan.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/migrations-check.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/pillars-check.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/test-api.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/test-mobile.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-api.log.txt",
+      "sameAsHistoricalHead": true
+    },
+    {
+      "path": "docs/test-logs/kawa-01-final-closure-evidence/gates/type-check-mobile.log.txt",
+      "sameAsHistoricalHead": true
+    }
+  ],
+  "classifier": [
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
+      "unchanged": true
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts",
+      "unchanged": true
+    }
+  ],
+  "originalStagedPatchUnchanged": true
+}

@@ -1,0 +1,30 @@
+✖ EAS upload retains every tracked input used by the full-source release identity (231.2967ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 343.0076
+
+✖ failing tests:
+
+test at scripts\harness\transaction-release-gate.test.mjs:102:1
+✖ EAS upload retains every tracked input used by the full-source release identity (231.2967ms)
+  AssertionError [ERR_ASSERTION]: EAS would omit 17 release inputs; first: docs/test-logs/kawa-01-final-closure-evidence/auditor-H5-first-run-63c01524.log, docs/test-logs/kawa-01-final-closure-evidence/gates/diff-check.log, docs/test-logs/kawa-01-final-closure-evidence/gates/edge-check.log, docs/test-logs/kawa-01-final-closure-evidence/gates/lint-authority.log, docs/test-logs/kawa-01-final-closure-evidence/gates/lint-baseline.log
+  
+  17 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Users/Phan%20Manh%20Tu/.codex/worktrees/kawa-foundation-safety-20261020/home-services/scripts/harness/transaction-release-gate.test.mjs:107:10)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: 17,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
