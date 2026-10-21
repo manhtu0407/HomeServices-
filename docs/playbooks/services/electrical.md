@@ -16,6 +16,7 @@ Kael's runtime intelligence = rented LLMs + this kind of distilled procedure. Th
 
 - **Primary channel:** Appendix A exists as the byte-parity-tested runtime segment and is appended to the electrical intake-diagnosis system prompt only behind `KAEL_PLAYBOOK_ELECTRICAL_ENABLED`. STABLE content remains cacheable; this local hardening pass does not attest a deployment or enable the flag.
 - **Secondary channel:** per-slug knowledge rows through the existing `knowledge.ts` retrieval (240-token runtime budget — only the per-slug distilled lines fit there, not this document).
+- **Runtime version:** `electrical-playbook-2026-10-20.v3` adds the 115 (medical) and 112 (unclear emergency) sentences to the four immediate-hazard templates so the verbatim wording matches the deterministic safety guidance the server prepends. The change is wording only; it does not attest a deployment, enable the flag, or improve a measured score. Independent domain review of the new sentences is pending (Appendix C).
 - **Measurement:** Appendix B points to a 24-case ground-truth-style corpus and a separate 24-case synthetic wording holdout. Local validation proves artifact shape, coverage and parity only; improvement still requires matched live baseline/After arms plus an independently labeled holdout.
 
 ## Binding contract snapshot (verified against code 2026-07-14)
@@ -902,7 +903,7 @@ Any scope_change trigger pauses work at the confirmation gate; Kael re-scopes be
 
 # PB11 — safety-advisory (wording bank, self-check-safe Vietnamese)
 
-Every vi:"..." string below is pre-checked against self-check.ts: no fear language, no absolute claims, no price digits or money, no sentence over 20 words. Emergency number 114 appears only in the critical template. Copy templates verbatim; do not paraphrase at runtime.
+Every vi:"..." string below is pre-checked against self-check.ts: no fear language, no absolute claims, no price digits or money, no sentence over 20 words. Emergency numbers 114, 115 and 112 appear only in the critical template. Copy templates verbatim; do not paraphrase at runtime.
 
 ## 1. Output wiring rules
 
@@ -917,22 +918,22 @@ Every vi:"..." string below is pre-checked against self-check.ts: no fear langua
 ### 2.1 smoke_or_burning
 - Detect: "mùi khét", "mùi cháy", "khói", "nóng chảy", "ổ cắm bị đen".
 - Add smoke_or_burning to safety_signals.
-- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
 
 ### 2.2 sparking
 - Detect: "tóe lửa", "tia lửa", "đánh lửa", "nổ lẹt đẹt", "chập điện".
 - Add sparking to safety_signals.
-- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
 
 ### 2.3 exposed_live_parts
 - Detect: "dây hở", "dây trần", "dây đứt lòi ra", "ổ cắm bung", "bị giật tê tay".
 - Add exposed_live_parts to safety_signals.
-- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
 
 ### 2.4 water_near_power
 - Detect: "nước vào ổ cắm", "thấm nước gần điện", "dột lên đèn", "bình nóng lạnh rò nước" kèm dấu hiệu điện, "rò điện" khi có nước.
 - Add water_near_power to safety_signals.
-- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+- vi:"Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
 
 ## 3. Capability gate wording (electrical_panel_or_fixed_wiring -> qualified_worker)
 
@@ -980,7 +981,7 @@ Allowed customer actions ONLY: keep distance and wait for the worker. With NO im
 - Hedge uncertain statements with "nhiều khả năng" / "có thể"; never "chắc chắn", "tuyệt đối", "không bao giờ".
 - Describe the action, not the danger: say what to switch off, never what could happen if they do not.
 - Mention the worker ("thợ") as the resolver in every safety template so the customer knows the next step is covered.
-- Do not include money words or price digits. Emergency number 114 is allowed only in the critical safety template.
+- Do not include money words or price digits. Emergency numbers 114, 115 and 112 are allowed only in the critical safety template.
 
 
 ---
@@ -1038,10 +1039,10 @@ HCMC CONTEXT
 220V single phase. Unit panel: main CB + branch CBs; meter/riser/corridor = BQL territory (out_of_scope). Newer blocks: concealed conduit, RCBO on wet circuits. Older blocks: surface wiring, shared overloaded circuits, weak grounding -> leakage shows as tingling. Rainy season -> moisture leakage trips at balcony outlets and water heaters. BQL restricts drilling hours; workers register at reception.
 
 SAFETY WORDING (verbatim when the signal fires; calm, action-only, <=20 words/sentence)
-smoke_or_burning: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
-sparking: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
-exposed_live_parts: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
-water_near_power: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+smoke_or_burning: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
+sparking: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
+exposed_live_parts: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
+water_near_power: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
 capability gate (panel/fixed wiring/new circuit): "Phần tủ điện và dây âm tường cần thợ điện có chuyên môn xử lý. Anh/chị không cần tự thao tác thêm. Bên em sẽ sắp xếp thợ phù hợp cho phần việc này."
 ```
 
@@ -1084,6 +1085,7 @@ Scoring guide: `problem_slug`, `scope_signal`, and `suggested_service` are exact
   - **Domain lens / exec lens:** did NOT run as independent agents. Claude self-reviewed every section against the failure modes the contract lens exposed, and all uncertain field claims are tagged [VERIFY] instead of asserted.
 - Contract facts (slugs, quote_driver keys, trigger signals, question filter, sentiment enum, schema field names, gate-signal union) were verified by reading `performance-profiles.ts`, `types.ts`, `prompts.ts`, `self-check.ts`, `pipeline.ts` directly on 2026-07-14.
 - **Historical note (2026-07-14):** the initial textbook-only drafting pass changed no runtime code and ran no executable tests.
+- **Addendum (2026-10-20):** version `electrical-playbook-2026-10-20.v3` added the two emergency-number sentences (115 medical, 112 unclear) to the four immediate-hazard templates in PB11 and Appendix A. No live model evaluation, matched baseline/After arm, deployment or flag change accompanied it; the §52/§53 measurements describe `electrical-playbook-2026-07-16.v2` and are not evidence for v3. Independent domain review of the 115/112 wording is pending.
 - **Current addendum (2026-07-16):** the local runtime segment, flag gate, deterministic routing/safety policy, minimum-slot policy, evaluator, and regression tests exist and are under verification. This document does not attest deployment, flag enablement, or a matched live After arm.
 
 ## The 1% — what needs Tu's eyes (in priority order)

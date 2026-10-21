@@ -1,0 +1,440 @@
+{
+ "set": "H2",
+ "note": "Authored after the H1 fixes, with different phrasing and a false-positive trap for each cue added. Run once; the first-run result is reported unedited. 'clear' rows are scored; 'judgement' rows are owner decisions.",
+ "rows": [
+  {
+   "id": "H2-001",
+   "text": "Anh ơi bên em đang có khói đen bay vào phòng ngủ rồi",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-002",
+   "text": "Cứu với! Bếp bốc lửa to quá",
+   "expected": "fire",
+   "kind": "clear",
+   "disputed": true,
+   "disputedWhy": "label dispute: the design deliberately excludes stove flames"
+  },
+  {
+   "id": "H2-003",
+   "text": "Cháy to lắm rồi, mọi người chạy ra ngoài hết đi",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-004",
+   "text": "Mình thấy khói bốc lên từ tủ lạnh",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-005",
+   "text": "Phòng bên cạnh bị cháy, khói qua khe cửa sang phòng em",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-006",
+   "text": "I can see flames behind the washing machine",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-007",
+   "text": "The whole room filled with smoke after the heater switched on",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-008",
+   "text": "Smoke is coming from under the door of the next flat",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-009",
+   "text": "Flames came out of the oven when I opened it",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-010",
+   "text": "Nhà em có cháy, em đang đứng ngoài hành lang",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-011",
+   "text": "Rèm cửa bắt cháy từ cây nến rồi",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-012",
+   "text": "Khói dày đặc tràn ra từ thang máy",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-013",
+   "text": "Bố em ngã từ trên thang, đầu chảy máu rất nhiều",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-014",
+   "text": "Em họ em bị giật điện, đang co giật",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-015",
+   "text": "Con bé không thở được, mặt tím tái",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-016",
+   "text": "Mẹ mình đột ngột ngất đi sau khi chạm vào tủ lạnh",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-017",
+   "text": "My grandfather has chest pain and cannot breathe",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-018",
+   "text": "The electrician got a shock and is lying on the floor",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-019",
+   "text": "Someone fell off the ladder and isn't moving",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-020",
+   "text": "Cần xe cấp cứu gấp, người thợ bị ngộ độc khí",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-021",
+   "text": "Có đứa lạ mặt đang trèo ban công vào nhà em",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-022",
+   "text": "Có người lạ đang đập cửa và đòi vào",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-023",
+   "text": "Người giao hàng đe dọa em ở trước cửa",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-024",
+   "text": "He has a knife and is threatening us",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-025",
+   "text": "Two men are trying to force the door open",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-026",
+   "text": "Nước từ trần nhà nhỏ xuống đúng cái ổ điện",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-027",
+   "text": "Ống nước vỡ, nước ngập sát bảng điện",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-028",
+   "text": "Dây điện trần lòi ra ở ban công, trời đang mưa",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-029",
+   "text": "Water is dripping onto the circuit breaker box",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-030",
+   "text": "Ổ cắm phòng tắm bị nước bắn vào và phát tia lửa",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-031",
+   "text": "Em ngửi thấy mùi gas khi mở cửa bếp, cả nhà chóng mặt",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-032",
+   "text": "Bình gas để gần bếp đang xì hơi",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-033",
+   "text": "Gas leak in the apartment, we are evacuating",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-034",
+   "text": "Ống cao su dẫn gas bị nứt, nghe tiếng xì xì",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-035",
+   "text": "Khí gas đang rò ở van bình, nồng nặc",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-036",
+   "text": "Nguy hiểm quá, không biết phải gọi ai",
+   "expected": "uncertain",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-037",
+   "text": "Có mùi gas và khói đen từ bếp",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-038",
+   "text": "Chập điện cháy ổ cắm, có người bị điện giật",
+   "expected": "uncertain",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-039",
+   "text": "Thợ sửa bếp gas rồi mà vẫn xì, nồng mùi gas",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H2-040",
+   "text": "Dây điện lòi ra, trẻ con nhà em đang chơi gần đó",
+   "expected": null,
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H2-041",
+   "text": "Thợ nói hệ thống báo cháy chung cư bị lỗi, em cần đặt lịch kiểm tra",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-042",
+   "text": "Bếp nhà em hay có khói dầu mỡ, cần vệ sinh máy hút mùi",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-043",
+   "text": "Hôm trước hàng xóm hô cháy nhưng chỉ là báo động nhầm",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-044",
+   "text": "Nếu ổ cắm bắt đầu bốc khói thì mình nên làm gì",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-045",
+   "text": "Ổ điện bị cháy đen từ lâu rồi, nhờ thợ thay",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-046",
+   "text": "Quạt chạy rất nóng và kêu to",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-047",
+   "text": "Em cần mua bình gas mới, bình cũ gần hết",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-048",
+   "text": "Van bình gas bị kẹt, vặn mãi không được",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-049",
+   "text": "Cảm biến báo rò gas bị hỏng, nhờ thợ thay",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-050",
+   "text": "Nhờ thợ hàn lại mối nối ống gas máy lạnh bị hở",
+   "expected": null,
+   "kind": "clear",
+   "service": "hvac"
+  },
+  {
+   "id": "H2-051",
+   "text": "No smoke, no fire, just a tripped breaker",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-052",
+   "text": "Please test the fire alarm and the smoke detector this week",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-053",
+   "text": "My laptop is burning hot when it charges",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-054",
+   "text": "I burned dinner and the kitchen smells smoky, can you clean the curtains",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-055",
+   "text": "The fire door in my building needs repair",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-056",
+   "text": "My phone is not responding, I need the charging socket checked",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-057",
+   "text": "The technician collapsed the old scaffold before we arrived",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-058",
+   "text": "Nước chảy xuống sàn bếp, cần sửa vòi",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-059",
+   "text": "Cần sơn lại tường sau vụ cháy hồi tháng trước",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-060",
+   "text": "Chị bảo vệ nhắc nhở kiểm tra bình chữa cháy",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-061",
+   "text": "Xem phim thấy cảnh nổ cháy nên em muốn kiểm tra lại dây điện",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-062",
+   "text": "Mình cần gấp một thợ đến lắp quạt trần trong sáng nay",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H2-063",
+   "text": "Bình nước nóng của em có mùi cháy nhẹ mỗi khi bật",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H2-064",
+   "text": "Nghe tiếng xì xì từ máy lạnh nhưng vẫn mát",
+   "expected": null,
+   "kind": "clear",
+   "service": "hvac"
+  },
+  {
+   "id": "H2-065",
+   "text": "Ổ cắm có vết cháy xém nhỏ, vẫn dùng được",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H2-066",
+   "text": "Em ngửi thấy mùi trứng thối gần bếp, hay là gas",
+   "expected": "gas",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H2-067",
+   "text": "Chào Kael, nhà mình ở Q7 cần sửa máy nước nóng. Mà hôm qua hàng xóm bảo ngửi mùi gas ngoài hành lang",
+   "expected": null,
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H2-068",
+   "text": "Mình vừa chạm vào vỏ tủ lạnh thì bị giật một cái",
+   "expected": "medical",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H2-069",
+   "text": "Máy sấy đang bốc mùi khét và nóng ran",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H2-070",
+   "text": "Cầu dao nhảy liên tục, có tiếng nổ lách tách",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  }
+ ],
+ "status": "development",
+ "firstRun": "set H2 (H2 first run, after the H1 fixes) clear: 46/62 correct; false negatives 14, false positives 2, wrong route 0"
+}

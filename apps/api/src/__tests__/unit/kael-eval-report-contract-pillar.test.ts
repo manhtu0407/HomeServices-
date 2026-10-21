@@ -1,11 +1,13 @@
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, relative, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
+import { computeSourceTreeHash, normalizeSourceFiles } from '../../../scripts/lib/kael-playbook-source-hash.mjs'
 
 export const PILLAR = {
   id: 'P402-kael-eval-report-contract',
@@ -128,6 +130,7 @@ describe('P402 Kael evaluator report contract', () => {
       const summary = JSON.parse(readFileSync(jsonPath, 'utf8')) as {
         status: string
         evidenceClass: string
+        evidenceTier: string
         evaluator: { id: string; kind: string }
         measurement: { modelAccuracy: number | null; providerInvocation: string; sampleSize: number }
         executionErrors?: number
@@ -138,6 +141,7 @@ describe('P402 Kael evaluator report contract', () => {
       }
       expect(summary.status).toBe('failed')
       expect(summary.evidenceClass).toBe('live_shadow')
+      expect(summary.evidenceTier, pillarWhy(PILLAR, 'a synthetic loopback endpoint cannot attest the stack behind it, so it must not read as T1 local integration')).toBe('unattested')
       expect(summary.evaluator).toEqual({ id: 'kael-mobile-api-shadow-v1', kind: 'endpoint_shadow', version: '1.0.0' })
       expect(summary.measurement).toMatchObject({
         scope: 'api_shadow_fixture_agreement',
@@ -193,6 +197,7 @@ describe('P402 Kael evaluator report contract', () => {
     const summary = JSON.parse(readFileSync(jsonPath, 'utf8')) as {
       schemaVersion: string
       evidenceClass: string
+      evidenceTier: string
       evaluator: { id: string; kind: string }
       measurement: {
         scope: string
@@ -206,6 +211,7 @@ describe('P402 Kael evaluator report contract', () => {
     }
     expect(summary.schemaVersion, pillarWhy(PILLAR, 'the report schema version must identify the explicit measurement contract')).toBe('1.1.0')
     expect(summary.evidenceClass).toBe('deterministic')
+    expect(summary.evidenceTier, pillarWhy(PILLAR, 'deterministic fixture output must carry the T0 tier tag')).toBe('T0')
     expect(summary.evaluator).toEqual({ id: 'kael-deterministic-v1', kind: 'deterministic', version: '1.0.0' })
     expect(summary.measurement).toEqual({
       scope: 'fixture_agreement',
@@ -224,6 +230,7 @@ describe('P402 Kael evaluator report contract', () => {
     })
 
     const report = readFileSync(reportPath, 'utf8')
+    expect(report).toContain('Evidence tier: T0')
     expect(report).toContain('Measurement scope: fixture_agreement')
     expect(report).toContain('Model accuracy: not measured')
     expect(report).toContain('100% means fixture agreement')
@@ -251,3 +258,101 @@ function runEvaluator(args: string[], overrides: Record<string, string> = {}) {
     child.once('close', (status) => resolvePromise({ status, stdout, stderr }))
   })
 }
+
+describe('P402 the playbook evaluator binds a report to the emergency behavior it ran against', () => {
+  const scriptPath = resolve(repoRoot, 'apps/api/scripts/kael-playbook-eval.mjs')
+  const sharedRoot = resolve(repoRoot, 'supabase/functions/mobile-api/_shared')
+  const listed = (): string[] => {
+    const block = /const SOURCE_FILES = \[([\s\S]*?)\n\]/.exec(readFileSync(scriptPath, 'utf8'))?.[1] ?? ''
+    return [...block.matchAll(/'([^']+)'/g)].map((match) => match[1] ?? '')
+  }
+  const rel = (path: string) => relative(repoRoot, path).split(sep).join('/')
+
+  // Every Edge file that calls an emergency resolver or the shared text collector, found by reading the source so a
+  // new caller is covered without anyone remembering to list it.
+  const gateFiles = (): string[] => {
+    const found: string[] = []
+    const walk = (directory: string) => {
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name)
+        if (entry.isDirectory()) walk(path)
+        else if (entry.name.endsWith('.ts') && /\b(?:resolveCaseEmergency|answerParkedEmergency|answerCaseEmergency|customerAuthoredTexts|resolveReportedEmergencyGuidance\w*|resolveEmergencyGuidance)\b/.test(readFileSync(path, 'utf8'))) {
+          found.push(rel(path))
+        }
+      }
+    }
+    walk(sharedRoot)
+    return found.sort()
+  }
+  const directImports = (file: string): string[] => {
+    const absolute = resolve(repoRoot, file)
+    const imports = [...readFileSync(absolute, 'utf8').matchAll(/\b(?:import|export)\s[^'";]*?from\s*['"]([^'"]+)['"]|\bimport\s*['"]([^'"]+)['"]/g)]
+    const found: string[] = []
+    for (const match of imports) {
+      const specifier = match[1] ?? match[2] ?? ''
+      if (!specifier.startsWith('.')) continue
+      const base = resolve(dirname(absolute), specifier)
+      const target = [base, `${base}.ts`, join(base, 'index.ts')].find((candidate) => existsSync(candidate) && statSync(candidate).isFile())
+      if (target) found.push(rel(target))
+    }
+    return found
+  }
+
+  it('hashes every file that calls an emergency resolver and everything those files import directly', () => {
+    const sources = listed()
+    const gate = gateFiles()
+    const needed = new Set(gate)
+    for (const file of gate) for (const dependency of directImports(file)) needed.add(dependency)
+    const unhashed = [...needed].filter((path) => !sources.includes(path)).sort()
+    expect(gate.length, pillarWhy(PILLAR, 'the scan found the known callers (turn, create, evidence, confirm, assistant, the gate and its classifier)')).toBeGreaterThanOrEqual(7)
+    expect(unhashed, pillarWhy(PILLAR, 'a file the emergency gate depends on is not in the hashed set, so changing it would not change source_tree_hash')).toEqual([])
+  })
+
+  it('stays inside the manifest limit, with the service playbook as the one extra path', () => {
+    expect(listed().length + 1, pillarWhy(PILLAR, 'the run manifest accepts at most 100 source files; going past it needs an approved contract change, not a silent trim')).toBeLessThanOrEqual(100)
+  })
+
+  it('lists only files that exist, so a rename cannot silently shrink the hashed tree', () => {
+    for (const path of listed()) {
+      expect(existsSync(resolve(repoRoot, path)), pillarWhy(PILLAR, `${path} is hashed into every evaluation report`)).toBe(true)
+    }
+  })
+
+  describe('source_tree_hash is sensitive to what it covers', () => {
+    const playbook = 'supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts'
+    const files = normalizeSourceFiles([...listed(), playbook])
+    const texts = new Map(files.map((path) => [path, readFileSync(resolve(repoRoot, path), 'utf8')]))
+    const read = (overrides: Record<string, string | undefined> = {}) => (path: string) =>
+      (path in overrides ? overrides[path] : texts.get(path)) ?? ''
+    const base = computeSourceTreeHash(files, read())
+
+    it('changes when any single byte of any hashed file changes', () => {
+      const unchanged = files.filter((path) => computeSourceTreeHash(files, read({ [path]: `${texts.get(path)}\n` })) === base)
+      expect(unchanged, pillarWhy(PILLAR, 'a hashed file whose edit leaves the hash as it was')).toEqual([])
+    })
+
+    it('changes when a hashed file is renamed, removed or added', () => {
+      const renamed = files.map((path) => (path === files[0] ? `${path}.moved` : path))
+      expect(computeSourceTreeHash(renamed, (path: string) => texts.get(path.replace('.moved', '')) ?? ''), pillarWhy(PILLAR, 'rename')).not.toBe(base)
+      expect(computeSourceTreeHash(files.slice(1), read()), pillarWhy(PILLAR, 'removal')).not.toBe(base)
+      expect(computeSourceTreeHash([...files, 'apps/api/scripts/extra.mjs'], (path: string) => (path === 'apps/api/scripts/extra.mjs' ? 'x' : texts.get(path) ?? '')), pillarWhy(PILLAR, 'addition')).not.toBe(base)
+    })
+
+    it('does not change with the order of the list or with a repeated path', () => {
+      expect(computeSourceTreeHash([...files].reverse(), read()), pillarWhy(PILLAR, 'order')).toBe(base)
+      expect(computeSourceTreeHash([...files, files[0] ?? ''], read()), pillarWhy(PILLAR, 'repeat')).toBe(base)
+    })
+
+    it('is exactly sha256 over each path and file sha256 joined by newlines, the algorithm the manifest names', () => {
+      const sha = (value: string) => createHash('sha256').update(value).digest('hex')
+      const expected = sha(files.map((path) => `${path}\n${sha(texts.get(path) ?? '')}`).join('\n'))
+      expect(base, pillarWhy(PILLAR, 'sha256_path_and_file_sha256_v1')).toBe(expected)
+    })
+
+    it('does not mix up two files whose text is swapped', () => {
+      const [first, second] = files
+      const swapped = computeSourceTreeHash(files, read({ [first ?? '']: texts.get(second ?? ''), [second ?? '']: texts.get(first ?? '') }))
+      expect(swapped, pillarWhy(PILLAR, 'the hash binds each text to its own path')).not.toBe(base)
+    })
+  })
+})

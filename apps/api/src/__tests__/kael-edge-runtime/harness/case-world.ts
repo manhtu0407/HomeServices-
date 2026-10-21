@@ -55,6 +55,8 @@ export type CaseWorldOptions = {
   env?: Record<string, string>
   hvacPlaybook?: boolean
   problemChips?: string[]
+  // Refuse a second turn at the same (session, turn_index), as the real table does.
+  uniqueTurnIndex?: boolean
 }
 
 export function purposeOf(body: ProviderRequestBody): string {
@@ -185,7 +187,10 @@ export function createCaseWorld(options: CaseWorldOptions = {}) {
     kael_chat_turns: turnRows,
     service_problems: options.policies?.problems ?? [],
     service_intake_policies: options.policies?.intake ?? [],
-  }, { isolateReads: true })
+  }, {
+    isolateReads: true,
+    ...(options.uniqueTurnIndex ? { uniqueKeys: { kael_chat_turns: ['session_id', 'turn_index'] } } : {}),
+  })
 
   // Mirrors a deployed Edge isolate: an unpriced model is metered at the safe-high rate instead of throwing.
   const env: Record<string, string> = {
@@ -218,11 +223,13 @@ export function createCaseWorld(options: CaseWorldOptions = {}) {
     ...options.secrets,
   } as never)
 
-  async function send(
-    message: string,
-    sendOptions: { as?: Actor; chip?: string; language?: 'vi' | 'en'; path?: string } = {},
+  // Posts any body to a Case route. `identity` adds request-context fields the trace reads (trace id, release ids).
+  async function request(
+    path: string,
+    payload: Record<string, unknown>,
+    requestOptions: { as?: Actor; identity?: Record<string, unknown> } = {},
   ) {
-    const actor = sendOptions.as ?? OWNER
+    const actor = requestOptions.as ?? OWNER
     const handler = createMobileApiHandler({
       authenticate: async () => ({
         success: true as const,
@@ -231,19 +238,16 @@ export function createCaseWorld(options: CaseWorldOptions = {}) {
         supabase: db.client,
         privilegedSupabase: db.client,
         userSupabase: db.client,
+        ...requestOptions.identity,
       }) as never,
       services,
     })
     const before = modelCalls.length
     const turnsBefore = db.tables.kael_chat_turns.length
-    const response = await handler(new Request(`https://edge.test/mobile-api/kael/chat/${CASE_SESSION_ID}${sendOptions.path ?? ''}`, {
+    const response = await handler(new Request(`https://edge.test/mobile-api/kael/chat/${CASE_SESSION_ID}${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        message,
-        language: sendOptions.language ?? 'vi',
-        ...(sendOptions.chip ? { turn_intent: sendOptions.chip } : {}),
-      }),
+      body: JSON.stringify(payload),
     }))
     const body = await response.json() as Record<string, any>
     return {
@@ -254,6 +258,15 @@ export function createCaseWorld(options: CaseWorldOptions = {}) {
       newTurns: db.tables.kael_chat_turns.slice(turnsBefore),
     }
   }
+
+  const send = (
+    message: string,
+    sendOptions: { as?: Actor; chip?: string; language?: 'vi' | 'en'; path?: string } = {},
+  ) => request(sendOptions.path ?? '', {
+    message,
+    language: sendOptions.language ?? 'vi',
+    ...(sendOptions.chip ? { turn_intent: sendOptions.chip } : {}),
+  }, { as: sendOptions.as })
 
   const session = () => db.tables.kael_chat_sessions[0] as Record<string, any>
   const scope = () => session().diagnosis_scope as Record<string, any>
@@ -308,6 +321,7 @@ export function createCaseWorld(options: CaseWorldOptions = {}) {
     provider,
     modelCalls,
     send,
+    request,
     session,
     scope,
     kaelTurns,

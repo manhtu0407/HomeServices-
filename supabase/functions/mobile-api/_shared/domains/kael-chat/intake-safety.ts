@@ -26,8 +26,31 @@ export function persistentKaelSafetySignals(
   ])].filter((signal) => allowed.has(signal));
 }
 
+// The signals a request's customer-authored texts raise together with the ones already on the Case. Each text is
+// scanned on its own, so what one field says never changes how another is read.
+export function persistentKaelSafetySignalsFromTexts(
+  texts: readonly string[],
+  serviceType: ServiceType,
+  persistedSafetySignals: readonly string[] = [],
+  actorId?: string | null,
+) {
+  return [...new Set([
+    ...persistentKaelSafetySignals("", serviceType, persistedSafetySignals, actorId),
+    ...texts.flatMap((text) => persistentKaelSafetySignals(text, serviceType, [], actorId)),
+  ])];
+}
+
 export function requiresImmediateKaelSafetyPath(
   message: string,
+  serviceType: ServiceType,
+  persistedSafetySignals: readonly string[] = [],
+  actorId?: string | null,
+) {
+  return requiresImmediateKaelSafetyPathForTexts([message], serviceType, persistedSafetySignals, actorId);
+}
+
+export function requiresImmediateKaelSafetyPathForTexts(
+  texts: readonly string[],
   serviceType: ServiceType,
   persistedSafetySignals: readonly string[] = [],
   actorId?: string | null,
@@ -35,7 +58,7 @@ export function requiresImmediateKaelSafetyPath(
   return Boolean(
     getEnabledKaelPlaybook(serviceType, actorId) &&
       deterministicSafetyGuidance(
-        persistentKaelSafetySignals(message, serviceType, persistedSafetySignals, actorId),
+        persistentKaelSafetySignalsFromTexts(texts, serviceType, persistedSafetySignals, actorId),
         "vi",
         serviceType,
       ) !== null,

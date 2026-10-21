@@ -8,7 +8,7 @@
 // from its Appendix A, do not hand-edit the trees here in isolation.
 import { isKaelPlaybookEnabled } from "./flags.ts";
 
-export const ELECTRICAL_PLAYBOOK_VERSION = "electrical-playbook-2026-07-16.v2";
+export const ELECTRICAL_PLAYBOOK_VERSION = "electrical-playbook-2026-10-20.v3";
 
 export const ELECTRICAL_PLAYBOOK_SEGMENT =
   `ELECTRICAL DIAGNOSIS PLAYBOOK (apply when service_type=electrical)
@@ -57,10 +57,10 @@ HCMC CONTEXT
 220V single phase. Unit panel: main CB + branch CBs; meter/riser/corridor = BQL territory (out_of_scope). Newer blocks: concealed conduit, RCBO on wet circuits. Older blocks: surface wiring, shared overloaded circuits, weak grounding -> leakage shows as tingling. Rainy season -> moisture leakage trips at balcony outlets and water heaters. BQL restricts drilling hours; workers register at reception.
 
 SAFETY WORDING (verbatim when the signal fires; calm, action-only, <=20 words/sentence)
-smoke_or_burning: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
-sparking: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
-exposed_live_parts: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
-water_near_power: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114."
+smoke_or_burning: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
+sparking: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
+exposed_live_parts: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
+water_near_power: "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh xa cho đến khi thợ điện đủ chuyên môn kiểm tra. Nếu vẫn còn khói hoặc lửa, hãy rời khu vực và gọi cứu hỏa 114. Nếu có người bị điện giật hoặc bị thương, gọi cấp cứu 115. Nếu chưa rõ cần lực lượng nào, gọi 112."
 capability gate (panel/fixed wiring/new circuit): "Phần tủ điện và dây âm tường cần thợ điện có chuyên môn xử lý. Anh/chị không cần tự thao tác thêm. Bên em sẽ sắp xếp thợ phù hợp cho phần việc này."`;
 
 export function isElectricalPlaybookEnabled(actorId?: string | null): boolean {

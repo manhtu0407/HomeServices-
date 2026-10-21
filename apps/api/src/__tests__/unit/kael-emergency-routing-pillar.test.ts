@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from 'vitest'
 
 import { pillarWhy, type PillarManifest } from '../pillar-manifest'
 import { runCustomerAssistant } from '../../../../../supabase/functions/mobile-api/_shared/kael/agents/customer-assistant'
-import type { AIRequest } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
+import type { AIRequest, ServiceType } from '../../../../../supabase/functions/mobile-api/_shared/kael/contracts/types'
 import { evaluateKaelPermissionGateWithBoundaries } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/permission-gate'
+import { deterministicSafetyGuidance } from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/electrical-intake-policy'
 
 export const PILLAR = {
   id: 'P401-kael-emergency-routing',
@@ -22,7 +23,7 @@ export const PILLAR = {
     'remove deterministic emergency pre-routing so an active smoke report reaches callAI and loses the 114 response; the routing and no-provider assertions turn red',
 } as const satisfies PillarManifest
 
-async function runTurn(message: string, language: 'vi' | 'en' = 'vi') {
+async function runTurn(message: string, language: 'vi' | 'en' = 'vi', serviceType?: ServiceType) {
   const callAI = vi.fn(async (_request: AIRequest) => ({
     success: true as const,
     content: JSON.stringify({
@@ -41,6 +42,7 @@ async function runTurn(message: string, language: 'vi' | 'en' = 'vi') {
     message,
     secrets: { knowledgeRetrievalEnabled: false },
     surface: 'customer_normal',
+    serviceType,
   })
   return { callAI, result }
 }
@@ -119,6 +121,56 @@ describe('P401 Kael emergency routing', () => {
     expect(result.answer, pillarWhy(PILLAR, 'an old odor must not trigger the 114 fire dispatch')).not.toContain('114')
   })
 
+  describe('specialist electrical intake guidance stays consistent with the generic matrix', () => {
+    it.each(['smoke_or_burning', 'sparking', 'exposed_live_parts', 'water_near_power'])(
+      'routes %s to 114 for fire, 115 for injury and 112 when unsure in both languages',
+      (signal) => {
+        const vi = deterministicSafetyGuidance([signal], 'vi')
+        const en = deterministicSafetyGuidance([signal], 'en')
+
+        for (const text of [vi, en]) {
+          expect(text, pillarWhy(PILLAR, 'the intake branch must give an electrical hazard a guidance text')).toBeTruthy()
+          expect(text, pillarWhy(PILLAR, 'fire stays on 114')).toContain('114')
+          expect(text, pillarWhy(PILLAR, 'an injured or shocked person must reach 115 from the intake branch too')).toContain('115')
+          expect(text, pillarWhy(PILLAR, 'an unclear emergency must reach 112 from the intake branch too')).toContain('112')
+        }
+      },
+    )
+  })
+  describe('ordinary service requests that share words with emergency cues', () => {
+    // Diacritics are stripped before matching, so running, flowing and burning collapse to one token.
+    it.each([
+      ['Máy lạnh đang chạy nhưng không mát', 'vi'],
+      ['Máy lạnh có chạy nhưng không lạnh', 'vi'],
+      ['May lanh dang chay nhung khong mat', 'vi'],
+      ['Nước đang chảy ra từ vòi bồn rửa', 'vi'],
+      ['Voi nuoc dang chay lien tuc, sua giup toi', 'vi'],
+      ['Máy giặt đang chạy thì rò nước', 'vi'],
+      ['Máy bơm đang chạy ồn', 'vi'],
+      ['Ổ cắm bị cháy đen từ hôm qua, cần thay', 'vi'],
+      ['Tư vấn lắp hệ thống phòng cháy chữa cháy cho chung cư', 'vi'],
+      ['Bleeding the radiator valve on my AC unit', 'en'],
+    ] as const)('keeps %s off the emergency route', async (message, language) => {
+      const { result } = await runTurn(message, language)
+
+      expect(result.decision?.stage, pillarWhy(PILLAR, 'routine HVAC and plumbing wording must not dispatch an emergency answer')).not.toBe('emergency_routing')
+    })
+
+    it.each([
+      ['Nhà đang cháy', 'vi', '114'],
+      ['nha toi dang chay', 'vi', '114'],
+      ['Căn hộ bên cạnh đang cháy', 'vi', '114'],
+      ['Ổ điện đang cháy', 'vi', '114'],
+      ['Tôi bị chảy máu nhiều', 'vi', '115'],
+      ['He is bleeding heavily', 'en', '115'],
+      ['My child is bleeding', 'en', '115'],
+    ] as const)('still routes %s to the verified number', async (message, language, number) => {
+      const { callAI, result } = await runTurn(message, language)
+
+      expect(callAI, pillarWhy(PILLAR, 'a real emergency must still bypass model generation')).not.toHaveBeenCalled()
+      expect(result.answer, pillarWhy(PILLAR, 'a real emergency must keep its verified route')).toContain(number)
+    })
+  })
   it('ignores stored emergency copy for medical advice and renders the verified route template', async () => {
     const client = makeBoundaryClient('DB emergency redirect copy.')
     const decision = await evaluateKaelPermissionGateWithBoundaries({
@@ -160,3 +212,46 @@ function makeBoundaryClient(guidance: string) {
   }
   return { from: (_table: string) => query } as never
 }
+
+describe('P401 fuel gas versus refrigerant in the assistant', () => {
+  it('routes a gas smell to the fire service at 114 before any provider call', async () => {
+    const { callAI, result } = await runTurn('Nhà có mùi gas nồng nặc, bếp gas bị rò')
+
+    expect(callAI, pillarWhy(PILLAR, 'a fuel-gas leak must bypass model generation')).not.toHaveBeenCalled()
+    expect(result.answer, pillarWhy(PILLAR, 'the gas guidance names the verified 114 fire service')).toContain('114')
+    expect(result.answer).toContain('Không dùng lửa')
+    expect(result.decision?.reason_code, pillarWhy(PILLAR, 'the operator code names the route, never the text')).toBe('EMERGENCY_GAS')
+  })
+
+  it('answers a gas leak in English with the same number and no invented physical step', async () => {
+    const { callAI, result } = await runTurn('I can smell gas in the kitchen', 'en')
+
+    expect(callAI).not.toHaveBeenCalled()
+    expect(result.answer).toContain('114')
+    expect(result.answer).toContain('Leave the area')
+    expect(result.answer).not.toMatch(/\b(?:valve|window|open|turn off|shut)\b/i)
+  })
+
+  it('does not call a refrigerant top-up or a stove repair an emergency', async () => {
+    for (const message of ['Máy lạnh bị xì gas, cần nạp gas', 'Bếp gas có lửa yếu, nhờ thợ xem']) {
+      const { result } = await runTurn(message)
+      expect(result.decision?.stage, pillarWhy(PILLAR, `"${message}" is a service request`)).not.toBe('emergency_routing')
+    }
+  })
+
+  it('reads a bare "xì gas" as refrigerant when the customer is in the air-conditioning service', async () => {
+    const hvac = await runTurn('Bị xì gas', 'vi', 'hvac')
+    expect(hvac.result.decision?.stage, pillarWhy(PILLAR, 'inside the HVAC service a bare leak is a refrigerant request')).not.toBe('emergency_routing')
+
+    const cleaning = await runTurn('Bị xì gas', 'vi', 'cleaning')
+    expect(cleaning.result.decision?.reason_code, pillarWhy(PILLAR, 'outside the HVAC service the same words ask the national line')).toBe('EMERGENCY_UNCERTAIN')
+  })
+
+  it('asks the national line about a bare leak that could be either gas', async () => {
+    const { callAI, result } = await runTurn('Nhà bị rò gas')
+
+    expect(callAI).not.toHaveBeenCalled()
+    expect(result.answer).toContain('112')
+    expect(result.decision?.reason_code).toBe('EMERGENCY_UNCERTAIN')
+  })
+})

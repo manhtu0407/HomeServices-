@@ -229,6 +229,8 @@ async function main() {
   const fixtures = await readFixtures(fixturePath)
   const knowledgeFixtures = await readKnowledgeFixtures(knowledgeFixturePath)
   const config = buildConfig(mode)
+  // A reachable endpoint does not prove a local database, an isolated stack or a provider call sits behind it.
+  const evidenceTier = mode === 'deterministic' ? 'T0' : 'unattested'
   const measurement = {
     scope: mode === 'deterministic' ? 'fixture_agreement' : 'api_shadow_fixture_agreement',
     modelAccuracy: null,
@@ -263,6 +265,7 @@ async function main() {
   await writeReport({
     reportPath,
     mode,
+    evidenceTier,
     measurement,
     startedAt,
     fixtures,
@@ -283,6 +286,7 @@ async function main() {
       version: '1.0.0',
     },
     evidenceClass: mode === 'live' ? 'live_shadow' : 'deterministic',
+    evidenceTier,
     status: passed ? 'passed' : 'failed',
     mode,
     measurement,
@@ -693,6 +697,9 @@ async function writeReport(input) {
       : '# Kael Deterministic Fixture Evaluation',
     '',
     'Document type: regression evaluation report',
+    'Evidence tier: ' + (input.evidenceTier === 'T0'
+      ? 'T0'
+      : 'unattested (endpoint shadow; the backing stack and provider invocation are not verified here, so no T1 or higher is claimed)'),
     'Measurement scope: ' + input.measurement.scope,
     'Model accuracy: not measured',
     'Provider invocation: ' + input.measurement.providerInvocation,

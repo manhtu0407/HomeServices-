@@ -34,7 +34,16 @@ import {
   retireFailedKaelSessionCreate,
 } from "./persistence.service.ts";
 import { findExistingKaelSessionByClientRequest, insertKaelTurn, updateKaelSession } from "./session-store.ts";
-import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./intake-safety.ts";
+import {
+  answerCaseEmergency,
+  answerParkedEmergency,
+  customerAuthoredTexts,
+  resolveCaseEmergency,
+} from "./emergency-turn.ts";
+import {
+  persistentKaelSafetySignalsFromTexts,
+  requiresImmediateKaelSafetyPath,
+} from "./intake-safety.ts";
 import { validateFutureHcmcSchedule, HCMC_SCHEDULE_VALIDATION_MESSAGE } from "../../platform/scheduling.ts";
 import { sendKaelChatTurn } from "./turn.ts";
 
@@ -88,8 +97,12 @@ export async function createKaelChat(
   const client = db(ctx);
   const language = input.language ?? "vi";
   const safeProblemChips = sanitizeUntrustedEvidenceList(input.problem_chips);
-  const initialSafetySignals = persistentKaelSafetySignals(
-    sanitizeForLLM(input.message ?? ""),
+  const initialSafetySignals = persistentKaelSafetySignalsFromTexts(
+    customerAuthoredTexts({
+      message: input.message,
+      intakeDescription: input.intake_description,
+      evidenceItems: input.evidence_items,
+    }),
     input.service_type,
     [],
     ctx.user.id,
@@ -160,6 +173,29 @@ export async function createKaelChat(
       createdSessionId,
       input.client_request_id ?? null,
     );
+    // A Case opened with a voice transcript or a booking description and no typed message has no first turn to
+    // analyse, but what the customer said is still read for a reported emergency.
+    const texts = customerAuthoredTexts({
+      intakeDescription: input.intake_description,
+      evidenceItems: prepared.initialEvidenceItems,
+    });
+    const emergency = resolveCaseEmergency({
+      message: texts,
+      language,
+      serviceType: input.service_type,
+      parked: true,
+    });
+    if (emergency) {
+      await answerParkedEmergency({
+        client,
+        sessionId: createdSessionId,
+        session: { service_type: input.service_type, case_phase: "analysis" },
+        texts,
+        emergency,
+        entry: "create",
+        identity: ctx,
+      });
+    }
   }
 
   return getKaelChat(ctx, createdSessionId);
@@ -201,8 +237,27 @@ async function enforceCreateKaelChatRateLimit(
 async function processInitialKaelChatMessage(input: InitialKaelChatMessageInput) {
   const message = sanitizeForLLM(input.input.message ?? "");
   await persistInitialCustomerKaelChatTurn(input, message);
-  if (input.input.defer_analysis || input.prepared.intakeConfirmation) return;
-  await advanceInitialKaelChatAnalysis(input, message);
+  // The message, the booking description and every reviewed transcript or note of the first request.
+  const texts = customerAuthoredTexts({
+    message,
+    intakeDescription: input.prepared.intakeConfirmation?.intake.description,
+    evidenceItems: input.prepared.initialEvidenceItems,
+  });
+  if (input.input.defer_analysis || input.prepared.intakeConfirmation) {
+    // The Case parks this first message (a booking confirmation waits for the customer, or analysis is
+    // deferred), so a reported emergency is answered now and the confirmation stays pending.
+    const emergency = resolveCaseEmergency({
+      message: texts,
+      language: input.language,
+      serviceType: input.input.service_type,
+      parked: true,
+    });
+    if (emergency) {
+      await answerCaseEmergency(input.client, input.sessionId, emergency, { entry: "create", identity: input.ctx });
+    }
+    return;
+  }
+  await advanceInitialKaelChatAnalysis(input, message, texts);
 }
 
 async function persistInitialCustomerKaelChatTurn(
@@ -241,7 +296,19 @@ async function persistInitialCustomerKaelChatTurn(
 async function advanceInitialKaelChatAnalysis(
   input: InitialKaelChatMessageInput,
   message: string,
+  texts: readonly string[],
 ) {
+  const emergency = resolveCaseEmergency({
+    message: texts,
+    language: input.language,
+    serviceType: input.input.service_type,
+    persistedSafetySignals: input.initialSafetySignals,
+    actorId: input.ctx.user.id,
+  });
+  if (emergency) {
+    await answerCaseEmergency(input.client, input.sessionId, emergency, { entry: "create", identity: input.ctx });
+    if (emergency.stopsTurn) return;
+  }
   const boundaryHandled = await maybeApplyKaelBoundaryGuard(
     input.client,
     input.sessionId,

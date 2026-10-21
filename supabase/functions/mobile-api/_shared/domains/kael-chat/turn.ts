@@ -44,7 +44,16 @@ import {
   resolveKaelChatAddressDistrict,
   resolveKaelChatProblemChips,
 } from "./intake.ts";
-import { persistentKaelSafetySignals, requiresImmediateKaelSafetyPath } from "./intake-safety.ts";
+import {
+  answerCaseEmergency,
+  answerParkedEmergency,
+  customerAuthoredTexts,
+  resolveCaseEmergency,
+} from "./emergency-turn.ts";
+import {
+  persistentKaelSafetySignalsFromTexts,
+  requiresImmediateKaelSafetyPath,
+} from "./intake-safety.ts";
 import { createSignedVisionUrls } from "./media-vision.ts";
 import { validateAndConsumeKaelChatEvidenceMediaRefs } from "./media-upload.ts";
 import { persistReviewedVoiceTranscripts } from "./persistence.service.ts";
@@ -54,6 +63,7 @@ import {
   assertIntakeConfirmationCompleted,
   assertKaelSessionOwnership,
   insertKaelTurn,
+  isIntakeConfirmationPending,
   updateKaelSession,
   withoutEphemeralKaelMediaUrls,
 } from "./session-store.ts";
@@ -101,6 +111,27 @@ export async function sendKaelChatTurn(
     apiFailure("INVALID_STATUS", "Phiên Kael này không còn nhận tin nhắn", 409);
   }
 
+  // Every text the customer wrote (the message, a reviewed transcript or note, an evidence summary) is read
+  // before the Case does anything with the request: a reply, a refusal, a media consumption or a phase change.
+  // A turn the Case cannot take yet (its booking confirmation is pending, or the price-question chip persists
+  // nothing) still answers a reported emergency before it is refused or ignored; any other emergency that ends
+  // the turn is answered without touching evidence or the phase.
+  const previousMetadata = asRecord(session.safe_metadata);
+  const texts = customerAuthoredTexts({ message: input.message, evidenceItems: input.evidence_items });
+  const parked = input.turn_intent === "price_question" || isIntakeConfirmationPending(previousMetadata);
+  const emergency = resolveCaseEmergency({
+    message: texts,
+    language: input.language ?? (previousMetadata.language === "en" ? "en" : "vi"),
+    serviceType: session.service_type,
+    persistedSafetySignals: asStringArray(previousMetadata.intake_safety_signals),
+    actorId: ctx.user.id,
+    parked,
+  });
+  if (emergency && (parked || emergency.stopsTurn)) {
+    await answerParkedEmergency({ client, sessionId, session, texts, emergency, entry: "turn", identity: ctx });
+    return getKaelChat(ctx, sessionId);
+  }
+
   if (input.turn_intent === "price_question") {
     return getKaelChat(ctx, sessionId);
   }
@@ -113,6 +144,15 @@ export async function sendKaelChatTurn(
     session,
     status,
   });
+  // What is left here is wiring or water advice, which the intake continues after.
+  if (emergency) {
+    await answerCaseEmergency(client, sessionId, emergency, {
+      entry: "turn",
+      identity: ctx,
+      session,
+      keepOfferStatus: true,
+    });
+  }
   if (await handleIncomingKaelChatTurnBoundary({
     client,
     ctx,
@@ -203,8 +243,8 @@ async function persistIncomingKaelChatTurn(input: {
     message,
     nullableString(previousMetadata.address_district),
   );
-  const persistedSafetySignals = persistentKaelSafetySignals(
-    message,
+  const persistedSafetySignals = persistentKaelSafetySignalsFromTexts(
+    customerAuthoredTexts({ message, evidenceItems: sanitizedEvidenceItems }),
     asServiceType(input.session.service_type),
     asStringArray(previousMetadata.intake_safety_signals),
     input.ctx.user.id,

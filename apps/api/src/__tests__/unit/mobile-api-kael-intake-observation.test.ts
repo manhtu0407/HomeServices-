@@ -525,7 +525,7 @@ describe('Kael intake eval observation boundary', () => {
           needsClarification: false,
           modelId: 'deterministic',
           promptVersion: '2026-08-15.v3',
-          playbookVersion: 'electrical-playbook-2026-07-16.v2',
+          playbookVersion: 'electrical-playbook-2026-10-20.v3',
         },
       })
       expect(supabase.from).not.toHaveBeenCalled()
@@ -948,7 +948,7 @@ describe('Kael intake eval observation boundary', () => {
     const appendix = textbook.match(/```text\r?\n(ELECTRICAL DIAGNOSIS PLAYBOOK[\s\S]*?)\r?\n```/)?.[1]
 
     expect(appendix?.replace(/\r\n/g, '\n')).toBe(ELECTRICAL_PLAYBOOK_SEGMENT)
-    expect(ELECTRICAL_PLAYBOOK_VERSION).toBe('electrical-playbook-2026-07-16.v2')
+    expect(ELECTRICAL_PLAYBOOK_VERSION).toBe('electrical-playbook-2026-10-20.v3')
     expect(ELECTRICAL_PLAYBOOK_SEGMENT).not.toContain('Rút phích các thiết bị quanh')
     expect(ELECTRICAL_PLAYBOOK_SEGMENT).not.toContain('ngắt aptomat tổng trước khi lại gần')
     expect(ELECTRICAL_PLAYBOOK_SEGMENT).toContain('Không chạm, rút phích, lau dọn hoặc lại gần')

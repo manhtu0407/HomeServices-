@@ -124,10 +124,10 @@ describe("Kael playbook registry", () => {
 
     expect(playbook).not.toBeNull();
     expect(playbook?.serviceType).toBe("electrical");
-    expect(playbook?.version).toBe("electrical-playbook-2026-07-16.v2");
+    expect(playbook?.version).toBe("electrical-playbook-2026-10-20.v3");
     expect(playbook?.segment.length).toBeGreaterThan(1000);
     expect(getKaelPlaybookVersion("electrical")).toBe(
-      "electrical-playbook-2026-07-16.v2",
+      "electrical-playbook-2026-10-20.v3",
     );
     expect(getKaelPlaybook("plumbing")).toMatchObject({
       serviceType: "plumbing",
@@ -145,6 +145,16 @@ describe("Kael playbook registry", () => {
       expect(selected?.segment.length, pillarWhy(PILLAR, `segment=${service}`)).toBeGreaterThan(1000);
     }
     expect(getKaelPlaybook("__proto__")).toBeNull();
+  });
+
+  it("keeps the playbook's verbatim hazard wording identical to the deterministic server guidance", () => {
+    const segment = getKaelPlaybook("electrical")?.segment ?? "";
+    for (const signal of ["smoke_or_burning", "sparking", "exposed_live_parts", "water_near_power"]) {
+      const guidance = deterministicSafetyGuidance([signal], "vi", "electrical");
+      expect(guidance, pillarWhy(PILLAR, `signal=${signal}`)).not.toBeNull();
+      expect(segment, pillarWhy(PILLAR, `the verbatim wording for ${signal} drifted from the server guidance`)).toContain(`${signal}: "${guidance}"`);
+    }
+    for (const number of ["114", "115", "112"]) expect(segment).toContain(number);
   });
 
   it("injects only the selected enabled segment and stamps its version", () => {

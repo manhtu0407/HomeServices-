@@ -25,6 +25,8 @@ export const KAEL_TURN_TRACE_KEYS: readonly string[] = [
   "permission_topic",
   "topic_source",
   "boundary_reason",
+  "gate_entry",
+  "emergency_gate_version",
   "replay_topic",
   "quote_blocker",
   "edge_release_id",
@@ -36,7 +38,7 @@ export const KAEL_TURN_TRACE_KEYS: readonly string[] = [
   "client_platform",
 ];
 
-const ROUTES = ["case_work_question", "assistant_case", "assistant_normal"] as const;
+const ROUTES = ["case_work_question", "assistant_case", "assistant_normal", "case_emergency"] as const;
 const STAGES = [
   "answered",
   "prompt_injection",
@@ -46,8 +48,22 @@ const STAGES = [
   "clarification_required",
   "provider_output",
   "answer_unavailable",
+  "emergency_gate",
 ] as const;
-const OUTCOMES = ["answered", "educational_only", "redirect", "unsupported", "fallback"] as const;
+const OUTCOMES = [
+  "answered",
+  "educational_only",
+  "redirect",
+  "unsupported",
+  "fallback",
+  "emergency_stop",
+  "emergency_advice",
+] as const;
+// Where in the Case a reported emergency was caught: the follow-up turn, the evidence submission, the first
+// message of a new Case, or the booking confirmation.
+const GATE_ENTRIES = ["turn", "evidence", "create", "confirm"] as const;
+const EMERGENCY_ROUTES = ["fire", "medical", "police", "electrical_water", "gas", "uncertain"] as const;
+const GATE_VERSION = /^[a-z][a-z0-9_.]{2,47}$/;
 const SERVICES = ["electrical", "plumbing", "cleaning", "hvac", "upholstery", "handyman"] as const;
 const BOUNDARY_REASONS = ["prompt_injection", "out_of_scope", "service_mismatch"] as const;
 const INTENT_SOURCES = ["chip", "ai", "fallback"] as const;
@@ -108,6 +124,8 @@ export type KaelTurnTraceInput = {
   readonly permissionTopic?: unknown;
   readonly topicSource?: unknown;
   readonly boundaryReason?: unknown;
+  readonly gateEntry?: unknown;
+  readonly emergencyGateVersion?: unknown;
   readonly replayTopic?: unknown;
   readonly quoteReadiness?: unknown;
   readonly priceGapReason?: unknown;
@@ -168,6 +186,8 @@ export function buildKaelTurnTrace(input: KaelTurnTraceInput): KaelTurnTrace {
     ["permission_topic", matching(LOWER_CODE, input.permissionTopic)],
     ["topic_source", member(TOPIC_SOURCES, input.topicSource)],
     ["boundary_reason", member(BOUNDARY_REASONS, input.boundaryReason)],
+    ["gate_entry", member(GATE_ENTRIES, input.gateEntry)],
+    ["emergency_gate_version", matching(GATE_VERSION, input.emergencyGateVersion)],
     ["replay_topic", matching(LOWER_CODE, input.replayTopic)],
     ["quote_blocker", quoteBlocker(input.priceGapReason, input.nextActionReason, input.quoteReadiness)],
     ["edge_release_id", matching(RELEASE_ID, identity.releaseId)],
@@ -179,6 +199,62 @@ export function buildKaelTurnTrace(input: KaelTurnTraceInput): KaelTurnTrace {
     ["client_platform", member(PLATFORMS, identity.clientPlatform)],
   ];
   return Object.freeze(Object.fromEntries(entries.filter(([, value]) => value !== undefined))) as KaelTurnTrace;
+}
+
+export type CaseEmergencySummary = {
+  // Customer turns the gate looked at in the same window; null when the caller could not count them.
+  readonly evaluated_turns: number | null;
+  readonly emergency_turns: number;
+  readonly stopped_turns: number;
+  readonly advised_turns: number;
+  readonly by_route: Readonly<Record<string, number>>;
+  readonly by_entry: Readonly<Record<string, number>>;
+  // emergency_turns / evaluated_turns; null, never 0, when there is no sample to divide by.
+  readonly emergency_rate: number | null;
+};
+
+// Counts the Case emergency answers among persisted reply traces. The denominator is supplied by the caller (the
+// customer turns of the same Case sessions in the same window) because every route that advances a Case passes the
+// gate, so a customer turn is a gate evaluation. A trace that is not a well-formed Case emergency trace is ignored.
+export function summarizeCaseEmergencyTraces(
+  traces: readonly unknown[],
+  evaluatedTurns: unknown,
+): CaseEmergencySummary {
+  const byRoute: Record<string, number> = {};
+  const byEntry: Record<string, number> = {};
+  let stopped = 0;
+  let advised = 0;
+  for (const candidate of traces) {
+    const trace = candidate !== null && typeof candidate === "object" ? candidate as Record<string, unknown> : {};
+    if (
+      trace.schema !== KAEL_TURN_TRACE_SCHEMA || trace.route !== "case_emergency" ||
+      trace.stage !== "emergency_gate"
+    ) continue;
+    const outcome = member(["emergency_stop", "emergency_advice"] as const, trace.outcome);
+    if (!outcome) continue;
+    const reason = typeof trace.permission_reason === "string" ? trace.permission_reason.toLowerCase() : "";
+    const route = member(EMERGENCY_ROUTES, reason.startsWith("emergency_") ? reason.slice("emergency_".length) : "") ??
+      "other";
+    byRoute[route] = (byRoute[route] ?? 0) + 1;
+    const entry = member(GATE_ENTRIES, trace.gate_entry) ?? "other";
+    byEntry[entry] = (byEntry[entry] ?? 0) + 1;
+    if (outcome === "emergency_stop") stopped += 1;
+    else advised += 1;
+  }
+  const emergency = stopped + advised;
+  const evaluated = typeof evaluatedTurns === "number" && Number.isSafeInteger(evaluatedTurns) &&
+      evaluatedTurns >= emergency
+    ? evaluatedTurns
+    : null;
+  return {
+    evaluated_turns: evaluated,
+    emergency_turns: emergency,
+    stopped_turns: stopped,
+    advised_turns: advised,
+    by_route: byRoute,
+    by_entry: byEntry,
+    emergency_rate: evaluated !== null && evaluated > 0 ? emergency / evaluated : null,
+  };
 }
 
 export async function hashKaelActorRole(
@@ -213,7 +289,9 @@ export function logKaelTurnTrace(
   if (trace.stage === "answered") return false;
   const bucket = `kael_turn_trace_log:${trace.route}:${trace.stage}`;
   if (!checkRateLimit(bucket, LOG_ALLOWANCE).allowed) return false;
-  const safeTrace = typeof actorRoleHash === "string" && ACTOR_ROLE_HASH.test(actorRoleHash)
+  // A stable pseudonym beside a health, fire or police emergency code would profile one person.
+  const emergencyTurn = typeof trace.permission_reason === "string" && trace.permission_reason.startsWith("EMERGENCY_");
+  const safeTrace = !emergencyTurn && typeof actorRoleHash === "string" && ACTOR_ROLE_HASH.test(actorRoleHash)
     ? Object.freeze({ ...trace, actor_role_hash: actorRoleHash })
     : trace;
   write("kael_turn_trace", safeTrace);

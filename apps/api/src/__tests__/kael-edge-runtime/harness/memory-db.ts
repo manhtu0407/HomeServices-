@@ -15,6 +15,9 @@ export type MemoryDbOptions = {
   // PostgREST returns a JSON snapshot, not a live row. With this on, reads hand back JSON copies, so code that
   // keeps a row from before a write does not see the write land in its variable.
   isolateReads?: boolean
+  // Columns a table's rows must be unique on, like a real unique constraint: a duplicate insert is refused with
+  // Postgres' unique-violation code and writes nothing.
+  uniqueKeys?: Record<string, string[]>
 }
 
 export function memoryDb(seed: Record<string, Row[]> = {}, options: MemoryDbOptions = {}): MemoryDb {
@@ -79,7 +82,19 @@ export function memoryDb(seed: Record<string, Row[]> = {}, options: MemoryDbOpti
     function run() {
       const rows = (tables[table] ??= [])
       if (mode === 'insert') {
-        const inserted = (Array.isArray(payload) ? payload : [payload as Row]).map((row) => ({
+        const incoming = Array.isArray(payload) ? payload : [payload as Row]
+        const keys = options.uniqueKeys?.[table]
+        if (keys) {
+          const keyOf = (row: Row) => keys.map((column) => String(row[column])).join('|')
+          const taken = new Set(rows.map(keyOf))
+          for (const row of incoming) {
+            if (taken.has(keyOf(row))) {
+              return { data: null, error: { code: '23505', message: `duplicate key value violates unique constraint on ${table}` } }
+            }
+            taken.add(keyOf(row))
+          }
+        }
+        const inserted = incoming.map((row) => ({
           id: `${table}-${nextId++}`,
           created_at: new Date().toISOString(),
           ...row,

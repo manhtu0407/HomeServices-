@@ -178,7 +178,7 @@ export async function routeKaelChatTurnIntent(input: {
 // An incoming turn always parks the session in analysis and clears the recorded blocker and next step; a
 // reply that did not re-analyse the case puts an offer that was under review, and the reason Kael could
 // not quote, back where the customer left them.
-async function restoreAnsweredTurnState(input: { client: DbClient; sessionId: string; session: Record<string, unknown> }) {
+export async function restoreAnsweredTurnState(input: { client: DbClient; sessionId: string; session: Record<string, unknown> }) {
   const casePhase = nullableString(input.session.case_phase);
   if (asKaelChatStatus(input.session.status) === "estimate_ready" && casePhase && casePhase !== "analysis") {
     await updateKaelSession(input.client, input.sessionId, { case_phase: casePhase });

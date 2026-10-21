@@ -1,0 +1,363 @@
+{
+ "set": "H4",
+ "note": "Authored after round 3: realistic multi-sentence chat messages, accent-free typing and code-mixing. Run once; the first-run result is reported unedited.",
+ "rows": [
+  {
+   "id": "H4-001",
+   "text": "Chao Kael, em o chung cu quan 2. Vua nay thay khoi den bay ra tu o cam phong ngu, em so qua",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-002",
+   "text": "Em đang nấu cơm thì bình nóng lạnh trong nhà tắm kêu lách tách rồi bốc cháy luôn, giờ em chạy ra ngoài rồi",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-003",
+   "text": "Mọi người ơi tầng 12 đang cháy, báo động vang cả tòa nhà",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-004",
+   "text": "Máy sấy quần áo của em bị cháy, lửa cao cả mét",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-005",
+   "text": "Hi, my toaster oven just exploded and now the cabinet is on fire",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-006",
+   "text": "There's thick black smoke pouring out of the vent above the stove",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-007",
+   "text": "Em nghe tiếng nổ lớn rồi thấy lửa ở tủ điện chung cư",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-008",
+   "text": "Lua dang chay o ban cong nha ben canh va dang lan sang nha em",
+   "expected": "fire",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-009",
+   "text": "Anh ơi chồng em bị điện giật khi sửa quạt, ảnh không thở nữa",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-010",
+   "text": "Em gái em bị ngã từ ban công xuống, chảy máu đầu, em gọi ai bây giờ",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-011",
+   "text": "Bố em đang khó thở và tím tái sau khi hít khói",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-012",
+   "text": "Our worker was shocked by the panel and collapsed, he is not breathing",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-013",
+   "text": "My toddler drank some cleaning liquid and is vomiting, please help",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-014",
+   "text": "Mẹ em té trong bếp và bất tỉnh, em phải làm sao",
+   "expected": "medical",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-015",
+   "text": "Em thấy hai người lạ mặt đang cạy khóa cửa nhà hàng xóm, hình như họ đang trộm",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-016",
+   "text": "Có người đàn ông say rượu đập cửa nhà em và hét là sẽ giết em",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-017",
+   "text": "Somebody smashed my balcony door and climbed inside while I was home",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-018",
+   "text": "An armed man is outside the apartment and I am hiding in the bathroom",
+   "expected": "police",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-019",
+   "text": "Ong nuoc bi vo, nuoc chay xuong bang dien o tang 1 va co tia lua",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-020",
+   "text": "Mưa tạt vào ổ cắm ngoài ban công, em nghe tiếng xẹt xẹt và thấy tia lửa",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-021",
+   "text": "Nước tràn từ máy giặt ra sàn và chạm tới dây điện ổ cắm",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-022",
+   "text": "The pipe burst above the fuse box and water is pouring over the wiring",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-023",
+   "text": "Sàn bếp ngập nước tới mắt cá chân, ổ cắm và tủ lạnh vẫn đang cắm điện",
+   "expected": "electrical_water",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-024",
+   "text": "Em dang nau an thi nghe tieng xi xi tu binh gas, mui gas nong nac",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-025",
+   "text": "Ống dẫn từ bình gas ra bếp bị tuột, gas phụt ra ngoài",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-026",
+   "text": "Cả hành lang tầng 8 có mùi gas rất khó chịu, ai cũng chóng mặt",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-027",
+   "text": "I turned on the stove and it smells like gas everywhere, kids are coughing",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-028",
+   "text": "The propane tank valve is leaking and I hear a hiss",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-029",
+   "text": "Có mùi gas, em lỡ bật công tắc đèn rồi, giờ phải làm sao",
+   "expected": "gas",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-030",
+   "text": "Có chuyện xảy ra ở nhà, em vừa ngửi mùi lạ vừa thấy chóng mặt nhưng em không chắc phải gọi số nào",
+   "expected": "uncertain",
+   "kind": "clear"
+  },
+  {
+   "id": "H4-031",
+   "text": "Hôm nay em cần thợ sửa điều hòa gấp vì nóng quá, con nhỏ không ngủ được",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-032",
+   "text": "Chào Kael, nhà em ở quận 7, ổ điện phòng khách bị lỏng, em muốn đặt thợ sáng mai",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-033",
+   "text": "Trước đây nhà em từng bị chập điện làm cháy tủ lạnh, giờ muốn kiểm tra lại toàn bộ hệ thống điện",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-034",
+   "text": "Em thấy khói bếp nướng của nhà dưới bay lên ban công, nhờ lắp tấm chắn",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-035",
+   "text": "Chung cư vừa diễn tập chữa cháy xong, bảo vệ nhắc em kiểm tra bình chữa cháy",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-036",
+   "text": "Thằng bé nhà em hay nghịch ổ điện, em muốn thợ lắp nắp che an toàn",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-037",
+   "text": "Anh thợ hôm qua bị trượt chân nhưng không sao, hôm nay anh đến sửa vòi nước được không",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-038",
+   "text": "Nhờ thợ kiểm tra giúp mùi gas máy lạnh sau khi nạp, vì em ngửi thấy mùi hơi lạ",
+   "expected": null,
+   "kind": "clear",
+   "service": "hvac"
+  },
+  {
+   "id": "H4-039",
+   "text": "Ống đồng máy lạnh bị rò gas, em cần nạp gas R32 và hàn lại mối nối",
+   "expected": null,
+   "kind": "clear",
+   "service": "hvac"
+  },
+  {
+   "id": "H4-040",
+   "text": "Em ngửi thấy mùi thơm của đồ ăn cháy nhẹ từ bếp nhà hàng xóm, không sao ạ",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-041",
+   "text": "Em muốn thay bình gas và kiểm tra van, bình cũ dùng được 3 năm rồi",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-042",
+   "text": "Em quên tắt bếp nên nồi cháy đen đáy, cần thợ đánh sạch nồi hay không",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-043",
+   "text": "I would like a quote to replace the smoke detectors in all bedrooms",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-044",
+   "text": "My neighbour says there was a fire in the building last month, I want the wiring checked",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-045",
+   "text": "The kids watched a movie with a house fire and now they are scared of the oven",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-046",
+   "text": "The electrician said the old breaker panel is a fire risk and needs replacing",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-047",
+   "text": "Can you clean the carpet? My husband spilled hot coffee and it is burning hot to touch",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-048",
+   "text": "The gas bill is high this month, please check if the stove is efficient",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-049",
+   "text": "We had a break-in attempt last year and I want a stronger lock fitted",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-050",
+   "text": "I tripped and bruised my knee yesterday, can you fix the loose floor tile",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-051",
+   "text": "Em muon ve sinh may lanh, may chay on va co mui hoi, khong co khoi hay lua gi ca",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-052",
+   "text": "Thợ đến sửa nhưng em đang bận, anh ấy đứng ngoài cửa chờ em xuống mở khóa",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-053",
+   "text": "Máy hút mùi bếp kêu to, khói dầu mỡ bám dày, nhờ thợ vệ sinh",
+   "expected": null,
+   "kind": "clear"
+  },
+  {
+   "id": "H4-054",
+   "text": "Cô lao công nói thấy chuột cắn dây điện ở hành lang, nhờ thợ kiểm tra",
+   "expected": null,
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H4-055",
+   "text": "Em ngửi thấy mùi khét lẹt từ cầu dao tổng, có thể sắp cháy",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H4-056",
+   "text": "Bình nóng lạnh rò nước xuống sàn nhà tắm, sàn hơi tê tê khi chân ướt",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  },
+  {
+   "id": "H4-057",
+   "text": "Con em hít mùi gas thoang thoảng cả buổi sáng, hơi buồn nôn",
+   "expected": "gas",
+   "kind": "judgement",
+   "currently": "gas"
+  },
+  {
+   "id": "H4-058",
+   "text": "Có tiếng nổ nhỏ trong bảng điện và mùi lạ, nhưng đèn vẫn sáng bình thường",
+   "expected": "electrical_water",
+   "kind": "judgement",
+   "currently": null
+  }
+ ],
+ "status": "development",
+ "firstRun": "set H4 (H4 first run, after round 3 (never seen by a fix)) clear: 38/53 correct; false negatives 14, false positives 1, wrong route 0"
+}

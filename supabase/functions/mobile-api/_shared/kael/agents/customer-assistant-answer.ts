@@ -47,7 +47,7 @@ export function buildEmergencyCustomerAssistantAnswer(
   unsafeRequest: boolean,
   language: "vi" | "en",
 ): CustomerAssistantAnswer | null {
-  const emergency = resolveEmergencyGuidance(message, language);
+  const emergency = resolveEmergencyGuidance(message, language, { serviceType: serviceResolved });
   if (!emergency) return null;
   const unsafeRequestRefusal = language === "vi"
     ? "Kael không hướng dẫn vô hiệu hóa thiết bị bảo vệ hoặc tự thao tác nguy hiểm."

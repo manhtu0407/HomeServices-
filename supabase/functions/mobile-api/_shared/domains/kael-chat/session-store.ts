@@ -1,4 +1,11 @@
-import { asNumber, asRecord, asString, nullableNumber, nullableString } from "../../platform/coercions.ts";
+import {
+  asKaelChatStatus,
+  asNumber,
+  asRecord,
+  asString,
+  nullableNumber,
+  nullableString,
+} from "../../platform/coercions.ts";
 import { compactMetadata } from "../../platform/domain-utils.ts";
 import { dbQuery, type DbClient } from "../../platform/db.ts";
 import { apiFailure } from "../../platform/api-failure.ts";
@@ -66,11 +73,15 @@ export function withoutEphemeralKaelMediaUrls(
   return durableMetadata;
 }
 
-export function assertIntakeConfirmationCompleted(metadata: Record<string, unknown>) {
+export function isIntakeConfirmationPending(metadata: Record<string, unknown>) {
   const confirmation = kaelIntakeConfirmationSchema.safeParse(
     metadata.intake_confirmation,
   );
-  if (confirmation.success && confirmation.data.status === "pending") {
+  return confirmation.success && confirmation.data.status === "pending";
+}
+
+export function assertIntakeConfirmationCompleted(metadata: Record<string, unknown>) {
+  if (isIntakeConfirmationPending(metadata)) {
     apiFailure(
       "INTAKE_CONFIRMATION_REQUIRED",
       "Hãy xác nhận thông tin trước khi Kael tiếp tục.",
@@ -121,7 +132,12 @@ export async function appendKaelSystemTurn(
   input: {
     contentType: "analysis" | "clarification" | "estimate" | "error";
     text: string;
-    nextStatus: "active" | "estimate_ready" | "unsupported";
+    nextStatus: ReturnType<typeof asKaelChatStatus>;
+    // The turn this reply follows, when the caller has just written it or found it in the table. Without it the
+    // reply follows the session's counter, which a write that failed half-way leaves behind the table.
+    afterTurnIndex?: number;
+    // A reply that does not move the Case leaves the time its offer was made untouched.
+    keepEstimateTimestamp?: boolean;
     estimate?: unknown;
     costUsd?: number;
     telemetry?: KaelTurnTelemetry;
@@ -139,7 +155,7 @@ export async function appendKaelSystemTurn(
   if (sessionResult.error || !sessionResult.data) {
     apiFailure("NOT_FOUND", "Không tìm thấy phiên Kael", 404);
   }
-  const nextIndex = asNumber(sessionResult.data.total_turns) + 1;
+  const nextIndex = (input.afterTurnIndex ?? asNumber(sessionResult.data.total_turns)) + 1;
   const textContent = normalizeKaelResponseBrand(input.text);
   // The pipeline cost and a composer or answer call on the same turn are separate spend.
   const totalCost = (input.costUsd ?? 0) + (input.telemetry?.costUsd ?? 0);
@@ -177,7 +193,7 @@ export async function appendKaelSystemTurn(
       totalCost,
     status: input.nextStatus,
   };
-  if (input.nextStatus === "estimate_ready") {
+  if (input.nextStatus === "estimate_ready" && !input.keepEstimateTimestamp) {
     sessionUpdate.estimate_ready_at = new Date().toISOString();
   }
   const askedSlot = askedClarificationSlot(input.contentType, turnMetadata);
