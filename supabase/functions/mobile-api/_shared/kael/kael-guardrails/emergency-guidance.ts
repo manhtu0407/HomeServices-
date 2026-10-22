@@ -31,6 +31,7 @@ type Cue = {
   readonly toneRules?: ToneRules;
   readonly technicalBleeding?: boolean;
   readonly unless?: RegExp;
+  readonly requires?: readonly RegExp[];
 };
 
 const cue = (pattern: RegExp, extra: Omit<Cue, "pattern"> = {}): Cue => ({ pattern, ...extra });
@@ -86,6 +87,9 @@ const WATER_TONES: ToneRules = {
   ri: /^r[i\u1ec9]$/u,
 };
 const EXPOSED_WIRE_TONES: ToneRules = { ho: /^h[o\u1edf]$/u };
+const WIRED_FIXTURE_IN_SEGMENT = new RegExp(`\\b(?:${WIRED_FIXTURES})\\b`, "u");
+const WIRED_FIXTURE_IN_SEGMENT_EN = /\b(?:outlets?|sockets?|wiring|wires?|breakers?|switchboard|junction box|(?:electrical|electric|breaker|fuse|distribution|circuit) (?:panel|box|board|cabinet))\b/u;
+const SPARK_NOT_ELECTRICAL = /\b(?:bep (?:ga|gas)|phao hoa|firework|gas stove|welding|welder|tho han|may han)\b/u;
 
 const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   fire: [
@@ -151,6 +155,8 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
     cue(/\bday dien (?:bi |dang )?(?:ho|troc)\b/u, { toneRules: EXPOSED_WIRE_TONES }),
     cue(new RegExp(`\\b(?:${WIRED_FIXTURES})(?: [a-z]+){0,2} (?:bi |dang )?(?:ngam|ngap) nuoc\\b`, "u"), { toneRules: { ...WATER_TONES, ...SOAKED_TONES } }),
     cue(new RegExp(`\\btia lua(?: [a-z]+){0,2} (?:tu|o|ngay|tai|phat ra tu|bat ra tu) (?:${WIRED_FIXTURES})\\b`, "u")),
+    cue(/\btia lua\b/u, { requires: [WIRED_FIXTURE_IN_SEGMENT], unless: SPARK_NOT_ELECTRICAL }),
+    cue(/\bspark(?:s|ed|ing)?\b/u, { requires: [WIRED_FIXTURE_IN_SEGMENT_EN], unless: SPARK_NOT_ELECTRICAL }),
     cue(new RegExp(`\\b(?:mua|nuoc mua) (?:tat|hat|bat) (?:vao|toi) (?:[a-z]+ ){0,2}(?:${WIRED_FIXTURES})\\b`, "u"), { toneRules: RAIN_TONES }),
     cue(new RegExp(`\\bnuoc(?: [a-z]+){0,8} (?:cham|lan|bat) (?:toi|vao|den|sat) (?:[a-z]+ ){0,1}(?:${WIRED_FIXTURES})\\b`, "u"), { toneRules: FILLER_TONES }),
     cue(new RegExp(`\\b(?:ngap nuoc|nuoc ngap|tran nuoc)(?: [a-z]+,?){0,8} (?:${WIRED_FIXTURES})\\b`, "u"), { toneRules: WATER_TONES }),
@@ -413,6 +419,7 @@ function hasAffirmedCue(
     if (RESOLVED_AFTER.test(signal.plain.slice(end, segmentAt(sentences, index).end))) continue;
     if (insideNamedQuote(signal.plain, index)) continue;
     if (candidate.unless?.test(segmentText)) continue;
+    if (candidate.requires && !candidate.requires.every((required) => required.test(segmentText))) continue;
     if (candidate.technicalBleeding && isBleedingATarget(signal.plain, index, end)) continue;
     if (accept && !accept(index, end)) continue;
     if (!NEGATED_CUE_SUFFIX.test(negationText(prefix, signal.accented.slice(segment.start, index)))) return true;

@@ -337,8 +337,6 @@ async function advanceInitialKaelChatAnalysis(
     message: texts,
     language: input.language,
     serviceType: input.input.service_type,
-    persistedSafetySignals: input.initialSafetySignals,
-    actorId: input.ctx.user.id,
   });
   if (emergency) {
     await answerCaseEmergency(input.client, input.sessionId, emergency, { entry: "create", identity: input.ctx });

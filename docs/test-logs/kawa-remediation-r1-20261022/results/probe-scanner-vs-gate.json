@@ -1,0 +1,49 @@
+{
+ "worktree_head_note": "run on the remediation candidate",
+ "rows": [
+  {
+   "text": "Hôm qua tủ điện có tia lửa nhưng thợ đã sửa xong.",
+   "intake_scanner_signals": [
+    "sparking"
+   ],
+   "shared_gate_route": null
+  },
+  {
+   "text": "Tuần trước ổ cắm từng bị tia lửa, nhờ thợ thay ổ mới.",
+   "intake_scanner_signals": [
+    "sparking"
+   ],
+   "shared_gate_route": null
+  },
+  {
+   "text": "Nếu tủ điện có tia lửa thì tôi phải làm gì?",
+   "intake_scanner_signals": [
+    "sparking"
+   ],
+   "shared_gate_route": null
+  },
+  {
+   "text": "Tủ điện có tia lửa xẹt nhưng đã hết rồi.",
+   "intake_scanner_signals": [
+    "sparking"
+   ],
+   "shared_gate_route": null
+  },
+  {
+   "text": "Tủ điện hãng có ghi \"tia lửa\" trên nhãn.",
+   "intake_scanner_signals": [
+    "sparking"
+   ],
+   "shared_gate_route": null
+  },
+  {
+   "text": "Tủ điện bây giờ nóng rát tay, có mùi khét và thấy tia lửa xẹt sau cánh tủ.",
+   "intake_scanner_signals": [
+    "smoke_or_burning",
+    "sparking",
+    "distribution_board"
+   ],
+   "shared_gate_route": "electrical_water"
+  }
+ ]
+}

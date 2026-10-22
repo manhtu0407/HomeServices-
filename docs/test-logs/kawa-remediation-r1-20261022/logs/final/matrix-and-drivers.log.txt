@@ -1,0 +1,12 @@
+{"label":"post-matrix","exit":0}
+{"label":"post-journey","exit":0}
+{"label":"post-matrix-flags-on","exit":0}
+{"label":"post-journey-flags-on","exit":0}
+{"label":"post-supp-c6b","exit":0}
+{"label":"post-supp-c6b-flags-on","exit":0}
+{"label":"post-handler","exit":0}
+{"label":"post-triplet","exit":0}
+{"label":"post-dx03-persisted","exit":0}
+{"label":"post-dx03-language","exit":0}
+
+----- stderr -----

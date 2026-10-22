@@ -134,25 +134,28 @@ describe(`${PILLAR.id}: the emergency log line carries no identity or text`, () 
 })
 
 describe(`${PILLAR.id}: the flagged electrical path`, () => {
-  it('does not say it twice: critical guidance from the playbook path is the only safety message', async () => {
+  it('says it once: with the electrical playbook on, the gate answer is the only safety message', async () => {
     const world = worldFor('electrical', { env: { KAEL_PLAYBOOK_ELECTRICAL_ENABLED: 'true' } })
 
     const result = await world.send('Ổ cắm đang bốc khói')
     const why = pillarWhy(PILLAR, `status=${result.status} purposes=${result.purposes.join(',')}`)
     expect(result.status, why).toBe(200)
-    expect(emergencyTurns(world), `${why} (the gate defers to the structured path)`).toEqual([])
+    expect(emergencyTurns(world).map((turn) => (turn.safe_metadata as Record<string, unknown>).emergency_route), `${why} (the gate owns the hazard reply)`).toEqual(['fire'])
     const guided = world.kaelTurns().filter((turn) => String(turn.text_content).includes('114'))
     expect(guided.length, `${why} (exactly one reply carries the 114 guidance)`).toBe(1)
+    expect(world.modelCalls, `${why} (a deterministic reply asks no model)`).toEqual([])
     expect(world.unexpectedWrites(), why).toEqual([])
   })
 
-  it('defers a smoke and sparking report to the HVAC flagged path instead of adding a second message', async () => {
+  it('answers a smoke and sparking report from the gate and lets the HVAC playbook add its advisory after it', async () => {
     const world = worldFor('hvac', { env: { KAEL_PLAYBOOK_HVAC_ENABLED: 'true' } })
 
     const result = await world.send('Máy lạnh nhà mình bốc khói và có mùi khét, tia lửa điện ở ổ cắm')
     const why = pillarWhy(PILLAR, `status=${result.status} purposes=${result.purposes.join(',')}`)
     expect(result.status, why).toBe(200)
-    expect(emergencyTurns(world), `${why} (the flagged path owns the hazard reply)`).toEqual([])
+    const gate = emergencyTurns(world)
+    expect(gate.map((turn) => (turn.safe_metadata as Record<string, unknown>).emergency_route), `${why} (the gate owns the hazard reply)`).toEqual(['electrical_water'])
+    for (const number of ['112', '114', '115']) expect(String(gate[0]?.text_content), `${why} (the gate names ${number})`).toContain(number)
     expect(result.purposes, `${why} (a safety turn is not routed through the classifier)`).not.toContain('deepseek:case_turn_intent')
     expect(world.unexpectedWrites(), why).toEqual([])
   })

@@ -1,0 +1,280 @@
+
+ RUN  v4.1.6 C:/ns-fix/base/apps/api
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts (29 tests | 11 failed) 63ms
+     × frozen ELEC-S4 transcript -> electrical_water 41ms
+     × frozen transcript without diacritics -> electrical_water 8ms
+     × frozen transcript in capitals -> electrical_water 1ms
+     × spark without smell or heat -> electrical_water 1ms
+     × spark named before the equipment -> electrical_water 1ms
+     × socket that is hot, smells burnt and flashes -> electrical_water 1ms
+     × distribution board flash -> electrical_water 1ms
+     × English panel with heat, smell and sparks -> electrical_water 1ms
+     × English sparks at a breaker box -> electrical_water 1ms
+     × names 112, 114 and 115 for the frozen transcript, in the language it was written in 1ms
+     × does not depend on the Case service: the same words route from any of the six services 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > frozen ELEC-S4 transcript -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    frozen ELEC-S4 transcript: "Tủ điện bây giờ nóng rát tay, có mùi khét và thấy tia lửa xẹt sau cánh tủ." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > frozen transcript without diacritics -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    frozen transcript without diacritics: "Tu dien bay gio nong rat tay, co mui khet va thay tia lua xet sau canh tu." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > frozen transcript in capitals -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    frozen transcript in capitals: "TỦ ĐIỆN BÂY GIỜ NÓNG RÁT TAY, CÓ MÙI KHÉT VÀ THẤY TIA LỬA XẸT SAU CÁNH TỦ." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > spark without smell or heat -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    spark without smell or heat: "Tủ điện đang có tia lửa xẹt sau cánh tủ." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > spark named before the equipment -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    spark named before the equipment: "Thấy tia lửa xẹt sau cánh tủ điện, tủ nóng rát tay." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > socket that is hot, smells burnt and flashes -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    socket that is hot, smells burnt and flashes: "Ổ cắm nóng, có mùi khét, thấy tia lửa nháy bên trong." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > distribution board flash -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    distribution board flash: "Bảng điện sau cửa vừa có tia lửa chớp lên một cái." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > English panel with heat, smell and sparks -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    English panel with heat, smell and sparks: "The electrical panel is burning hot, there is a burning smell and I can see sparks behind the cover." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > English sparks at a breaker box -> electrical_water
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    English sparks at a breaker box: "I saw sparks jump inside the breaker box just now." routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:62:98
+     60|   it.each(POSITIVE)('%s -> electrical_water', (label, text, language) …
+     61|     const got = route(text, language)
+     62|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+     63|   })
+     64|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > names 112, 114 and 115 for the frozen transcript, in the language it was written in
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    response=none: expected '' to contain '112'
+
+- Expected
++ Received
+
+- 112
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:68:81
+     66|     const vi = resolveReportedEmergencyGuidance(FROZEN_ELEC_S4, 'vi', …
+     67|     const why = pillarWhy(PILLAR, `response=${vi?.response ?? 'none'}`)
+     68|     for (const number of ['112', '114', '115']) expect(vi?.response ??…
+       |                                                                                 ^
+     69|   })
+     70|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/11]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard > does not depend on the Case service: the same words route from any of the six services
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    service=electrical routed to null: expected null to be 'electrical_water' // Object.is equality
+
+- Expected:
+"electrical_water"
+
++ Received:
+null
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:79:85
+     77|     for (const service of ['electrical', 'plumbing', 'cleaning', 'hvac…
+     78|       const got = resolveReportedEmergencyGuidance(FROZEN_ELEC_S4, 'vi…
+     79|       expect(got, pillarWhy(PILLAR, `service=${service} routed to ${St…
+       |                                                                                     ^
+     80|     }
+     81|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/11]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  11 failed | 18 passed (29)
+   Start at  08:49:49
+   Duration  704ms (transform 112ms, setup 0ms, import 143ms, tests 63ms, environment 0ms)
+
+undefined
+C:\ns-fix\base\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts
+exit=1

@@ -1,0 +1,77 @@
+ Image denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498 Skipped Image is already present locally
+check kael-learning-monitor
+ Volume r1_deno-cache Creating 
+ Network r1_default Creating 
+ Volume r1_deno-cache Creating 
+ Network r1_default Creating 
+ Volume r1_deno-cache Created 
+ Volume r1_deno-cache Created 
+ Network r1_default Created 
+ Network r1_default Created 
+ Container r1-deno-run-ed826fa8b2bf Creating 
+ Container r1-deno-run-ed826fa8b2bf Created 
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+[0m[32mDownload[0m https://registry.npmjs.org/zod/-/zod-4.4.3.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/storage-js/-/storage-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/functions-js/-/functions-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/realtime-js/-/realtime-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/auth-js/-/auth-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/postgrest-js/-/postgrest-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/iceberg-js/-/iceberg-js-0.8.1.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/phoenix/-/phoenix-0.4.5.tgz
+[0m[32mCheck[0m supabase/functions/kael-learning-monitor/index.ts
+check kael-matching-maintainer
+ Container r1-deno-run-ee58e9156c5a Creating 
+ Container r1-deno-run-ee58e9156c5a Created 
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+[0m[32mCheck[0m supabase/functions/kael-matching-maintainer/index.ts
+check kael-media-retention
+ Container r1-deno-run-cfb909ad82b3 Creating 
+ Container r1-deno-run-cfb909ad82b3 Created 
+[0m[32mCheck[0m supabase/functions/kael-media-retention/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+check mobile-api
+ Container r1-deno-run-70962c6ea313 Creating 
+ Container r1-deno-run-70962c6ea313 Created 
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/phoenix/-/phoenix-0.4.2.tgz
+[0m[32mCheck[0m supabase/functions/mobile-api/index.ts
+ Container r1-deno-run-8fc27da0fb20 Creating 
+ Container r1-deno-run-8fc27da0fb20 Created 
+[0m[32mCheck[0m supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[38;5;245mrunning 4 tests from ./supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts[0m
+P388-mobile-client-contract-compatibility: accepts the immediate legacy epoch at its explicit per-platform floor ... [0m[32mok[0m [0m[38;5;245m(100ms)[0m
+P388-mobile-client-contract-compatibility: rejects the immediate legacy epoch below its floor and all older epochs ... [0m[32mok[0m [0m[38;5;245m(20ms)[0m
+P388-mobile-client-contract-compatibility: requires exact release identity for the current epoch ... [0m[32mok[0m [0m[38;5;245m(613µs)[0m
+P388-mobile-client-contract-compatibility: accepts the current release-bound iOS build while preserving the previous build floor ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
+
+[0m[32mok[0m | 4 passed | 0 failed [0m[38;5;245m(5ms)[0m
+
+check payment-maintainer
+ Container r1-deno-run-6e024ac850a7 Creating 
+ Container r1-deno-run-6e024ac850a7 Created 
+[0m[32mCheck[0m supabase/functions/payment-maintainer/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+check system-monitor
+ Container r1-deno-run-9836caef2672 Creating 
+ Container r1-deno-run-9836caef2672 Created 
+[0m[32mCheck[0m supabase/functions/system-monitor/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+check sepay-webhook
+ Container r1-deno-run-9723fd2ff094 Creating 
+ Container r1-deno-run-9723fd2ff094 Created 
+[0m[32mCheck[0m supabase/functions/sepay-webhook/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+
+edge check: discovered=7 selected=7 checked=7 failed=0
+exit=0

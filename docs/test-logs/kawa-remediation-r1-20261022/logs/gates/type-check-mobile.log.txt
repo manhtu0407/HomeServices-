@@ -1,0 +1,5 @@
+
+> @nestscout/mobile@0.3.2 type-check C:\ns-fix\r1\apps\mobile
+> tsc --noEmit
+
+exit=0

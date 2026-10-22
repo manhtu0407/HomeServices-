@@ -1,4 +1,5 @@
 import { sanitizeForLLM } from "../../../../_shared/domain.ts";
+import { detectRequestedApplianceWork } from "../kael-guardrails/requested-work.ts";
 
 export function readBooleanEnvFlag(
   value: string | undefined,
@@ -102,13 +103,9 @@ export function scrubCustomerCaseContextForLLM(input: string): string {
 export function hasUnsupportedRepairIntent(input: string): boolean {
   const normalized = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  return [
-    "tu lanh",
-    "may giat",
-    "internet",
-    "sua khoa",
-    "son nha",
-  ].some((keyword) => normalized.includes(keyword));
+  const requested = detectRequestedApplianceWork(input);
+  return ["tu lanh", "may giat", "internet"].some((keyword) => requested.has(keyword)) ||
+    ["sua khoa", "son nha"].some((keyword) => normalized.includes(keyword));
 }
 
 // Mirrors the shared Kael parsing contract for the Deno boundary. The limits

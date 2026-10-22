@@ -19,6 +19,7 @@ import {
 } from "./electrical-intake-policy.ts";
 import { KAEL_CASE_WORK_SERVICE_TYPES } from "../learning/performance-profiles.ts";
 import { getEnabledKaelPlaybook } from "../learning/playbooks/registry.ts";
+import { APPLIANCE_REQUEST_KEYWORDS, detectRequestedApplianceWork } from "./requested-work.ts";
 
 export type BoundaryReason =
   | "prompt_injection"
@@ -386,11 +387,15 @@ export function detectOutOfScope(
     return { detected: false, signals: [] };
   }
   const signals: string[] = [];
+  const requestedAppliances = detectRequestedApplianceWork(text);
   for (const keyword of OUT_OF_SCOPE_KEYWORDS) {
     if (keyword === "may bom" && isSupportedWaterPumpMention(normalized)) {
       continue;
     }
     if (selectedService && keywordAppearsOnlyInExcludedScope(normalized, keyword)) {
+      continue;
+    }
+    if (APPLIANCE_REQUEST_KEYWORDS.includes(keyword) && !requestedAppliances.has(keyword)) {
       continue;
     }
     if (containsKeyword(normalized, keyword)) {
