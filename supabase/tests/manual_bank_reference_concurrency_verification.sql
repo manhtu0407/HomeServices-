@@ -9,6 +9,10 @@
 -- it leaves its fixtures behind because payment reconciliation events are immutable.
 \set ON_ERROR_STOP on
 
+select exists (
+  select 1 from pg_catalog.pg_extension where extname = 'dblink'
+) as dblink_preexisting \gset
+
 create extension if not exists dblink;
 
 insert into auth.users(id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at) values
@@ -181,5 +185,10 @@ begin
   then raise exception 'reference race: the same bank reference paid two orders or none'; end if;
 end;
 $assertions$;
+
+\if :dblink_preexisting
+\else
+drop extension dblink;
+\endif
 
 select 'payment concurrency: all assertions passed' as result;
