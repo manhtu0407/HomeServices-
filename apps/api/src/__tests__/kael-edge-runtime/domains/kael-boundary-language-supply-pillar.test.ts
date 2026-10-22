@@ -72,6 +72,18 @@ describe(PILLAR.id, () => {
     expect(buildFallbackIntent('electrical', [], 'Please repair the outlet and fix my washing machine.', enabled).service_type).toBe('unsupported')
     expect(buildFallbackIntent('electrical', [], 'Bếp từ mất nguồn, cần kiểm tra nguồn cấp.', enabled).service_type).toBe('electrical')
   })
+  it.each([false, true])('fallback preserves explicit exclusions without ignoring requested work, flags=%s', (enabled) => {
+    for (const text of [
+      'Đèn không sáng, không bao gồm sửa wifi.',
+      'Đèn không sáng, không bao gồm sửa máy sấy.',
+      'Den khong sang, khong bao gom sua may say.',
+      'The light is broken, not included repair the dryer.',
+    ]) {
+      expect(hasUnsupportedRepairIntent(text, 'electrical'), pillarWhy(PILLAR, text)).toBe(false)
+      expect(buildFallbackIntent('electrical', [], text, enabled).service_type).toBe('electrical')
+    }
+    expect(buildFallbackIntent('electrical', [], 'Đèn không sáng và sửa wifi, không bao gồm máy sấy.', enabled).service_type).toBe('unsupported')
+  })
   it.each([false, true])('delivers visible emergency guidance and metadata before the refusal, flags=%s', async (enabled) => {
     const world = activeWorld('electrical', { env: enabled ? flagsOn : {} })
     world.db.tables.jobs = []

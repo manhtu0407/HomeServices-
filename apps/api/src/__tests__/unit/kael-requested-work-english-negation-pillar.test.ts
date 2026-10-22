@@ -22,6 +22,10 @@ export const PILLAR = {
 const requested = (text: string) => [...detectRequestedApplianceWork(text, 'electrical')].sort()
 
 const REFUSED: ReadonlyArray<readonly [string, string]> = [
+  ['My fridge works fine but the outlet is broken. Please fix the outlet.', 'another subject after but'],
+  ['My washing machine is fine and the outlet is broken. Please fix the outlet.', 'another subject after and'],
+  ['My dishwasher works fine while the faucet is leaking. Please repair the faucet.', 'another subject after while'],
+  ['Repair the outlet behind the fridge and my washing machine.', 'coordinated incidental locations'],
   ['My fridge is not broken. Please repair the outlet.', 'a negated broken adjective'],
   ['My washing machine is not faulty, please repair the outlet.', 'a negated faulty adjective'],
   ["The dishwasher isn't leaking. Please fix the socket.", 'a contracted negated fault'],
@@ -35,6 +39,9 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const STILL_REQUESTED: ReadonlyArray<readonly [string, readonly string[], string]> = [
+  ['Please repair the outlet and my washing machine.', ['may giat'], 'coordinated appliance work is still requested'],
+  ['My fridge was fine but now broken.', ['tu lanh'], 'a same-subject contrast still describes an appliance fault'],
+  ['My washing machine and its motor are broken.', ['may giat'], 'a component of the same appliance is faulty'],
   ['My washing machine is not working. Please repair it.', ['may giat'], 'a negative functioning predicate is a real fault'],
   ['My fridge is not broken, but please repair my dryer.', ['may say'], 'a separate affirmative appliance request'],
   ['Please repair my washing machine that will not start.', ['may giat'], 'a plain request'],

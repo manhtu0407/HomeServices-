@@ -41,13 +41,14 @@ const FAULT_BI = "bi (?:hu|hong|loi|nut|ket(?! noi)|dung|treo|liet|cham|yeu|ro|r
 const FAULT_FUNCTION = "khong(?: (?:duoc|con|the|hay))? (?:bam(?: duoc)?|chay|hoat dong|len(?: nguon| lua)?|vao dien|vao duoc|co (?:mang|song|nuoc|dien|nguon|tin hieu)|ket noi|lanh|nong|say|kho|vat|giat|xa(?: nuoc)?|thoat nuoc|cap nuoc|hut|quay|xoay|nhan(?: noi)?|danh lua|bat|tat|khoi dong|dong da|lam da|mo|sang|dung|su dung|xai|truy cap|vao mang|ra nuoc)|(?:does not|doesn t|will not|won t|cannot|can t) (?:work|run|start|heat|cool|drain|spin|turn on)|(?:is not|isn t|are not|aren t) (?:working|running|starting|heating|cooling|draining|spinning)";
 const FAULT = `(?:${FAULT_BI}|${FAULT_BARE}|${FAULT_FUNCTION})`;
 
-const FAULT_AFTER = new RegExp(`^(?: (?!(?:khong|chua|chang|dau|hay|hoac|va|voi|cung|do|vi|tai|nghi|ma|nhung|de|neu)\\b)[a-z0-9]+){0,8}(?: (?:hay|cung|van|dang|lai)){0,2} ${FAULT}\\b`);
+const ENGLISH_SUBJECT_BOUNDARY = "(?:but|and|however|although|though|instead|whereas|while) (?!(?:it|its|now|still|currently)\\b)(?:(?:the|my|our|your|a|an) )?(?:[a-z0-9]+ ){1,3}(?:is|are|was|were|works|does|will|broken|faulty|stuck|jammed|leaking)\\b";
+const FAULT_AFTER = new RegExp(`^(?: (?!(?:khong|chua|chang|dau|hay|hoac|va|voi|cung|do|vi|tai|nghi|ma|nhung|de|neu)\\b|${ENGLISH_SUBJECT_BOUNDARY})[a-z0-9]+){0,8}(?: (?:hay|cung|van|dang|lai)){0,2} ${FAULT}\\b`);
 const ACT_BEFORE = new RegExp(`\\b(?:${ANY_ACTS})(?: (?:${ACT_FILLERS})){0,3} $`);
 const ACT_ANYWHERE = new RegExp(`\\b(?:${ANY_ACTS})\\b`, "g");
 const ACT_AFTER = new RegExp(`^(?: [a-z0-9]+){0,4} (?:${REQUEST_FRAME})(?: (?:${REQUEST_TOKENS})){0,6} (${REPAIR_ACTS})\\b(?! (?:xong|roi|hoan tat))`);
 const FAULT_CONTINUATION = new RegExp(`^(?:(?:no|cai do|cai nay|chung|mat kinh|bo mach|bang dieu khien|cua|nut bam|gioang) )?(?:(?:cu|van|dang|hay|lai|rat|qua|hoi) )*${FAULT}\\b`);
 const REPAIR_ACT_IN_CLAUSE = new RegExp(`\\b(?:${REPAIR_ACTS})\\b`);
-const CONJUNCTION_BEFORE = /( (?:va|voi|cung|nua)(?: (?:ca|luon|them|cai|chiec))*) $/;
+const CONJUNCTION_BEFORE = /( (?:va|voi|cung|nua|and)(?: (?:ca|luon|them|cai|chiec|my|our|the))*) $/;
 
 const NEGATED_ACT = new RegExp(`\\b(?:(?:khong|chua|chang|dau)(?: phai)? (?:can|phai|muon|nho|yeu cau|bat buoc)(?: phai)?|dung(?: co)?|khoi(?: can| phai)?|chang can)(?: (?:${REQUEST_TOKENS})){0,3} (?:${ANY_ACTS})\\b`, "g");
 const FAULT_BEFORE = /\b(?:bi )?(?:hu(?: hong)?|hong|loi)(?: (?:cai|chiec))? $/;
@@ -58,7 +59,7 @@ const TEMPORAL_BEFORE_ACT = /\b(?:tu luc|tu khi|ke tu khi|sau khi|truoc khi|khi|
 const ATTRIBUTION_BEFORE = /\b(?:do|vi|tai|boi|nghi|ngo|co the|hay la|hoac|hay|khong biet|khong ro|khong chac|chua biet|chua ro|chua chac|khong hieu|phai chang|co phai|hinh nhu|co le|chac la)(?: (?:la|rang|do|vi|cai|chiec|xem|co phai))* $/;
 const PLACEMENT_BEFORE = /\b(?:gan|canh|ben canh|sat|phia (?:sau|truoc|tren|duoi)|ben (?:trai|phai|tren|duoi|trong|ngoai)|khu vuc|noi|vi tri|ngoai|trong|duoi|tren|sau|truoc|giua|doi dien|quanh|xung quanh|xuong|cho|o|tai|noi voi|ket noi voi|near|beside|behind|next to|under|above|for|of)(?: (?:cai|chiec|vung|khu|the|my|our))? $/;
 const PLACEMENT_AFTER = /^ (?:cua (?:toa nha|chung cu|ban quan ly|chu nha|hang xom|tang)\b|(?:dang |duoc )?(?:dat|nam|treo|de|o|tai|gan|canh|ben canh|sat|phia|ngoai|trong|duoi|tren|ben|sau|truoc|giua|doi dien|quanh|xung quanh)\b)/;
-const STRONG_PLACEMENT_WORD = /\b(?:gan|canh|ben canh|sat|phia|khu vuc|quanh|xung quanh|noi|vi tri)\b/;
+const STRONG_PLACEMENT_WORD = /\b(?:gan|canh|ben canh|sat|phia|khu vuc|quanh|xung quanh|noi|vi tri|near|beside|behind|next to|under|above)\b/;
 
 const CONTEXT_CHARS = 160;
 const BARE_REQUEST_MAX_CHARS = 120;

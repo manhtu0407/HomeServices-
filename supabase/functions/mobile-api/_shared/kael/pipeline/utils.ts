@@ -101,9 +101,10 @@ export function scrubCustomerCaseContextForLLM(input: string): string {
 }
 
 export function hasUnsupportedRepairIntent(input: string, selectedService?: string): boolean {
-  const normalized = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+  const includedScope = maskExplicitlyExcludedScopeForIntent(input);
+  const normalized = includedScope.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  const requested = detectRequestedApplianceWork(input, selectedService);
+  const requested = detectRequestedApplianceWork(includedScope, selectedService);
   return [...requested].some((keyword) => keyword !== "may bom") ||
     ["sua khoa", "son nha"].some((keyword) => normalized.includes(keyword));
 }

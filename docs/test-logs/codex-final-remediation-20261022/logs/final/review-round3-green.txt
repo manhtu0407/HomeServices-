@@ -1,0 +1,42 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts (22 tests | 1 failed) 53ms
+     × Please repair the outlet and my washing machine. asks for ["may giat"] (coordinated appliance work is still requested) 7ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > Please repair the outlet and my washing machine. asks for ["may giat"] (coordinated appliance work is still requested)
+AssertionError: [P431-kael-requested-work-english-negation] English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    coordinated appliance work is still requested: "Please repair the outlet and my washing machine.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:60:85
+     58| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     59|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     60|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     61|   })
+     62| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  1 failed | 744 passed (745)
+   Start at  03:51:43
+   Duration  5.66s (transform 4.62s, setup 0ms, import 5.61s, tests 545ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts
