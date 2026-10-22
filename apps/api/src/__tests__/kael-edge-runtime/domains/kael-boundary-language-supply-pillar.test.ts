@@ -29,6 +29,7 @@ const unsupported = [
   'Ổ cắm bếp bị lỏng và tủ lạnh cũng không lạnh, nhờ thợ sửa cả hai.',
   'Nhờ thợ kiểm tra cầu dao, cả bếp từ nhà mình cũng không nóng nữa.',
   'Please repair my water heater and replace the outlet.',
+  "My washing machine is next to an outlet that won't turn on, and please repair the fridge too.",
   'Máy giặt không bấm được nút khởi động.',
 ]
 const supported = [
@@ -54,6 +55,11 @@ function boundary(text: string, service: Service, enabled: boolean) {
 }
 
 describe(PILLAR.id, () => {
+  it('preserves the existing TV internal-fault route in the enabled electrical policy', () => {
+    const result = boundary('The TV is next to an outlet and its control board shows error E4.', 'electrical', true)
+    expect(result.ok, pillarWhy(PILLAR, 'shared appliance placement must not exempt the separate TV policy')).toBe(false)
+    if (!result.ok) expect(result.policyReasonCode).toBe('unsupported_internal_appliance_fault')
+  })
   it.each([false, true])('retains functional faults and new subjects after completed work, flags=%s', (enabled) => {
     for (const text of [
       'Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra.',
@@ -115,7 +121,15 @@ describe(PILLAR.id, () => {
       'Máy giặt đặt cạnh ổ cắm đang bị hỏng, nhờ sửa ổ cắm.',
       'Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm.',
       'Máy giặt đặt cạnh cái công tắc không bật được, nhờ sửa công tắc.',
-    ]) expect(boundary(text, 'electrical', enabled).ok, pillarWhy(PILLAR, text)).toBe(true)
+      "My washing machine is next to an outlet that won't turn on. Please fix the outlet.",
+      'My fridge is next to the outlet that is broken. Please fix the outlet.',
+      'My fridge is located next to an outlet that is broken. Please repair the outlet.',
+      'My washing machine is currently right next to an outlet that will not turn on.',
+    ]) {
+      const result = boundary(text, 'electrical', enabled)
+      expect(result.ok, pillarWhy(PILLAR, JSON.stringify({ text, result }))).toBe(true)
+      expect(buildFallbackIntent('electrical', [], text, enabled).service_type, pillarWhy(PILLAR, text)).toBe('electrical')
+    }
     const requested = boundary('May giat dat canh o cam khong vat.', 'electrical', enabled)
     expect(requested.ok).toBe(false)
     if (!requested.ok) expect(requested.reason).toBe('out_of_scope')

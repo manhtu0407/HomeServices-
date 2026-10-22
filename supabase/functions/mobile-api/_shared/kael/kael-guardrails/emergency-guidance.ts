@@ -32,7 +32,7 @@ type Cue = {
   readonly technicalBleeding?: boolean;
   readonly unless?: RegExp;
   readonly requires?: readonly RegExp[];
-  readonly unlessUnaccentedPrefix?: { readonly word: string; readonly pattern: RegExp };
+  readonly unlessUnaccentedContext?: { readonly word: string; readonly before?: RegExp; readonly after?: RegExp };
 };
 
 const cue = (pattern: RegExp, extra: Omit<Cue, "pattern"> = {}): Cue => ({ pattern, ...extra });
@@ -139,13 +139,13 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   ],
   medical: [
     cue(/\bbi giat(?! (?:minh\b|bung (?:ray|ban le|moc(?: treo)?)\b|dut (?:moc(?: treo)?|day)\b))\b/u, { requires: [ELECTRIC_SHOCK_CONTEXT] }),
-    cue(/\bbi ngat\b/u, { toneRules: FAINT_TONES, unlessUnaccentedPrefix: { word: "ngat", pattern: CUT_OFF_SUBJECT } }),
+    cue(/\bbi ngat\b/u, { toneRules: FAINT_TONES, unlessUnaccentedContext: { word: "ngat", before: CUT_OFF_SUBJECT, after: /^ (?:(?:ca|het|toan bo|mot phan) )?(?:dien|nuoc|nguon(?: dien)?)\b/u } }),
     cue(/\b(?:mixed|mixing) (?:bleach and ammonia|ammonia and bleach)\b/u, { requires: [/\b(?:coughing|dizzy|breathless|struggling to breathe)\b/u] }),
     cue(/\b(?:dien giat|giat dien|bat tinh|ngat xiu|ngung tho|ngung tim|khong tho (?:duoc|noi)|tho khong (?:duoc|noi)|ngat tho|nghet tho|khong the tho|co giat|dot quy|bi thuong|kho tho|dau nguc|cap cuu|bi bong nang|ngo doc|chay mau(?: nhieu| khong ngung| ao at| rat nhieu)?)\b/u),
     cue(/\b(?:electric(?:al)? shock|electrocuted|got shocked|was shocked|unconscious|passed out|not breathing|stopped breathing|difficulty breathing|struggling to breathe|can t breathe|cannot breathe|shortness of breath|chest pain|heart attack|seizure|overdose|medical emergency|needs? an ambulance|call an ambulance|injured|i m hurt|(?:someone|somebody|he|she|they|person|child|kid|baby|man|woman) (?:is|was|got|s) (?:badly |seriously )?hurt|seriously hurt|badly hurt)\b/u),
     cue(/\b(?:(?:i|he|she|they|someone|somebody|person|child|kid|baby|man|woman)(?: m| s| is| am| are| was)?(?: badly| heavily)? bleeding|bleeding (?:heavily|badly|profusely|a lot|won t stop))\b/u, { technicalBleeding: true }),
     cue(/\b(?:(?:i|he|she|they|we|someone|somebody|person|child|kid|baby|man|woman|dad|mum|mom|mother|father|wife|husband|son|daughter|grandma|grandpa|grandmother|grandfather|worker|technician|electrician)(?: m| s| is| was| has| just| suddenly)* (?:fainted|collapsed(?! (?:the|a|an|my|our|his|her|their|this|that|those|these|all|everything)\b)|passed out|unresponsive|not responding|not breathing|stopped moving)|(?:fainted|collapsed) (?:after|when|while)|is not responding to (?:me|us|anyone))\b/u),
-    cue(/\bngat (?:roi|di|luon|nguoi)\b/u, { toneRules: FAINT_TONES, unlessUnaccentedPrefix: { word: "ngat", pattern: CUT_OFF_SUBJECT } }),
+    cue(/\bngat (?:roi|di|luon|nguoi)\b/u, { toneRules: FAINT_TONES, unlessUnaccentedContext: { word: "ngat", before: CUT_OFF_SUBJECT } }),
     cue(/\bnga(?: [a-z]+){0,6} khong (?:day|dung day|dung|di|cu dong|ngoi) duoc\b/u, { toneRules: FALL_TONES }),
     cue(/\b(?:drank|swallowed|ingested|ate) (?:some |a |the |my |his |her )?(?:cleaning (?:liquid|fluid|product)|bleach|poison|detergent|pesticide|batter(?:y|ies)|chemicals?)\b|\b(?:uong|an|nuot) nham (?:thuoc|hoa chat|chat tay rua|nuoc tay|thuoc tru sau|pin|xang)\b/u),
     cue(/\b(?:len con |bi |con )?dau tim\b|\bnhoi mau co tim\b/u, { toneRules: HEART_TONES }),
@@ -463,8 +463,9 @@ function hasAffirmedCue(
     const segment = segmentAt(segments, index);
     const segmentText = signal.plain.slice(segment.start, segment.end);
     const prefix = signal.plain.slice(segment.start, index);
-    const ambiguous = candidate.unlessUnaccentedPrefix;
-    if (ambiguous && signal.accented.slice(index, end).split(" ").includes(ambiguous.word) && ambiguous.pattern.test(prefix.trim())) continue;
+    const ambiguous = candidate.unlessUnaccentedContext;
+    if (ambiguous && signal.accented.slice(index, end).split(" ").includes(ambiguous.word) &&
+      (ambiguous.before?.test(prefix.trim()) || ambiguous.after?.test(signal.plain.slice(end, segment.end)))) continue;
     if (HYPOTHETICAL_BEFORE.test(prefix.slice(prefix.lastIndexOf(",") + 1))) continue;
     if (PAST_MARKER.test(segmentText) && !PRESENT_MARKER.test(segmentText)) continue;
     if (RESOLVED_AFTER.test(signal.plain.slice(end, segmentAt(sentences, index).end))) continue;

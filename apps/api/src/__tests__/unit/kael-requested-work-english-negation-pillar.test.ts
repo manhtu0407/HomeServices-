@@ -22,6 +22,11 @@ export const PILLAR = {
 const requested = (text: string) => [...detectRequestedApplianceWork(text, 'electrical')].sort()
 
 const REFUSED: ReadonlyArray<readonly [string, string]> = [
+  ['My fridge is located next to an outlet that is broken. Please repair the outlet.', 'a located appliance does not own a fixture fault'],
+  ['My washing machine is currently right next to an outlet that will not turn on.', 'bounded placement modifiers retain the competing subject'],
+  ["My washing machine is next to an outlet that won't turn on. Please fix the outlet.", 'English copular placement before a fixture control fault'],
+  ['My fridge is next to the outlet that is broken. Please fix the outlet.', 'English copular placement before another subject fault'],
+  ['My washing machine is placed next to the outlet which has no power. Please repair the outlet.', 'placed equipment before a relative fixture supply clause'],
   ['Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm.', 'the adjacent outlet supply fault is not a washer function'],
   ['Máy giặt đặt cạnh cái công tắc không bật được, nhờ sửa công tắc.', 'the adjacent switch control fault is not a washer function'],
   ['May giat canh voi nuoc khong ra nuoc, nho sua voi nuoc.', 'the adjacent faucet supply remains fixture work'],
@@ -48,6 +53,7 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const STILL_REQUESTED: ReadonlyArray<readonly [string, readonly string[], string]> = [
+  ['My washing machine is next to the outlet but will not drain.', ['may giat'], 'a copular placement does not hide appliance function failure'],
   ['Nha toi bi hong may giat dat canh o cam, nho sua.', ['may giat'], 'an explicit appliance fault precedes its incidental placement'],
   ['Hong cai may giat canh o cam, nho kiem tra.', ['may giat'], 'a fault before the appliance outranks later placement'],
   ['Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra.', ['may giat'], 'draining remains an appliance function after placement'],

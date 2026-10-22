@@ -1,0 +1,40 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (50 tests | 1 failed) 275ms
+     × placement does not assign another fixture fault to an appliance, flags=true 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > placement does not assign another fixture fault to an appliance, flags=true
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    {"text":"My washing machine is next to an outlet that won't turn on. Please fix the outlet.","result":{"ok":false,"reason":"out_of_scope","declineText":"This request is outside the six home-service categories Kael currently supports in Ho Chi Minh City.","detectedSignals":["policy:unsupported_internal_appliance_fault"],"policyReasonCode":"unsupported_internal_appliance_fault","safetySignals":[]}}: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:122:78
+    120|     ]) {
+    121|       const result = boundary(text, 'electrical', enabled)
+    122|       expect(result.ok, pillarWhy(PILLAR, JSON.stringify({ text, resul…
+       |                                                                              ^
+    123|       expect(buildFallbackIntent('electrical', [], text, enabled).serv…
+    124|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 49 passed (50)
+   Start at  06:01:08
+   Duration  5.57s (transform 4.26s, setup 0ms, import 5.10s, tests 275ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts

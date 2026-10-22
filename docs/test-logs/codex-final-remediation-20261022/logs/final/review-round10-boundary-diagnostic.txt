@@ -1,0 +1,43 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (50 tests | 1 failed) 292ms
+     × placement does not assign another fixture fault to an appliance, flags=true 10ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > placement does not assign another fixture fault to an appliance, flags=true
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    My washing machine is next to an outlet that won't turn on. Please fix the outlet.: expected { ok: false, …(6) } to match object { ok: true }
+(6 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "ok": true,
++   "ok": false,
+  }
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:121:78
+    119|       'My fridge is next to the outlet that is broken. Please fix the …
+    120|     ]) {
+    121|       expect(boundary(text, 'electrical', enabled), pillarWhy(PILLAR, …
+       |                                                                              ^
+    122|       expect(buildFallbackIntent('electrical', [], text, enabled).serv…
+    123|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 49 passed (50)
+   Start at  06:00:50
+   Duration  5.80s (transform 4.40s, setup 0ms, import 5.30s, tests 292ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts

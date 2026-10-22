@@ -38,6 +38,12 @@ const PULLED_OBJECT = [
 ]
 
 const BENIGN_REPORTS = [
+  'Nha toi bi ngat ca dien va nuoc, nho kiem tra.',
+  'Nha toi bi ngat het nuoc, nho kiem tra.',
+  'Nha toi bi ngat dien, nho kiem tra.',
+  'Nha toi bi ngat nuoc, nho kiem tra.',
+  'Nha toi bi ngat nguon dien, nho kiem tra.',
+  'Ben minh bi ngat nuoc, nho kiem tra.',
   'Dien nha toi bi ngat roi',
   'Nuoc nha toi bi ngat luon',
   'May lanh cua toi bi ngat roi',
@@ -68,6 +74,9 @@ const BENIGN_REPORTS = [
 ]
 
 const REAL_SHOCK = [
+  'Vo toi bi ngat do dien giat',
+  'Tho dien bi ngat khi dang sua',
+  'Con toi bi ngat khi nha mat dien',
   'Vo toi bi ngat roi',
   'Con toi bi ngat khi dang choi',
   'Nguoi tho sua dien bi ngat khi dang sua o cam',
