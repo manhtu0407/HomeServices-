@@ -23,11 +23,10 @@ const ENGLISH_APPLIANCES: Readonly<Record<string, string>> = {
   "gas stove": "bep ga", "gas hob": "bep ga", "gas cooker": "bep ga",
   "water heater": "binh nong lanh", "wifi router": "wifi",
 };
-const ENGLISH_NONREQUEST = /\b(?:(?:do not|don t|no need to|not to|never) (?:fix|repair|check|inspect|service|install|replace)|(?:already|previously) (?:fixed|repaired|checked|serviced|installed|replaced))\b.*?(?=\b(?:but|however|instead|just|only|although|though)\b|\band (?:(?:now|please) ){0,2}(?:fix|repair|check|inspect|service|install|replace)\b|$)/g;
+const ENGLISH_NONREQUEST = /\b(?:(?:do not|don t|no need to|not to|never) (?:fix|repair|check|inspect|service|install|replace)|(?:already|previously) (?:fixed|repaired|checked|serviced|installed|replaced))\b.*?(?=\b(?:but|however|instead|just|only|although|though)\b|\band (?:(?:now|please) ){0,2}(?:fix|repair|check|inspect|service|install|replace)\b|\band (?:(?:now|currently|also|then) )?(?!(?:it|its|that|which)\b)(?:(?:the|my|our|your|a|an) )?(?:[a-z0-9]+ ){1,3}(?:is|are|was|were|does|will|has|cannot|broken|faulty|stuck|jammed|leaking)\b|$)/g;
 const ENGLISH_NEGATED_FAULT = /\b(?:(?:is|are|was|were) not|isn t|aren t|wasn t|weren t|not) (?:really |actually )?(?:broken|faulty|stuck|jammed|leaking)\b/g;
 const SUPPLY_FAULT_AFTER = /^(?: (?:nha|cua|minh|toi|em|my|our|the)){0,4} (?:mat nguon|khong (?:len nguon|co dien|vao dien)|(?:has )?no power)\b/;
 const INTERNAL_FAULT = /\b(?:bo mach|bang dieu khien|bao loi|khong nong|khong nhan noi|circuit board|control board|not heating|error code)\b/;
-const APPLIANCE_FUNCTION_FAULT = /\bkhong (?:vat|giat|lanh|dong da|say|quay|nong|nhan noi)\b/;
 const PLACED_BY_FIXTURE = /^ (?:(?:dang |duoc )?(?:dat|nam|treo|de) )?(?:gan|canh|ben canh|sat|sau|truoc|near|behind|beside|next to) (?:cai |chiec |the |my )?(?:o cam|o dien|cong tac|cau dao|voi nuoc|voi sen|duong ong|outlet|socket|faucet|tap|pipe)\b/;
 
 const REPAIR_ACT_WORDS = ["sua chua", "sua", "khac phuc", "kiem tra", "bao tri", "bao duong", "bao hanh", "xem", "coi", "kham", "fix", "repair", "check", "inspect", "service"];
@@ -43,6 +42,7 @@ const BARE_REQUEST_PHRASES: ReadonlySet<string> = new Set([...REPAIR_ACT_WORDS, 
 const FAULT_BARE = "hu(?: hong)?|hong|loi|ket (?:cua|nut)|tu nhien do|chay mai(?: [a-z]+){0,6} van(?: con)? uot|broken|faulty|stuck|jammed|leaking|ro ri|ro nuoc|ro dien|chay nuoc|dong tuyet|dong bang|rung(?: lac)?|keu(?: to| la| ten| ro)?|co mui (?:la|khet|hoi)|bao loi|chap chon|mat (?:ket noi|mang|song|nuoc|dien|nguon|tin hieu)|rot (?:mang|ket noi)|co van de|co su co|gap (?:su co|van de|loi)|truc trac|ngung (?:hoat dong|chay)|khong on dinh|(?:rat |qua |hoi |kha )?(?:yeu|cham)";
 const FAULT_BI = "bi (?:hu|hong|loi|nut|ket(?! noi)|dung|treo|liet|cham|yeu|ro|rot|truc trac|mat|ngung|dong tuyet|chap)";
 const FAULT_FUNCTION = "khong(?: (?:duoc|con|the|hay))? (?:bam(?: duoc)?|chay|hoat dong|len(?: nguon| lua)?|vao dien|vao duoc|co (?:mang|song|nuoc|dien|nguon|tin hieu)|ket noi|lanh|nong|say|kho|vat|giat|xa(?: nuoc)?|thoat nuoc|cap nuoc|hut|quay|xoay|nhan(?: noi)?|danh lua|bat|tat|khoi dong|dong da|lam da|mo|sang|dung|su dung|xai|truy cap|vao mang|ra nuoc)|(?:does not|doesn t|will not|won t|cannot|can t) (?:work|run|start|heat|cool|drain|spin|turn on)|(?:is not|isn t|are not|aren t) (?:working|running|starting|heating|cooling|draining|spinning)";
+const FUNCTION_FAULT_IN_CONTEXT = new RegExp(`\\b(?:${FAULT_FUNCTION})\\b`);
 const FAULT = `(?:${FAULT_BI}|${FAULT_BARE}|${FAULT_FUNCTION})`;
 
 const ENGLISH_SUBJECT_BOUNDARY = "(?:but|and|however|although|though|instead|whereas|while) (?!(?:it|its|now|still|currently)\\b)(?:(?:the|my|our|your|a|an) )?(?:[a-z0-9]+ ){1,3}(?:is|are|was|were|works|does|will|broken|faulty|stuck|jammed|leaking)\\b";
@@ -168,7 +168,7 @@ function mentionIsRequested(clauses: readonly Clause[], at: number, start: numbe
   const coordinated = coordinatedActStart(prefix);
   if (coordinated >= 0 && unfinished(coordinated)) return true;
   if (PLACEMENT_BEFORE.test(prefix)) return false;
-  if (PLACED_BY_FIXTURE.test(suffix) && !INTERNAL_FAULT.test(suffix) && !APPLIANCE_FUNCTION_FAULT.test(suffix)) return false;
+  if (PLACED_BY_FIXTURE.test(suffix) && !INTERNAL_FAULT.test(suffix) && !FUNCTION_FAULT_IN_CONTEXT.test(suffix)) return false;
   if (FAULT_BEFORE.test(prefix) || FAULT_AFTER.test(suffix)) return true;
   if (NOT_FAULTY_AFTER.test(suffix)) return false;
   const actAfter = ACT_AFTER.exec(suffix);

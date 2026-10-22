@@ -77,8 +77,6 @@ const FILLER_TONES: ToneRules = {
   tho: /^th\p{L}$/u,
 };
 const FAINT_TONES: ToneRules = { ngat: /^(?:ngat|ng\u1ea5t)$/u };
-// Plain "ngat" also means a supply or appliance cut-off. Only an explicit
-// equipment subject disambiguates it; a person later in the clause stays live.
 const CUT_OFF_SUBJECT = new RegExp(`^(?:(?:hien tai|bay gio|nha toi|nha minh|ben minh) )?(?:${WIRED_FIXTURES}|nguon dien|dien|nuoc|may lanh|dieu hoa|binh nong lanh|may giat|may say|tu lanh|may bom|quat|dong co|cb|rcbo|rccb|mcb)(?: (?:nha|cua) (?:toi|minh|em|anh|chi))?(?: (?:dang|hay|lai|thuong|cu|van)){0,2}$`, "u");
 const CATCH_FIRE_TONES: ToneRules = {
   boc: /^(?:boc|b\u1ed1c)$/u,

@@ -54,6 +54,18 @@ function boundary(text: string, service: Service, enabled: boolean) {
 }
 
 describe(PILLAR.id, () => {
+  it.each([false, true])('retains functional faults and new subjects after completed work, flags=%s', (enabled) => {
+    for (const text of [
+      'Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra.',
+      'Tủ lạnh cạnh ổ cắm không làm đá, nhờ kiểm tra.',
+      'We already repaired the outlet and now my washing machine will not start, please repair it.',
+    ]) {
+      const result = boundary(text, 'electrical', enabled)
+      expect(result.ok, pillarWhy(PILLAR, text)).toBe(false)
+      if (!result.ok) expect(result.reason).toBe('out_of_scope')
+      expect(buildFallbackIntent('electrical', [], text, enabled).service_type, pillarWhy(PILLAR, text)).toBe('unsupported')
+    }
+  })
   it('keeps shared exclusion filtering stable across primary and fallback callers', () => {
     const once = maskExplicitlyExcludedScopeForIntent('Fix the faucet, excluding the washing machine but repair the fridge.')
     expect(maskExplicitlyExcludedScopeForIntent(once), pillarWhy(PILLAR, 'repeated normalization keeps scope and later work unchanged')).toBe(once)

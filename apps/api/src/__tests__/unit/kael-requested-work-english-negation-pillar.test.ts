@@ -22,6 +22,7 @@ export const PILLAR = {
 const requested = (text: string) => [...detectRequestedApplianceWork(text, 'electrical')].sort()
 
 const REFUSED: ReadonlyArray<readonly [string, string]> = [
+  ['We already repaired the fridge and it was broken. Please fix the outlet.', 'the same historical subject remains completed'],
   ['Tủ lạnh đặt cạnh cái ổ cắm điện đã bị hỏng, nhờ sửa ổ cắm.', 'a different fixture after placement'],
   ['Máy giặt đặt cạnh ổ cắm đang bị hỏng, nhờ sửa ổ cắm.', 'a placed appliance is incidental to outlet work'],
   ['We already repaired the dishwasher that was broken. Please fix the outlet.', 'completed work covers its historical fault'],
@@ -44,6 +45,12 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const STILL_REQUESTED: ReadonlyArray<readonly [string, readonly string[], string]> = [
+  ['Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra.', ['may giat'], 'draining remains an appliance function after placement'],
+  ['Tủ lạnh cạnh ổ cắm không làm đá, nhờ kiểm tra.', ['tu lanh'], 'ice making remains an appliance function after placement'],
+  ['May giat canh o cam does not drain.', ['may giat'], 'the shared English function grammar remains active'],
+  ['We already repaired the outlet and now my washing machine will not start, please repair it.', ['may giat'], 'a new subject and current fault after completed work'],
+  ['We previously fixed the faucet and the fridge is broken, please repair it.', ['tu lanh'], 'a new faulty subject without now'],
+  ['We already repaired the outlet and currently our dishwasher does not work.', ['may rua bat'], 'a current subject after a completion'],
   ['Tủ lạnh trong phòng bếp bị hỏng, nhờ sửa.', ['tu lanh'], 'a room location does not erase an appliance fault'],
   ['May giat dat canh o cam khong vat.', ['may giat'], 'an appliance-specific function remains its own fault'],
   ['We already repaired the dishwasher that was broken, but repair the washing machine.', ['may giat'], 'new work after completed work'],

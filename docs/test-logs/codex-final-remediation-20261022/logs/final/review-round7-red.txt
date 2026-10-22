@@ -1,0 +1,199 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts (42 tests | 6 failed) 74ms
+     × Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra. asks for ["may giat"] (draining remains an appliance function after placement) 12ms
+     × Tủ lạnh cạnh ổ cắm không làm đá, nhờ kiểm tra. asks for ["tu lanh"] (ice making remains an appliance function after placement) 1ms
+     × May giat canh o cam does not drain. asks for ["may giat"] (the shared English function grammar remains active) 1ms
+     × We already repaired the outlet and now my washing machine will not start, please repair it. asks for ["may giat"] (a new subject and current fault after completed work) 1ms
+     × We previously fixed the faucet and the fridge is broken, please repair it. asks for ["tu lanh"] (a new faulty subject without now) 1ms
+     × We already repaired the outlet and currently our dishwasher does not work. asks for ["may rua bat"] (a current subject after a completion) 0ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (50 tests | 2 failed) 362ms
+     × retains functional faults and new subjects after completed work, flags=false 25ms
+     × retains functional faults and new subjects after completed work, flags=true 20ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 8 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra. asks for ["may giat"] (draining remains an appliance function after placement)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    draining remains an appliance function after placement: "Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:80:85
+     78| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     79|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     80|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     81|   })
+     82| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > Tủ lạnh cạnh ổ cắm không làm đá, nhờ kiểm tra. asks for ["tu lanh"] (ice making remains an appliance function after placement)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    ice making remains an appliance function after placement: "Tủ lạnh cạnh ổ cắm không làm đá, nhờ kiểm tra.": expected [] to deeply equal [ 'tu lanh' ]
+
+- Expected
++ Received
+
+- [
+-   "tu lanh",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:80:85
+     78| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     79|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     80|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     81|   })
+     82| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > May giat canh o cam does not drain. asks for ["may giat"] (the shared English function grammar remains active)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    the shared English function grammar remains active: "May giat canh o cam does not drain.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:80:85
+     78| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     79|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     80|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     81|   })
+     82| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > We already repaired the outlet and now my washing machine will not start, please repair it. asks for ["may giat"] (a new subject and current fault after completed work)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a new subject and current fault after completed work: "We already repaired the outlet and now my washing machine will not start, please repair it.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:80:85
+     78| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     79|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     80|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     81|   })
+     82| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > We previously fixed the faucet and the fridge is broken, please repair it. asks for ["tu lanh"] (a new faulty subject without now)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a new faulty subject without now: "We previously fixed the faucet and the fridge is broken, please repair it.": expected [] to deeply equal [ 'tu lanh' ]
+
+- Expected
++ Received
+
+- [
+-   "tu lanh",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:80:85
+     78| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     79|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     80|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     81|   })
+     82| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > We already repaired the outlet and currently our dishwasher does not work. asks for ["may rua bat"] (a current subject after a completion)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a current subject after a completion: "We already repaired the outlet and currently our dishwasher does not work.": expected [] to deeply equal [ 'may rua bat' ]
+
+- Expected
++ Received
+
+- [
+-   "may rua bat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:80:85
+     78| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     79|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     80|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     81|   })
+     82| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > retains functional faults and new subjects after completed work, flags=false
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > retains functional faults and new subjects after completed work, flags=true
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:64:50
+     62|     ]) {
+     63|       const result = boundary(text, 'electrical', enabled)
+     64|       expect(result.ok, pillarWhy(PILLAR, text)).toBe(false)
+       |                                                  ^
+     65|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     66|       expect(buildFallbackIntent('electrical', [], text, enabled).serv…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  8 failed | 84 passed (92)
+   Start at  05:15:32
+   Duration  7.75s (transform 5.75s, setup 0ms, import 7.00s, tests 436ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts
