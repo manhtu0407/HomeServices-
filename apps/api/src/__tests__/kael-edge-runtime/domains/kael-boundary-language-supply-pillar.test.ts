@@ -55,6 +55,16 @@ function boundary(text: string, service: Service, enabled: boolean) {
 }
 
 describe(PILLAR.id, () => {
+  it.each([
+    'My fridge is next to the outlet and its control board shows error E4.',
+    'My washing machine is next to an outlet and shows error E4.',
+    "My washing machine is next to an outlet that won't turn on and its control board shows error E4.",
+    'My fridge is next to an outlet and smoke is coming from inside.',
+  ])('retains independently recognized internal faults beside fixtures: %s', (text) => {
+    const result = boundary(text, 'electrical', true)
+    expect(result.ok, pillarWhy(PILLAR, text)).toBe(false)
+    if (!result.ok) expect(result.policyReasonCode).toBe('unsupported_internal_appliance_fault')
+  })
   it('preserves the existing TV internal-fault route in the enabled electrical policy', () => {
     const result = boundary('The TV is next to an outlet and its control board shows error E4.', 'electrical', true)
     expect(result.ok, pillarWhy(PILLAR, 'shared appliance placement must not exempt the separate TV policy')).toBe(false)
