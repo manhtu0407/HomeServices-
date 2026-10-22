@@ -6,7 +6,7 @@ import { resolveReportedEmergencyGuidance } from '../../../../../supabase/functi
 export const PILLAR = {
   id: 'P430-kael-emergency-context-guards',
   invariant:
-    'shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services',
+    'shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts',
   authority: [
     'governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm)',
     'governance/RULES.md #8 (an emergency reply is explicit and never a silent drop)',
@@ -16,7 +16,7 @@ export const PILLAR = {
   layer: 'unit',
   siblings: ['P410-kael-emergency-phrase-sets', 'P427-kael-emergency-standard-remediation', 'P420-kael-case-emergency-playbook-precedence'],
   mutation:
-    'drop the electricity requirement from the bị giật cue: the curtain, bag and drawer rows route to medical; drop the residue lookbehind and the cleaning exemption from the dense-smoke cue: the wall and curtain soot rows route to fire while the live-smoke rows stay green',
+    'drop the shock context or residue guards and benign repair rows trigger emergencies; blank an actively sounding gas-leak alarm as a prevention product and the active-alarm rows miss gas routing while product/testing controls stay quiet',
 } as const satisfies PillarManifest
 
 const stripDiacritics = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D')
@@ -37,7 +37,15 @@ const PULLED_OBJECT = [
   'Dây phơi bị giật đứt, nhờ thay dây mới.',
 ]
 
-const SOOT_TO_CLEAN = [
+const BENIGN_REPORTS = [
+  'Can you install a gas leak detector in the kitchen?',
+  'The gas leak alarm is not going off.',
+  'The gas leak alarm has stopped sounding.',
+  'We are testing the gas leak alarm and it is sounding.',
+  'If the gas leak alarm is going off, who should I call?',
+  'The gas leak alarm went off last night, but it has stopped.',
+  'I want to buy a gas leak alarm for prevention.',
+  'The gas leak alarm is in test mode and sounding.',
   'Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp.',
   'Bếp đang bốc lửa nhỏ đều để nấu ăn.',
   'No one was electrocuted. Please replace the outlet.',
@@ -81,11 +89,30 @@ describe(`${PILLAR.id}: an ordinary event is not an emergency`, () => {
     },
   )
 
-  it.each(SOOT_TO_CLEAN.flatMap((text) => WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => [write(text), service] as const))))(
+  it.each(BENIGN_REPORTS.flatMap((text) => WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => [write(text), service] as const))))(
     '%s stays quiet on the %s Case',
     (text, service) => {
       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(text))).toBe('none')
     },
+  )
+})
+
+const LIVE_GAS_ALARMS = [
+  'My gas leak alarm is going off.',
+  'The gas leak detector is sounding continuously.',
+  'Our gas leak sensors are still beeping.',
+  'The gas leak alarm that is ringing is in the hallway.',
+  'The gas leak alarm was installed and now it is going off.',
+]
+
+describe(`${PILLAR.id}: sounding gas alarms remain hazards`, () => {
+  it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((write) => SERVICES.filter((service) => service !== 'hvac').map((service) => [write(text), service] as const))))(
+    '%s retains gas routing on the %s Case',
+    (text, service) => expect(route(text, service), pillarWhy(PILLAR, text)).toBe('gas'),
+  )
+  it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => [write('The kitchen gas leak alarm is going off.'), service] as const)))(
+    '%s retains explicit kitchen-gas routing on the %s Case',
+    (text, service) => expect(route(text, service), pillarWhy(PILLAR, text)).toBe('gas'),
   )
 })
 

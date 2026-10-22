@@ -1,0 +1,430 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts (885 tests | 93 failed) 588ms
+     × My gas leak alarm is going off. retains gas routing on the handyman Case 11ms
+     × My gas leak alarm is going off. retains gas routing on the electrical Case 1ms
+     × My gas leak alarm is going off. retains gas routing on the cleaning Case 1ms
+     × My gas leak alarm is going off. retains gas routing on the upholstery Case 1ms
+     × My gas leak alarm is going off. retains gas routing on the plumbing Case 1ms
+     × My gas leak alarm is going off. retains gas routing on the handyman Case 1ms
+     × My gas leak alarm is going off. retains gas routing on the electrical Case 1ms
+     × My gas leak alarm is going off. retains gas routing on the cleaning Case 1ms
+     × My gas leak alarm is going off. retains gas routing on the upholstery Case 1ms
+     × My gas leak alarm is going off. retains gas routing on the plumbing Case 1ms
+     × MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the handyman Case 1ms
+     × MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the electrical Case 0ms
+     × MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the cleaning Case 0ms
+     × MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the upholstery Case 0ms
+     × MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the plumbing Case 0ms
+     × The gas leak detector is sounding continuously. retains gas routing on the handyman Case 1ms
+     × The gas leak detector is sounding continuously. retains gas routing on the electrical Case 0ms
+     × The gas leak detector is sounding continuously. retains gas routing on the cleaning Case 0ms
+     × The gas leak detector is sounding continuously. retains gas routing on the upholstery Case 1ms
+     × The gas leak detector is sounding continuously. retains gas routing on the plumbing Case 0ms
+     × The gas leak detector is sounding continuously. retains gas routing on the handyman Case 0ms
+     × The gas leak detector is sounding continuously. retains gas routing on the electrical Case 0ms
+     × The gas leak detector is sounding continuously. retains gas routing on the cleaning Case 0ms
+     × The gas leak detector is sounding continuously. retains gas routing on the upholstery Case 0ms
+     × The gas leak detector is sounding continuously. retains gas routing on the plumbing Case 0ms
+     × THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the handyman Case 0ms
+     × THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the electrical Case 0ms
+     × THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the cleaning Case 0ms
+     × THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the upholstery Case 0ms
+     × THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the plumbing Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the handyman Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the electrical Case 2ms
+     × Our gas leak sensors are still beeping. retains gas routing on the cleaning Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the upholstery Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the plumbing Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the handyman Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the electrical Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the cleaning Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the upholstery Case 0ms
+     × Our gas leak sensors are still beeping. retains gas routing on the plumbing Case 0ms
+     × OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the handyman Case 1ms
+     × OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the electrical Case 0ms
+     × OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the cleaning Case 2ms
+     × OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the upholstery Case 1ms
+     × OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the plumbing Case 0ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the handyman Case 1ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the electrical Case 1ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the cleaning Case 2ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the upholstery Case 0ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the plumbing Case 0ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the handyman Case 0ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the electrical Case 0ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the cleaning Case 0ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the upholstery Case 0ms
+     × The gas leak alarm that is ringing is in the hallway. retains gas routing on the plumbing Case 0ms
+     × THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the handyman Case 0ms
+     × THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the electrical Case 0ms
+     × THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the cleaning Case 0ms
+     × THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the upholstery Case 1ms
+     × THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the plumbing Case 0ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the handyman Case 1ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the electrical Case 0ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the cleaning Case 0ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the upholstery Case 0ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the plumbing Case 1ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the handyman Case 0ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the electrical Case 0ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the cleaning Case 0ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the upholstery Case 0ms
+     × The gas leak alarm was installed and now it is going off. retains gas routing on the plumbing Case 0ms
+     × THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the handyman Case 0ms
+     × THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the electrical Case 0ms
+     × THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the cleaning Case 0ms
+     × THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the upholstery Case 0ms
+     × THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the plumbing Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the handyman Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the electrical Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the cleaning Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the upholstery Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the plumbing Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the hvac Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the handyman Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the electrical Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the cleaning Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the upholstery Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the plumbing Case 0ms
+     × The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the hvac Case 0ms
+     × THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the handyman Case 0ms
+     × THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the electrical Case 0ms
+     × THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the cleaning Case 0ms
+     × THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the upholstery Case 0ms
+     × THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the plumbing Case 0ms
+     × THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the hvac Case 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 93 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > My gas leak alarm is going off. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    My gas leak alarm is going off.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > MY GAS LEAK ALARM IS GOING OFF. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    MY GAS LEAK ALARM IS GOING OFF.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak detector is sounding continuously. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    The gas leak detector is sounding continuously.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    THE GAS LEAK DETECTOR IS SOUNDING CONTINUOUSLY.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > Our gas leak sensors are still beeping. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    Our gas leak sensors are still beeping.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > OUR GAS LEAK SENSORS ARE STILL BEEPING. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    OUR GAS LEAK SENSORS ARE STILL BEEPING.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm that is ringing is in the hallway. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    The gas leak alarm that is ringing is in the hallway.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    THE GAS LEAK ALARM THAT IS RINGING IS IN THE HALLWAY.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The gas leak alarm was installed and now it is going off. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    The gas leak alarm was installed and now it is going off.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF. retains gas routing on the plumbing Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    THE GAS LEAK ALARM WAS INSTALLED AND NOW IT IS GOING OFF.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:111:78
+    109|   it.each(LIVE_GAS_ALARMS.flatMap((text) => WRITTEN_FORMS.flatMap((wri…
+    110|     '%s retains gas routing on the %s Case',
+    111|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    112|   )
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > The kitchen gas leak alarm is going off. retains explicit kitchen-gas routing on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    The kitchen gas leak alarm is going off.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:115:78
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+    114|     '%s retains explicit kitchen-gas routing on the %s Case',
+    115|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    116|   )
+    117| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/93]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: sounding gas alarms remain hazards > THE KITCHEN GAS LEAK ALARM IS GOING OFF. retains explicit kitchen-gas routing on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    THE KITCHEN GAS LEAK ALARM IS GOING OFF.: expected 'none' to be 'gas' // Object.is equality
+
+Expected: "gas"
+Received: "none"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:115:78
+    113|   it.each(WRITTEN_FORMS.flatMap((write) => SERVICES.map((service) => […
+    114|     '%s retains explicit kitchen-gas routing on the %s Case',
+    115|     (text, service) => expect(route(text, service), pillarWhy(PILLAR, …
+       |                                                                              ^
+    116|   )
+    117| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/93]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  93 failed | 792 passed (885)
+   Start at  04:09:47
+   Duration  1.64s (transform 291ms, setup 0ms, import 417ms, tests 588ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts

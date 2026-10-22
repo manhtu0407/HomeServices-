@@ -245,6 +245,9 @@ const UNCERTAIN_GENERIC_CUES = [
 
 const PREVENTION_PHRASES =
   /\b(?:canh (?:co )?(?:chay|hoa hoan)|phong chay chua chay|chua chay|binh chua chay|binh cuu hoa|cuu hoa|pccc|(?:canh )?bao ro (?:khi )?(?:gas|ga)|dau do (?:khi )?(?:gas|ga)|cam bien (?:khi )?(?:gas|ga)|(?:kiem tra|do) ro (?:khi )?(?:gas|ga)|gas (?:leak )?(?:detectors?|alarms?|sensors?)|(?:check|checking|test|testing|detect|detecting) (?:for )?(?:a )?gas leaks?|fire (?:drill|safety|prevention|extinguisher|exit|escape|door|rated|proof|sprinkler|code)|fire-?proof|smoke (?:detectors?|alarms?) (?:battery|install\w*|replac\w*|test\w*))\b/u;
+const GAS_ALARM_PRODUCT = /^gas (?:leak )?(?:detectors?|alarms?|sensors?)$/u;
+const GAS_ALARM_ACTIVE_AFTER = /^(?: (?:is|are|was|were|has been|have been|has|have|still|now|currently|continuously|constantly|repeatedly|keeps?|that|which|it|they|and|but|installed)){0,8} (?:going off|sounding|ringing|blaring|beeping|went off|started (?:sounding|ringing|beeping|blaring))\b/u;
+const GAS_ALARM_TEST_BEFORE = /\b(?:test|testing)(?: (?:my|our|the|a|this|that|new|installed)){0,3} $/u;
 
 const NEGATED_CUE_SUFFIX = /\b(?:khong|chua|chang|het|no(?! one\b)|not|never|without|no longer|does not|do not|is not|are not|was not|were not|doesn t|don t|isn t|aren t)\b(?:\s+[\p{L}\p{N}]+){0,4}\s*$|\b(?:nobody|no one)(?: (?:is|was|has been|had been|got|gets|has|had))?\s*$/u;
 const SELF_NEGATION = /\b(?:khong phai|khong|chua|chang)\s+(?:phai\s+)?(?:la\s+)?(?:toi|minh|tui|em|chung toi|nha toi|bon toi)\b|\b(?:toi|minh|tui|em|chung toi)\s+(?:khong|chua|chang)\b|\b(?:not|never)\s+(?:me|i|us|myself)\b|\b(?:i|we)\s+(?:am not|m not|was not|wasn t|did not|didn t|have not|haven t|do not|don t)\b/u;
@@ -341,7 +344,11 @@ function readEmergencySignals(
   includeGenericUrgency: boolean,
   context: EmergencyContext,
 ): EmergencyReading {
-  const unprevented = blankMatches(buildSignalText(text), PREVENTION_PHRASES);
+  const raw = buildSignalText(text);
+  const unprevented = blankMatches(raw, PREVENTION_PHRASES, (start, end) =>
+    GAS_ALARM_PRODUCT.test(raw.plain.slice(start, end)) &&
+    !GAS_ALARM_TEST_BEFORE.test(raw.plain.slice(Math.max(0, start - 64), start)) &&
+    GAS_ALARM_ACTIVE_AFTER.test(raw.plain.slice(end, end + 100)));
   const signal = blankMatches(unprevented, SPARK_PREVENTION_PHRASES, (start, end) => reportsActiveSpark(unprevented, start, end));
   const segments = segmentRanges(signal.plain);
   const sentences = sentenceRanges(signal.plain);

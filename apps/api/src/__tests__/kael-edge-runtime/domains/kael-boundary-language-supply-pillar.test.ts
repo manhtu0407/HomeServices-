@@ -99,4 +99,16 @@ describe(PILLAR.id, () => {
     expect(replies[0]?.safe_metadata).toMatchObject({ emergency_route: 'electrical_water' })
     expect(world.db.tables.jobs).toHaveLength(0)
   })
+  it.each([false, true])('an active gas alarm stops intake with visible guidance, flags=%s', async (enabled) => {
+    const world = activeWorld('electrical', { env: enabled ? flagsOn : {} })
+    world.db.tables.jobs = []
+    const before = world.db.tables.kael_chat_turns.length
+    const result = await world.request('', { message: 'My gas leak alarm is going off.', language: 'en' })
+    const replies = world.db.tables.kael_chat_turns.slice(before).filter((turn) => turn.role === 'kael')
+    expect(result.status).toBe(200)
+    expect(replies).toHaveLength(1)
+    expect(replies[0]?.safe_metadata).toMatchObject({ emergency_route: 'gas' })
+    expect(String(replies[0]?.text_content)).toContain('114')
+    expect(world.db.tables.jobs).toHaveLength(0)
+  })
 })
