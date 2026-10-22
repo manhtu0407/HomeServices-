@@ -3,12 +3,12 @@ check kael-matching-maintainer
 check kael-media-retention
 check mobile-api
 [0m[38;5;245mrunning 4 tests from ./supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts[0m
-P388-mobile-client-contract-compatibility: accepts the immediate legacy epoch at its explicit per-platform floor ... [0m[32mok[0m [0m[38;5;245m(45ms)[0m
-P388-mobile-client-contract-compatibility: rejects the immediate legacy epoch below its floor and all older epochs ... [0m[32mok[0m [0m[38;5;245m(3ms)[0m
-P388-mobile-client-contract-compatibility: requires exact release identity for the current epoch ... [0m[32mok[0m [0m[38;5;245m(2ms)[0m
+P388-mobile-client-contract-compatibility: accepts the immediate legacy epoch at its explicit per-platform floor ... [0m[32mok[0m [0m[38;5;245m(40ms)[0m
+P388-mobile-client-contract-compatibility: rejects the immediate legacy epoch below its floor and all older epochs ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
+P388-mobile-client-contract-compatibility: requires exact release identity for the current epoch ... [0m[32mok[0m [0m[38;5;245m(872µs)[0m
 P388-mobile-client-contract-compatibility: accepts the current release-bound iOS build while preserving the previous build floor ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
 
-[0m[32mok[0m | 4 passed | 0 failed [0m[38;5;245m(65ms)[0m
+[0m[32mok[0m | 4 passed | 0 failed [0m[38;5;245m(50ms)[0m
 
 check payment-maintainer
 check system-monitor
@@ -18,19 +18,24 @@ edge check: discovered=7 selected=7 checked=7 failed=0
 
 ----- stderr -----
  Image denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498 Skipped Image is already present locally
- Container b4-deno-run-2784d1a7186b Creating 
- Container b4-deno-run-2784d1a7186b Created 
- Container b4-deno-run-60f9f2e3ddda Creating 
- Container b4-deno-run-60f9f2e3ddda Created 
- Container b4-deno-run-0126203a81db Creating 
- Container b4-deno-run-0126203a81db Created 
- Container b4-deno-run-75b74299d91e Creating 
- Container b4-deno-run-75b74299d91e Created 
- Container b4-deno-run-170237b46451 Creating 
- Container b4-deno-run-170237b46451 Created 
- Container b4-deno-run-077ed15f3716 Creating 
- Container b4-deno-run-077ed15f3716 Created 
- Container b4-deno-run-ff7afc24f4c3 Creating 
- Container b4-deno-run-ff7afc24f4c3 Created 
- Container b4-deno-run-47339158eab3 Creating 
- Container b4-deno-run-47339158eab3 Created 
+ Container b4-deno-run-99e911119184 Creating 
+ Container b4-deno-run-99e911119184 Created 
+ Container b4-deno-run-d75eaedf9297 Creating 
+ Container b4-deno-run-d75eaedf9297 Created 
+[0m[32mCheck[0m supabase/functions/kael-matching-maintainer/index.ts
+ Container b4-deno-run-3676af63d1ee Creating 
+ Container b4-deno-run-3676af63d1ee Created 
+ Container b4-deno-run-52321dfa3a3e Creating 
+ Container b4-deno-run-52321dfa3a3e Created 
+[0m[32mCheck[0m supabase/functions/mobile-api/index.ts
+ Container b4-deno-run-5606f1fd657b Creating 
+ Container b4-deno-run-5606f1fd657b Created 
+[0m[32mCheck[0m supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts
+ Container b4-deno-run-983146cbf908 Creating 
+ Container b4-deno-run-983146cbf908 Created 
+[0m[32mCheck[0m supabase/functions/payment-maintainer/index.ts
+ Container b4-deno-run-e7b3d83b5bd7 Creating 
+ Container b4-deno-run-e7b3d83b5bd7 Created 
+ Container b4-deno-run-9b85fd106369 Creating 
+ Container b4-deno-run-9b85fd106369 Created 
+[0m[32mCheck[0m supabase/functions/sepay-webhook/index.ts

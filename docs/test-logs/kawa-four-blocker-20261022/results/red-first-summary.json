@@ -8,9 +8,9 @@
    "exit": 1
   },
   "kael-boundary-electrical-flag-parity-pillar.test.ts": {
-   "passed": 59,
-   "failed": 30,
-   "total": 89,
+   "passed": 69,
+   "failed": 43,
+   "total": 112,
    "exit": 1
   }
  },
@@ -22,9 +22,9 @@
    "exit": 0
   },
   "kael-boundary-electrical-flag-parity-pillar.test.ts": {
-   "passed": 89,
+   "passed": 112,
    "failed": 0,
-   "total": 89,
+   "total": 112,
    "exit": 0
   }
  },

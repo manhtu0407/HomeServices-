@@ -1,7 +1,7 @@
 {
   "schema": "nestscout.r1.hazard_triplet.v1",
   "snapshot": "post",
-  "executed_at": "2026-10-22T09:27:19.748Z",
+  "executed_at": "2026-10-22T09:48:41.643Z",
   "results": [
     {
       "scenario": "ELEC-S3",

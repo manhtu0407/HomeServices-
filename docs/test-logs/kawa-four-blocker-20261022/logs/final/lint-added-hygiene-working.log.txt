@@ -1,3 +1,3 @@
-check-added-source-hygiene: 0 blocking, 43 changed file(s) examined
+check-added-source-hygiene: 0 blocking, 36 changed file(s) examined
 
 ----- stderr -----

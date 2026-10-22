@@ -1,212 +1,212 @@
 [
  {
-  "utc": "2026-10-22T09:24:11.068Z",
+  "utc": "2026-10-22T09:44:16.386Z",
   "name": "api-full-suite",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-package-script @nestscout/api test",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:25:42.952Z",
+  "utc": "2026-10-22T09:46:21.223Z",
   "name": "red-first",
   "cwd": "<candidate-worktree>",
   "command": "node \"C:\\ns-fix\\b4\\docs\\test-logs\\kawa-four-blocker-20261022\\scripts\\red-first.mjs\"",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:26:16.016Z",
+  "utc": "2026-10-22T09:47:13.292Z",
   "name": "matrix-and-drivers",
   "cwd": "<candidate-worktree>",
   "command": "node \"C:\\ns-fix\\b4\\docs\\test-logs\\kawa-four-blocker-20261022\\scripts\\reproduce.mjs\" post",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:27:35.424Z",
+  "utc": "2026-10-22T09:49:04.567Z",
   "name": "type-check-api",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-package-script @nestscout/api type-check",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:27:42.083Z",
+  "utc": "2026-10-22T09:49:31.736Z",
   "name": "type-check-shared",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-package-script @nestscout/shared type-check",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:27:46.768Z",
+  "utc": "2026-10-22T09:49:36.277Z",
   "name": "test-shared",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-package-script @nestscout/shared test",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:27:50.135Z",
+  "utc": "2026-10-22T09:49:39.413Z",
   "name": "type-check-mobile",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-package-script @nestscout/mobile type-check",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:28:16.229Z",
+  "utc": "2026-10-22T09:50:34.058Z",
   "name": "test-mobile",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-package-script @nestscout/mobile test",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:32:59.840Z",
+  "utc": "2026-10-22T09:59:32.197Z",
   "name": "lint-comments-working",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs --working",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:33:01.024Z",
+  "utc": "2026-10-22T09:59:34.513Z",
   "name": "lint-comments-full",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:33:02.843Z",
+  "utc": "2026-10-22T09:59:37.368Z",
   "name": "lint-test-integrity-working",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/check-test-integrity.mjs --working",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:33:03.865Z",
+  "utc": "2026-10-22T09:59:38.565Z",
   "name": "lint-added-hygiene-working",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/check-added-source-hygiene.mjs --working",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:33:04.732Z",
+  "utc": "2026-10-22T09:59:39.539Z",
   "name": "lint-reuse-ladder",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/check-reuse-ladder.mjs --working",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:33:06.532Z",
-  "name": "lint-baseline",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-structure-baseline.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:09.053Z",
-  "name": "lint-authority",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-authority-citations.mjs",
-  "exit": 1
- },
- {
-  "utc": "2026-10-22T09:33:10.377Z",
-  "name": "lint-source-residue",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-source-residue.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:11.550Z",
-  "name": "lint-protocol-routes",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-protocol-routes.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:12.203Z",
-  "name": "lint-work-plan-coverage",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-work-plan.mjs --coverage",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:12.835Z",
-  "name": "lint-workflow-cost",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-workflow-cost.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:13.476Z",
-  "name": "lint-test-collection",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-test-collection.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:14.192Z",
-  "name": "lint-runner-parity",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-runner-parity.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:14.864Z",
-  "name": "lint-skills-sync",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-skills-sync.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:15.585Z",
-  "name": "lint-skill-contracts",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/check-skill-contracts.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:33:16.265Z",
-  "name": "lint-artifact-text-assertions",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs run-node scripts/find-artifact-text-assertions.mjs",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:34:53.191Z",
-  "name": "edge-check-docker-pinned-deno",
-  "cwd": "<candidate-worktree>",
-  "command": "node scripts/run.mjs docker/scripts/edge-check",
-  "exit": 0
- },
- {
-  "utc": "2026-10-22T09:36:16.293Z",
+  "utc": "2026-10-22T09:59:40.355Z",
   "name": "lint-structure",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/lint-structure.mjs",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:36:17.391Z",
+  "utc": "2026-10-22T09:59:41.477Z",
+  "name": "lint-baseline",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-structure-baseline.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:42.499Z",
   "name": "lint-edge-db",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:36:19.199Z",
+  "utc": "2026-10-22T09:59:44.480Z",
+  "name": "lint-authority",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-authority-citations.mjs",
+  "exit": 1
+ },
+ {
+  "utc": "2026-10-22T09:59:46.343Z",
+  "name": "lint-source-residue",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-source-residue.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:47.640Z",
+  "name": "lint-protocol-routes",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-protocol-routes.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:48.314Z",
+  "name": "lint-work-plan-coverage",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-work-plan.mjs --coverage",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:48.948Z",
+  "name": "lint-workflow-cost",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-workflow-cost.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:49.600Z",
+  "name": "lint-test-collection",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-test-collection.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:50.339Z",
+  "name": "lint-runner-parity",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-runner-parity.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:51.006Z",
+  "name": "lint-skills-sync",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-skills-sync.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:51.753Z",
+  "name": "lint-skill-contracts",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/check-skill-contracts.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:52.444Z",
+  "name": "lint-artifact-text-assertions",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs run-node scripts/find-artifact-text-assertions.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T09:59:53.808Z",
   "name": "harness-verify",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/harness/verify.mjs",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:38:34.212Z",
+  "utc": "2026-10-22T10:01:22.322Z",
   "name": "harness-manifest-check",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/harness/check-manifest.mjs",
   "exit": 0
  },
  {
-  "utc": "2026-10-22T09:38:38.840Z",
+  "utc": "2026-10-22T10:01:26.665Z",
   "name": "pillar-registry-check",
   "cwd": "<candidate-worktree>",
   "command": "node scripts/run.mjs run-node scripts/harness/pillar-registry.mjs",
+  "exit": 0
+ },
+ {
+  "utc": "2026-10-22T10:01:27.502Z",
+  "name": "edge-check-docker-pinned-deno",
+  "cwd": "<candidate-worktree>",
+  "command": "node scripts/run.mjs docker/scripts/edge-check",
   "exit": 0
  }
 ]

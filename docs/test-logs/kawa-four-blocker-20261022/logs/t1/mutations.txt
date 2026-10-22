@@ -1,11 +1,11 @@
 == mutant: accept an order that is still manual_qr_ready
 FAIL  manual_bank_reconciliation_behavior_verification.sql
-      ERROR:  an unclaimed QR order was confirmed as paid: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000101","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T09:22:42.57
+      ERROR:  an unclaimed QR order was confirmed as paid: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000101","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T10:06:13.74
 == restored decide
 PASS  manual_bank_reconciliation_behavior_verification.sql
 == mutant: skip the amount comparison
 FAIL  manual_bank_reconciliation_behavior_verification.sql
-      ERROR:  a short payment was not routed to reconciliation: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000103","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T09:22:
+      ERROR:  a short payment was not routed to reconciliation: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000103","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T10:06:
 == restored decide
 PASS  manual_bank_reconciliation_behavior_verification.sql
 == mutant: drop the bank-reference reuse check
@@ -20,12 +20,12 @@ FAIL  manual_bank_reconciliation_behavior_verification.sql
 PASS  manual_bank_reconciliation_behavior_verification.sql
 == mutant: reopen a reversed credit whatever the order status
 FAIL  manual_bank_reconciliation_behavior_verification.sql
-      ERROR:  a reversed credit under a claimed order was reopened: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000105","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T09
+      ERROR:  a reversed credit under a claimed order was reopened: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000105","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T10
 == restored decide
 PASS  manual_bank_reconciliation_behavior_verification.sql
 == mutant: reopen a reversed credit whatever its settlement reason
 FAIL  manual_bank_reconciliation_behavior_verification.sql
-      ERROR:  a credit reversed for another reason was reopened: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000106","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T09:23
+      ERROR:  a credit reversed for another reason was reopened: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000106","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T10:06
 == restored decide
 PASS  manual_bank_reconciliation_behavior_verification.sql
 == mutant: skip the Tier A field check

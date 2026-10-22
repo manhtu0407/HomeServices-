@@ -1,4 +1,4 @@
 $ gitleaks dir over 119 changed or new files, digest file included
 exit=0
-9:39AM INF scanned ~4572101 bytes (4.57 MB) in 3.64s
-9:39AM INF no leaks found
+10:07AM INF scanned ~4674844 bytes (4.67 MB) in 3.08s
+10:07AM INF no leaks found

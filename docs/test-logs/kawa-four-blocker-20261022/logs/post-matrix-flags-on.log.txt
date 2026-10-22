@@ -4,8 +4,8 @@
 
  Test Files  1 passed (1)
       Tests  60 passed (60)
-   Start at  16:26:33
-   Duration  7.16s (transform 4.87s, setup 0ms, import 5.88s, tests 1.04s, environment 0ms)
+   Start at  16:47:38
+   Duration  11.52s (transform 8.02s, setup 0ms, import 9.42s, tests 1.88s, environment 0ms)
 
 
 ----- stderr -----
