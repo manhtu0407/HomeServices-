@@ -42,6 +42,8 @@ const SOOT_TO_CLEAN = [
 ]
 
 const REAL_SHOCK = [
+  'Aptomat chống giật vừa nhảy mà em vẫn bị giật khi chạm vòi',
+  'Em chạm vỏ tủ lạnh thì bị giật',
   'Bình nóng lạnh rò nước, chạm vào vòi bị giật tê tay',
   'Chạm vào ổ cắm là bị giật',
   'Con tôi bị giật điện khi sờ vào dây sạc',

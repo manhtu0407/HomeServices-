@@ -52,7 +52,7 @@ const SMOKE_OUT_TONES: ToneRules = {
   tran: /^(?:tran|tr\u00e0n)$/u,
 };
 const SOOT_CLEANING = /\bve sinh\b/u;
-const ELECTRIC_SHOCK_CONTEXT = /\b(?:dien|o cam|cau dao|aptomat|cong tac|day sac|day nguon|voi nuoc|voi sen|binh nong lanh|cham vao|cham tay|so vao|te tay|ro dien|chap dien)\b/u;
+const ELECTRIC_SHOCK_CONTEXT = /\b(?:dien|o cam|cau dao|aptomat|cong tac|day sac|day nguon|voi nuoc|voi sen|binh nong lanh|cham vao|cham tay|cham (?:vao )?(?:voi|vo)|so vao|te tay|ro dien|chap dien)\b/u;
 const COOKING_SMOKE =/\b(?:nau|nuong|chien|xao|thuoc|nhang|huong|bbq|barbecue|grill|cigarette|incense|cooking|frying|toast|candle|nen|roast)\b/u;
 const FALL_TONES: ToneRules = {
   nga: /^(?:nga|ng\u00e3)$/u,
