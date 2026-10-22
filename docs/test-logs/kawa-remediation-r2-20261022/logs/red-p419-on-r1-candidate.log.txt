@@ -1,0 +1,1768 @@
+
+ RUN  v4.1.6 C:/ns-fix/r1/apps/api
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts (97 tests | 34 failed) 252ms
+     × Vietnamese: "chống tia lửa" in installation, replacement, quote and advice requests stays quiet 20ms
+     × Vietnamese: "ngăn tia lửa" in installation, replacement, quote and advice requests stays quiet 10ms
+     × Vietnamese: "ngăn ngừa tia lửa" in installation, replacement, quote and advice requests stays quiet 11ms
+     × Vietnamese: "phòng ngừa tia lửa" in installation, replacement, quote and advice requests stays quiet 11ms
+     × Vietnamese: "hạn chế tia lửa" in installation, replacement, quote and advice requests stays quiet 10ms
+     × Vietnamese: "giảm tia lửa" in installation, replacement, quote and advice requests stays quiet 14ms
+     × Vietnamese: "tránh tia lửa" in installation, replacement, quote and advice requests stays quiet 13ms
+     × Vietnamese: "chịu tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
+     × Vietnamese: "chống phát sinh tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
+     × Vietnamese: "hạn chế phát sinh tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
+     × English: "anti-spark" fixtures in installation, replacement and quote requests stay quiet 3ms
+     × English: "spark-proof" fixtures in installation, replacement and quote requests stay quiet 2ms
+     × English: "spark-resistant" fixtures in installation, replacement and quote requests stay quiet 2ms
+     × English: "spark-free" fixtures in installation, replacement and quote requests stay quiet 2ms
+     × English: "spark-safe" fixtures in installation, replacement and quote requests stay quiet 2ms
+     × English: "non-sparking" fixtures in installation, replacement and quote requests stay quiet 2ms
+     × English: "spark arrestor" as the thing being fitted stays quiet 2ms
+     × English: "spark protection" as the thing being fitted stays quiet 2ms
+     × English: "spark suppression" as the thing being fitted stays quiet 1ms
+     × English: "spark prevention" as the thing being fitted stays quiet 1ms
+     × English: a request for equipment that will prevent sparks stays quiet 2ms
+     × English: a request for equipment that will avoid sparks stays quiet 2ms
+     × English: a request for equipment that will stop sparks stays quiet 3ms
+     × English: a request for equipment that will reduce sparks stays quiet 2ms
+     × English: a request for equipment that will suppress sparks stays quiet 2ms
+     × English: a request for equipment that will limit sparks stays quiet 2ms
+     × the Codex review example in Vietnamese -> no route 1ms
+     × the Codex review example in English -> no route 0ms
+     × Mình muốn đổi sang loại ổ điện có màng chắn tia lửa cho an toàn. -> no route 1ms
+     × Ổ cắm loại an toàn, ít sinh tia lửa, giá bao nhiêu vậy? -> no route 0ms
+     × We offer spark-safe wiring upgrades for older apartments, can you quote one? -> no route 0ms
+     × Quote for fitting spark suppression on the distribution board. -> no route 1ms
+     × Looking for an outlet cover that stops sparks reaching the curtains. -> no route 1ms
+     × The new outlets are rated against sparking, please fit them on the balcony. -> no route 0ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 34 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "chống tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "chống tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm chống tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam chong tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM CHỐNG TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm chống tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam chong tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM CHỐNG TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm chống tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam chong tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM CHỐNG TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm chống tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam chong tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM CHỐNG TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc chống tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac chong tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC CHỐNG TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc chống tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac chong tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC CHỐNG TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc chống tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac chong tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC CHỐNG TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc chống tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac chong tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC CHỐNG TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat chống tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat chong tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT CHỐNG TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat chống tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat chong tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT CHỐNG TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat chống tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat chong tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT CHỐNG TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat chống tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat chong tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT CHỐNG TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao chống tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao chong tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO CHỐNG TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao chống tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao chong tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO CHỐNG TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao chống tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao chong tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO CHỐNG TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao chống tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao chong tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO CHỐNG TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện chống tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien chong tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN CHỐNG TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện chống tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien chong tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN CHỐNG TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện chống tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien chong tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN CHỐNG TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện chống tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien chong tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN CHỐNG TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện chống tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien chong tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN CHỐNG TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện chống tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien chong tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN CHỐNG TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện chống tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien chong tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN CHỐNG TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện chống tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien chong tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN CHỐNG TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "ngăn tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "ngăn tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm ngăn tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam ngan tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM NGĂN TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm ngăn tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam ngan tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM NGĂN TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm ngăn tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam ngan tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM NGĂN TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm ngăn tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam ngan tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM NGĂN TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc ngăn tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac ngan tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC NGĂN TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc ngăn tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac ngan tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC NGĂN TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc ngăn tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac ngan tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC NGĂN TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc ngăn tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac ngan tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC NGĂN TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat ngăn tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat ngan tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT NGĂN TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat ngăn tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat ngan tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT NGĂN TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat ngăn tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat ngan tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT NGĂN TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat ngăn tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat ngan tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT NGĂN TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao ngăn tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao ngan tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO NGĂN TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao ngăn tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao ngan tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO NGĂN TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao ngăn tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao ngan tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO NGĂN TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao ngăn tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao ngan tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO NGĂN TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện ngăn tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien ngan tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN NGĂN TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện ngăn tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien ngan tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN NGĂN TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện ngăn tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien ngan tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN NGĂN TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện ngăn tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien ngan tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN NGĂN TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện ngăn tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien ngan tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN NGĂN TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện ngăn tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien ngan tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN NGĂN TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện ngăn tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien ngan tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN NGĂN TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện ngăn tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien ngan tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN NGĂN TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "ngăn ngừa tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "ngăn ngừa tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm ngăn ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam ngan ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM NGĂN NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm ngăn ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam ngan ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM NGĂN NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm ngăn ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam ngan ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM NGĂN NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm ngăn ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam ngan ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM NGĂN NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc ngăn ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac ngan ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC NGĂN NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc ngăn ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac ngan ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC NGĂN NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc ngăn ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac ngan ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC NGĂN NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc ngăn ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac ngan ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC NGĂN NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat ngăn ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat ngan ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT NGĂN NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat ngăn ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat ngan ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT NGĂN NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat ngăn ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat ngan ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT NGĂN NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat ngăn ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat ngan ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT NGĂN NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao ngăn ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao ngan ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO NGĂN NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao ngăn ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao ngan ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO NGĂN NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao ngăn ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao ngan ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO NGĂN NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao ngăn ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao ngan ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO NGĂN NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện ngăn ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien ngan ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN NGĂN NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện ngăn ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien ngan ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN NGĂN NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện ngăn ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien ngan ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN NGĂN NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện ngăn ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien ngan ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN NGĂN NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện ngăn ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien ngan ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN NGĂN NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện ngăn ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien ngan ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN NGĂN NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện ngăn ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien ngan ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN NGĂN NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện ngăn ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien ngan ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN NGĂN NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "phòng ngừa tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "phòng ngừa tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm phòng ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam phong ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM PHÒNG NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm phòng ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam phong ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM PHÒNG NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm phòng ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam phong ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM PHÒNG NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm phòng ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam phong ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM PHÒNG NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc phòng ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac phong ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC PHÒNG NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc phòng ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac phong ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC PHÒNG NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc phòng ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac phong ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC PHÒNG NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc phòng ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac phong ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC PHÒNG NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat phòng ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat phong ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT PHÒNG NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat phòng ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat phong ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT PHÒNG NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat phòng ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat phong ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT PHÒNG NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat phòng ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat phong ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT PHÒNG NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao phòng ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao phong ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO PHÒNG NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao phòng ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao phong ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO PHÒNG NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao phòng ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao phong ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO PHÒNG NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao phòng ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao phong ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO PHÒNG NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện phòng ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien phong ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN PHÒNG NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện phòng ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien phong ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN PHÒNG NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện phòng ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien phong ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN PHÒNG NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện phòng ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien phong ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN PHÒNG NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện phòng ngừa tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien phong ngua tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN PHÒNG NGỪA TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện phòng ngừa tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien phong ngua tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN PHÒNG NGỪA TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện phòng ngừa tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien phong ngua tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN PHÒNG NGỪA TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện phòng ngừa tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien phong ngua tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN PHÒNG NGỪA TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "hạn chế tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "hạn chế tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm hạn chế tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam han che tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM HẠN CHẾ TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm hạn chế tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam han che tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM HẠN CHẾ TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm hạn chế tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam han che tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM HẠN CHẾ TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm hạn chế tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam han che tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM HẠN CHẾ TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc hạn chế tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac han che tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC HẠN CHẾ TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc hạn chế tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac han che tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC HẠN CHẾ TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc hạn chế tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac han che tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC HẠN CHẾ TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc hạn chế tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac han che tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC HẠN CHẾ TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat hạn chế tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat han che tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT HẠN CHẾ TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat hạn chế tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat han che tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT HẠN CHẾ TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat hạn chế tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat han che tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT HẠN CHẾ TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat hạn chế tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat han che tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT HẠN CHẾ TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao hạn chế tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao han che tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO HẠN CHẾ TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao hạn chế tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao han che tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO HẠN CHẾ TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao hạn chế tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao han che tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO HẠN CHẾ TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao hạn chế tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao han che tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO HẠN CHẾ TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện hạn chế tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien han che tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN HẠN CHẾ TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện hạn chế tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien han che tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN HẠN CHẾ TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện hạn chế tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien han che tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN HẠN CHẾ TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện hạn chế tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien han che tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN HẠN CHẾ TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện hạn chế tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien han che tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN HẠN CHẾ TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện hạn chế tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien han che tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN HẠN CHẾ TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện hạn chế tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien han che tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN HẠN CHẾ TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện hạn chế tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien han che tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN HẠN CHẾ TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "giảm tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "giảm tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm giảm tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam giam tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM GIẢM TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm giảm tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam giam tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM GIẢM TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm giảm tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam giam tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM GIẢM TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm giảm tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam giam tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM GIẢM TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc giảm tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac giam tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC GIẢM TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc giảm tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac giam tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC GIẢM TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc giảm tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac giam tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC GIẢM TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc giảm tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac giam tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC GIẢM TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat giảm tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat giam tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT GIẢM TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat giảm tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat giam tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT GIẢM TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat giảm tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat giam tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT GIẢM TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat giảm tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat giam tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT GIẢM TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao giảm tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao giam tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO GIẢM TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao giảm tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao giam tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO GIẢM TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao giảm tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao giam tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO GIẢM TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao giảm tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao giam tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO GIẢM TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện giảm tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien giam tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN GIẢM TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện giảm tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien giam tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN GIẢM TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện giảm tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien giam tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN GIẢM TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện giảm tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien giam tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN GIẢM TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện giảm tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien giam tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN GIẢM TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện giảm tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien giam tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN GIẢM TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện giảm tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien giam tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN GIẢM TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện giảm tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien giam tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN GIẢM TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "tránh tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "tránh tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm tránh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam tranh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM TRÁNH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm tránh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam tranh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM TRÁNH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm tránh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam tranh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM TRÁNH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm tránh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam tranh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM TRÁNH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc tránh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac tranh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC TRÁNH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc tránh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac tranh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC TRÁNH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc tránh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac tranh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC TRÁNH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc tránh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac tranh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC TRÁNH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat tránh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat tranh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT TRÁNH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat tránh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat tranh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT TRÁNH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat tránh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat tranh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT TRÁNH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat tránh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat tranh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT TRÁNH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao tránh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao tranh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO TRÁNH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao tránh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao tranh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO TRÁNH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao tránh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao tranh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO TRÁNH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao tránh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao tranh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO TRÁNH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện tránh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien tranh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN TRÁNH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện tránh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien tranh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN TRÁNH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện tránh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien tranh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN TRÁNH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện tránh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien tranh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN TRÁNH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện tránh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien tranh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN TRÁNH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện tránh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien tranh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN TRÁNH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện tránh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien tranh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN TRÁNH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện tránh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien tranh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN TRÁNH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "chịu tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "chịu tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm chịu tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam chiu tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM CHỊU TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm chịu tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam chiu tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM CHỊU TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm chịu tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam chiu tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM CHỊU TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm chịu tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam chiu tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM CHỊU TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc chịu tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac chiu tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC CHỊU TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc chịu tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac chiu tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC CHỊU TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc chịu tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac chiu tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC CHỊU TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc chịu tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac chiu tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC CHỊU TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat chịu tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat chiu tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT CHỊU TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat chịu tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat chiu tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT CHỊU TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat chịu tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat chiu tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT CHỊU TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat chịu tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat chiu tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT CHỊU TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao chịu tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao chiu tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO CHỊU TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao chịu tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao chiu tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO CHỊU TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao chịu tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao chiu tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO CHỊU TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao chịu tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao chiu tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO CHỊU TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện chịu tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien chiu tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN CHỊU TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện chịu tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien chiu tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN CHỊU TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện chịu tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien chiu tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN CHỊU TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện chịu tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien chiu tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN CHỊU TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện chịu tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien chiu tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN CHỊU TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện chịu tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien chiu tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN CHỊU TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện chịu tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien chiu tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN CHỊU TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện chịu tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien chiu tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN CHỊU TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "chống phát sinh tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "chống phát sinh tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm chống phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam chong phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM CHỐNG PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm chống phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam chong phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM CHỐNG PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm chống phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam chong phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM CHỐNG PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm chống phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam chong phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM CHỐNG PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc chống phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac chong phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC CHỐNG PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc chống phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac chong phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC CHỐNG PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc chống phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac chong phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC CHỐNG PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc chống phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac chong phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC CHỐNG PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat chống phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat chong phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT CHỐNG PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat chống phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat chong phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT CHỐNG PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat chống phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat chong phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT CHỐNG PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat chống phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat chong phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT CHỐNG PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao chống phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao chong phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO CHỐNG PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao chống phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao chong phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO CHỐNG PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao chống phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao chong phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO CHỐNG PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao chống phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao chong phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO CHỐNG PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện chống phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien chong phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN CHỐNG PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện chống phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien chong phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN CHỐNG PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện chống phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien chong phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN CHỐNG PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện chống phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien chong phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN CHỐNG PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện chống phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien chong phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN CHỐNG PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện chống phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien chong phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN CHỐNG PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện chống phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien chong phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN CHỐNG PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện chống phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien chong phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN CHỐNG PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > Vietnamese: "hạn chế phát sinh tia lửa" in installation, replacement, quote and advice requests stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    72 written forms of "hạn chế phát sinh tia lửa": expected [ …(72) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Nhờ lắp ổ cắm hạn chế phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap o cam han che phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP Ổ CẮM HẠN CHẾ PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay ổ cắm hạn chế phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay o cam han che phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY Ổ CẮM HẠN CHẾ PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình ổ cắm hạn chế phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh o cam han che phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH Ổ CẮM HẠN CHẾ PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại ổ cắm hạn chế phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai o cam han che phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI Ổ CẮM HẠN CHẾ PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp công tắc hạn chế phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cong tac han che phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CÔNG TẮC HẠN CHẾ PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay công tắc hạn chế phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cong tac han che phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CÔNG TẮC HẠN CHẾ PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình công tắc hạn chế phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cong tac han che phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CÔNG TẮC HẠN CHẾ PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại công tắc hạn chế phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cong tac han che phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CÔNG TẮC HẠN CHẾ PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp aptomat hạn chế phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap aptomat han che phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP APTOMAT HẠN CHẾ PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay aptomat hạn chế phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay aptomat han che phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY APTOMAT HẠN CHẾ PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình aptomat hạn chế phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh aptomat han che phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH APTOMAT HẠN CHẾ PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại aptomat hạn chế phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai aptomat han che phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI APTOMAT HẠN CHẾ PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp cầu dao hạn chế phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap cau dao han che phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP CẦU DAO HẠN CHẾ PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay cầu dao hạn chế phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay cau dao han che phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY CẦU DAO HẠN CHẾ PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình cầu dao hạn chế phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh cau dao han che phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH CẦU DAO HẠN CHẾ PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại cầu dao hạn chế phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai cau dao han che phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI CẦU DAO HẠN CHẾ PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp bảng điện hạn chế phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap bang dien han che phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP BẢNG ĐIỆN HẠN CHẾ PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay bảng điện hạn chế phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay bang dien han che phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY BẢNG ĐIỆN HẠN CHẾ PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình bảng điện hạn chế phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh bang dien han che phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH BẢNG ĐIỆN HẠN CHẾ PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại bảng điện hạn chế phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai bang dien han che phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI BẢNG ĐIỆN HẠN CHẾ PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++   "\"Nhờ lắp tủ điện hạn chế phát sinh tia lửa cho bếp.\" -> electrical_water",
++   "\"Nho lap tu dien han che phat sinh tia lua cho bep.\" -> electrical_water",
++   "\"NHỜ LẮP TỦ ĐIỆN HẠN CHẾ PHÁT SINH TIA LỬA CHO BẾP.\" -> electrical_water",
++   "\"Cần thay tủ điện hạn chế phát sinh tia lửa điện trong phòng khách.\" -> electrical_water",
++   "\"Can thay tu dien han che phat sinh tia lua dien trong phong khach.\" -> electrical_water",
++   "\"CẦN THAY TỦ ĐIỆN HẠN CHẾ PHÁT SINH TIA LỬA ĐIỆN TRONG PHÒNG KHÁCH.\" -> electrical_water",
++   "\"Báo giá giúp mình tủ điện hạn chế phát sinh tia lửa.\" -> electrical_water",
++   "\"Bao gia giup minh tu dien han che phat sinh tia lua.\" -> electrical_water",
++   "\"BÁO GIÁ GIÚP MÌNH TỦ ĐIỆN HẠN CHẾ PHÁT SINH TIA LỬA.\" -> electrical_water",
++   "\"Tư vấn loại tủ điện hạn chế phát sinh tia lửa cho căn hộ mới.\" -> electrical_water",
++   "\"Tu van loai tu dien han che phat sinh tia lua cho can ho moi.\" -> electrical_water",
++   "\"TƯ VẤN LOẠI TỦ ĐIỆN HẠN CHẾ PHÁT SINH TIA LỬA CHO CĂN HỘ MỚI.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:147:113
+    145|   it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" in installation, re…
+    146|     const rows = viProductRows(prevention)
+    147|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                                 ^
+    148|   })
+    149|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "anti-spark" fixtures in installation, replacement and quote requests stay quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    15 sentences with "anti-spark": expected [ …(15) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please install the anti-spark outlet in the kitchen.\" -> electrical_water",
++   "\"Can you quote a anti-spark outlet?\" -> electrical_water",
++   "\"I want to replace my outlet with a anti-spark one.\" -> electrical_water",
++   "\"Please install the anti-spark socket in the kitchen.\" -> electrical_water",
++   "\"Can you quote a anti-spark socket?\" -> electrical_water",
++   "\"I want to replace my socket with a anti-spark one.\" -> electrical_water",
++   "\"Please install the anti-spark breaker in the kitchen.\" -> electrical_water",
++   "\"Can you quote a anti-spark breaker?\" -> electrical_water",
++   "\"I want to replace my breaker with a anti-spark one.\" -> electrical_water",
++   "\"Please install the anti-spark electrical panel in the kitchen.\" -> electrical_water",
++   "\"Can you quote a anti-spark electrical panel?\" -> electrical_water",
++   "\"I want to replace my electrical panel with a anti-spark one.\" -> electrical_water",
++   "\"Please install the anti-spark junction box in the kitchen.\" -> electrical_water",
++   "\"Can you quote a anti-spark junction box?\" -> electrical_water",
++   "\"I want to replace my junction box with a anti-spark one.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:152:101
+    150|   it.each(EN_MODIFIERS)('English: "%s" fixtures in installation, repla…
+    151|     const rows = EN_FIXTURES.flatMap((fixture) => EN_MODIFIER_CARRIERS…
+    152|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                     ^
+    153|   })
+    154|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "spark-proof" fixtures in installation, replacement and quote requests stay quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    15 sentences with "spark-proof": expected [ …(15) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please install the spark-proof outlet in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-proof outlet?\" -> electrical_water",
++   "\"I want to replace my outlet with a spark-proof one.\" -> electrical_water",
++   "\"Please install the spark-proof socket in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-proof socket?\" -> electrical_water",
++   "\"I want to replace my socket with a spark-proof one.\" -> electrical_water",
++   "\"Please install the spark-proof breaker in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-proof breaker?\" -> electrical_water",
++   "\"I want to replace my breaker with a spark-proof one.\" -> electrical_water",
++   "\"Please install the spark-proof electrical panel in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-proof electrical panel?\" -> electrical_water",
++   "\"I want to replace my electrical panel with a spark-proof one.\" -> electrical_water",
++   "\"Please install the spark-proof junction box in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-proof junction box?\" -> electrical_water",
++   "\"I want to replace my junction box with a spark-proof one.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:152:101
+    150|   it.each(EN_MODIFIERS)('English: "%s" fixtures in installation, repla…
+    151|     const rows = EN_FIXTURES.flatMap((fixture) => EN_MODIFIER_CARRIERS…
+    152|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                     ^
+    153|   })
+    154|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "spark-resistant" fixtures in installation, replacement and quote requests stay quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    15 sentences with "spark-resistant": expected [ …(15) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please install the spark-resistant outlet in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-resistant outlet?\" -> electrical_water",
++   "\"I want to replace my outlet with a spark-resistant one.\" -> electrical_water",
++   "\"Please install the spark-resistant socket in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-resistant socket?\" -> electrical_water",
++   "\"I want to replace my socket with a spark-resistant one.\" -> electrical_water",
++   "\"Please install the spark-resistant breaker in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-resistant breaker?\" -> electrical_water",
++   "\"I want to replace my breaker with a spark-resistant one.\" -> electrical_water",
++   "\"Please install the spark-resistant electrical panel in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-resistant electrical panel?\" -> electrical_water",
++   "\"I want to replace my electrical panel with a spark-resistant one.\" -> electrical_water",
++   "\"Please install the spark-resistant junction box in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-resistant junction box?\" -> electrical_water",
++   "\"I want to replace my junction box with a spark-resistant one.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:152:101
+    150|   it.each(EN_MODIFIERS)('English: "%s" fixtures in installation, repla…
+    151|     const rows = EN_FIXTURES.flatMap((fixture) => EN_MODIFIER_CARRIERS…
+    152|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                     ^
+    153|   })
+    154|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "spark-free" fixtures in installation, replacement and quote requests stay quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    15 sentences with "spark-free": expected [ …(15) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please install the spark-free outlet in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-free outlet?\" -> electrical_water",
++   "\"I want to replace my outlet with a spark-free one.\" -> electrical_water",
++   "\"Please install the spark-free socket in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-free socket?\" -> electrical_water",
++   "\"I want to replace my socket with a spark-free one.\" -> electrical_water",
++   "\"Please install the spark-free breaker in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-free breaker?\" -> electrical_water",
++   "\"I want to replace my breaker with a spark-free one.\" -> electrical_water",
++   "\"Please install the spark-free electrical panel in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-free electrical panel?\" -> electrical_water",
++   "\"I want to replace my electrical panel with a spark-free one.\" -> electrical_water",
++   "\"Please install the spark-free junction box in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-free junction box?\" -> electrical_water",
++   "\"I want to replace my junction box with a spark-free one.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:152:101
+    150|   it.each(EN_MODIFIERS)('English: "%s" fixtures in installation, repla…
+    151|     const rows = EN_FIXTURES.flatMap((fixture) => EN_MODIFIER_CARRIERS…
+    152|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                     ^
+    153|   })
+    154|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "spark-safe" fixtures in installation, replacement and quote requests stay quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    15 sentences with "spark-safe": expected [ …(15) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please install the spark-safe outlet in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-safe outlet?\" -> electrical_water",
++   "\"I want to replace my outlet with a spark-safe one.\" -> electrical_water",
++   "\"Please install the spark-safe socket in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-safe socket?\" -> electrical_water",
++   "\"I want to replace my socket with a spark-safe one.\" -> electrical_water",
++   "\"Please install the spark-safe breaker in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-safe breaker?\" -> electrical_water",
++   "\"I want to replace my breaker with a spark-safe one.\" -> electrical_water",
++   "\"Please install the spark-safe electrical panel in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-safe electrical panel?\" -> electrical_water",
++   "\"I want to replace my electrical panel with a spark-safe one.\" -> electrical_water",
++   "\"Please install the spark-safe junction box in the kitchen.\" -> electrical_water",
++   "\"Can you quote a spark-safe junction box?\" -> electrical_water",
++   "\"I want to replace my junction box with a spark-safe one.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:152:101
+    150|   it.each(EN_MODIFIERS)('English: "%s" fixtures in installation, repla…
+    151|     const rows = EN_FIXTURES.flatMap((fixture) => EN_MODIFIER_CARRIERS…
+    152|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                     ^
+    153|   })
+    154|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "non-sparking" fixtures in installation, replacement and quote requests stay quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    15 sentences with "non-sparking": expected [ …(15) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please install the non-sparking outlet in the kitchen.\" -> electrical_water",
++   "\"Can you quote a non-sparking outlet?\" -> electrical_water",
++   "\"I want to replace my outlet with a non-sparking one.\" -> electrical_water",
++   "\"Please install the non-sparking socket in the kitchen.\" -> electrical_water",
++   "\"Can you quote a non-sparking socket?\" -> electrical_water",
++   "\"I want to replace my socket with a non-sparking one.\" -> electrical_water",
++   "\"Please install the non-sparking breaker in the kitchen.\" -> electrical_water",
++   "\"Can you quote a non-sparking breaker?\" -> electrical_water",
++   "\"I want to replace my breaker with a non-sparking one.\" -> electrical_water",
++   "\"Please install the non-sparking electrical panel in the kitchen.\" -> electrical_water",
++   "\"Can you quote a non-sparking electrical panel?\" -> electrical_water",
++   "\"I want to replace my electrical panel with a non-sparking one.\" -> electrical_water",
++   "\"Please install the non-sparking junction box in the kitchen.\" -> electrical_water",
++   "\"Can you quote a non-sparking junction box?\" -> electrical_water",
++   "\"I want to replace my junction box with a non-sparking one.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:152:101
+    150|   it.each(EN_MODIFIERS)('English: "%s" fixtures in installation, repla…
+    151|     const rows = EN_FIXTURES.flatMap((fixture) => EN_MODIFIER_CARRIERS…
+    152|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                     ^
+    153|   })
+    154|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "spark arrestor" as the thing being fitted stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "spark arrestor": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please fit spark arrestor on the outlet.\" -> electrical_water",
++   "\"I need spark arrestor for the outlet in the garage.\" -> electrical_water",
++   "\"Please fit spark arrestor on the socket.\" -> electrical_water",
++   "\"I need spark arrestor for the socket in the garage.\" -> electrical_water",
++   "\"Please fit spark arrestor on the breaker.\" -> electrical_water",
++   "\"I need spark arrestor for the breaker in the garage.\" -> electrical_water",
++   "\"Please fit spark arrestor on the electrical panel.\" -> electrical_water",
++   "\"I need spark arrestor for the electrical panel in the garage.\" -> electrical_water",
++   "\"Please fit spark arrestor on the junction box.\" -> electrical_water",
++   "\"I need spark arrestor for the junction box in the garage.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:157:97
+    155|   it.each(EN_NOUNS)('English: "%s" as the thing being fitted stays qui…
+    156|     const rows = EN_FIXTURES.flatMap((fixture) => EN_NOUN_CARRIERS.map…
+    157|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    158|   })
+    159|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "spark protection" as the thing being fitted stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "spark protection": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please fit spark protection on the outlet.\" -> electrical_water",
++   "\"I need spark protection for the outlet in the garage.\" -> electrical_water",
++   "\"Please fit spark protection on the socket.\" -> electrical_water",
++   "\"I need spark protection for the socket in the garage.\" -> electrical_water",
++   "\"Please fit spark protection on the breaker.\" -> electrical_water",
++   "\"I need spark protection for the breaker in the garage.\" -> electrical_water",
++   "\"Please fit spark protection on the electrical panel.\" -> electrical_water",
++   "\"I need spark protection for the electrical panel in the garage.\" -> electrical_water",
++   "\"Please fit spark protection on the junction box.\" -> electrical_water",
++   "\"I need spark protection for the junction box in the garage.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:157:97
+    155|   it.each(EN_NOUNS)('English: "%s" as the thing being fitted stays qui…
+    156|     const rows = EN_FIXTURES.flatMap((fixture) => EN_NOUN_CARRIERS.map…
+    157|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    158|   })
+    159|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "spark suppression" as the thing being fitted stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "spark suppression": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please fit spark suppression on the outlet.\" -> electrical_water",
++   "\"I need spark suppression for the outlet in the garage.\" -> electrical_water",
++   "\"Please fit spark suppression on the socket.\" -> electrical_water",
++   "\"I need spark suppression for the socket in the garage.\" -> electrical_water",
++   "\"Please fit spark suppression on the breaker.\" -> electrical_water",
++   "\"I need spark suppression for the breaker in the garage.\" -> electrical_water",
++   "\"Please fit spark suppression on the electrical panel.\" -> electrical_water",
++   "\"I need spark suppression for the electrical panel in the garage.\" -> electrical_water",
++   "\"Please fit spark suppression on the junction box.\" -> electrical_water",
++   "\"I need spark suppression for the junction box in the garage.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:157:97
+    155|   it.each(EN_NOUNS)('English: "%s" as the thing being fitted stays qui…
+    156|     const rows = EN_FIXTURES.flatMap((fixture) => EN_NOUN_CARRIERS.map…
+    157|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    158|   })
+    159|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: "spark prevention" as the thing being fitted stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "spark prevention": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Please fit spark prevention on the outlet.\" -> electrical_water",
++   "\"I need spark prevention for the outlet in the garage.\" -> electrical_water",
++   "\"Please fit spark prevention on the socket.\" -> electrical_water",
++   "\"I need spark prevention for the socket in the garage.\" -> electrical_water",
++   "\"Please fit spark prevention on the breaker.\" -> electrical_water",
++   "\"I need spark prevention for the breaker in the garage.\" -> electrical_water",
++   "\"Please fit spark prevention on the electrical panel.\" -> electrical_water",
++   "\"I need spark prevention for the electrical panel in the garage.\" -> electrical_water",
++   "\"Please fit spark prevention on the junction box.\" -> electrical_water",
++   "\"I need spark prevention for the junction box in the garage.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:157:97
+    155|   it.each(EN_NOUNS)('English: "%s" as the thing being fitted stays qui…
+    156|     const rows = EN_FIXTURES.flatMap((fixture) => EN_NOUN_CARRIERS.map…
+    157|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    158|   })
+    159|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: a request for equipment that will prevent sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "prevent": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Looking for a outlet that can prevent sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which outlet would prevent sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a socket that can prevent sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which socket would prevent sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a breaker that can prevent sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which breaker would prevent sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a electrical panel that can prevent sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which electrical panel would prevent sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a junction box that can prevent sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which junction box would prevent sparking best in a damp bathroom?\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:165:97
+    163|       [`Which ${fixture} would ${verb} sparking best in a damp bathroo…
+    164|     ])
+    165|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    166|   })
+    167|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: a request for equipment that will avoid sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "avoid": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Looking for a outlet that can avoid sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which outlet would avoid sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a socket that can avoid sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which socket would avoid sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a breaker that can avoid sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which breaker would avoid sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a electrical panel that can avoid sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which electrical panel would avoid sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a junction box that can avoid sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which junction box would avoid sparking best in a damp bathroom?\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:165:97
+    163|       [`Which ${fixture} would ${verb} sparking best in a damp bathroo…
+    164|     ])
+    165|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    166|   })
+    167|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: a request for equipment that will stop sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "stop": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Looking for a outlet that can stop sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which outlet would stop sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a socket that can stop sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which socket would stop sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a breaker that can stop sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which breaker would stop sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a electrical panel that can stop sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which electrical panel would stop sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a junction box that can stop sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which junction box would stop sparking best in a damp bathroom?\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:165:97
+    163|       [`Which ${fixture} would ${verb} sparking best in a damp bathroo…
+    164|     ])
+    165|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    166|   })
+    167|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: a request for equipment that will reduce sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "reduce": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Looking for a outlet that can reduce sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which outlet would reduce sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a socket that can reduce sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which socket would reduce sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a breaker that can reduce sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which breaker would reduce sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a electrical panel that can reduce sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which electrical panel would reduce sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a junction box that can reduce sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which junction box would reduce sparking best in a damp bathroom?\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:165:97
+    163|       [`Which ${fixture} would ${verb} sparking best in a damp bathroo…
+    164|     ])
+    165|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    166|   })
+    167|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: a request for equipment that will suppress sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "suppress": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Looking for a outlet that can suppress sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which outlet would suppress sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a socket that can suppress sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which socket would suppress sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a breaker that can suppress sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which breaker would suppress sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a electrical panel that can suppress sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which electrical panel would suppress sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a junction box that can suppress sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which junction box would suppress sparking best in a damp bathroom?\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:165:97
+    163|       [`Which ${fixture} would ${verb} sparking best in a damp bathroo…
+    164|     ])
+    165|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    166|   })
+    167|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > English: a request for equipment that will limit sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    10 sentences with "limit": expected [ …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Looking for a outlet that can limit sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which outlet would limit sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a socket that can limit sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which socket would limit sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a breaker that can limit sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which breaker would limit sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a electrical panel that can limit sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which electrical panel would limit sparking best in a damp bathroom?\" -> electrical_water",
++   "\"Looking for a junction box that can limit sparks when I plug appliances in.\" -> electrical_water",
++   "\"Which junction box would limit sparking best in a damp bathroom?\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:165:97
+    163|       [`Which ${fixture} would ${verb} sparking best in a damp bathroo…
+    164|     ])
+    165|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                 ^
+    166|   })
+    167|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > the Codex review example in Vietnamese -> no route
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    the Codex review example in Vietnamese: "Nhờ lắp ổ cắm chống tia lửa cho bếp." routed to electrical_water: expected 'electrical_water' to be null
+
+- Expected:
+null
+
++ Received:
+"electrical_water"
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:178:98
+    176|   ] as const)('%s -> no route', (label, text, language) => {
+    177|     const got = route(text, language)
+    178|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+    179|   })
+    180| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard > the Codex review example in English -> no route
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    the Codex review example in English: "Please replace the spark-proof outlet cover." routed to electrical_water: expected 'electrical_water' to be null
+
+- Expected:
+null
+
++ Received:
+"electrical_water"
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:178:98
+    176|   ] as const)('%s -> no route', (label, text, language) => {
+    177|     const got = route(text, language)
+    178|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+       |                                                                                                  ^
+    179|   })
+    180| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: held-out product phrasings written before the fix, never used to shape it > Mình muốn đổi sang loại ổ điện có màng chắn tia lửa cho an toàn. -> no route
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    "Mình muốn đổi sang loại ổ điện có màng chắn tia lửa cho an toàn." routed to electrical_water: expected 'electrical_water' to be null
+
+- Expected:
+null
+
++ Received:
+"electrical_water"
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:222:88
+    220|   it.each(HELD_OUT_SPARK_PRODUCT)('%s -> no route', (text, language) =…
+    221|     const got = route(text, language)
+    222|     expect(got, pillarWhy(PILLAR, `${JSON.stringify(text)} routed to $…
+       |                                                                                        ^
+    223|   })
+    224| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: held-out product phrasings written before the fix, never used to shape it > Ổ cắm loại an toàn, ít sinh tia lửa, giá bao nhiêu vậy? -> no route
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    "Ổ cắm loại an toàn, ít sinh tia lửa, giá bao nhiêu vậy?" routed to electrical_water: expected 'electrical_water' to be null
+
+- Expected:
+null
+
++ Received:
+"electrical_water"
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:222:88
+    220|   it.each(HELD_OUT_SPARK_PRODUCT)('%s -> no route', (text, language) =…
+    221|     const got = route(text, language)
+    222|     expect(got, pillarWhy(PILLAR, `${JSON.stringify(text)} routed to $…
+       |                                                                                        ^
+    223|   })
+    224| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: held-out product phrasings written before the fix, never used to shape it > We offer spark-safe wiring upgrades for older apartments, can you quote one? -> no route
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    "We offer spark-safe wiring upgrades for older apartments, can you quote one?" routed to electrical_water: expected 'electrical_water' to be null
+
+- Expected:
+null
+
++ Received:
+"electrical_water"
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:222:88
+    220|   it.each(HELD_OUT_SPARK_PRODUCT)('%s -> no route', (text, language) =…
+    221|     const got = route(text, language)
+    222|     expect(got, pillarWhy(PILLAR, `${JSON.stringify(text)} routed to $…
+       |                                                                                        ^
+    223|   })
+    224| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: held-out product phrasings written before the fix, never used to shape it > Quote for fitting spark suppression on the distribution board. -> no route
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    "Quote for fitting spark suppression on the distribution board." routed to electrical_water: expected 'electrical_water' to be null
+
+- Expected:
+null
+
++ Received:
+"electrical_water"
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:222:88
+    220|   it.each(HELD_OUT_SPARK_PRODUCT)('%s -> no route', (text, language) =…
+    221|     const got = route(text, language)
+    222|     expect(got, pillarWhy(PILLAR, `${JSON.stringify(text)} routed to $…
+       |                                                                                        ^
+    223|   })
+    224| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: held-out product phrasings written before the fix, never used to shape it > Looking for an outlet cover that stops sparks reaching the curtains. -> no route
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    "Looking for an outlet cover that stops sparks reaching the curtains." routed to electrical_water: expected 'electrical_water' to be null
+
+- Expected:
+null
+
++ Received:
+"electrical_water"
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:222:88
+    220|   it.each(HELD_OUT_SPARK_PRODUCT)('%s -> no route', (text, language) =…
+    221|     const got = route(text, language)
+    222|     expect(got, pillarWhy(PILLAR, `${JSON.stringify(text)} routed to $…
+       |                                                                                        ^
+    223|   })
+    224| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/34]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: held-out product phrasings written before the fix, never used to shape it > The new outlets are rated against sparking, please fit them on the balcony. -> no route
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, and equipment that is only warm, stay quiet
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    "The new outlets are rated against sparking, please fit them on the balcony." routed to electrical_water: expected 'electrical_water' to be null
+
+- Expected:
+null
+
++ Received:
+"electrical_water"
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:222:88
+    220|   it.each(HELD_OUT_SPARK_PRODUCT)('%s -> no route', (text, language) =…
+    221|     const got = route(text, language)
+    222|     expect(got, pillarWhy(PILLAR, `${JSON.stringify(text)} routed to $…
+       |                                                                                        ^
+    223|   })
+    224| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/34]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  34 failed | 63 passed (97)
+   Start at  10:44:44
+   Duration  866ms (transform 120ms, setup 0ms, import 156ms, tests 252ms, environment 0ms)
+
+undefined
+C:\ns-fix\r1\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts

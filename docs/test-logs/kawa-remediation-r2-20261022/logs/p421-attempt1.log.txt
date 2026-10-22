@@ -1,0 +1,1096 @@
+
+ RUN  v4.1.6 C:/ns-fix/r1/apps/api
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts (157 tests | 27 failed) 1026ms
+     × 'tủ lạnh': fault and service-request wording, every written form, every Case service, flags off and on 58ms
+     × 'máy giặt': fault and service-request wording, every written form, every Case service, flags off and on 57ms
+     × 'máy sấy': fault and service-request wording, every written form, every Case service, flags off and on 43ms
+     × 'máy rửa bát': fault and service-request wording, every written form, every Case service, flags off and on 50ms
+     × 'máy rửa chén': fault and service-request wording, every written form, every Case service, flags off and on 38ms
+     × 'lò vi sóng': fault and service-request wording, every written form, every Case service, flags off and on 40ms
+     × 'bếp ga': fault and service-request wording, every written form, every Case service, flags off and on 36ms
+     × 'bếp từ': fault and service-request wording, every written form, every Case service, flags off and on 40ms
+     × 'wifi': fault and service-request wording, every written form, every Case service, flags off and on 40ms
+     × 'internet': fault and service-request wording, every written form, every Case service, flags off and on 38ms
+     × 'tủ lạnh': a request with no fault word, every written form, every Case service, flags off and on 5ms
+     × 'máy giặt': a request with no fault word, every written form, every Case service, flags off and on 5ms
+     × 'máy sấy': a request with no fault word, every written form, every Case service, flags off and on 4ms
+     × 'máy rửa bát': a request with no fault word, every written form, every Case service, flags off and on 5ms
+     × 'máy rửa chén': a request with no fault word, every written form, every Case service, flags off and on 5ms
+     × 'lò vi sóng': a request with no fault word, every written form, every Case service, flags off and on 4ms
+     × 'bếp ga': a request with no fault word, every written form, every Case service, flags off and on 5ms
+     × 'bếp từ': a request with no fault word, every written form, every Case service, flags off and on 4ms
+     × 'wifi': a request with no fault word, every written form, every Case service, flags off and on 6ms
+     × 'internet': a request with no fault word, every written form, every Case service, flags off and on 5ms
+     × the Codex review example with the Case service varied is refused 1ms
+     × a fault named after a comma is refused 1ms
+     × plumbing: "Anh ơi qua xem giúp em cái máy giặt với, nó cứ báo lỗi hoài." -> refuse 1ms
+     × upholstery: "Lò vi sóng quay nhưng không nóng, cần thợ xem." -> refuse 1ms
+     × electrical: "Máy sấy quần áo kêu to và không khô, tìm thợ sửa." -> refuse 1ms
+     × plumbing: "Gọi thợ qua kiểm tra giúp mình cái bếp ga, nó không lên lửa." -> refuse 1ms
+     × electrical: "Internet nhà mình hay mất mạng, nhờ xem giúp." -> refuse 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 27 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'tủ lạnh': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for tủ lạnh with a fault: expected [ …(29) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Tủ lạnh bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, tủ lạnh bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy tủ lạnh bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Tủ lạnh hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, tủ lạnh hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy tủ lạnh hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Tủ lạnh nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Tủ lạnh bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Tủ lạnh đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, tủ lạnh đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy tủ lạnh đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Tủ lạnh nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Tủ lạnh gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Tủ lạnh không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, tủ lạnh không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy tủ lạnh không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Tủ lạnh ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, tủ lạnh ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy tủ lạnh ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Tủ lạnh nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Tủ lạnh bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Tủ lạnh không lạnh.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, tủ lạnh không lạnh.\" -> ok",
++   "[on] electrical: \"Mình thấy tủ lạnh không lạnh từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Tủ lạnh nhà mình bị đóng tuyết, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Tủ lạnh bị đóng tuyết, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Tủ lạnh không làm đá.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, tủ lạnh không làm đá.\" -> ok",
++   "[on] electrical: \"Mình thấy tủ lạnh không làm đá từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'máy giặt': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for máy giặt with a fault: expected [ …(29) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Máy giặt bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy giặt bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy máy giặt bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy giặt hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy giặt hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy máy giặt hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy giặt nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy giặt bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy giặt đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy giặt đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy máy giặt đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy giặt nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy giặt gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy giặt không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy giặt không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy máy giặt không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy giặt ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy giặt ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy máy giặt ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy giặt nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy giặt bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy giặt không vắt được.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy giặt không vắt được.\" -> ok",
++   "[on] electrical: \"Mình thấy máy giặt không vắt được từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy giặt nhà mình không xả nước, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy giặt không xả nước, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy giặt rung lắc dữ dội khi vắt.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy giặt rung lắc dữ dội khi vắt.\" -> ok",
++   "[on] electrical: \"Mình thấy máy giặt rung lắc dữ dội khi vắt từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'máy sấy': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for máy sấy with a fault: expected [ …(27) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Máy sấy bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy sấy bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy máy sấy bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy sấy hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy sấy hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy máy sấy hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy sấy nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy sấy bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy sấy đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy sấy đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy máy sấy đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy sấy nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy sấy gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy sấy không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy sấy không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy máy sấy không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy sấy ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy sấy ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy máy sấy ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy sấy nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy sấy bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy sấy không khô quần áo.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy sấy không khô quần áo.\" -> ok",
++   "[on] electrical: \"Mình thấy máy sấy không khô quần áo từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy sấy kêu to.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy sấy kêu to.\" -> ok",
++   "[on] electrical: \"Mình thấy máy sấy kêu to từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'máy rửa bát': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for máy rửa bát with a fault: expected [ …(27) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Máy rửa bát bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa bát bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa bát bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa bát hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa bát hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa bát hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa bát nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy rửa bát bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy rửa bát đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa bát đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa bát đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa bát nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy rửa bát gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy rửa bát không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa bát không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa bát không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa bát ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa bát ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa bát ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa bát nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy rửa bát bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy rửa bát không xả nước.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa bát không xả nước.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa bát không xả nước từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa bát kêu lạ.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa bát kêu lạ.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa bát kêu lạ từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'máy rửa chén': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for máy rửa chén with a fault: expected [ …(27) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Máy rửa chén bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa chén bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa chén bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa chén hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa chén hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa chén hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa chén nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy rửa chén bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy rửa chén đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa chén đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa chén đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa chén nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy rửa chén gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy rửa chén không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa chén không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa chén không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa chén ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa chén ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa chén ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa chén nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Máy rửa chén bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Máy rửa chén không xả nước.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa chén không xả nước.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa chén không xả nước từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Máy rửa chén kêu lạ.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, máy rửa chén kêu lạ.\" -> ok",
++   "[on] electrical: \"Mình thấy máy rửa chén kêu lạ từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'lò vi sóng': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for lò vi sóng with a fault: expected [ …(48) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Lò vi sóng quay nhưng không nóng.\" -> ok",
++   "[off] plumbing: \"Lo vi song quay nhung khong nong.\" -> ok",
++   "[off] cleaning: \"LÒ VI SÓNG QUAY NHƯNG KHÔNG NÓNG.\" -> ok",
++   "[off] hvac: \"Lò vi sóng nhà mình quay nhưng không nóng, cần thợ đến xem.\" -> ok",
++   "[off] upholstery: \"Lo vi song nha minh quay nhung khong nong, can tho den xem.\" -> ok",
++   "[off] handyman: \"LÒ VI SÓNG NHÀ MÌNH QUAY NHƯNG KHÔNG NÓNG, CẦN THỢ ĐẾN XEM.\" -> ok",
++   "[off] hvac: \"Lò vi sóng quay nhưng không nóng, ai sửa được không?\" -> ok",
++   "[off] upholstery: \"Lo vi song quay nhung khong nong, ai sua duoc khong?\" -> ok",
++   "[off] handyman: \"LÒ VI SÓNG QUAY NHƯNG KHÔNG NÓNG, AI SỬA ĐƯỢC KHÔNG?\" -> ok",
++   "[off] electrical: \"Mình thấy lò vi sóng quay nhưng không nóng từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[off] plumbing: \"Minh thay lo vi song quay nhung khong nong tu sang, nho kiem tra giup.\" -> ok",
++   "[off] cleaning: \"MÌNH THẤY LÒ VI SÓNG QUAY NHƯNG KHÔNG NÓNG TỪ SÁNG, NHỜ KIỂM TRA GIÚP.\" -> ok",
++   "[on] electrical: \"Lò vi sóng bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, lò vi sóng bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy lò vi sóng bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Lò vi sóng hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, lò vi sóng hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy lò vi sóng hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Lò vi sóng nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Lò vi sóng bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Lò vi sóng đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, lò vi sóng đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy lò vi sóng đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Lò vi sóng nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Lò vi sóng gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Lò vi sóng không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, lò vi sóng không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy lò vi sóng không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Lò vi sóng ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, lò vi sóng ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy lò vi sóng ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Lò vi sóng nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Lò vi sóng bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Lò vi sóng quay nhưng không nóng.\" -> ok",
++   "[on] plumbing: \"Lo vi song quay nhung khong nong.\" -> ok",
++   "[on] cleaning: \"LÒ VI SÓNG QUAY NHƯNG KHÔNG NÓNG.\" -> ok",
++   "[on] hvac: \"Lò vi sóng nhà mình quay nhưng không nóng, cần thợ đến xem.\" -> ok",
++   "[on] upholstery: \"Lo vi song nha minh quay nhung khong nong, can tho den xem.\" -> ok",
++   "[on] handyman: \"LÒ VI SÓNG NHÀ MÌNH QUAY NHƯNG KHÔNG NÓNG, CẦN THỢ ĐẾN XEM.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, lò vi sóng quay nhưng không nóng.\" -> ok",
++   "[on] hvac: \"Lò vi sóng quay nhưng không nóng, ai sửa được không?\" -> ok",
++   "[on] upholstery: \"Lo vi song quay nhung khong nong, ai sua duoc khong?\" -> ok",
++   "[on] handyman: \"LÒ VI SÓNG QUAY NHƯNG KHÔNG NÓNG, AI SỬA ĐƯỢC KHÔNG?\" -> ok",
++   "[on] electrical: \"Mình thấy lò vi sóng quay nhưng không nóng từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] plumbing: \"Minh thay lo vi song quay nhung khong nong tu sang, nho kiem tra giup.\" -> ok",
++   "[on] cleaning: \"MÌNH THẤY LÒ VI SÓNG QUAY NHƯNG KHÔNG NÓNG TỪ SÁNG, NHỜ KIỂM TRA GIÚP.\" -> ok",
++   "[on] electrical: \"Lò vi sóng nhà mình không quay đĩa, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Lò vi sóng không quay đĩa, ai sửa được không?\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'bếp ga': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for bếp ga with a fault: expected [ …(38) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Bếp ga bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp ga bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp ga bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp ga nhà mình bị hỏng, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp ga bị hỏng, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp ga hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp ga hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp ga hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp ga nhà mình hỏng rồi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp ga hỏng rồi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp ga hư hỏng nặng.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp ga hư hỏng nặng.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp ga hư hỏng nặng từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp ga nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp ga bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp ga đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp ga đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp ga đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp ga nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp ga gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp ga không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp ga không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp ga không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp ga nhà mình không chạy, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp ga không chạy, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp ga ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp ga ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp ga ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp ga nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp ga bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp ga không lên lửa.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp ga không lên lửa.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp ga không lên lửa từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp ga nhà mình không đánh lửa, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp ga không đánh lửa, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp ga lửa rất yếu.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp ga lửa rất yếu.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp ga lửa rất yếu từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'bếp từ': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for bếp từ with a fault: expected [ …(31) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Bếp từ bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp từ bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp từ bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp từ nhà mình bị hỏng, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp từ bị hỏng, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp từ hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp từ hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp từ hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp từ nhà mình hỏng rồi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp từ hỏng rồi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp từ hư hỏng nặng.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp từ hư hỏng nặng.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp từ hư hỏng nặng từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp từ nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp từ bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp từ đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp từ đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp từ đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp từ nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp từ gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp từ không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp từ không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp từ không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp từ ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp từ ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp từ ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Bếp từ nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Bếp từ bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Bếp từ không nhận nồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, bếp từ không nhận nồi.\" -> ok",
++   "[on] electrical: \"Mình thấy bếp từ không nhận nồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'wifi': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for wifi with a fault: expected [ …(49) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Wifi không kết nối được.\" -> ok",
++   "[off] plumbing: \"Wifi khong ket noi duoc.\" -> ok",
++   "[off] cleaning: \"WIFI KHÔNG KẾT NỐI ĐƯỢC.\" -> ok",
++   "[off] hvac: \"Wifi không kết nối được, ai sửa được không?\" -> ok",
++   "[off] upholstery: \"Wifi khong ket noi duoc, ai sua duoc khong?\" -> ok",
++   "[off] handyman: \"WIFI KHÔNG KẾT NỐI ĐƯỢC, AI SỬA ĐƯỢC KHÔNG?\" -> ok",
++   "[on] electrical: \"Wifi bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, wifi bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy wifi bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Wifi nhà mình bị hỏng, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Wifi bị hỏng, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Wifi hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, wifi hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy wifi hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Wifi nhà mình hỏng rồi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Wifi hỏng rồi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Wifi hư hỏng nặng.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, wifi hư hỏng nặng.\" -> ok",
++   "[on] electrical: \"Mình thấy wifi hư hỏng nặng từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Wifi nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Wifi bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Wifi đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, wifi đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy wifi đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Wifi nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Wifi gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Wifi không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, wifi không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy wifi không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Wifi nhà mình không chạy, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Wifi không chạy, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Wifi ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, wifi ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy wifi ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Wifi nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Wifi bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Wifi chập chờn.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, wifi chập chờn.\" -> ok",
++   "[on] electrical: \"Mình thấy wifi chập chờn từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Wifi nhà mình rất yếu, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Wifi rất yếu, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Wifi không kết nối được.\" -> ok",
++   "[on] plumbing: \"Wifi khong ket noi duoc.\" -> ok",
++   "[on] cleaning: \"WIFI KHÔNG KẾT NỐI ĐƯỢC.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, wifi không kết nối được.\" -> ok",
++   "[on] hvac: \"Wifi không kết nối được, ai sửa được không?\" -> ok",
++   "[on] upholstery: \"Wifi khong ket noi duoc, ai sua duoc khong?\" -> ok",
++   "[on] handyman: \"WIFI KHÔNG KẾT NỐI ĐƯỢC, AI SỬA ĐƯỢC KHÔNG?\" -> ok",
++   "[on] electrical: \"Mình thấy wifi không kết nối được từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'internet': fault and service-request wording, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    450 decisions for internet with a fault: expected [ …(49) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Internet hay bị rớt.\" -> ok",
++   "[off] plumbing: \"Internet hay bi rot.\" -> ok",
++   "[off] cleaning: \"INTERNET HAY BỊ RỚT.\" -> ok",
++   "[off] hvac: \"Internet hay bị rớt, ai sửa được không?\" -> ok",
++   "[off] upholstery: \"Internet hay bi rot, ai sua duoc khong?\" -> ok",
++   "[off] handyman: \"INTERNET HAY BỊ RỚT, AI SỬA ĐƯỢC KHÔNG?\" -> ok",
++   "[on] electrical: \"Internet bị hư.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, internet bị hư.\" -> ok",
++   "[on] electrical: \"Mình thấy internet bị hư từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Internet nhà mình bị hỏng, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Internet bị hỏng, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Internet hư rồi.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, internet hư rồi.\" -> ok",
++   "[on] electrical: \"Mình thấy internet hư rồi từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Internet nhà mình hỏng rồi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Internet hỏng rồi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Internet hư hỏng nặng.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, internet hư hỏng nặng.\" -> ok",
++   "[on] electrical: \"Mình thấy internet hư hỏng nặng từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Internet nhà mình bị lỗi, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Internet bị lỗi, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Internet đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, internet đang có vấn đề.\" -> ok",
++   "[on] electrical: \"Mình thấy internet đang có vấn đề từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Internet nhà mình gặp sự cố, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Internet gặp sự cố, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Internet không hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, internet không hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy internet không hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Internet nhà mình không chạy, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Internet không chạy, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Internet ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, internet ngừng hoạt động.\" -> ok",
++   "[on] electrical: \"Mình thấy internet ngừng hoạt động từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Internet nhà mình bị trục trặc, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Internet bị trục trặc, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Internet mất mạng.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, internet mất mạng.\" -> ok",
++   "[on] electrical: \"Mình thấy internet mất mạng từ sáng, nhờ kiểm tra giúp.\" -> ok",
++   "[on] electrical: \"Internet nhà mình rất chậm, cần thợ đến xem.\" -> ok",
++   "[on] electrical: \"Internet rất chậm, ai sửa được không?\" -> ok",
++   "[on] electrical: \"Internet hay bị rớt.\" -> ok",
++   "[on] plumbing: \"Internet hay bi rot.\" -> ok",
++   "[on] cleaning: \"INTERNET HAY BỊ RỚT.\" -> ok",
++   "[on] electrical: \"Nhờ thợ qua coi giúp, internet hay bị rớt.\" -> ok",
++   "[on] hvac: \"Internet hay bị rớt, ai sửa được không?\" -> ok",
++   "[on] upholstery: \"Internet hay bi rot, ai sua duoc khong?\" -> ok",
++   "[on] handyman: \"INTERNET HAY BỊ RỚT, AI SỬA ĐƯỢC KHÔNG?\" -> ok",
++   "[on] electrical: \"Mình thấy internet hay bị rớt từ sáng, nhờ kiểm tra giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:211:106
+    209|     }
+    210|     const misses = misdecided(rows, false)
+    211|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                          ^
+    212|   })
+    213|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'tủ lạnh': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for tủ lạnh without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem tủ lạnh giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi tủ lạnh giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì tủ lạnh định kỳ.\" -> ok",
++   "[on] electrical: \"Tủ lạnh nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'máy giặt': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for máy giặt without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem máy giặt giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi máy giặt giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì máy giặt định kỳ.\" -> ok",
++   "[on] electrical: \"Máy giặt nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'máy sấy': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for máy sấy without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem máy sấy giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi máy sấy giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì máy sấy định kỳ.\" -> ok",
++   "[on] electrical: \"Máy sấy nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'máy rửa bát': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for máy rửa bát without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem máy rửa bát giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi máy rửa bát giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì máy rửa bát định kỳ.\" -> ok",
++   "[on] electrical: \"Máy rửa bát nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'máy rửa chén': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for máy rửa chén without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem máy rửa chén giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi máy rửa chén giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì máy rửa chén định kỳ.\" -> ok",
++   "[on] electrical: \"Máy rửa chén nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'lò vi sóng': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for lò vi sóng without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem lò vi sóng giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi lò vi sóng giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì lò vi sóng định kỳ.\" -> ok",
++   "[on] electrical: \"Lò vi sóng nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'bếp ga': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for bếp ga without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem bếp ga giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi bếp ga giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì bếp ga định kỳ.\" -> ok",
++   "[on] electrical: \"Bếp ga nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'bếp từ': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for bếp từ without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem bếp từ giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi bếp từ giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì bếp từ định kỳ.\" -> ok",
++   "[on] electrical: \"Bếp từ nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'wifi': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for wifi without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem wifi giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi wifi giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì wifi định kỳ.\" -> ok",
++   "[on] electrical: \"Wifi nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > 'internet': a request with no fault word, every written form, every Case service, flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    48 decisions for internet without a fault word: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Cần thợ đến xem internet giúp mình.\" -> ok",
++   "[on] electrical: \"Gọi thợ qua coi internet giúp.\" -> ok",
++   "[on] electrical: \"Mình cần bảo trì internet định kỳ.\" -> ok",
++   "[on] electrical: \"Internet nhà mình cần thợ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:221:114
+    219|     }
+    220|     const misses = misdecided(rows, false)
+    221|     expect(misses, pillarWhy(PILLAR, `${rows.length * 2} decisions for…
+       |                                                                                                                  ^
+    222|   })
+    223|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > the Codex review example with the Case service varied is refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    the Codex review example with the Case service varied: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Máy giặt bị hư, cần thợ đến xem.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:233:46
+    231|   ] as const)('%s is refused', (label, service, text) => {
+    232|     const misses = misdecided([[service, text]], false)
+    233|     expect(misses, pillarWhy(PILLAR, label)).toEqual([])
+       |                                              ^
+    234|   })
+    235| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording > a fault named after a comma is refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    a fault named after a comma: expected [ …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] cleaning: \"Tủ lạnh nhà mình, bị hỏng từ hôm nay.\" -> ok",
++   "[on] cleaning: \"Tủ lạnh nhà mình, bị hỏng từ hôm nay.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:233:46
+    231|   ] as const)('%s is refused', (label, service, text) => {
+    232|     const misses = misdecided([[service, text]], false)
+    233|     expect(misses, pillarWhy(PILLAR, label)).toEqual([])
+       |                                              ^
+    234|   })
+    235| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: held-out wording written before the fix, never used to shape it > plumbing: "Anh ơi qua xem giúp em cái máy giặt với, nó cứ báo lỗi hoài." -> refuse
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    refuse: "Anh ơi qua xem giúp em cái máy giặt với, nó cứ báo lỗi hoài.": expected [ …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] plumbing: \"Anh ơi qua xem giúp em cái máy giặt với, nó cứ báo lỗi hoài.\" -> ok",
++   "[on] plumbing: \"Anh ơi qua xem giúp em cái máy giặt với, nó cứ báo lỗi hoài.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:320:79
+    318|   it.each(HELD_OUT_PROBES)('%s: "%s" -> %s', (service, text, expected)…
+    319|     const misses = misdecided([[service, text]], expected === 'open')
+    320|     expect(misses, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(te…
+       |                                                                               ^
+    321|   })
+    322| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: held-out wording written before the fix, never used to shape it > upholstery: "Lò vi sóng quay nhưng không nóng, cần thợ xem." -> refuse
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    refuse: "Lò vi sóng quay nhưng không nóng, cần thợ xem.": expected [ …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] upholstery: \"Lò vi sóng quay nhưng không nóng, cần thợ xem.\" -> ok",
++   "[on] upholstery: \"Lò vi sóng quay nhưng không nóng, cần thợ xem.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:320:79
+    318|   it.each(HELD_OUT_PROBES)('%s: "%s" -> %s', (service, text, expected)…
+    319|     const misses = misdecided([[service, text]], expected === 'open')
+    320|     expect(misses, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(te…
+       |                                                                               ^
+    321|   })
+    322| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: held-out wording written before the fix, never used to shape it > electrical: "Máy sấy quần áo kêu to và không khô, tìm thợ sửa." -> refuse
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    refuse: "Máy sấy quần áo kêu to và không khô, tìm thợ sửa.": expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Máy sấy quần áo kêu to và không khô, tìm thợ sửa.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:320:79
+    318|   it.each(HELD_OUT_PROBES)('%s: "%s" -> %s', (service, text, expected)…
+    319|     const misses = misdecided([[service, text]], expected === 'open')
+    320|     expect(misses, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(te…
+       |                                                                               ^
+    321|   })
+    322| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: held-out wording written before the fix, never used to shape it > plumbing: "Gọi thợ qua kiểm tra giúp mình cái bếp ga, nó không lên lửa." -> refuse
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    refuse: "Gọi thợ qua kiểm tra giúp mình cái bếp ga, nó không lên lửa.": expected [ …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] plumbing: \"Gọi thợ qua kiểm tra giúp mình cái bếp ga, nó không lên lửa.\" -> ok",
++   "[on] plumbing: \"Gọi thợ qua kiểm tra giúp mình cái bếp ga, nó không lên lửa.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:320:79
+    318|   it.each(HELD_OUT_PROBES)('%s: "%s" -> %s', (service, text, expected)…
+    319|     const misses = misdecided([[service, text]], expected === 'open')
+    320|     expect(misses, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(te…
+       |                                                                               ^
+    321|   })
+    322| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/27]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: held-out wording written before the fix, never used to shape it > electrical: "Internet nhà mình hay mất mạng, nhờ xem giúp." -> refuse
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    refuse: "Internet nhà mình hay mất mạng, nhờ xem giúp.": expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[on] electrical: \"Internet nhà mình hay mất mạng, nhờ xem giúp.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:320:79
+    318|   it.each(HELD_OUT_PROBES)('%s: "%s" -> %s', (service, text, expected)…
+    319|     const misses = misdecided([[service, text]], expected === 'open')
+    320|     expect(misses, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(te…
+       |                                                                               ^
+    321|   })
+    322| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/27]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  27 failed | 130 passed (157)
+   Start at  10:54:55
+   Duration  7.31s (transform 5.00s, setup 0ms, import 6.04s, tests 1.03s, environment 0ms)
+
+undefined
+C:\ns-fix\r1\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts

@@ -90,6 +90,11 @@ const EXPOSED_WIRE_TONES: ToneRules = { ho: /^h[o\u1edf]$/u };
 const WIRED_FIXTURE_IN_SEGMENT = new RegExp(`\\b(?:${WIRED_FIXTURES})\\b`, "u");
 const WIRED_FIXTURE_IN_SEGMENT_EN = /\b(?:outlets?|sockets?|wiring|wires?|breakers?|switchboard|junction box|(?:electrical|electric|breaker|fuse|distribution|circuit) (?:panel|box|board|cabinet))\b/u;
 const SPARK_NOT_ELECTRICAL = /\b(?:bep (?:ga|gas)|phao hoa|firework|gas stove|welding|welder|tho han|may han)\b/u;
+const SPARK_NEGATED_BEFORE = "(?<!\\b(?:khong|chua|chang|het|no|not|never|cannot|can t|won t|wouldn t|couldn t|unable to|fail(?:s|ed)? to)(?: [a-z]+)? )";
+const SPARK_AVOIDED_VI = "(?:chong|ngan(?: ngua)?|phong(?: ngua)?|han che|giam(?: thieu)?|tranh|chiu|chan|bao ve(?: khoi| chong)?)(?: (?:khoi|hien tuong|su|viec|cac|nhung|phat|sinh|gay|tao|ra|xuat hien)){0,3} tia lua(?: dien)?";
+const SPARK_FEW_VI = "it (?:phat sinh|sinh|phat|tao|gay)(?: ra)? tia lua(?: dien)?";
+const SPARK_AVOIDED_EN = "(?:(?:anti|non)[- ]?spark(?:s|ing)?|spark[- ]?(?:proof|free|resistant|safe|rated|less|arrest\\w*|protect\\w*|prevent\\w*|suppress\\w*|guard\\w*|shield\\w*)|(?:prevent|avoid|stop|reduc|suppress|limit|eliminat|minimi[sz]|resist)(?:e|es|ed|ing|s)?(?: (?:the|any|all|against|from))? spark(?:s|ing)?|(?:protect(?:s|ed|ing)?|guard(?:s|ed|ing)?|shield(?:s|ed|ing)?|rated|safe) (?:from|against) (?:the |any |all )?spark(?:s|ing)?)";
+const SPARK_PREVENTION_PHRASES = new RegExp(`${SPARK_NEGATED_BEFORE}\\b(?:${SPARK_AVOIDED_VI}|${SPARK_FEW_VI}|${SPARK_AVOIDED_EN})\\b`, "u");
 
 const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   fire: [
@@ -304,7 +309,7 @@ function readEmergencySignals(
   includeGenericUrgency: boolean,
   context: EmergencyContext,
 ): EmergencyReading {
-  const signal = blankMatches(buildSignalText(text), PREVENTION_PHRASES);
+  const signal = blankMatches(blankMatches(buildSignalText(text), PREVENTION_PHRASES), SPARK_PREVENTION_PHRASES);
   const segments = segmentRanges(signal.plain);
   const sentences = sentenceRanges(signal.plain);
   const affirmed = (cues: readonly Cue[]) =>

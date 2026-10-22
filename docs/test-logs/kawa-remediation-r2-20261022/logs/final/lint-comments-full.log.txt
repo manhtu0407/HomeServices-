@@ -1,0 +1,3 @@
+comment-discipline: clean — no note-banner comments found.
+
+----- stderr -----

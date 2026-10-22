@@ -1,0 +1,45 @@
+{"utc":"2026-10-22T04:09:31.773Z","name":"api-full-suite","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api test","exit":0}
+{"utc":"2026-10-22T04:10:47.642Z","name":"red-first","cwd":"<candidate-worktree>","command":"node \"C:\\ns-fix\\r1\\docs\\test-logs\\kawa-remediation-r2-20261022\\scripts\\red-first.mjs\"","exit":0}
+{"utc":"2026-10-22T04:11:27.334Z","name":"matrix-and-drivers","cwd":"<candidate-worktree>","command":"node \"C:\\ns-fix\\r1\\docs\\test-logs\\kawa-remediation-r2-20261022\\scripts\\reproduce.mjs\" post","exit":0}
+{"utc":"2026-10-22T04:12:45.038Z","name":"scorecard","cwd":"<candidate-worktree>","command":"node \"C:\\ns-fix\\r1\\docs\\test-logs\\kawa-remediation-r2-20261022\\scripts\\scorecard.mjs\"","exit":0}
+{"utc":"2026-10-22T04:12:45.194Z","name":"triplet-table","cwd":"<candidate-worktree>","command":"node \"C:\\ns-fix\\r1\\docs\\test-logs\\kawa-remediation-r2-20261022\\scripts\\triplet-table.mjs\"","exit":0}
+{"utc":"2026-10-22T04:12:45.353Z","name":"tables","cwd":"<candidate-worktree>","command":"node \"C:\\ns-fix\\r1\\docs\\test-logs\\kawa-remediation-r2-20261022\\scripts\\make-tables.mjs\"","exit":0}
+{"utc":"2026-10-22T04:12:45.496Z","name":"type-check-api","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api type-check","exit":0}
+{"utc":"2026-10-22T04:13:09.860Z","name":"type-check-shared","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/shared type-check","exit":0}
+{"utc":"2026-10-22T04:13:14.228Z","name":"test-shared","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/shared test","exit":0}
+{"utc":"2026-10-22T04:13:17.287Z","name":"type-check-mobile","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/mobile type-check","exit":0}
+{"utc":"2026-10-22T04:13:55.216Z","name":"test-mobile","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/mobile test","exit":0}
+{"utc":"2026-10-22T04:18:35.875Z","name":"lint-comments-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-comment-discipline.mjs --working","exit":0}
+{"utc":"2026-10-22T04:18:37.078Z","name":"lint-comments-full","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-comment-discipline.mjs","exit":0}
+{"utc":"2026-10-22T04:18:39.253Z","name":"lint-test-integrity-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-test-integrity.mjs --working","exit":0}
+{"utc":"2026-10-22T04:18:40.335Z","name":"lint-added-hygiene-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-added-source-hygiene.mjs --working","exit":0}
+{"utc":"2026-10-22T04:18:41.161Z","name":"lint-reuse-ladder","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-reuse-ladder.mjs --working","exit":0}
+{"utc":"2026-10-22T04:18:41.908Z","name":"lint-structure","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/lint-structure.mjs","exit":0}
+{"utc":"2026-10-22T04:18:42.905Z","name":"lint-baseline","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-structure-baseline.mjs","exit":0}
+{"utc":"2026-10-22T04:18:43.622Z","name":"lint-edge-db","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs","exit":0}
+{"utc":"2026-10-22T04:18:45.338Z","name":"lint-authority","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-authority-citations.mjs","exit":1}
+{"utc":"2026-10-22T04:18:46.742Z","name":"lint-source-residue","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-source-residue.mjs","exit":0}
+{"utc":"2026-10-22T04:18:47.893Z","name":"lint-protocol-routes","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-protocol-routes.mjs","exit":0}
+{"utc":"2026-10-22T04:18:48.538Z","name":"lint-work-plan-coverage","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-work-plan.mjs --coverage","exit":0}
+{"utc":"2026-10-22T04:18:49.150Z","name":"lint-workflow-cost","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-workflow-cost.mjs","exit":0}
+{"utc":"2026-10-22T04:18:49.802Z","name":"lint-test-collection","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-test-collection.mjs","exit":0}
+{"utc":"2026-10-22T04:18:50.514Z","name":"lint-runner-parity","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-runner-parity.mjs","exit":0}
+{"utc":"2026-10-22T04:18:51.156Z","name":"lint-skills-sync","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-skills-sync.mjs","exit":0}
+{"utc":"2026-10-22T04:18:51.829Z","name":"lint-skill-contracts","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-skill-contracts.mjs","exit":0}
+{"utc":"2026-10-22T04:18:52.478Z","name":"lint-artifact-text-assertions","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/find-artifact-text-assertions.mjs","exit":0}
+{"utc":"2026-10-22T04:18:53.831Z","name":"harness-verify","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/harness/verify.mjs","exit":0}
+{"utc":"2026-10-22T04:20:17.505Z","name":"harness-manifest-check","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/harness/check-manifest.mjs","exit":0}
+{"utc":"2026-10-22T04:20:21.559Z","name":"pillar-registry-check","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/harness/pillar-registry.mjs","exit":0}
+{"utc":"2026-10-22T04:20:22.404Z","name":"edge-check-docker-pinned-deno","cwd":"<candidate-worktree>","command":"node scripts/run.mjs docker/scripts/edge-check","exit":0}
+{"utc":"2026-10-22T04:24:26.966Z","name":"api-full-suite","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api test","exit":0}
+{"utc":"2026-10-22T04:25:39.556Z","name":"red-first","cwd":"<candidate-worktree>","command":"node \"C:\\ns-fix\\r1\\docs\\test-logs\\kawa-remediation-r2-20261022\\scripts\\red-first.mjs\"","exit":0}
+{"utc":"2026-10-22T04:26:38.806Z","name":"lint-comments-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-comment-discipline.mjs --working","exit":0}
+{"utc":"2026-10-22T04:26:39.926Z","name":"lint-comments-full","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-comment-discipline.mjs","exit":0}
+{"utc":"2026-10-22T04:26:41.688Z","name":"lint-test-integrity-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-test-integrity.mjs --working","exit":0}
+{"utc":"2026-10-22T04:26:42.813Z","name":"lint-added-hygiene-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-added-source-hygiene.mjs --working","exit":0}
+{"utc":"2026-10-22T04:26:43.686Z","name":"lint-reuse-ladder","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-reuse-ladder.mjs --working","exit":0}
+{"utc":"2026-10-22T04:26:44.501Z","name":"lint-structure","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/lint-structure.mjs","exit":0}
+{"utc":"2026-10-22T04:26:45.554Z","name":"lint-test-collection","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-test-collection.mjs","exit":0}
+{"utc":"2026-10-22T04:26:46.303Z","name":"pillar-registry-check","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/harness/pillar-registry.mjs","exit":0}
+{"utc":"2026-10-22T04:28:14.483Z","name":"api-full-suite","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api test","exit":0}
+{"utc":"2026-10-22T04:29:34.410Z","name":"api-full-suite","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api test","exit":0}

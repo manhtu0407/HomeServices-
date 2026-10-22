@@ -1,0 +1,79 @@
+### Table 1. The 36 frozen scenarios: main (42daced1), round-1 candidate (04317126), round-2 candidate
+
+| # | Scenario | Service | Flags off: main | Flags off: round 1 | Flags off: round 2 | Round 2 against main | Round 2 against round 1 | Flags on: main | Flags on: round 1 | Flags on: round 2 | Round 2 against main (flags on) | Round 2 against round 1 (flags on) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | ELEC-S1 | electrical | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 2 | ELEC-S2 | electrical | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged |
+| 3 | ELEC-S3 | electrical | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 4 | ELEC-S4 | electrical | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 5 | PLMB-S1 | plumbing | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 6 | PLMB-S2 | plumbing | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged |
+| 7 | PLMB-S3 | plumbing | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged |
+| 8 | PLMB-S4 | plumbing | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged |
+| 9 | CLEN-S1 | cleaning | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 10 | CLEN-S2 | cleaning | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 11 | CLEN-S3 | cleaning | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 12 | CLEN-S4 | cleaning | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 13 | HVAC-S1 | hvac | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 14 | HVAC-S2 | hvac | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 15 | HVAC-S3 | hvac | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged |
+| 16 | HVAC-S4 | hvac | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 17 | UPHO-S1 | upholstery | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 18 | UPHO-S2 | upholstery | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 19 | UPHO-S3 | upholstery | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 20 | UPHO-S4 | upholstery | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged |
+| 21 | HAND-S1 | handyman | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 22 | HAND-S2 | handyman | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 23 | HAND-S3 | handyman | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 24 | HAND-S4 | handyman | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 25 | ELEC-S5 | electrical | BLOCKED | BLOCKED | BLOCKED | BLOCKED to BLOCKED unchanged | BLOCKED to BLOCKED unchanged | BLOCKED | BLOCKED | BLOCKED | unchanged | unchanged |
+| 26 | PLMB-S5 | plumbing | BLOCKED | BLOCKED | BLOCKED | BLOCKED to BLOCKED unchanged | BLOCKED to BLOCKED unchanged | BLOCKED | BLOCKED | BLOCKED | unchanged | unchanged |
+| 27 | CLEN-S5 | cleaning | BLOCKED | BLOCKED | BLOCKED | BLOCKED to BLOCKED unchanged | BLOCKED to BLOCKED unchanged | BLOCKED | BLOCKED | BLOCKED | unchanged | unchanged |
+| 28 | HVAC-S5 | hvac | BLOCKED | BLOCKED | BLOCKED | BLOCKED to BLOCKED unchanged | BLOCKED to BLOCKED unchanged | BLOCKED | BLOCKED | BLOCKED | unchanged | unchanged |
+| 29 | UPHO-S5 | upholstery | BLOCKED | BLOCKED | BLOCKED | BLOCKED to BLOCKED unchanged | BLOCKED to BLOCKED unchanged | BLOCKED | BLOCKED | BLOCKED | unchanged | unchanged |
+| 30 | HAND-S5 | handyman | BLOCKED | BLOCKED | BLOCKED | BLOCKED to BLOCKED unchanged | BLOCKED to BLOCKED unchanged | BLOCKED | BLOCKED | BLOCKED | unchanged | unchanged |
+| 31 | C1 | plumbing | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 32 | C2 | electrical | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 33 | C3 | plumbing | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 34 | C4 | plumbing | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 35 | C5 | plumbing | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged |
+| 36 | C6 | electrical | PASS | PASS | PASS | PASS to PASS unchanged | PASS to PASS unchanged | FAIL | PASS | PASS | FAIL to PASS | PASS to PASS unchanged |
+
+Round 2 against main, flags off: 26 x PASS->PASS unchanged, 4 x FAIL->PASS; S5 journeys: 6 x BLOCKED->BLOCKED unchanged.
+Round 2 against main, flags on: 23 x PASS->PASS unchanged, 7 x FAIL->PASS; S5 journeys against pre-fix main: 6 x BLOCKED->BLOCKED unchanged.
+Round 2 against round 1, flags off: 30 x PASS->PASS unchanged; S5 journeys: 6 x BLOCKED->BLOCKED unchanged.
+Round 2 against round 1, flags on: 30 x PASS->PASS unchanged; S5 journeys: 6 x BLOCKED->BLOCKED unchanged.
+SUPP-C6b persistent write failure: flags off against main 1 x PASS->PASS unchanged, against round 1 1 x PASS->PASS unchanged; flags on against main 1 x FAIL->PASS, against round 1 1 x PASS->PASS unchanged.
+
+### Table 2. S5 journey checkpoints on the round-2 candidate (identical for all six services)
+
+| Checkpoint | Name | Result | Needs |
+|---|---|---|---|
+| J01 | basic_intake_accepted | PASS | none at T0 |
+| J02 | service_profile_resolved | PASS | none at T0 |
+| J03 | no_offer_before_quote_ready | BLOCKED | PostgreSQL / real transaction (T1 or higher) |
+| J04 | offer_decision_is_customer_only | PASS | none at T0 |
+| J05 | evidence_decision_is_customer_only | PASS | none at T0 |
+| J06 | job_lifecycle_legal_path | PASS | none at T0 |
+| J07 | job_lifecycle_illegal_refused | PASS | none at T0 |
+| J08 | customer_gates_hold | PASS | none at T0 |
+| J09 | scope_change_gate | PASS | none at T0 |
+| J10 | cancel_and_rematch | PASS | none at T0 |
+| J11 | worker_accept_is_worker_only | PASS | none at T0 |
+| J12 | payment_skip_edge | PASS | none at T0 |
+| J13 | worker_ui_stage_projection | INVENTORY | none (inventory) |
+| J14 | payment_rail_and_callback | BLOCKED | PostgreSQL / real transaction (T1 or higher) |
+| J15 | atomicity_rls_concurrency | BLOCKED | PostgreSQL / real transaction (T1 or higher) |
+
+Distinct checkpoint vectors across the 12 journey runs: 1.
+
+### Table 3. Hazard checkpoints, route / visible guidance / metadata kept apart
+
+| Configuration | Checkpoints | Main: route | Main: visible exact | Main: metadata | Round 1: route | Round 1: visible exact | Round 1: metadata | Round 2: route | Round 2: visible exact | Round 2: metadata |
+|---|---|---|---|---|---|---|---|---|---|---|
+| frozen/flags-off | 21 | 20 | 20 | 20 | 21 | 21 | 21 | 21 | 21 | 21 |
+| created/flags-off | 15 | 15 | 15 | 15 | 15 | 15 | 15 | 15 | 15 | 15 |
+| frozen/flags-on | 21 | 15 | 17 | 15 | 21 | 21 | 21 | 21 | 21 | 21 |
+| created/flags-on | 15 | 10 | 13 | 10 | 15 | 15 | 15 | 15 | 15 | 15 |
+
+Checkpoints where round 2 is worse than round 1 on any dimension: 0. Checkpoints where round 2 is worse than main: 0. Round-2 checkpoints where flags on delivers fewer numbers or a weaker dimension than flags off: 0.

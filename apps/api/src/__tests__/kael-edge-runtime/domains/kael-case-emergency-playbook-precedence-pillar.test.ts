@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { STRANGER, installEdgeRuntimeTestHooks, type CaseWorld } from '../harness'
-import { activeWorld, armWriteFailures, type Service } from '../harness/emergency-fixtures'
+import { activeWorld, armWriteFailures, pendingWorld, type Service } from '../harness/emergency-fixtures'
 
 export const PILLAR = {
   id: 'P420-kael-case-emergency-playbook-precedence',
   invariant:
-    'enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched',
+    'enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, a routine request that only names spark protection is not intercepted, and the Case, its owner and its business tables are untouched',
   authority: [
     'governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state)',
     'governance/RULES.md #8 (a failed write is a visible error, never a fabricated success)',
@@ -157,6 +157,45 @@ describe(`${PILLAR.id}: ordinary wording is not escalated by turning a playbook 
     const result = await world.request('', { message, language: 'vi' })
     const emergencyTurns = world.kaelTurns().filter((turn) => (turn.safe_metadata as Record<string, unknown>).emergency_route !== undefined)
     expect(emergencyTurns, pillarWhy(PILLAR, `${service}: status=${result.status}`)).toEqual([])
+  })
+})
+
+describe(`${PILLAR.id}: a request that only names spark protection is not a hazard report`, () => {
+  const ROUTINE = [
+    { service: 'electrical', message: 'Nhờ lắp ổ cắm chống tia lửa cho bếp.', language: 'vi' },
+    { service: 'electrical', message: 'Please replace the spark-proof outlet cover.', language: 'en' },
+    { service: 'handyman', message: 'Cần thay công tắc hạn chế tia lửa trong phòng khách.', language: 'vi' },
+  ] as const
+
+  it.each(ROUTINE.flatMap((row) => (['off', 'on'] as const).map((flags) => ({ ...row, flags }))))(
+    '$service: "$message" produces no emergency turn on an active Case (flags $flags)',
+    async ({ service, message, language, flags }) => {
+      const world = activeWorld(service, { env: flags === 'on' ? FLAGS_ON : {} })
+      const result = await world.request('', { message, language })
+      const why = pillarWhy(PILLAR, `${service} flags=${flags} status=${result.status}`)
+      const emergencyTurns = world.kaelTurns().filter((turn) => (turn.safe_metadata as Record<string, unknown>).emergency_route !== undefined)
+      expect(emergencyTurns, why).toEqual([])
+      expect((result.body as { emergency?: unknown }).emergency, `${why} (no structured emergency on the body)`).toBeUndefined()
+    },
+  )
+
+  it.each(ROUTINE)('$service: "$message" on a Case waiting for the booking confirmation keeps the 409 and writes nothing', async ({ service, message, language }) => {
+    const world = pendingWorld(service)
+    const rows = world.db.tables.kael_chat_turns.length
+    const result = await world.request('', { message, language })
+    const why = pillarWhy(PILLAR, `${service} status=${result.status}`)
+    expect(result.status, `${why} (an ordinary message is refused while the confirmation is pending)`).toBe(409)
+    expect(world.db.tables.kael_chat_turns.length, `${why} (no row was written)`).toBe(rows)
+  })
+
+  it('still answers a real spark on a Case waiting for the booking confirmation, and leaves the booking pending', async () => {
+    const world = pendingWorld('electrical')
+    const result = await world.request('', { message: 'Nhờ lắp ổ cắm chống tia lửa cho bếp. Nhưng ổ cắm cũ vừa có tia lửa xẹt ra, nóng rát tay.', language: 'vi' })
+    const why = pillarWhy(PILLAR, `status=${result.status}`)
+    const routes = world.kaelTurns().map((turn) => (turn.safe_metadata as Record<string, unknown>).emergency_route).filter((route) => route !== undefined)
+    expect(result.status, why).toBe(200)
+    expect(routes, why).toEqual(['electrical_water'])
+    expect(world.session().job_id, why).toBeNull()
   })
 })
 

@@ -1,0 +1,6 @@
+$ gitleaks git (round-1 commit, ignore file of this candidate)
+exit=0
+4:33AM INF Unknown SCM platform. Use --platform to include links in findings. host=
+4:33AM INF 1 commits scanned.
+4:33AM INF scanned ~6411476 bytes (6.41 MB) in 5.88s
+4:33AM INF no leaks found

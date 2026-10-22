@@ -1,0 +1,15 @@
+
+> @nestscout/shared@0.1.0 test C:\ns-fix\r1\packages\shared
+> vitest run
+
+
+ RUN  v4.1.6 C:/ns-fix/r1/packages/shared
+
+
+ Test Files  10 passed (10)
+      Tests  189 passed (189)
+   Start at  11:13:16
+   Duration  911ms (transform 1.85s, setup 0ms, import 3.48s, tests 260ms, environment 1ms)
+
+
+----- stderr -----
