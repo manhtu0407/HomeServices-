@@ -1,0 +1,30 @@
+== mutant: accept an order that is still manual_qr_ready
+FAIL  manual_bank_reconciliation_behavior_verification.sql
+      ERROR:  an unclaimed QR order was confirmed as paid: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000101","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T08:39:31.85
+== restored decide
+PASS  manual_bank_reconciliation_behavior_verification.sql
+== mutant: skip the amount comparison
+FAIL  manual_bank_reconciliation_behavior_verification.sql
+      ERROR:  a short payment was not routed to reconciliation: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000103","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T08:39:
+== restored decide
+PASS  manual_bank_reconciliation_behavior_verification.sql
+== mutant: drop the bank-reference reuse check
+FAIL  manual_bank_reconciliation_behavior_verification.sql
+      ERROR:  duplicate key value violates unique constraint "job_payment_orders_bank_reference_hash_uidx"
+== restored decide
+PASS  manual_bank_reconciliation_behavior_verification.sql
+== mutant: skip the Tier A field check
+FAIL  six_service_confirmation_gate_verification.sql
+      ERROR:  new row for relation "jobs" violates check constraint "jobs_intake_scope_snapshot_shape_check"
+== restored confirm
+PASS  six_service_confirmation_gate_verification.sql
+== mutant: skip the rfq confirmation-kind comparison
+FAIL  six_service_confirmation_gate_verification.sql
+      ERROR:  new row for relation "jobs" violates check constraint "jobs_intake_scope_snapshot_shape_check"
+== restored confirm
+PASS  six_service_confirmation_gate_verification.sql
+== mutant: skip the safety blocker refusal
+FAIL  six_service_confirmation_gate_verification.sql
+      ERROR:  new row for relation "jobs" violates check constraint "jobs_intake_scope_snapshot_shape_check"
+== restored confirm
+PASS  six_service_confirmation_gate_verification.sql

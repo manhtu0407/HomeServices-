@@ -1,0 +1,854 @@
+{
+ "schema": "nestscout.four_blocker.s5_matrix.v1",
+ "evidence": {
+  "sql_suite": {
+   "discovered": 141,
+   "executed": 141,
+   "passed": 141,
+   "failed": 0
+  },
+  "gate_sql": true,
+  "accept_sql": true,
+  "bank_sql": true,
+  "completion_sql": true,
+  "concurrency": {
+   "payment": true,
+   "confirmAccept": true
+  },
+  "status_writers_closed": true,
+  "reviewed_writers_closed": true
+ },
+ "mutation_log_present": true,
+ "verdicts": {
+  "electrical": "PASS_WITH_FINDING",
+  "plumbing": "PASS_WITH_FINDING",
+  "cleaning": "PASS_WITH_FINDING",
+  "hvac": "PASS_WITH_FINDING",
+  "upholstery": "PASS_WITH_FINDING",
+  "handyman": "PASS_WITH_FINDING"
+ },
+ "matrix": {
+  "electrical": {
+   "J01": {
+    "name": "basic_intake_accepted",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "Case rows for the service satisfy the real status, phase and diagnosis_scope constraints (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J02": {
+    "name": "service_profile_resolved",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "PASS"
+   },
+   "J03": {
+    "name": "no_offer_before_quote_ready",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "database refuses incomplete, wrong-kind, policy-less and safety-blocked confirmations without a write, accepts the ready Case once and replays it (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J04": {
+    "name": "offer_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J05": {
+    "name": "evidence_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J06": {
+    "name": "job_lifecycle_legal_path",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J07": {
+    "name": "job_lifecycle_illegal_refused",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J08": {
+    "name": "customer_gates_hold",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J09": {
+    "name": "scope_change_gate",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J10": {
+    "name": "cancel_and_rematch",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J11": {
+    "name": "worker_accept_is_worker_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "generic",
+    "basis": "non-Worker ids refused with zero writes, one winner under concurrency (worker_accept_authority; service-independent RPC exercised on a plumbing fixture)",
+    "final": "PASS"
+   },
+   "J12": {
+    "name": "payment_skip_edge",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "reviewed is written only by service-role functions; review requires paid (canonical_completion_payment_authority)",
+    "final": "PASS"
+   },
+   "J13": {
+    "name": "worker_ui_stage_projection",
+    "t0_flags_off": "INVENTORY",
+    "t0_flags_on": "INVENTORY",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "INVENTORY"
+   },
+   "J14": {
+    "name": "payment_rail_and_callback",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS_WITH_FINDING",
+    "t1_kind": "generic",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "final": "PASS_WITH_FINDING"
+   },
+   "J15": {
+    "name": "atomicity_rls_concurrency",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "unique (session, turn_index), per-actor RLS, no API write path, atomic refusal, concurrent confirmation and turn-index races (six_service_confirmation_gate + confirm-accept-concurrency)",
+    "final": "PASS"
+   }
+  },
+  "plumbing": {
+   "J01": {
+    "name": "basic_intake_accepted",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "Case rows for the service satisfy the real status, phase and diagnosis_scope constraints (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J02": {
+    "name": "service_profile_resolved",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "PASS"
+   },
+   "J03": {
+    "name": "no_offer_before_quote_ready",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "database refuses incomplete, wrong-kind, policy-less and safety-blocked confirmations without a write, accepts the ready Case once and replays it (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J04": {
+    "name": "offer_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J05": {
+    "name": "evidence_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J06": {
+    "name": "job_lifecycle_legal_path",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J07": {
+    "name": "job_lifecycle_illegal_refused",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J08": {
+    "name": "customer_gates_hold",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J09": {
+    "name": "scope_change_gate",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J10": {
+    "name": "cancel_and_rematch",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J11": {
+    "name": "worker_accept_is_worker_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "generic",
+    "basis": "non-Worker ids refused with zero writes, one winner under concurrency (worker_accept_authority; service-independent RPC exercised on a plumbing fixture)",
+    "final": "PASS"
+   },
+   "J12": {
+    "name": "payment_skip_edge",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "reviewed is written only by service-role functions; review requires paid (canonical_completion_payment_authority)",
+    "final": "PASS"
+   },
+   "J13": {
+    "name": "worker_ui_stage_projection",
+    "t0_flags_off": "INVENTORY",
+    "t0_flags_on": "INVENTORY",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "INVENTORY"
+   },
+   "J14": {
+    "name": "payment_rail_and_callback",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS_WITH_FINDING",
+    "t1_kind": "generic",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "final": "PASS_WITH_FINDING"
+   },
+   "J15": {
+    "name": "atomicity_rls_concurrency",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "unique (session, turn_index), per-actor RLS, no API write path, atomic refusal, concurrent confirmation and turn-index races (six_service_confirmation_gate + confirm-accept-concurrency)",
+    "final": "PASS"
+   }
+  },
+  "cleaning": {
+   "J01": {
+    "name": "basic_intake_accepted",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "Case rows for the service satisfy the real status, phase and diagnosis_scope constraints (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J02": {
+    "name": "service_profile_resolved",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "PASS"
+   },
+   "J03": {
+    "name": "no_offer_before_quote_ready",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "database refuses incomplete, wrong-kind, policy-less and safety-blocked confirmations without a write, accepts the ready Case once and replays it (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J04": {
+    "name": "offer_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J05": {
+    "name": "evidence_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J06": {
+    "name": "job_lifecycle_legal_path",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J07": {
+    "name": "job_lifecycle_illegal_refused",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J08": {
+    "name": "customer_gates_hold",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J09": {
+    "name": "scope_change_gate",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J10": {
+    "name": "cancel_and_rematch",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J11": {
+    "name": "worker_accept_is_worker_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "generic",
+    "basis": "non-Worker ids refused with zero writes, one winner under concurrency (worker_accept_authority; service-independent RPC exercised on a plumbing fixture)",
+    "final": "PASS"
+   },
+   "J12": {
+    "name": "payment_skip_edge",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "reviewed is written only by service-role functions; review requires paid (canonical_completion_payment_authority)",
+    "final": "PASS"
+   },
+   "J13": {
+    "name": "worker_ui_stage_projection",
+    "t0_flags_off": "INVENTORY",
+    "t0_flags_on": "INVENTORY",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "INVENTORY"
+   },
+   "J14": {
+    "name": "payment_rail_and_callback",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS_WITH_FINDING",
+    "t1_kind": "generic",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "final": "PASS_WITH_FINDING"
+   },
+   "J15": {
+    "name": "atomicity_rls_concurrency",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "unique (session, turn_index), per-actor RLS, no API write path, atomic refusal, concurrent confirmation and turn-index races (six_service_confirmation_gate + confirm-accept-concurrency)",
+    "final": "PASS"
+   }
+  },
+  "hvac": {
+   "J01": {
+    "name": "basic_intake_accepted",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "Case rows for the service satisfy the real status, phase and diagnosis_scope constraints (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J02": {
+    "name": "service_profile_resolved",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "PASS"
+   },
+   "J03": {
+    "name": "no_offer_before_quote_ready",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "database refuses incomplete, wrong-kind, policy-less and safety-blocked confirmations without a write, accepts the ready Case once and replays it (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J04": {
+    "name": "offer_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J05": {
+    "name": "evidence_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J06": {
+    "name": "job_lifecycle_legal_path",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J07": {
+    "name": "job_lifecycle_illegal_refused",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J08": {
+    "name": "customer_gates_hold",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J09": {
+    "name": "scope_change_gate",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J10": {
+    "name": "cancel_and_rematch",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J11": {
+    "name": "worker_accept_is_worker_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "generic",
+    "basis": "non-Worker ids refused with zero writes, one winner under concurrency (worker_accept_authority; service-independent RPC exercised on a plumbing fixture)",
+    "final": "PASS"
+   },
+   "J12": {
+    "name": "payment_skip_edge",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "reviewed is written only by service-role functions; review requires paid (canonical_completion_payment_authority)",
+    "final": "PASS"
+   },
+   "J13": {
+    "name": "worker_ui_stage_projection",
+    "t0_flags_off": "INVENTORY",
+    "t0_flags_on": "INVENTORY",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "INVENTORY"
+   },
+   "J14": {
+    "name": "payment_rail_and_callback",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS_WITH_FINDING",
+    "t1_kind": "generic",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "final": "PASS_WITH_FINDING"
+   },
+   "J15": {
+    "name": "atomicity_rls_concurrency",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "unique (session, turn_index), per-actor RLS, no API write path, atomic refusal, concurrent confirmation and turn-index races (six_service_confirmation_gate + confirm-accept-concurrency)",
+    "final": "PASS"
+   }
+  },
+  "upholstery": {
+   "J01": {
+    "name": "basic_intake_accepted",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "Case rows for the service satisfy the real status, phase and diagnosis_scope constraints (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J02": {
+    "name": "service_profile_resolved",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "PASS"
+   },
+   "J03": {
+    "name": "no_offer_before_quote_ready",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "database refuses incomplete, wrong-kind, policy-less and safety-blocked confirmations without a write, accepts the ready Case once and replays it (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J04": {
+    "name": "offer_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J05": {
+    "name": "evidence_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J06": {
+    "name": "job_lifecycle_legal_path",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J07": {
+    "name": "job_lifecycle_illegal_refused",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J08": {
+    "name": "customer_gates_hold",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J09": {
+    "name": "scope_change_gate",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J10": {
+    "name": "cancel_and_rematch",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J11": {
+    "name": "worker_accept_is_worker_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "generic",
+    "basis": "non-Worker ids refused with zero writes, one winner under concurrency (worker_accept_authority; service-independent RPC exercised on a plumbing fixture)",
+    "final": "PASS"
+   },
+   "J12": {
+    "name": "payment_skip_edge",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "reviewed is written only by service-role functions; review requires paid (canonical_completion_payment_authority)",
+    "final": "PASS"
+   },
+   "J13": {
+    "name": "worker_ui_stage_projection",
+    "t0_flags_off": "INVENTORY",
+    "t0_flags_on": "INVENTORY",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "INVENTORY"
+   },
+   "J14": {
+    "name": "payment_rail_and_callback",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS_WITH_FINDING",
+    "t1_kind": "generic",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "final": "PASS_WITH_FINDING"
+   },
+   "J15": {
+    "name": "atomicity_rls_concurrency",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "unique (session, turn_index), per-actor RLS, no API write path, atomic refusal, concurrent confirmation and turn-index races (six_service_confirmation_gate + confirm-accept-concurrency)",
+    "final": "PASS"
+   }
+  },
+  "handyman": {
+   "J01": {
+    "name": "basic_intake_accepted",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "Case rows for the service satisfy the real status, phase and diagnosis_scope constraints (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J02": {
+    "name": "service_profile_resolved",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "PASS"
+   },
+   "J03": {
+    "name": "no_offer_before_quote_ready",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "database refuses incomplete, wrong-kind, policy-less and safety-blocked confirmations without a write, accepts the ready Case once and replays it (six_service_confirmation_gate)",
+    "final": "PASS"
+   },
+   "J04": {
+    "name": "offer_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J05": {
+    "name": "evidence_decision_is_customer_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 Edge refusal stands; T1 shows no API role can write Cases or Job status, and RLS adds no barrier because the Edge writes with the service role",
+    "final": "PASS"
+   },
+   "J06": {
+    "name": "job_lifecycle_legal_path",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J07": {
+    "name": "job_lifecycle_illegal_refused",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J08": {
+    "name": "customer_gates_hold",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J09": {
+    "name": "scope_change_gate",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J10": {
+    "name": "cancel_and_rematch",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table",
+    "final": "PASS"
+   },
+   "J11": {
+    "name": "worker_accept_is_worker_only",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "generic",
+    "basis": "non-Worker ids refused with zero writes, one winner under concurrency (worker_accept_authority; service-independent RPC exercised on a plumbing fixture)",
+    "final": "PASS"
+   },
+   "J12": {
+    "name": "payment_skip_edge",
+    "t0_flags_off": "PASS",
+    "t0_flags_on": "PASS",
+    "t1": "PASS",
+    "t1_kind": "corroborating",
+    "basis": "reviewed is written only by service-role functions; review requires paid (canonical_completion_payment_authority)",
+    "final": "PASS"
+   },
+   "J13": {
+    "name": "worker_ui_stage_projection",
+    "t0_flags_off": "INVENTORY",
+    "t0_flags_on": "INVENTORY",
+    "t1": "NOT_RUN",
+    "t1_kind": null,
+    "basis": null,
+    "final": "INVENTORY"
+   },
+   "J14": {
+    "name": "payment_rail_and_callback",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS_WITH_FINDING",
+    "t1_kind": "generic",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "final": "PASS_WITH_FINDING"
+   },
+   "J15": {
+    "name": "atomicity_rls_concurrency",
+    "t0_flags_off": "BLOCKED",
+    "t0_flags_on": "BLOCKED",
+    "t1": "PASS",
+    "t1_kind": "decisive",
+    "basis": "unique (session, turn_index), per-actor RLS, no API write path, atomic refusal, concurrent confirmation and turn-index races (six_service_confirmation_gate + confirm-accept-concurrency)",
+    "final": "PASS"
+   }
+  }
+ }
+}

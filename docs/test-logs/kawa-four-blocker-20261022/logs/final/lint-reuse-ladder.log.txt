@@ -1,0 +1,3 @@
+reuse-ladder: no new exported symbols in this change.
+
+----- stderr -----

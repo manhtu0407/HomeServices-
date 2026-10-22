@@ -1,0 +1,34 @@
+{
+ "base": "8e859073ca1412f4a18fa6d3517a3e8fe3578b1f",
+ "red": {
+  "kael-boundary-requested-work-pillar.test.ts": {
+   "passed": 218,
+   "failed": 36,
+   "total": 254,
+   "exit": 1
+  },
+  "kael-boundary-electrical-flag-parity-pillar.test.ts": {
+   "passed": 59,
+   "failed": 30,
+   "total": 89,
+   "exit": 1
+  }
+ },
+ "green": {
+  "kael-boundary-requested-work-pillar.test.ts": {
+   "passed": 254,
+   "failed": 0,
+   "total": 254,
+   "exit": 0
+  },
+  "kael-boundary-electrical-flag-parity-pillar.test.ts": {
+   "passed": 89,
+   "failed": 0,
+   "total": 89,
+   "exit": 0
+  }
+ },
+ "restored": true
+}
+
+----- stderr -----

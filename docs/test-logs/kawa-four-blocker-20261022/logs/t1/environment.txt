@@ -1,0 +1,5 @@
+== node
+v24.19.0
+docker 29.9.2
+image sha256:69e57a409628a809e3778a4d176eb97e32d7c961131ac025b77ad094c0b2d49e public.ecr.aws/supabase/postgres:17.6.1.121
+PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit

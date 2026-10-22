@@ -1,0 +1,18 @@
+453 canonical migrations of 463 inventory entries
+applied 453 migrations
+seeded
+sql verification: discovered=141 executed=141 passed=141 failed=0 stopped_early=false
+sql_functions_that_update_jobs_status=33
+of_which_executable_by_anon_or_authenticated=0
+authenticated_table_privileges_on_jobs=SELECT
+anon_table_privileges_on_jobs=none
+functions_that_set_status_reviewed=private.guard_synthetic_job_release_boundary,public.apply_kael_autonomy_decision,public.complete_synthetic_transaction_proof,public.get_customer_profile_insights_aggregate,public.require_stage1_synthetic_terminal_proofs,public.submit_review_atomic
+reviewed_writers_executable_by_api_roles=0
+sepay_webhook_function_present=true
+ payment concurrency: all assertions passed
+(1 row)
+
+ confirmation, accept and turn-index concurrency: all assertions passed
+(1 row)
+
+exit=0

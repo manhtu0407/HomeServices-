@@ -1,0 +1,851 @@
+{
+ "schema": "nestscout.h5.fresh_probes.v1",
+ "written": "2026-10-22",
+ "note": "newly written before any run; not copied from development-h1..h4 or sealed-h5; labels fixed before the first run",
+ "rows": [
+  {
+   "id": "P-001",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Nhà em đang cháy ở bếp, lửa lan lên tủ rồi"
+  },
+  {
+   "id": "P-002",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "medical"
+   ],
+   "text": "Có người ngất xỉu trong phòng tắm, gọi không tỉnh"
+  },
+  {
+   "id": "P-003",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "gas"
+   ],
+   "text": "Phòng em có mùi gas nồng nặc, hình như bình gas bị rò"
+  },
+  {
+   "id": "P-004",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Ổ cắm cạnh giường bốc cháy, khói bay mù mịt"
+  },
+  {
+   "id": "P-005",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "electrical_water"
+   ],
+   "text": "Nước từ trần nhỏ xuống hộp công tắc, nghe tiếng xì xẹt"
+  },
+  {
+   "id": "P-006",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Máy lạnh phát nổ rồi, khói đen mù mịt"
+  },
+  {
+   "id": "P-007",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "police"
+   ],
+   "text": "Có kẻ lạ cạy cửa căn hộ bên cạnh, tôi nghe rõ tiếng phá khóa"
+  },
+  {
+   "id": "P-008",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "medical"
+   ],
+   "text": "Con tôi uống nhầm nước tẩy toilet, giờ nôn liên tục"
+  },
+  {
+   "id": "P-009",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "medical",
+    "electrical_water"
+   ],
+   "text": "Thợ bị điện giật, ngã xuống không cử động"
+  },
+  {
+   "id": "P-010",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "fire",
+    "electrical_water"
+   ],
+   "text": "Dây điện trong tường nóng chảy, mùi khét nồng cả phòng"
+  },
+  {
+   "id": "P-011",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "electrical_water",
+    "medical"
+   ],
+   "text": "Bình nóng lạnh rò nước, chạm vào vòi bị giật tê tay"
+  },
+  {
+   "id": "P-012",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "fire",
+    "electrical_water"
+   ],
+   "text": "Tủ điện tổng bốc khói trắng, cầu dao nhảy liên tục"
+  },
+  {
+   "id": "P-013",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Bếp ga bùng lửa lớn, em không dập được"
+  },
+  {
+   "id": "P-014",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "gas",
+    "medical"
+   ],
+   "text": "Em ngửi thấy mùi gas ở bếp từ sáng giờ thấy chóng mặt"
+  },
+  {
+   "id": "P-015",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "police"
+   ],
+   "text": "Có người cầm dao dọa tôi ngoài hành lang"
+  },
+  {
+   "id": "P-016",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "medical"
+   ],
+   "text": "Mẹ tôi khó thở, môi tím tái sau khi hít hóa chất tẩy"
+  },
+  {
+   "id": "P-017",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "electrical_water"
+   ],
+   "text": "Ống nước vỡ, nước tràn vào ổ điện sàn nhà, đèn nháy lung tung"
+  },
+  {
+   "id": "P-018",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Lửa đang cháy ở ban công tầng dưới, khói bốc lên phòng em"
+  },
+  {
+   "id": "P-019",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Máy giặt đang bốc khói và có mùi cháy khét"
+  },
+  {
+   "id": "P-020",
+   "class": "positive-vi",
+   "lang": "vi",
+   "expected": [
+    "gas"
+   ],
+   "text": "Bình gas rò, nghe tiếng xì xì ngay chân bếp"
+  },
+  {
+   "id": "P-021",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "fire"
+   ],
+   "text": "There is a fire in my kitchen and it is spreading"
+  },
+  {
+   "id": "P-022",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "gas"
+   ],
+   "text": "I can smell gas strongly in the hallway"
+  },
+  {
+   "id": "P-023",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "medical"
+   ],
+   "text": "My husband collapsed and is not breathing"
+  },
+  {
+   "id": "P-024",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "electrical_water"
+   ],
+   "text": "Water is dripping onto the electrical panel and it is buzzing"
+  },
+  {
+   "id": "P-025",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "police"
+   ],
+   "text": "Someone is trying to break into my apartment right now"
+  },
+  {
+   "id": "P-026",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "fire",
+    "electrical_water"
+   ],
+   "text": "The outlet is smoking and smells like burning plastic"
+  },
+  {
+   "id": "P-027",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "fire"
+   ],
+   "text": "The AC unit caught fire"
+  },
+  {
+   "id": "P-028",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "medical"
+   ],
+   "text": "The cleaner mixed bleach and ammonia and we are all coughing and dizzy"
+  },
+  {
+   "id": "P-029",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "electrical_water",
+    "medical"
+   ],
+   "text": "I got an electric shock from the faucet"
+  },
+  {
+   "id": "P-030",
+   "class": "positive-en",
+   "lang": "en",
+   "expected": [
+    "fire",
+    "electrical_water"
+   ],
+   "text": "The wire inside the wall is melting and sparks are flying"
+  },
+  {
+   "id": "P-031",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "nha em dang chay, khoi den day dac"
+  },
+  {
+   "id": "P-032",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "fire",
+    "electrical_water"
+   ],
+   "text": "o cam bop bi chay xem den, co mui khet"
+  },
+  {
+   "id": "P-033",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "gas"
+   ],
+   "text": "co mui gas nong nac trong bep"
+  },
+  {
+   "id": "P-034",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "medical"
+   ],
+   "text": "ba toi bi ngat, goi khong tinh"
+  },
+  {
+   "id": "P-035",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "electrical_water"
+   ],
+   "text": "nuoc tran vao tu dien, nghe tieng xet xet"
+  },
+  {
+   "id": "P-036",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "police"
+   ],
+   "text": "co trom dot nhap vao nha, toi dang nup trong phong"
+  },
+  {
+   "id": "P-037",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "may lanh no tung roi boc khoi"
+  },
+  {
+   "id": "P-038",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "electrical_water",
+    "medical"
+   ],
+   "text": "binh nong lanh ro dien, cham vao bi giat"
+  },
+  {
+   "id": "P-039",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "gas"
+   ],
+   "text": "tieng xi xi tu binh gas, ngui thay mui gas"
+  },
+  {
+   "id": "P-040",
+   "class": "positive-no-diacritics",
+   "lang": "vi",
+   "expected": [
+    "medical"
+   ],
+   "text": "be nho nuot nham thuoc tay, non ra"
+  },
+  {
+   "id": "P-041",
+   "class": "negation",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Không có khói hay mùi khét gì, chỉ cần kiểm tra ổ cắm định kỳ"
+  },
+  {
+   "id": "P-042",
+   "class": "negation",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Không bị rò gas, chỉ muốn thay ống dẫn bếp ga"
+  },
+  {
+   "id": "P-043",
+   "class": "negation",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Nhà không cháy, mình chỉ hỏi giá lắp báo khói"
+  },
+  {
+   "id": "P-044",
+   "class": "negation",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Chưa thấy tia lửa nào, nhưng ổ cắm hơi lỏng"
+  },
+  {
+   "id": "P-045",
+   "class": "negation",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Không ai bị thương, chỉ là bình nóng lạnh kêu to"
+  },
+  {
+   "id": "P-046",
+   "class": "negation",
+   "lang": "en",
+   "expected": [
+    "none"
+   ],
+   "text": "No smoke and no burning smell, just a flickering light"
+  },
+  {
+   "id": "P-047",
+   "class": "negation",
+   "lang": "en",
+   "expected": [
+    "none"
+   ],
+   "text": "There is no gas smell, I only want the stove serviced"
+  },
+  {
+   "id": "P-048",
+   "class": "negation",
+   "lang": "en",
+   "expected": [
+    "none"
+   ],
+   "text": "Nobody got shocked, I just want the breaker replaced"
+  },
+  {
+   "id": "P-049",
+   "class": "negation",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "khong co khoi, khong co mui khet, chi can doi cong tac"
+  },
+  {
+   "id": "P-050",
+   "class": "negation",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "khong bi giat dien, chi muon kiem tra day dien"
+  },
+  {
+   "id": "P-051",
+   "class": "completed-incident",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Hôm kia ổ cắm có tia lửa nhưng thợ đã sửa xong, giờ nhờ kiểm tra lại"
+  },
+  {
+   "id": "P-052",
+   "class": "completed-incident",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Tuần trước nhà em từng bị cháy bếp, giờ cần sơn lại tường"
+  },
+  {
+   "id": "P-053",
+   "class": "completed-incident",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Vụ rò gas tháng trước đã xử lý xong, cần thay van mới"
+  },
+  {
+   "id": "P-054",
+   "class": "completed-incident",
+   "lang": "en",
+   "expected": [
+    "none"
+   ],
+   "text": "Last week the outlet caught fire but it is fixed now, please inspect the wiring"
+  },
+  {
+   "id": "P-055",
+   "class": "completed-incident",
+   "lang": "en",
+   "expected": [
+    "none"
+   ],
+   "text": "The smoke last night is gone, I just want the cause found"
+  },
+  {
+   "id": "P-056",
+   "class": "completed-incident",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "hom qua co mui khet nhung da het, nho tho kiem tra"
+  },
+  {
+   "id": "P-057",
+   "class": "completed-incident",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Mẹ tôi từng ngất tháng trước nhưng đã khỏe, giờ cần lắp tay vịn nhà tắm"
+  },
+  {
+   "id": "P-058",
+   "class": "completed-incident",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Sự cố chập điện năm ngoái đã khắc phục, nay muốn nâng cấp tủ điện"
+  },
+  {
+   "id": "P-059",
+   "class": "prevention-product",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Mình muốn lắp ổ cắm chống cháy nổ cho phòng bếp"
+  },
+  {
+   "id": "P-060",
+   "class": "prevention-product",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Nhờ lắp đầu báo khói và bình chữa cháy mini"
+  },
+  {
+   "id": "P-061",
+   "class": "prevention-product",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Cần thay aptomat chống giật cho phòng tắm"
+  },
+  {
+   "id": "P-062",
+   "class": "prevention-product",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Lắp thiết bị báo rò gas cho bếp"
+  },
+  {
+   "id": "P-063",
+   "class": "prevention-product",
+   "lang": "en",
+   "expected": [
+    "none"
+   ],
+   "text": "Please install a smoke detector and a fire extinguisher"
+  },
+  {
+   "id": "P-064",
+   "class": "prevention-product",
+   "lang": "en",
+   "expected": [
+    "none"
+   ],
+   "text": "Can you install a gas leak detector in the kitchen?"
+  },
+  {
+   "id": "P-065",
+   "class": "prevention-product",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "lap bao khoi va binh chua chay cho can ho"
+  },
+  {
+   "id": "P-066",
+   "class": "prevention-product",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Mình cần tư vấn thiết bị phòng cháy chữa cháy cho nhà"
+  },
+  {
+   "id": "P-067",
+   "class": "prevention-product",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Ổ cắm có màn che chống giật cho trẻ em, lắp giúp mình"
+  },
+  {
+   "id": "P-068",
+   "class": "prevention-product",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Chống thấm nhà tắm để nước không vào ổ điện"
+  },
+  {
+   "id": "P-069",
+   "class": "prevention-word-real-hazard",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Đầu báo khói trong nhà kêu inh ỏi vì khói đen đang bốc ra từ bếp"
+  },
+  {
+   "id": "P-070",
+   "class": "prevention-word-real-hazard",
+   "lang": "vi",
+   "expected": [
+    "electrical_water",
+    "medical"
+   ],
+   "text": "Aptomat chống giật vừa nhảy mà em vẫn bị giật khi chạm vòi"
+  },
+  {
+   "id": "P-071",
+   "class": "prevention-word-real-hazard",
+   "lang": "vi",
+   "expected": [
+    "gas",
+    "medical"
+   ],
+   "text": "Cảm biến gas báo động và em ngửi thấy mùi gas nồng"
+  },
+  {
+   "id": "P-072",
+   "class": "prevention-word-real-hazard",
+   "lang": "en",
+   "expected": [
+    "fire"
+   ],
+   "text": "The smoke detector is screaming because the kitchen is on fire"
+  },
+  {
+   "id": "P-073",
+   "class": "prevention-word-real-hazard",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "bao khoi keu lien tuc, bep dang boc lua"
+  },
+  {
+   "id": "P-074",
+   "class": "prevention-word-real-hazard",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Bình chữa cháy mini em dùng hết rồi mà lửa vẫn chưa tắt"
+  },
+  {
+   "id": "P-075",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "fire",
+    "electrical_water"
+   ],
+   "text": "Nhờ thợ sửa vòi nước, à mà ổ cắm gần đó đang bốc khói"
+  },
+  {
+   "id": "P-076",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "gas"
+   ],
+   "text": "Cần dọn nhà cuối tuần, nhưng sáng nay hình như có mùi gas ở bếp"
+  },
+  {
+   "id": "P-077",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "medical"
+   ],
+   "text": "Không có cháy, nhưng bà tôi vừa ngất xỉu"
+  },
+  {
+   "id": "P-078",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Mình cần thay bóng đèn. Tiện báo luôn là phòng bên cạnh đang cháy"
+  },
+  {
+   "id": "P-079",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "fire",
+    "electrical_water"
+   ],
+   "text": "Ổ cắm chập điện hôm qua đã sửa, nhưng bây giờ lại bốc khói"
+  },
+  {
+   "id": "P-080",
+   "class": "multi-clause-mixed",
+   "lang": "en",
+   "expected": [
+    "electrical_water",
+    "fire"
+   ],
+   "text": "Fix the faucet please. Also, there is sparking from the outlet next to it right now"
+  },
+  {
+   "id": "P-081",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Ban đầu tưởng rò gas nhưng không phải, giờ thì có lửa bốc lên từ bếp"
+  },
+  {
+   "id": "P-082",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "fire",
+    "electrical_water"
+   ],
+   "text": "Không có người bị thương nhưng khói đang bốc ra từ tủ điện"
+  },
+  {
+   "id": "P-083",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "fire"
+   ],
+   "text": "Vừa lắp báo khói xong thì nó kêu vì có khói thật từ ổ điện"
+  },
+  {
+   "id": "P-084",
+   "class": "multi-clause-mixed",
+   "lang": "en",
+   "expected": [
+    "electrical_water"
+   ],
+   "text": "Water leak under the sink, and the extension cord on the floor is sparking in the puddle"
+  },
+  {
+   "id": "P-085",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "police"
+   ],
+   "text": "Mình hỏi giá sơn tường. Còn chuyện này nữa: có kẻ lạ đang đập cửa nhà mình"
+  },
+  {
+   "id": "P-086",
+   "class": "multi-clause-mixed",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Nghe nói nhà bên bị cháy hôm qua, nhà em ổn, chỉ cần kiểm tra dây điện"
+  },
+  {
+   "id": "P-087",
+   "class": "routine-near-miss",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Bếp ga lửa yếu, nhờ thợ xem"
+  },
+  {
+   "id": "P-088",
+   "class": "routine-near-miss",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Bình gas hết, nhờ giao bình mới"
+  },
+  {
+   "id": "P-089",
+   "class": "routine-near-miss",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Quạt kêu to, có mùi nhựa mới"
+  },
+  {
+   "id": "P-090",
+   "class": "routine-near-miss",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Máy giặt rung mạnh khi vắt"
+  },
+  {
+   "id": "P-091",
+   "class": "routine-near-miss",
+   "lang": "en",
+   "expected": [
+    "none"
+   ],
+   "text": "Smoke stains on the ceiling from an old fire, need repainting"
+  },
+  {
+   "id": "P-092",
+   "class": "routine-near-miss",
+   "lang": "vi",
+   "expected": [
+    "none"
+   ],
+   "text": "Mùi khét của đồ ăn cháy trong nồi, nhờ vệ sinh bếp"
+  }
+ ]
+}

@@ -1,0 +1,30 @@
+{"utc":"2026-10-22T08:40:09.141Z","name":"api-full-suite","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api test","exit":0}
+{"utc":"2026-10-22T08:41:43.209Z","name":"red-first","cwd":"<candidate-worktree>","command":"node \"C:\\ns-fix\\b4\\docs\\test-logs\\kawa-four-blocker-20261022\\scripts\\red-first.mjs\"","exit":0}
+{"utc":"2026-10-22T08:42:39.101Z","name":"matrix-and-drivers","cwd":"<candidate-worktree>","command":"node \"C:\\ns-fix\\b4\\docs\\test-logs\\kawa-four-blocker-20261022\\scripts\\reproduce.mjs\" post","exit":0}
+{"utc":"2026-10-22T08:44:35.765Z","name":"type-check-api","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api type-check","exit":0}
+{"utc":"2026-10-22T08:45:28.961Z","name":"type-check-shared","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/shared type-check","exit":0}
+{"utc":"2026-10-22T08:45:34.209Z","name":"test-shared","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/shared test","exit":0}
+{"utc":"2026-10-22T08:45:37.968Z","name":"type-check-mobile","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/mobile type-check","exit":0}
+{"utc":"2026-10-22T08:46:39.230Z","name":"test-mobile","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/mobile test","exit":0}
+{"utc":"2026-10-22T08:58:12.029Z","name":"lint-comments-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-comment-discipline.mjs --working","exit":0}
+{"utc":"2026-10-22T08:58:13.523Z","name":"lint-comments-full","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-comment-discipline.mjs","exit":0}
+{"utc":"2026-10-22T08:58:15.853Z","name":"lint-test-integrity-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-test-integrity.mjs --working","exit":0}
+{"utc":"2026-10-22T08:58:16.904Z","name":"lint-added-hygiene-working","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-added-source-hygiene.mjs --working","exit":0}
+{"utc":"2026-10-22T08:58:17.744Z","name":"lint-reuse-ladder","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-reuse-ladder.mjs --working","exit":0}
+{"utc":"2026-10-22T08:58:18.530Z","name":"lint-structure","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/lint-structure.mjs","exit":0}
+{"utc":"2026-10-22T08:58:19.564Z","name":"lint-baseline","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-structure-baseline.mjs","exit":0}
+{"utc":"2026-10-22T08:58:20.327Z","name":"lint-edge-db","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs","exit":0}
+{"utc":"2026-10-22T08:58:22.168Z","name":"lint-authority","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-authority-citations.mjs","exit":1}
+{"utc":"2026-10-22T08:58:23.778Z","name":"lint-source-residue","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-source-residue.mjs","exit":0}
+{"utc":"2026-10-22T08:58:24.994Z","name":"lint-protocol-routes","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-protocol-routes.mjs","exit":0}
+{"utc":"2026-10-22T08:58:25.709Z","name":"lint-work-plan-coverage","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-work-plan.mjs --coverage","exit":0}
+{"utc":"2026-10-22T08:58:26.410Z","name":"lint-workflow-cost","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-workflow-cost.mjs","exit":0}
+{"utc":"2026-10-22T08:58:27.103Z","name":"lint-test-collection","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-test-collection.mjs","exit":0}
+{"utc":"2026-10-22T08:58:27.932Z","name":"lint-runner-parity","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-runner-parity.mjs","exit":0}
+{"utc":"2026-10-22T08:58:28.568Z","name":"lint-skills-sync","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-skills-sync.mjs","exit":0}
+{"utc":"2026-10-22T08:58:29.354Z","name":"lint-skill-contracts","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/check-skill-contracts.mjs","exit":0}
+{"utc":"2026-10-22T08:58:30.061Z","name":"lint-artifact-text-assertions","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/find-artifact-text-assertions.mjs","exit":0}
+{"utc":"2026-10-22T08:58:31.449Z","name":"harness-verify","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/harness/verify.mjs","exit":0}
+{"utc":"2026-10-22T09:00:13.070Z","name":"harness-manifest-check","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/harness/check-manifest.mjs","exit":0}
+{"utc":"2026-10-22T09:00:17.436Z","name":"pillar-registry-check","cwd":"<candidate-worktree>","command":"node scripts/run.mjs run-node scripts/harness/pillar-registry.mjs","exit":0}
+{"utc":"2026-10-22T09:00:18.251Z","name":"edge-check-docker-pinned-deno","cwd":"<candidate-worktree>","command":"node scripts/run.mjs docker/scripts/edge-check","exit":0}

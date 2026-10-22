@@ -1,0 +1,12 @@
+$ gitleaks dir over one synthetic string made for this control (not committed)
+exit=1
+Finding:     api_key = "REDACTED"
+Secret:      REDACTED
+RuleID:      generic-api-key
+Entropy:     3.712815
+File:        /scan/positive-control.txt
+Line:        1
+Fingerprint: /scan/positive-control.txt:generic-api-key:1
+
+9:07AM INF scanned ~53 bytes (53 bytes) in 21.4ms
+9:07AM WRN leaks found: 1

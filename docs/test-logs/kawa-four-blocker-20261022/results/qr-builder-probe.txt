@@ -1,0 +1,5 @@
+{"origin":"https://vietqr.app/img","params":{"acc":"0123456789","bank":"VCB","amount":"460000","des":"NSA1B2C3D4E5F6G7H8J9K0L1M2","template":"compact","showinfo":"true","holder":"TEST HOLDER","store":"NestScout"},"transferContent":"NSA1B2C3D4E5F6G7H8J9K0L1M2","sameAsCode":true}
+refused {"amount":0} amount must be a positive safe integer
+refused {"amount":-5} amount must be a positive safe integer
+refused {"amount":1.5} amount must be a positive safe integer
+refused {"paymentCode":"BAD"} paymentCode is invalid
