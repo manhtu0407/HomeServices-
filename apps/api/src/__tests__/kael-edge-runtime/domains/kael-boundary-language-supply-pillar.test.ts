@@ -95,6 +95,15 @@ describe(PILLAR.id, () => {
     expect(mixed.ok).toBe(false)
     if (!mixed.ok) expect(mixed.reason).toBe('out_of_scope')
   })
+  it.each([false, true])('placement does not assign another fixture fault to an appliance, flags=%s', (enabled) => {
+    for (const text of [
+      'Tủ lạnh đặt cạnh cái ổ cắm điện đã bị hỏng, nhờ sửa ổ cắm.',
+      'Máy giặt đặt cạnh ổ cắm đang bị hỏng, nhờ sửa ổ cắm.',
+    ]) expect(boundary(text, 'electrical', enabled).ok, pillarWhy(PILLAR, text)).toBe(true)
+    const requested = boundary('May giat dat canh o cam khong vat.', 'electrical', enabled)
+    expect(requested.ok).toBe(false)
+    if (!requested.ok) expect(requested.reason).toBe('out_of_scope')
+  })
   it.each([false, true])('delivers visible emergency guidance and metadata before the refusal, flags=%s', async (enabled) => {
     const world = activeWorld('electrical', { env: enabled ? flagsOn : {} })
     world.db.tables.jobs = []

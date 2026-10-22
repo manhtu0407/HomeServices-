@@ -38,6 +38,11 @@ const PULLED_OBJECT = [
 ]
 
 const BENIGN_REPORTS = [
+  'Dien nha toi bi ngat, nho kiem tra.',
+  'Nuoc nha toi bi ngat, nho kiem tra duong ong.',
+  'May lanh bi ngat lien tuc, nho kiem tra.',
+  'Binh nong lanh cua toi bi ngat, nho kiem tra.',
+  'CB nha minh bi ngat, nho kiem tra.',
   'Can you install a gas leak detector in the kitchen?',
   'The gas leak alarm is not going off.',
   'The gas leak alarm has stopped sounding.',
@@ -58,6 +63,10 @@ const BENIGN_REPORTS = [
 ]
 
 const REAL_SHOCK = [
+  'Vo toi bi ngat roi',
+  'Con toi bi ngat khi dang choi',
+  'Nguoi tho sua dien bi ngat khi dang sua o cam',
+  'Dien nha toi bi ngat ma con toi cung bi ngat',
   'Aptomat chống giật vừa nhảy mà em vẫn bị giật khi chạm vòi',
   'Em chạm vỏ tủ lạnh thì bị giật',
   'Bình nóng lạnh rò nước, chạm vào vòi bị giật tê tay',
@@ -98,6 +107,13 @@ describe(`${PILLAR.id}: an ordinary event is not an emergency`, () => {
 })
 
 const LIVE_GAS_ALARMS = [
+  'The gas leak alarm sounds continuously.',
+  'The gas leak detector beeps continuously.',
+  'The gas leak alarm rings loudly.',
+  'The gas leak alarm goes off again.',
+  'The gas leak alarm blares continuously.',
+  'The gas leak alarm has sounded continuously.',
+  'The gas leak detector has rung for the last minute.',
   'The gas leak alarm started going off.',
   'The gas leak detector is loudly beeping.',
   'The gas leak alarm began rapidly ringing.',

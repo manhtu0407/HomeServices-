@@ -22,6 +22,8 @@ export const PILLAR = {
 const requested = (text: string) => [...detectRequestedApplianceWork(text, 'electrical')].sort()
 
 const REFUSED: ReadonlyArray<readonly [string, string]> = [
+  ['Tủ lạnh đặt cạnh cái ổ cắm điện đã bị hỏng, nhờ sửa ổ cắm.', 'a different fixture after placement'],
+  ['Máy giặt đặt cạnh ổ cắm đang bị hỏng, nhờ sửa ổ cắm.', 'a placed appliance is incidental to outlet work'],
   ['We already repaired the dishwasher that was broken. Please fix the outlet.', 'completed work covers its historical fault'],
   ['We previously fixed the fridge which was faulty. Please repair the outlet.', 'previously completed work'],
   ['Please fix the faucet, excluding the washing machine that will not start.', 'an excluded English appliance alias'],
@@ -42,6 +44,8 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const STILL_REQUESTED: ReadonlyArray<readonly [string, readonly string[], string]> = [
+  ['Tủ lạnh trong phòng bếp bị hỏng, nhờ sửa.', ['tu lanh'], 'a room location does not erase an appliance fault'],
+  ['May giat dat canh o cam khong vat.', ['may giat'], 'an appliance-specific function remains its own fault'],
   ['We already repaired the dishwasher that was broken, but repair the washing machine.', ['may giat'], 'new work after completed work'],
   ['We already repaired the dishwasher that was broken and please repair the fridge.', ['tu lanh'], 'new work after and'],
   ['Please fix the faucet, excluding the washing machine but repair the fridge.', ['tu lanh'], 'a request after an exclusion contrast'],

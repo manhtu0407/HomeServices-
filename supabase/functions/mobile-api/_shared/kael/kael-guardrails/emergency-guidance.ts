@@ -32,6 +32,7 @@ type Cue = {
   readonly technicalBleeding?: boolean;
   readonly unless?: RegExp;
   readonly requires?: readonly RegExp[];
+  readonly unlessUnaccentedPrefix?: { readonly word: string; readonly pattern: RegExp };
 };
 
 const cue = (pattern: RegExp, extra: Omit<Cue, "pattern"> = {}): Cue => ({ pattern, ...extra });
@@ -76,6 +77,9 @@ const FILLER_TONES: ToneRules = {
   tho: /^th\p{L}$/u,
 };
 const FAINT_TONES: ToneRules = { ngat: /^(?:ngat|ng\u1ea5t)$/u };
+// Plain "ngat" also means a supply or appliance cut-off. Only an explicit
+// equipment subject disambiguates it; a person later in the clause stays live.
+const CUT_OFF_SUBJECT = new RegExp(`^(?:(?:hien tai|bay gio|nha toi|nha minh|ben minh) )?(?:${WIRED_FIXTURES}|nguon dien|dien|nuoc|may lanh|dieu hoa|binh nong lanh|may giat|may say|tu lanh|may bom|quat|dong co|cb|rcbo|rccb|mcb)(?: (?:nha|cua) (?:toi|minh|em|anh|chi))?(?: (?:dang|hay|lai|thuong|cu|van)){0,2}$`, "u");
 const CATCH_FIRE_TONES: ToneRules = {
   boc: /^(?:boc|b\u1ed1c)$/u,
   bung: /^(?:bung|b\u00f9ng)$/u,
@@ -137,7 +141,7 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   ],
   medical: [
     cue(/\bbi giat(?! (?:minh\b|bung (?:ray|ban le|moc(?: treo)?)\b|dut (?:moc(?: treo)?|day)\b))\b/u, { requires: [ELECTRIC_SHOCK_CONTEXT] }),
-    cue(/\bbi ngat\b/u, { toneRules: FAINT_TONES }),
+    cue(/\bbi ngat\b/u, { toneRules: FAINT_TONES, unlessUnaccentedPrefix: { word: "ngat", pattern: CUT_OFF_SUBJECT } }),
     cue(/\b(?:mixed|mixing) (?:bleach and ammonia|ammonia and bleach)\b/u, { requires: [/\b(?:coughing|dizzy|breathless|struggling to breathe)\b/u] }),
     cue(/\b(?:dien giat|giat dien|bat tinh|ngat xiu|ngat roi|ngung tho|ngung tim|khong tho (?:duoc|noi)|tho khong (?:duoc|noi)|ngat tho|nghet tho|khong the tho|co giat|dot quy|bi thuong|kho tho|dau nguc|cap cuu|bi bong nang|ngo doc|chay mau(?: nhieu| khong ngung| ao at| rat nhieu)?)\b/u),
     cue(/\b(?:electric(?:al)? shock|electrocuted|got shocked|was shocked|unconscious|passed out|not breathing|stopped breathing|difficulty breathing|struggling to breathe|can t breathe|cannot breathe|shortness of breath|chest pain|heart attack|seizure|overdose|medical emergency|needs? an ambulance|call an ambulance|injured|i m hurt|(?:someone|somebody|he|she|they|person|child|kid|baby|man|woman) (?:is|was|got|s) (?:badly |seriously )?hurt|seriously hurt|badly hurt)\b/u),
@@ -246,7 +250,7 @@ const UNCERTAIN_GENERIC_CUES = [
 const PREVENTION_PHRASES =
   /\b(?:canh (?:co )?(?:chay|hoa hoan)|phong chay chua chay|chua chay|binh chua chay|binh cuu hoa|cuu hoa|pccc|(?:canh )?bao ro (?:khi )?(?:gas|ga)|dau do (?:khi )?(?:gas|ga)|cam bien (?:khi )?(?:gas|ga)|(?:kiem tra|do) ro (?:khi )?(?:gas|ga)|gas (?:leak )?(?:detectors?|alarms?|sensors?)|(?:check|checking|test|testing|detect|detecting) (?:for )?(?:a )?gas leaks?|fire (?:drill|safety|prevention|extinguisher|exit|escape|door|rated|proof|sprinkler|code)|fire-?proof|smoke (?:detectors?|alarms?) (?:battery|install\w*|replac\w*|test\w*))\b/u;
 const GAS_ALARM_PRODUCT = /^gas (?:leak )?(?:detectors?|alarms?|sensors?)$/u;
-const GAS_ALARM_ACTIVE_AFTER = /^(?: (?:is|are|was|were|has|have|had|been|still|now|again|always|often|just|keeps?|that|which|it|they|and|but|installed|very|quite|[a-z]{1,24}ly)){0,8} (?:(?:starts?|started|starting|begins?|began|begun|beginning|continues?|continued|continuing)(?: (?:to|very|quite|[a-z]{1,24}ly)){0,3} )?(?:going off|go off|sounding|sound|ringing|ring|blaring|blare|beeping|beep|went off)\b/u;
+const GAS_ALARM_ACTIVE_AFTER = /^(?: (?:is|are|was|were|has|have|had|been|still|now|again|always|often|just|keeps?|that|which|it|they|and|but|installed|very|quite|[a-z]{1,24}ly)){0,8} (?:(?:starts?|started|starting|begins?|began|begun|beginning|continues?|continued|continuing)(?: (?:to|very|quite|[a-z]{1,24}ly)){0,3} )?(?:go(?:es|ing)? off|went off|sound(?:s|ed|ing)?|ring(?:s|ing)?|rang|rung|blar(?:es?|ed|ing)|beep(?:s|ed|ing)?)\b/u;
 const GAS_ALARM_TEST_BEFORE = /\b(?:test|testing)(?: (?:my|our|the|a|this|that|new|installed)){0,3} $/u;
 
 const NEGATED_CUE_SUFFIX = /\b(?:khong|chua|chang|het|no(?! one\b)|not|never|without|no longer|does not|do not|is not|are not|was not|were not|doesn t|don t|isn t|aren t)\b(?:\s+[\p{L}\p{N}]+){0,4}\s*$|\b(?:nobody|no one)(?: (?:is|was|has been|had been|got|gets|has|had))?\s*$/u;
@@ -461,6 +465,8 @@ function hasAffirmedCue(
     const segment = segmentAt(segments, index);
     const segmentText = signal.plain.slice(segment.start, segment.end);
     const prefix = signal.plain.slice(segment.start, index);
+    const ambiguous = candidate.unlessUnaccentedPrefix;
+    if (ambiguous && signal.accented.slice(index, end).split(" ").includes(ambiguous.word) && ambiguous.pattern.test(prefix.trim())) continue;
     if (HYPOTHETICAL_BEFORE.test(prefix.slice(prefix.lastIndexOf(",") + 1))) continue;
     if (PAST_MARKER.test(segmentText) && !PRESENT_MARKER.test(segmentText)) continue;
     if (RESOLVED_AFTER.test(signal.plain.slice(end, segmentAt(sentences, index).end))) continue;

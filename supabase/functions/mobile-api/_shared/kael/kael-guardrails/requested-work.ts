@@ -27,6 +27,8 @@ const ENGLISH_NONREQUEST = /\b(?:(?:do not|don t|no need to|not to|never) (?:fix
 const ENGLISH_NEGATED_FAULT = /\b(?:(?:is|are|was|were) not|isn t|aren t|wasn t|weren t|not) (?:really |actually )?(?:broken|faulty|stuck|jammed|leaking)\b/g;
 const SUPPLY_FAULT_AFTER = /^(?: (?:nha|cua|minh|toi|em|my|our|the)){0,4} (?:mat nguon|khong (?:len nguon|co dien|vao dien)|(?:has )?no power)\b/;
 const INTERNAL_FAULT = /\b(?:bo mach|bang dieu khien|bao loi|khong nong|khong nhan noi|circuit board|control board|not heating|error code)\b/;
+const APPLIANCE_FUNCTION_FAULT = /\bkhong (?:vat|giat|lanh|dong da|say|quay|nong|nhan noi)\b/;
+const PLACED_BY_FIXTURE = /^ (?:(?:dang |duoc )?(?:dat|nam|treo|de) )?(?:gan|canh|ben canh|sat|sau|truoc|near|behind|beside|next to) (?:cai |chiec |the |my )?(?:o cam|o dien|cong tac|cau dao|voi nuoc|voi sen|duong ong|outlet|socket|faucet|tap|pipe)\b/;
 
 const REPAIR_ACT_WORDS = ["sua chua", "sua", "khac phuc", "kiem tra", "bao tri", "bao duong", "bao hanh", "xem", "coi", "kham", "fix", "repair", "check", "inspect", "service"];
 const REQUEST_FRAME_WORDS = ["can phai", "can", "nho", "muon", "xin", "phai", "giup", "goi", "tim", "thue", "moi", "yeu cau", "mong", "vui long", "lam on", "dang can", "dang tim"];
@@ -166,6 +168,7 @@ function mentionIsRequested(clauses: readonly Clause[], at: number, start: numbe
   const coordinated = coordinatedActStart(prefix);
   if (coordinated >= 0 && unfinished(coordinated)) return true;
   if (PLACEMENT_BEFORE.test(prefix)) return false;
+  if (PLACED_BY_FIXTURE.test(suffix) && !INTERNAL_FAULT.test(suffix) && !APPLIANCE_FUNCTION_FAULT.test(suffix)) return false;
   if (FAULT_BEFORE.test(prefix) || FAULT_AFTER.test(suffix)) return true;
   if (NOT_FAULTY_AFTER.test(suffix)) return false;
   const actAfter = ACT_AFTER.exec(suffix);
