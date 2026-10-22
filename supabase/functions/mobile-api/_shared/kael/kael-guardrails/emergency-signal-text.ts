@@ -80,12 +80,17 @@ export function segmentAt(ranges: readonly Segment[], index: number): Segment {
     { start: index, end: index };
 }
 
-export function blankMatches(text: SignalText, pattern: RegExp): SignalText {
+export function blankMatches(
+  text: SignalText,
+  pattern: RegExp,
+  keep?: (start: number, end: number) => boolean,
+): SignalText {
   let plain = text.plain;
   let accented = text.accented;
   for (const match of text.plain.matchAll(new RegExp(pattern.source, "gu"))) {
     const start = match.index ?? 0;
     const end = start + match[0].length;
+    if (keep?.(start, end)) continue;
     const blank = " ".repeat(match[0].length);
     plain = plain.slice(0, start) + blank + plain.slice(end);
     accented = accented.slice(0, start) + blank + accented.slice(end);

@@ -51,6 +51,8 @@ const HAZARDS: readonly Hazard[] = [
   { id: 'C3 plumbing Case, kitchen fire', service: 'plumbing', language: 'vi', route: 'fire', message: 'Căn hộ mình đang có lửa cháy ở phòng bếp, khói đen dày đặc.' },
   { id: 'CLEN-S3 chemical exposure', service: 'cleaning', language: 'vi', route: 'medical', message: 'Thợ dọn vừa trộn nước tẩy rửa với chất tẩy toilet, giờ hai người chóng mặt, khó thở, một người ngất rồi.' },
   { id: 'derived English plumbing hazard', service: 'plumbing', language: 'en', route: 'electrical_water', message: 'A ceiling pipe just burst and water is pouring onto the breaker box and an outlet, and I can hear sparking.' },
+  { id: 'DX-02 review: an attempt to stop a live spark', service: 'electrical', language: 'vi', route: 'electrical_water', message: 'Tôi đang cố ngăn tia lửa điện bắn ra từ ổ cắm.' },
+  { id: 'DX-02 review: an English attempt to stop sparks', service: 'handyman', language: 'en', route: 'electrical_water', message: 'I am trying to stop sparks coming out of the outlet.' },
 ]
 
 const numbersOf = (text: string) => [...new Set([...text.matchAll(NUMBER)].map((match) => match[1] as string))].sort()

@@ -6,7 +6,7 @@ import { resolveReportedEmergencyGuidance } from '../../../../../supabase/functi
 export const PILLAR = {
   id: 'P419-kael-emergency-electrical-spark',
   invariant:
-    'a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet',
+    'a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from',
   authority: [
     'governance/RULES.md #7 (an emergency classification is not a workflow gate)',
     'governance/RULES.md #8 (a measurement states its sample and its limits)',
@@ -16,7 +16,7 @@ export const PILLAR = {
   layer: 'unit',
   siblings: ['P405-kael-emergency-signal-matrix', 'P410-kael-emergency-phrase-sets', 'P408-kael-case-emergency-all-fields'],
   mutation:
-    'delete the spark-with-wired-equipment cue from the electrical_water list: every positive row, including the frozen transcript, turns red while the negative rows stay green; delete the spark-prevention mask: the product and prevention rows turn red while the positive rows stay green',
+    'delete the spark-with-wired-equipment cue from the electrical_water list: every positive row, including the frozen transcript, turns red while the negative rows stay green; delete the spark-prevention mask: the product and prevention rows turn red while the positive rows stay green; delete the attempt and source test from the mask: the attempt rows turn red while the product rows stay green',
 } as const satisfies PillarManifest
 
 const route = (text: string, language: 'vi' | 'en' = 'vi') =>
@@ -207,6 +207,129 @@ describe(`${PILLAR.id}: a product mention never hides a spark that is actually h
   })
 })
 
+const VI_ATTEMPT_VERBS = ['ngăn', 'chặn', 'ngăn ngừa', 'hạn chế', 'chống', 'giảm'] as const
+const VI_ATTEMPT_CARRIERS: ReadonlyArray<(fixture: string, verb: string) => string> = [
+  (fixture, verb) => `Tôi đang cố ${verb} tia lửa điện bắn ra từ ${fixture}.`,
+  (fixture, verb) => `Mình đang ${verb} tia lửa xẹt ra từ ${fixture}.`,
+  (fixture, verb) => `Em cố gắng ${verb} tia lửa ở ${fixture} nhưng vẫn không được.`,
+  (fixture, verb) => `Nhờ thợ ${verb} tia lửa phát ra từ ${fixture} giúp mình.`,
+  (fixture, verb) => `Cần ${verb} tia lửa bắn ra ngay tại ${fixture}.`,
+]
+const EN_ATTEMPT_VERBS = ['stop', 'suppress', 'limit', 'reduce'] as const
+const EN_ATTEMPT_CARRIERS: ReadonlyArray<(fixture: string, verb: string) => string> = [
+  (fixture, verb) => `I am trying to ${verb} sparks coming out of the ${fixture}.`,
+  (fixture, verb) => `We tried to ${verb} the sparks at the ${fixture} but they keep appearing.`,
+  (fixture, verb) => `Please help me ${verb} sparks coming from the ${fixture}.`,
+  (fixture, verb) => `How do I ${verb} sparks shooting out of the ${fixture}?`,
+]
+const VI_NEED_CARRIERS: ReadonlyArray<(fixture: string, prevention: string) => string> = [
+  (fixture, prevention) => `Tôi đang cần ${fixture} ${prevention} tia lửa cho phòng bếp.`,
+  (fixture, prevention) => `Mình đang tìm ${fixture} ${prevention} tia lửa bắn ra ngoài khi cắm sạc.`,
+  (fixture, prevention) => `${fixture.charAt(0).toUpperCase()}${fixture.slice(1)} có ${prevention} tia lửa không, nhờ tư vấn giúp.`,
+  (fixture, prevention) => `Nhờ lắp ${fixture} để ${prevention} tia lửa bắn ra từ phích cắm.`,
+  (fixture, prevention) => `Lắp ${fixture} có thể ${prevention} tia lửa phát ra từ tiếp điểm.`,
+]
+const EN_NEED_CARRIERS: ReadonlyArray<(fixture: string, verb: string) => string> = [
+  (fixture, verb) => `Looking for a ${fixture} cover that can ${verb} sparks when I plug appliances in.`,
+  (fixture, verb) => `I need a ${fixture} designed to ${verb} sparks coming out of the contacts.`,
+  (fixture, verb) => `Which ${fixture} would ${verb} sparks coming from the plug best?`,
+]
+
+describe(`${PILLAR.id}: an attempt to stop a spark that is happening is a report, not a product description`, () => {
+  it.each(VI_ATTEMPT_VERBS)('Vietnamese: "%s tia lửa" while trying, asking for help or saying where it comes from still routes', (verb) => {
+    const rows = VI_FIXTURES.flatMap((fixture) =>
+      VI_ATTEMPT_CARRIERS.flatMap((carrier) => WRITTEN_FORMS.map(([, write]) => [write(carrier(fixture, verb)), 'vi'] as const)),
+    )
+    expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${rows.length} written forms of "${verb} tia lửa"`)).toEqual([])
+  })
+
+  it.each(EN_ATTEMPT_VERBS)('English: "%s sparks" while trying, asking for help or saying where they come from still routes', (verb) => {
+    const rows = EN_FIXTURES.flatMap((fixture) => EN_ATTEMPT_CARRIERS.map((carrier) => [carrier(fixture, verb), 'en'] as const))
+    expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${rows.length} sentences with "${verb}"`)).toEqual([])
+  })
+
+  it.each([
+    ['the Codex review example', 'Tôi đang cố ngăn tia lửa điện bắn ra từ ổ cắm.', 'vi'],
+    ['trying, with diacritics, and no place named', 'Tôi cố ngăn tia lửa ở ổ cắm.', 'vi'],
+    ['trying, in capitals', 'TÔI ĐANG CỐ CHẶN TIA LỬA Ở CẦU DAO.', 'vi'],
+    ['English: trying to stop sparks', 'I am trying to stop sparks coming out of the outlet.', 'en'],
+  ] as const)('%s -> electrical_water', (label, text, language) => {
+    const got = route(text, language)
+    expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} routed to ${String(got)}`)).toBe('electrical_water')
+  })
+
+  it.each(VI_PREVENTION)('Vietnamese: "%s tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet', (prevention) => {
+    const rows = VI_FIXTURES.flatMap((fixture) =>
+      VI_NEED_CARRIERS.flatMap((carrier) => WRITTEN_FORMS.map(([, write]) => [write(carrier(fixture, prevention)), 'vi'] as const)),
+    )
+    expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} written forms of "${prevention} tia lửa"`)).toEqual([])
+  })
+
+  it.each(EN_PREVENTION_VERBS)('English: a product that can %s sparks, asked for in a request, stays quiet', (verb) => {
+    const rows = EN_FIXTURES.flatMap((fixture) => EN_NEED_CARRIERS.map((carrier) => [carrier(fixture, verb), 'en'] as const))
+    expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} sentences with "${verb}"`)).toEqual([])
+  })
+})
+
+const SHOT_SPARK_CARRIERS: ReadonlyArray<(fixture: string) => string> = [
+  (fixture) => `${fixture.charAt(0).toUpperCase()}${fixture.slice(1)} đang phóng tia lửa, nóng rát tay.`,
+  (fixture) => `${fixture.charAt(0).toUpperCase()}${fixture.slice(1)} phóng tia lửa mỗi lần bật.`,
+  (fixture) => `Thấy ${fixture} phóng tia lửa điện ra ngoài.`,
+]
+
+describe(`${PILLAR.id}: a spark that is shot out is a report although "phóng" and "phòng" share a plain spelling`, () => {
+  it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form still routes', (fixture) => {
+    const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORMS.map(([, write]) => [write(carrier(fixture)), 'vi'] as const))
+    expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${rows.length} written forms with ${fixture}`)).toEqual([])
+  })
+
+  it.each(VI_FIXTURES)('%s: "phòng tia lửa" typed with its tone, as a feature of a new fixture, stays quiet', (fixture) => {
+    const rows = [
+      [`Nhờ lắp ${fixture} phòng tia lửa cho bếp.`, 'vi'] as const,
+      [`Cần thay ${fixture} phòng ngừa tia lửa điện trong phòng khách.`, 'vi'] as const,
+      [`NHỜ LẮP ${fixture.toUpperCase()} PHÒNG TIA LỬA CHO BẾP.`, 'vi'] as const,
+    ]
+    expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} written forms with ${fixture}`)).toEqual([])
+  })
+})
+
+const SECOND_SPARK_PROBE_SET: ReadonlyArray<readonly ['report' | 'quiet', 'vi' | 'en', string]> = [
+  ['report', 'vi', 'Em đang cố chặn tia lửa nhảy ra từ cái ổ cắm trong bếp.'],
+  ['report', 'vi', 'Cứu với, ổ cắm đang phóng tia lửa, tôi đang cố ngăn nó lại.'],
+  ['report', 'vi', 'Nhờ thợ qua ngăn giúp tia lửa xẹt ra từ cầu dao nhà mình.'],
+  ['report', 'vi', 'Tôi cố gắng chặn tia lửa bắn từ bảng điện mà không được.'],
+  ['report', 'en', 'Can you help me stop the sparks flying out of my breaker panel?'],
+  ['report', 'en', 'I keep trying to stop sparks jumping from the wall socket.'],
+  ['report', 'vi', 'Mình đang tìm cách ngăn tia lửa phát ra từ ổ cắm.'],
+  ['report', 'vi', 'Công tắc phòng ngủ cứ bắn tia lửa, tôi chưa biết cách chống.'],
+  ['quiet', 'vi', 'Mình muốn thay sang ổ cắm có khả năng chống tia lửa khi cắm bếp từ.'],
+  ['quiet', 'vi', 'Báo giá cầu dao chống giật, chống tia lửa cho căn hộ 60m2.'],
+  ['quiet', 'en', 'Do you stock a socket that stops sparks when plugging in a kettle?'],
+  ['quiet', 'vi', 'Tôi đang cân nhắc mua ổ cắm hạn chế tia lửa nhưng chưa biết hãng nào tốt.'],
+  ['quiet', 'vi', 'Nhà mình đang dùng ổ cắm chống tia lửa, nhờ thợ lắp thêm hai cái.'],
+  ['quiet', 'en', 'Please quote a breaker designed to stop sparks coming from loose plugs.'],
+  ['quiet', 'vi', 'Ổ cắm hiện tại đang chống tia lửa khá tốt, chỉ cần thay mặt nạ.'],
+]
+
+describe(`${PILLAR.id}: a second probe set, written after the first implementation and run once (14 of 15 as labelled; the miss and the phóng/phòng defect it led to are fixed at class level)`, () => {
+  it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, text) => {
+    const got = route(text, language)
+    expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)} routed to ${String(got)}`)).toBe(expected === 'report' ? 'electrical_water' : null)
+  })
+})
+
+describe(`${PILLAR.id}: wording that reads two ways (pinned: decided on the safe side or missed before this round, an owner decision, not a fix)`, () => {
+  it.each([
+    ['without its tone "phong tia lua" cannot be told from "phóng tia lửa" and is read as a report', 'Nho lap o cam phong tia lua cho bep.', 'vi', 'electrical_water'],
+    ['a product question that names where the spark comes from is read as a report', 'Which outlet cover stops sparks coming out of the socket?', 'en', 'electrical_water'],
+    ['a plain "co" before the avoidance verb cannot be told from "có" and stays quiet', 'Toi dang co ngan tia lua o o cam.', 'vi', null],
+    ['"to prevent" is a hypothetical frame in the shared gate', 'I am trying to prevent sparks coming out of the outlet.', 'en', null],
+  ] as const)('%s', (label, text, language, expected) => {
+    const got = route(text, language)
+    expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} routed to ${String(got)}`)).toBe(expected)
+  })
+})
+
 describe(`${PILLAR.id}: reports the shared gate already missed before this round (pinned: an owner decision, not a fix)`, () => {
   it.each([
     ['a negated verb in front of the spark reads as a negated spark', 'Tôi không thể ngăn tia lửa bắn ra từ ổ cắm, nóng rát tay.'],
@@ -225,6 +348,11 @@ describe(`${PILLAR.id}: a long or hostile message is decided in bounded time`, (
     ['connector words between an avoidance word and a spark', `chong ${'phat '.repeat(6000)}tia lua o cam`],
     ['a spark phrase repeated thousands of times', 'o cam chong tia lua, '.repeat(3000)],
     ['hyphen chains', `${'spark-proof-'.repeat(5000)}outlet`],
+    ['attempt words before a Vietnamese avoidance phrase', `${'dang co gang '.repeat(3000)}ngan tia lua o cam`],
+    ['progressive words after an avoidance phrase', `ngan tia lua ${'dang '.repeat(6000)}ban ra tu o cam`],
+    ['purpose words before an avoidance phrase', `${'de nham '.repeat(4000)}ngan tia lua ban ra tu o cam`],
+    ['an avoidance phrase and its source repeated thousands of times', 'o cam ngan tia lua ban ra tu, '.repeat(3000)],
+    ['English attempt words before a spark', `${'trying to '.repeat(4000)}stop sparks coming out of the outlet`],
   ]
 
   it.each(HOSTILE)('%s', (label, text) => {

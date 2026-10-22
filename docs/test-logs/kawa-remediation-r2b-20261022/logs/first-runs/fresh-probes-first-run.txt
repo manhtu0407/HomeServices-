@@ -1,0 +1,29 @@
+ok   spark want=R got=electrical_water :: Em đang cố chặn tia lửa nhảy ra từ cái ổ cắm trong bếp.
+ok   spark want=R got=electrical_water :: Cứu với, ổ cắm đang phóng tia lửa, tôi đang cố ngăn nó lại.
+ok   spark want=R got=electrical_water :: Nhờ thợ qua ngăn giúp tia lửa xẹt ra từ cầu dao nhà mình.
+ok   spark want=R got=electrical_water :: Tôi cố gắng chặn tia lửa bắn từ bảng điện mà không được.
+ok   spark want=R got=electrical_water :: Can you help me stop the sparks flying out of my breaker panel?
+ok   spark want=R got=electrical_water :: I keep trying to stop sparks jumping from the wall socket.
+ok   spark want=R got=electrical_water :: Mình đang tìm cách ngăn tia lửa phát ra từ ổ cắm.
+ok   spark want=R got=electrical_water :: Công tắc phòng ngủ cứ bắn tia lửa, tôi chưa biết cách chống.
+ok   spark want=Q got=null :: Mình muốn thay sang ổ cắm có khả năng chống tia lửa khi cắm bếp từ.
+ok   spark want=Q got=null :: Báo giá cầu dao chống giật, chống tia lửa cho căn hộ 60m2.
+ok   spark want=Q got=null :: Do you stock a socket that stops sparks when plugging in a kettle?
+ok   spark want=Q got=null :: Tôi đang cân nhắc mua ổ cắm hạn chế tia lửa nhưng chưa biết hãng nào tốt.
+ok   spark want=Q got=null :: Nhà mình đang dùng ổ cắm chống tia lửa, nhờ thợ lắp thêm hai cái.
+ok   spark want=Q got=null :: Please quote a breaker designed to stop sparks coming from loose plugs.
+MISS spark want=Q got=electrical_water :: Ổ cắm hiện tại đang chống tia lửa khá tốt, chỉ cần thay mặt nạ.
+spark 14/15
+ok   work want=["may giat"] got=["may giat"] :: Vòi sen đã lắp xong rồi, giờ mình cần thợ xem lại cái máy giặt.
+ok   work want=["may giat"] got=["may giat"] :: Mình đã bảo trì xong ổ cắm và nhờ thợ kiểm tra máy giặt luôn.
+ok   work want=["may say"] got=["may say"] :: Đã coi xong cái vòi nước rồi, còn máy sấy thì nhờ sửa giúp.
+ok   work want=["bep tu"] got=["bep tu"] :: Em vừa kiểm tra xong đường ống và cần anh xem giúp bếp từ.
+ok   work want=["wifi"] got=["wifi"] :: Mình mới sửa xong kệ giày rồi nên giờ cần sửa wifi nữa.
+ok   work want=["internet"] got=["internet"] :: Lắp xong đèn rồi, internet thì mình nhờ kiểm tra luôn nhé.
+ok   work want=[] got=[] :: Mình đã sửa xong máy sấy rồi, giờ chỉ cần lắp rèm.
+ok   work want=[] got=[] :: Thợ vừa kiểm tra xong tủ lạnh nên mình không cần xem thêm, chỉ nhờ thay bóng đèn.
+ok   work want=[] got=[] :: Đã bảo trì wifi xong rồi và cần dọn nhà thôi.
+ok   work want=[] got=[] :: Mình vừa sửa máy giặt xong rồi và nhờ lau cửa kính.
+ok   work want=[] got=[] :: Bếp ga đã được lắp xong rồi, giờ nhờ kiểm tra ống nước.
+ok   work want=[] got=[] :: Mình vừa lắp xong máy rửa bát rồi và cần xem hệ thống thoát nước.
+work 12/12

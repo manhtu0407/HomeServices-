@@ -1,0 +1,3 @@
+test collection ok: 13 CI-named test filter(s) checked, 13 resolve to collected files, 0 declared
+
+----- stderr -----

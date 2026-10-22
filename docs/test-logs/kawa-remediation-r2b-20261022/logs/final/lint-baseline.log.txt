@@ -1,0 +1,3 @@
+structure baseline is no weaker than 42daced1
+
+----- stderr -----

@@ -31,7 +31,7 @@ const FAULT = `(?:${FAULT_BI}|${FAULT_BARE}|${FAULT_FUNCTION})`;
 const FAULT_AFTER = new RegExp(`^(?: (?!(?:khong|chua|chang|dau|hay|hoac|va|voi|cung|do|vi|tai|nghi|ma|nhung|de|neu)\\b)[a-z0-9]+){0,4}(?: hay)? ${FAULT}\\b`);
 const ACT_BEFORE = new RegExp(`\\b(?:${ANY_ACTS})(?: (?:${ACT_FILLERS})){0,3} $`);
 const ACT_ANYWHERE = new RegExp(`\\b(?:${ANY_ACTS})\\b`, "g");
-const ACT_AFTER = new RegExp(`^(?: [a-z0-9]+){0,4} (?:${REQUEST_FRAME})(?: (?:${REQUEST_TOKENS})){0,6} (?:${REPAIR_ACTS})\\b(?! (?:xong|roi|hoan tat))`);
+const ACT_AFTER = new RegExp(`^(?: [a-z0-9]+){0,4} (?:${REQUEST_FRAME})(?: (?:${REQUEST_TOKENS})){0,6} (${REPAIR_ACTS})\\b(?! (?:xong|roi|hoan tat))`);
 const FAULT_CONTINUATION = new RegExp(`^(?:(?:no|cai do|cai nay|chung) )?(?:(?:cu|van|dang|hay|lai|rat|qua|hoi) )*${FAULT}\\b`);
 const REPAIR_ACT_IN_CLAUSE = new RegExp(`\\b(?:${REPAIR_ACTS})\\b`);
 const CONJUNCTION_BEFORE = /( (?:va|voi|cung|nua)(?: (?:ca|luon|them|cai|chiec))*) $/;
@@ -40,7 +40,7 @@ const NEGATED_ACT = new RegExp(`\\b(?:(?:khong|chua|chang|dau)(?: phai)? (?:can|
 const FAULT_BEFORE = /\b(?:bi )?(?:hu(?: hong)?|hong|loi)(?: (?:cai|chiec))? $/;
 const NEGATED_FAULT = /\b(?:khong|chua|chang|dau co|chua tung)(?: (?:bi|co|hay))? (?:hu(?: hong)?|hong|loi|van de|su co|sao|gi|truc trac|ket(?! noi))\b/g;
 const NOT_FAULTY_AFTER = /\b(?:binh thuong|van (?:tot|on|chay|hoat dong|ok)|khong sao|tot lam|on dinh|con tot)\b/;
-const COMPLETED_CLAUSE = /\b(?:da|vua|moi)(?: [a-z]+){0,4} (?:sua(?: chua)?|kiem tra|bao tri|bao duong|lap(?: dat)?|xem|coi)(?: [a-z]+){0,4} (?:xong|roi|hoan tat)\b/;
+const COMPLETED_CLAUSE = /\b((?:da|vua|moi)(?: [a-z]+){0,4} )(?:sua(?: chua)?|kiem tra|bao tri|bao duong|lap(?: dat)?|xem|coi)(?: [a-z]+){0,4} (?:xong|roi|hoan tat)\b/g;
 const TEMPORAL_BEFORE_ACT = /\b(?:tu luc|tu khi|ke tu khi|sau khi|truoc khi|khi|luc|hoi|nhan dip|ngay khi)\b/;
 const ATTRIBUTION_BEFORE = /\b(?:do|vi|tai|boi|nghi|ngo|co the|hay la|hoac|hay|khong biet|khong ro|khong chac|chua biet|chua ro|chua chac|khong hieu|phai chang|co phai|hinh nhu|co le|chac la)(?: (?:la|rang|do|vi|cai|chiec|xem|co phai))* $/;
 const PLACEMENT_BEFORE = /\b(?:gan|canh|ben canh|sat|phia (?:sau|truoc|tren|duoi)|ben (?:trai|phai|tren|duoi|trong|ngoai)|khu vuc|noi|vi tri|ngoai|trong|duoi|tren|sau|truoc|giua|doi dien|quanh|xung quanh|xuong|cho|o|tai)(?: (?:cai|chiec|vung|khu))? $/;
@@ -53,6 +53,7 @@ const SENTENCE_SPLIT = /[.;!?:]+/;
 const CLAUSE_SPLIT = /,|\b(?:ma|nhung|tuy nhien)\b/;
 
 type Clause = { readonly text: string; readonly sentence: number };
+type FinishedWork = { readonly act: number; readonly from: number; readonly to: number };
 
 function normalizeRequestText(text: string): string {
   return text
@@ -106,16 +107,25 @@ function continuesWithFault(next: Clause | undefined, sentence: number, suffix: 
   return (rest.length === 0 ? 0 : rest.split(" ").length) <= 4 && FAULT_CONTINUATION.test(next.text);
 }
 
-function coordinatesRepairAct(prefix: string): boolean {
+function finishedWork(context: string): FinishedWork[] {
+  return [...context.matchAll(COMPLETED_CLAUSE)].map((found) => {
+    const from = found.index ?? 0;
+    return { act: from + (found[1] as string).length, from, to: from + found[0].length };
+  });
+}
+
+function coordinatedActStart(prefix: string): number {
   const joined = CONJUNCTION_BEFORE.exec(prefix);
-  if (!joined) return false;
+  if (!joined) return -1;
   const head = prefix.slice(0, joined.index);
   const acts = [...head.matchAll(ACT_ANYWHERE)];
   const last = acts[acts.length - 1];
-  if (!last) return false;
-  const between = head.slice((last.index ?? 0) + last[0].length).trim();
+  if (!last) return -1;
+  const start = last.index ?? 0;
+  const between = head.slice(start + last[0].length).trim();
   const words = between.length === 0 ? 0 : between.split(" ").length;
-  return words >= 1 && words <= 5 && !STRONG_PLACEMENT_WORD.test(between) && !ATTRIBUTION_BEFORE.test(`${between} `);
+  const coordinated = words >= 1 && words <= 5 && !STRONG_PLACEMENT_WORD.test(between) && !ATTRIBUTION_BEFORE.test(`${between} `);
+  return coordinated ? start : -1;
 }
 
 function mentionIsRequested(clauses: readonly Clause[], at: number, start: number, end: number): boolean {
@@ -126,14 +136,19 @@ function mentionIsRequested(clauses: readonly Clause[], at: number, start: numbe
   const suffix = clause.text.slice(end, end + CONTEXT_CHARS);
   if (ATTRIBUTION_BEFORE.test(prefix)) return false;
 
-  const actsApply = !COMPLETED_CLAUSE.test(`${prefix}${clause.text.slice(start, end)}${suffix}`);
+  const mentionEnd = prefix.length + (end - start);
+  const finished = finishedWork(`${prefix}${clause.text.slice(start, end)}${suffix}`);
+  const covered = finished.some((work) => work.from <= prefix.length && work.to >= mentionEnd);
+  const unfinished = (act: number) => !covered && !finished.some((work) => work.act === act);
   const actBefore = ACT_BEFORE.exec(prefix);
-  if (actsApply && actBefore && !TEMPORAL_BEFORE_ACT.test(prefix.slice(0, actBefore.index))) return true;
-  if (actsApply && coordinatesRepairAct(prefix)) return true;
+  if (actBefore && unfinished(actBefore.index) && !TEMPORAL_BEFORE_ACT.test(prefix.slice(0, actBefore.index))) return true;
+  const coordinated = coordinatedActStart(prefix);
+  if (coordinated >= 0 && unfinished(coordinated)) return true;
   if (PLACEMENT_BEFORE.test(prefix)) return false;
   if (FAULT_BEFORE.test(prefix) || FAULT_AFTER.test(suffix)) return true;
   if (NOT_FAULTY_AFTER.test(suffix)) return false;
-  if (actsApply && ACT_AFTER.test(suffix)) return true;
+  const actAfter = ACT_AFTER.exec(suffix);
+  if (actAfter && unfinished(mentionEnd + actAfter[0].length - (actAfter[1] as string).length)) return true;
   if (PLACEMENT_AFTER.test(suffix)) return false;
   if (continuesWithFault(clauses[at + 1], clause.sentence, suffix)) return true;
   return isBareRequest(clauses[at - 1], clause.sentence) || isBareRequest(clauses[at + 1], clause.sentence);

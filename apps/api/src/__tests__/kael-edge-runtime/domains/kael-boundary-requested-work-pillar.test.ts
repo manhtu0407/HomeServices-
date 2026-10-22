@@ -12,7 +12,7 @@ import { activeWorld, newCaseWorld, type Service } from '../harness/emergency-fi
 export const PILLAR = {
   id: 'P421-kael-boundary-requested-work',
   invariant:
-    'an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on',
+    'an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on',
   authority: [
     'governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services)',
     'governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request)',
@@ -22,7 +22,7 @@ export const PILLAR = {
   layer: 'integration',
   siblings: ['P406-kael-case-emergency-intake', 'P413-kael-approval-boundary', 'P420-kael-case-emergency-playbook-precedence'],
   mutation:
-    'treat every appliance keyword as a request again (drop the requested-work test from detectOutOfScope): the incidental, ambiguous and handler rows turn red while the genuine-request rows stay green',
+    'treat every appliance keyword as a request again (drop the requested-work test from detectOutOfScope): the incidental, ambiguous and handler rows turn red while the genuine-request rows stay green; let a finished-work marker silence every repair verb in the sentence again: the new-request-after-finished-work rows turn red while the same-appliance rows stay green',
 } as const satisfies PillarManifest
 
 installEdgeRuntimeTestHooks()
@@ -235,6 +235,82 @@ describe(`${PILLAR.id}: an explicit unsupported request is refused whatever its 
   ] as const)('%s is refused', (label, service, text) => {
     const misses = misdecided([[service, text]], false)
     expect(misses, pillarWhy(PILLAR, label)).toEqual([])
+  })
+})
+
+const COMPLETED_OBJECTS = ['vòi nước', 'tay nắm cửa', 'kệ treo tường', 'bóng đèn', 'bồn rửa'] as const
+const COMPLETED_THEN_REQUEST: ReadonlyArray<(done: string, appliance: Appliance) => string> = [
+  (done, appliance) => `Mình đã sửa xong ${done} rồi và cần sửa ${appliance.name}.`,
+  (done, appliance) => `Mình đã sửa xong ${done} và cần sửa ${appliance.name}.`,
+  (done, appliance) => `Thợ vừa lắp xong ${done} rồi, mình nhờ sửa luôn ${appliance.name}.`,
+  (done, appliance) => `Đã kiểm tra xong ${done} rồi và nhờ thợ xem giúp ${appliance.thing}.`,
+  (done, appliance) => `Mình vừa bảo trì xong ${done} và cần thợ kiểm tra ${appliance.name}.`,
+  (done, appliance) => `Mới sửa xong ${done}, giờ cần sửa luôn ${appliance.name}.`,
+]
+const COMPLETED_SAME_APPLIANCE: ReadonlyArray<(appliance: Appliance, work: string) => string> = [
+  (appliance, work) => `Mình đã sửa ${appliance.name} xong rồi, giờ nhờ ${work}.`,
+  (appliance, work) => `Mình đã sửa xong ${appliance.name} rồi và cần ${work}.`,
+  (appliance, work) => `Thợ vừa kiểm tra xong ${appliance.name} và mình nhờ ${work}.`,
+  (appliance, work) => `Đã bảo trì ${appliance.name} xong rồi, chỉ cần ${work}.`,
+  (appliance, work) => `Mình đã sửa ${appliance.name} xong rồi và nhờ ${work}.`,
+]
+
+describe(`${PILLAR.id}: finished work is scoped to the repair it describes`, () => {
+  it.each(APPLIANCES)('$name: a new request after finished supported work in the same sentence is still refused', (appliance) => {
+    const rows: Array<readonly [Service, string]> = []
+    let index = 0
+    for (const done of COMPLETED_OBJECTS) {
+      for (const carrier of COMPLETED_THEN_REQUEST) {
+        for (const write of WRITTEN_FORMS) rows.push([serviceAt(index++), write(carrier(done, appliance))])
+      }
+    }
+    expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length * 2} decisions for ${appliance.name} after finished work`)).toEqual([])
+  })
+
+  it.each(APPLIANCES)('$name: the same appliance finished, beside a supported request, stays open', (appliance) => {
+    const rows: Array<readonly [Service, string]> = []
+    let index = 0
+    for (const carrier of COMPLETED_SAME_APPLIANCE) {
+      for (const write of WRITTEN_FORMS) {
+        const service = serviceAt(index++)
+        rows.push([service, write(carrier(appliance, SUPPORTED_WORK[service]))])
+      }
+    }
+    expect(misdecided(rows, true), pillarWhy(PILLAR, `${rows.length * 2} decisions for ${appliance.name} finished`)).toEqual([])
+  })
+
+  it.each([
+    ['the Codex review example', 'Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.', ['may giat']],
+    ['a finished appliance is not named again as a request', 'Mình đã sửa xong tủ lạnh rồi và cần sửa máy giặt.', ['may giat']],
+    ['the finished appliance is the first of two', 'Mình đã sửa máy giặt xong rồi và cần xem tủ lạnh.', ['tu lanh']],
+    ['finished work on a connection and a new request for a dryer', 'Đã kiểm tra xong wifi rồi và nhờ thợ xem giúp cái máy sấy.', ['may say']],
+    ['finished work followed by a supported check', 'Mình đã sửa xong máy giặt rồi và cần kiểm tra vòi nước.', []],
+    ['finished work on the appliance alone', 'Mình đã sửa xong máy giặt rồi.', []],
+    ['finished work on a pair of appliances', 'Mình đã sửa xong tủ lạnh và máy giặt.', []],
+  ] as const)('the detector reads %s as exactly the appliances still being asked for', (label, text, wanted) => {
+    expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)}`)).toEqual(wanted)
+  })
+
+  it.each([
+    ['Vòi sen đã lắp xong rồi, giờ mình cần thợ xem lại cái máy giặt.', ['may giat']],
+    ['Mình đã bảo trì xong ổ cắm và nhờ thợ kiểm tra máy giặt luôn.', ['may giat']],
+    ['Đã coi xong cái vòi nước rồi, còn máy sấy thì nhờ sửa giúp.', ['may say']],
+    ['Em vừa kiểm tra xong đường ống và cần anh xem giúp bếp từ.', ['bep tu']],
+    ['Mình mới sửa xong kệ giày rồi nên giờ cần sửa wifi nữa.', ['wifi']],
+    ['Lắp xong đèn rồi, internet thì mình nhờ kiểm tra luôn nhé.', ['internet']],
+    ['Mình đã sửa xong máy sấy rồi, giờ chỉ cần lắp rèm.', []],
+    ['Thợ vừa kiểm tra xong tủ lạnh nên mình không cần xem thêm, chỉ nhờ thay bóng đèn.', []],
+    ['Đã bảo trì wifi xong rồi và cần dọn nhà thôi.', []],
+    ['Mình vừa sửa máy giặt xong rồi và nhờ lau cửa kính.', []],
+    ['Bếp ga đã được lắp xong rồi, giờ nhờ kiểm tra ống nước.', []],
+    ['Mình vừa lắp xong máy rửa bát rồi và cần xem hệ thống thoát nước.', []],
+  ] as const)('probe written after the fix and run once, never adjusted to: "%s"', (text, wanted) => {
+    expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, JSON.stringify(text))).toEqual(wanted)
+  })
+
+  it('refuses a handyman Case that names finished plumbing work and a washing-machine repair, with the flags off and on', () => {
+    const misses = misdecided([['handyman', 'Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.'], ['plumbing', 'Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.']], false)
+    expect(misses, pillarWhy(PILLAR, 'finished plumbing work then a washing-machine request')).toEqual([])
   })
 })
 

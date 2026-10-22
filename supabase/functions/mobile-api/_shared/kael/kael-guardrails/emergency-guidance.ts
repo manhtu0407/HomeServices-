@@ -95,6 +95,14 @@ const SPARK_AVOIDED_VI = "(?:chong|ngan(?: ngua)?|phong(?: ngua)?|han che|giam(?
 const SPARK_FEW_VI = "it (?:phat sinh|sinh|phat|tao|gay)(?: ra)? tia lua(?: dien)?";
 const SPARK_AVOIDED_EN = "(?:(?:anti|non)[- ]?spark(?:s|ing)?|spark[- ]?(?:proof|free|resistant|safe|rated|less|arrest\\w*|protect\\w*|prevent\\w*|suppress\\w*|guard\\w*|shield\\w*)|(?:prevent|avoid|stop|reduc|suppress|limit|eliminat|minimi[sz]|resist)(?:e|es|ed|ing|s)?(?: (?:the|any|all|against|from))? spark(?:s|ing)?|(?:protect(?:s|ed|ing)?|guard(?:s|ed|ing)?|shield(?:s|ed|ing)?|rated|safe) (?:from|against) (?:the |any |all )?spark(?:s|ing)?)";
 const SPARK_PREVENTION_PHRASES = new RegExp(`${SPARK_NEGATED_BEFORE}\\b(?:${SPARK_AVOIDED_VI}|${SPARK_FEW_VI}|${SPARK_AVOIDED_EN})\\b`, "u");
+const SPARK_ATTEMPT_BEFORE = /(?:\bco gang|\bno luc|\b(?:try|tries|trying|tried|attempts?|attempting|attempted|struggles?|struggling|struggled) to) $/u;
+const SPARK_PROGRESSIVE_BEFORE = /\bdang $/u;
+const SPARK_STOPPING_PHRASE = /^(?:ngan|chan)\b/u;
+const SPARK_SHOOTING_PHRASE = /^phong (?!ngua\b)/u;
+const SPARK_PREVENTING_PHONG = "ph\u00f2ng";
+const SPARK_ATTEMPT_ACCENTED = /(?:^| )c\u1ed1 $/u;
+const SPARK_PURPOSE_BEFORE = /\b(?:de|nham|co the|se|dung de|in order to|so as to|designed to|made to|built to|meant to|intended to|able to|could|will|would|that|which|(?:that|which) can) $/u;
+const SPARK_SOURCE_AFTER = /^(?: (?:dang|van|cu|lien tuc)){0,3} (?:ban|phong|phat|toe|phun|bung|nhay|xet|xuat hien|bay|tuon)(?: ra| len)?(?: (?:lien tuc|tung dot|manh|nhieu))? (?:tu|o|tai|trong|khoi|ngay|sau)\b|^(?: (?:is|are|was|were|keeps?|kept|still)){0,3} (?:coming|shooting|flying|jumping|spewing|spraying|bursting|erupting|arcing|spitting|emerging)(?: out)? (?:of|from)\b/u;
 
 const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   fire: [
@@ -304,12 +312,25 @@ type EmergencyReading = {
   readonly genericUrgency: boolean;
 };
 
+function reportsActiveSpark(signal: SignalText, start: number, end: number): boolean {
+  const before = signal.plain.slice(Math.max(0, start - 24), start);
+  const phrase = signal.plain.slice(start, end);
+  if (SPARK_SHOOTING_PHRASE.test(phrase) && !signal.accented.startsWith(SPARK_PREVENTING_PHONG, start)) return true;
+  const attempting =
+    SPARK_ATTEMPT_BEFORE.test(before) ||
+    SPARK_ATTEMPT_ACCENTED.test(signal.accented.slice(Math.max(0, start - 8), start)) ||
+    (SPARK_PROGRESSIVE_BEFORE.test(before) && SPARK_STOPPING_PHRASE.test(phrase));
+  if (attempting) return true;
+  return !SPARK_PURPOSE_BEFORE.test(before) && SPARK_SOURCE_AFTER.test(signal.plain.slice(end, end + 80));
+}
+
 function readEmergencySignals(
   text: string,
   includeGenericUrgency: boolean,
   context: EmergencyContext,
 ): EmergencyReading {
-  const signal = blankMatches(blankMatches(buildSignalText(text), PREVENTION_PHRASES), SPARK_PREVENTION_PHRASES);
+  const unprevented = blankMatches(buildSignalText(text), PREVENTION_PHRASES);
+  const signal = blankMatches(unprevented, SPARK_PREVENTION_PHRASES, (start, end) => reportsActiveSpark(unprevented, start, end));
   const segments = segmentRanges(signal.plain);
   const sentences = sentenceRanges(signal.plain);
   const affirmed = (cues: readonly Cue[]) =>

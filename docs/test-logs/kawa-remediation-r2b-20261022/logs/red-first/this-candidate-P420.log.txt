@@ -1,0 +1,1534 @@
+
+ RUN  v4.1.6 C:/ns-fix/r1/apps/api
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': no paragraph of the visible answer repeats with flags on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags off)
+harness_event {
+  p_event_id: '36ff16af-5153-4e14-87d6-626c9250c839',
+  p_run_id: '15334f3d-b1ff-47d6-aaa8-8a095a63595f',
+  p_trace_id: 'c91a152d-72fa-4201-a7fd-8178e32329d0',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'failed',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'DB_ERROR',
+  p_safe_metadata: { status: 500 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags on)
+harness_event {
+  p_event_id: '54f214b3-ae87-4e49-942b-b0ee1be15b11',
+  p_run_id: '7605e5ba-0fa4-4211-acf9-6ed879111f52',
+  p_trace_id: '8d11e8ed-d559-4cae-b0b9-67f2bfa65268',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'failed',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'DB_ERROR',
+  p_safe_metadata: { status: 500 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > electrical: "Ổ cắm bị cháy từ tuần trước, nhờ thợ thay" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > electrical: "Ổ cắm bị cháy từ tuần trước, nhờ thợ thay" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > electrical: "Hôm qua tủ điện có tia lửa nhưng thợ đã sửa xong, nhờ kiểm tra lại" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > electrical: "Hôm qua tủ điện có tia lửa nhưng thợ đã sửa xong, nhờ kiểm tra lại" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > electrical: "Tủ điện không có tia lửa, chỉ cần kiểm tra định kỳ" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > electrical: "Tủ điện không có tia lửa, chỉ cần kiểm tra định kỳ" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > electrical: "Tủ điện không có tia lửa, chỉ cần kiểm tra định kỳ" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > plumbing: "Nước đang chảy ra từ vòi" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > plumbing: "Nước đang chảy ra từ vòi" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > plumbing: "Nước đang chảy ra từ vòi" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > hvac: "Máy lạnh đang chạy nhưng không mát" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > hvac: "Máy lạnh đang chạy nhưng không mát" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > hvac: "Máy lạnh đang chạy nhưng không mát" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > upholstery: "Sofa có vết cháy thuốc lá" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > upholstery: "Sofa có vết cháy thuốc lá" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > upholstery: "Sofa có vết cháy thuốc lá" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > handyman: "Bếp gas có lửa yếu, nhờ thợ xem" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > handyman: "Bếp gas có lửa yếu, nhờ thợ xem" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on > handyman: "Bếp gas có lửa yếu, nhờ thợ xem" produces no emergency turn with every flag on
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Nhờ lắp ổ cắm chống tia lửa cho bếp.'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Nhờ lắp ổ cắm chống tia lửa cho bếp.'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Nhờ lắp ổ cắm chống tia lửa cho bếp.'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Nhờ lắp ổ cắm chống tia lửa cho bếp.'" produces no emergency turn on an active Case (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Nhờ lắp ổ cắm chống tia lửa cho bếp.'" produces no emergency turn on an active Case (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Please replace the spark-proof outlet…'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Please replace the spark-proof outlet…'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Please replace the spark-proof outlet…'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Please replace the spark-proof outlet…'" produces no emergency turn on an active Case (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Please replace the spark-proof outlet…'" produces no emergency turn on an active Case (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'handyman': "'Cần thay công tắc hạn chế tia lửa tro…'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'handyman': "'Cần thay công tắc hạn chế tia lửa tro…'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'handyman': "'Cần thay công tắc hạn chế tia lửa tro…'" produces no emergency turn on an active Case (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'handyman': "'Cần thay công tắc hạn chế tia lửa tro…'" produces no emergency turn on an active Case (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'handyman': "'Cần thay công tắc hạn chế tia lửa tro…'" produces no emergency turn on an active Case (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'handyman': "'Cần thay công tắc hạn chế tia lửa tro…'" produces no emergency turn on an active Case (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Nhờ lắp ổ cắm chống tia lửa cho bếp.'" on a Case waiting for the booking confirmation keeps the 409 and writes nothing
+harness_event {
+  p_event_id: '339adbde-bf64-408a-9cd1-aa476df7db15',
+  p_run_id: '262b432f-63ba-4a76-ade3-1457e3f629ca',
+  p_trace_id: '1887ab5c-1c16-4f1f-a95e-5240b41abfab',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INTAKE_CONFIRMATION_REQUIRED',
+  p_safe_metadata: { status: 409 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'electrical': "'Please replace the spark-proof outlet…'" on a Case waiting for the booking confirmation keeps the 409 and writes nothing
+harness_event {
+  p_event_id: '08474786-7c5a-4ae0-b64d-7f5a0bdf08af',
+  p_run_id: '62eeee01-4825-4606-858a-155868332804',
+  p_trace_id: '423e16d2-b031-4425-919f-23ac4dc2c947',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 1,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INTAKE_CONFIRMATION_REQUIRED',
+  p_safe_metadata: { status: 409 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > 'handyman': "'Cần thay công tắc hạn chế tia lửa tro…'" on a Case waiting for the booking confirmation keeps the 409 and writes nothing
+harness_event {
+  p_event_id: '3de19ad6-4a4f-4345-943e-3fa2b4b567a9',
+  p_run_id: '856b1dad-707a-48c9-b555-cdb0c28ec5ad',
+  p_trace_id: '37204e36-dd46-4018-9173-a92416c9df82',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 1,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INTAKE_CONFIRMATION_REQUIRED',
+  p_safe_metadata: { status: 409 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: authorization and Case state do not change > a stranger who sends a hazard to the owner Case writes nothing (flags off)
+harness_event {
+  p_event_id: '220ecef8-e1ea-4281-8b54-fa88e5c1c0b6',
+  p_run_id: 'd5ee9acb-dc38-4633-a661-70a547fc7c2c',
+  p_trace_id: '0a9d7fab-48e3-467e-acc8-e4213ee0114f',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 0,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'NOT_FOUND',
+  p_safe_metadata: { status: 404 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: authorization and Case state do not change > a stranger who sends a hazard to the owner Case writes nothing (flags on)
+harness_event {
+  p_event_id: '6ed669a0-8763-45af-916d-3f96101d2bf9',
+  p_run_id: '42dfeaf3-d2a3-4c6d-9be2-af42991e9c3b',
+  p_trace_id: 'f2179d24-6652-499c-a4dc-2598ee86cf39',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 1,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'NOT_FOUND',
+  p_safe_metadata: { status: 404 }
+}
+
+ ✓ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts (47 tests) 637ms
+
+ Test Files  1 passed (1)
+      Tests  47 passed (47)
+   Start at  12:16:35
+   Duration  6.62s (transform 4.78s, setup 0ms, import 5.76s, tests 637ms, environment 0ms)
+
+JSON report written to C:/ns-fix/r1/docs/test-logs/kawa-remediation-r2b-20261022/results/red-first/this-candidate-P420.json
+
+----- stderr -----
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'afe9842e-ead4-46aa-aee8-fca272aa8640',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'c65517e5-be8d-447e-8d66-692319960400',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'HVAC-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '45718210-88f6-4a74-87b2-6f30f61a5849',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'HVAC-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '8ba9cdc9-b2b9-4641-b4b7-0a9e9e5bda70',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'UPHO-S4/4 with a stale persisted sign…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '41b49823-5963-4415-b46e-6b0648186cd1',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'upholstery',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'UPHO-S4/4 with a stale persisted sign…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '5274d9da-ccc7-4fed-8519-660ad8af21e1',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'upholstery',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '31680dba-1e41-4fb0-b5c9-05a39f8a6332',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '235f1881-b543-428a-847c-acba3a94b5cc',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'a90fb0b5-cf28-4a7e-a182-adb90e661d9e',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '70d06c71-2698-4748-83b7-4a0d5bad15b8',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C2 price question over a smoking outl…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '23e7f0b9-e2c8-42e4-9163-5fd1a0104117',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C2 price question over a smoking outl…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '64bb1589-52ec-4c7e-a20b-0e47fe4833bc',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C3 plumbing Case, kitchen fire': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'bf188b4f-953f-4e3b-820f-f2c24ad30ae8',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C3 plumbing Case, kitchen fire': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '957ec1b4-3e76-4066-9542-2c4b821f2e03',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'CLEN-S3 chemical exposure': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'd0d25cc1-afcd-43fd-9e6a-5cffd06d2322',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'cleaning',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_MEDICAL',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'CLEN-S3 chemical exposure': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'a058d7dc-e866-4ab4-b924-75d19246f1a9',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'cleaning',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_MEDICAL',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'f4277d26-89fd-488a-962a-edb600662093',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'a1e251c5-d7f5-4b00-977f-00cf3d6aa47a',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '03ba8e45-6998-4ee0-b125-31581276baea',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '97b244d0-b529-4279-9ffe-dbf660e5adc0',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '37463c56-e6d4-46a2-8f0b-8c3ff9eaee6c',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'handyman',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'cf463bf4-b249-4234-9e9f-f7b57f682547',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'handyman',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'd026bdfd-b01e-46f5-a970-657c0c3b5637',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'HVAC-S3': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '4812a81a-4a72-49f6-bfb9-881c19ffb0f5',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'UPHO-S4/4 with a stale persisted sign…': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'fa012251-1d07-4d2f-8d8c-50065512b45b',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'upholstery',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S3': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '5e2c8dad-6257-4be8-8226-2d11a6c44454',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '2cc2f25a-bf98-4f99-a01f-7392b97ac555',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C2 price question over a smoking outl…': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'd66c2c88-00c3-46da-a6e2-f847bf0effe5',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C3 plumbing Case, kitchen fire': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '0ef4f673-6b2b-4418-b5bd-806ed0c197e0',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'CLEN-S3 chemical exposure': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'd22c2556-bc40-4bd8-bec4-1c06523a0161',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'cleaning',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_MEDICAL',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'derived English plumbing hazard': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '92feb808-6c03-4954-b6e2-f67c990e1c51',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an attempt to stop a li…': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'b32466b7-ba99-4ccc-919c-b413f80518fc',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'DX-02 review: an English attempt to s…': no paragraph of the visible answer repeats with flags on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'eec12448-5806-4dd2-b8a3-976a5e48b4ba',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'handyman',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a safety signal an earlier turn persisted never replaces the answer > answers a smoking cable on an upholstery Case that already carries bio_contamination, instead of a price lookup
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'dbc01cfc-06ed-41a3-ad5d-efbbbf3b45e4',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'upholstery',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > answers on the same request when one write fails once (flags off)
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'e086e6b4-746d-4bba-ab5a-d0156bf28971',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > answers on the same request when one write fails once (flags on)
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'b0dfaabb-25ba-4988-9550-3df6c5650d9a',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags off)
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'c91a152d-72fa-4201-a7fd-8178e32329d0',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_write_failed',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags off)
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '76dd9b50-6612-4751-b9b0-074df01d0489',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags on)
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '8d11e8ed-d559-4cae-b0b9-67f2bfa65268',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_write_failed',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags on)
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '5aebe97d-310f-4c00-9cbd-fcb7fb35f693',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report > still answers a real spark on a Case waiting for the booking confirmation, and leaves the booking pending
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'a5a0c008-517b-4f8a-aadf-073df9536991',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: authorization and Case state do not change > keeps an offer under review in place after the gate answers with every flag on
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '2fa61d4a-7410-437f-9763-bba07825b926',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'hvac',
+  case_phase: 'offer_review',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+

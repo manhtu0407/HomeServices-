@@ -1,0 +1,11 @@
+
+ RUN  v4.1.6 C:/ns-fix/r1/apps/api
+
+
+ Test Files  1 passed (1)
+      Tests  60 passed (60)
+   Start at  12:18:27
+   Duration  6.97s (transform 4.81s, setup 0ms, import 5.80s, tests 831ms, environment 0ms)
+
+
+----- stderr -----
