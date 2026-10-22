@@ -3,12 +3,12 @@ check kael-matching-maintainer
 check kael-media-retention
 check mobile-api
 [0m[38;5;245mrunning 4 tests from ./supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts[0m
-P388-mobile-client-contract-compatibility: accepts the immediate legacy epoch at its explicit per-platform floor ... [0m[32mok[0m [0m[38;5;245m(21ms)[0m
-P388-mobile-client-contract-compatibility: rejects the immediate legacy epoch below its floor and all older epochs ... [0m[32mok[0m [0m[38;5;245m(2ms)[0m
-P388-mobile-client-contract-compatibility: requires exact release identity for the current epoch ... [0m[32mok[0m [0m[38;5;245m(809µs)[0m
-P388-mobile-client-contract-compatibility: accepts the current release-bound iOS build while preserving the previous build floor ... [0m[32mok[0m [0m[38;5;245m(5ms)[0m
+P388-mobile-client-contract-compatibility: accepts the immediate legacy epoch at its explicit per-platform floor ... [0m[32mok[0m [0m[38;5;245m(45ms)[0m
+P388-mobile-client-contract-compatibility: rejects the immediate legacy epoch below its floor and all older epochs ... [0m[32mok[0m [0m[38;5;245m(3ms)[0m
+P388-mobile-client-contract-compatibility: requires exact release identity for the current epoch ... [0m[32mok[0m [0m[38;5;245m(2ms)[0m
+P388-mobile-client-contract-compatibility: accepts the current release-bound iOS build while preserving the previous build floor ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
 
-[0m[32mok[0m | 4 passed | 0 failed [0m[38;5;245m(39ms)[0m
+[0m[32mok[0m | 4 passed | 0 failed [0m[38;5;245m(65ms)[0m
 
 check payment-maintainer
 check system-monitor
@@ -18,48 +18,19 @@ edge check: discovered=7 selected=7 checked=7 failed=0
 
 ----- stderr -----
  Image denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498 Skipped Image is already present locally
- Volume b4_deno-cache Creating 
- Network b4_default Creating 
- Volume b4_deno-cache Creating 
- Network b4_default Creating 
- Volume b4_deno-cache Created 
- Volume b4_deno-cache Created 
- Network b4_default Created 
- Network b4_default Created 
- Container b4-deno-run-2ebfb4205276 Creating 
- Container b4-deno-run-2ebfb4205276 Created 
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
-[0m[32mDownload[0m https://registry.npmjs.org/zod
-[0m[32mDownload[0m https://registry.npmjs.org/zod/-/zod-4.4.3.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.105.4.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase/functions-js/-/functions-js-2.105.4.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase/realtime-js/-/realtime-js-2.105.4.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase/auth-js/-/auth-js-2.105.4.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase/storage-js/-/storage-js-2.105.4.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase/postgrest-js/-/postgrest-js-2.105.4.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase/phoenix/-/phoenix-0.4.5.tgz
-[0m[32mDownload[0m https://registry.npmjs.org/iceberg-js/-/iceberg-js-0.8.1.tgz
-[0m[32mCheck[0m supabase/functions/kael-learning-monitor/index.ts
- Container b4-deno-run-4daef42b079e Creating 
- Container b4-deno-run-4daef42b079e Created 
-[0m[32mCheck[0m supabase/functions/kael-matching-maintainer/index.ts
- Container b4-deno-run-0fe7ee95428e Creating 
- Container b4-deno-run-0fe7ee95428e Created 
-[0m[32mCheck[0m supabase/functions/kael-media-retention/index.ts
- Container b4-deno-run-181d760ccfdc Creating 
- Container b4-deno-run-181d760ccfdc Created 
-[0m[32mDownload[0m https://registry.npmjs.org/@supabase/phoenix/-/phoenix-0.4.2.tgz
-[0m[32mCheck[0m supabase/functions/mobile-api/index.ts
- Container b4-deno-run-7de831fcbd65 Creating 
- Container b4-deno-run-7de831fcbd65 Created 
-[0m[32mCheck[0m supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts
- Container b4-deno-run-f48f897aaf68 Creating 
- Container b4-deno-run-f48f897aaf68 Created 
-[0m[32mCheck[0m supabase/functions/payment-maintainer/index.ts
- Container b4-deno-run-c9e885d9b868 Creating 
- Container b4-deno-run-c9e885d9b868 Created 
-[0m[32mCheck[0m supabase/functions/system-monitor/index.ts
- Container b4-deno-run-d254975a0330 Creating 
- Container b4-deno-run-d254975a0330 Created 
-[0m[32mCheck[0m supabase/functions/sepay-webhook/index.ts
+ Container b4-deno-run-2784d1a7186b Creating 
+ Container b4-deno-run-2784d1a7186b Created 
+ Container b4-deno-run-60f9f2e3ddda Creating 
+ Container b4-deno-run-60f9f2e3ddda Created 
+ Container b4-deno-run-0126203a81db Creating 
+ Container b4-deno-run-0126203a81db Created 
+ Container b4-deno-run-75b74299d91e Creating 
+ Container b4-deno-run-75b74299d91e Created 
+ Container b4-deno-run-170237b46451 Creating 
+ Container b4-deno-run-170237b46451 Created 
+ Container b4-deno-run-077ed15f3716 Creating 
+ Container b4-deno-run-077ed15f3716 Created 
+ Container b4-deno-run-ff7afc24f4c3 Creating 
+ Container b4-deno-run-ff7afc24f4c3 Created 
+ Container b4-deno-run-47339158eab3 Creating 
+ Container b4-deno-run-47339158eab3 Created 

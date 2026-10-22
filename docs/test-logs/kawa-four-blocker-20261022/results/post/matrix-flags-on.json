@@ -3,7 +3,7 @@
   "harness_version": "kawa-diag-harness.v1.1",
   "snapshot": "post-matrix-flags-on",
   "matrix_sha256": "dd8392cbcc2fec7ad4f0b1611a52abea0cb7ed86fc681972fec9707c74a51dd7",
-  "executed_at": "2026-10-22T08:43:15.661Z",
+  "executed_at": "2026-10-22T09:26:40.342Z",
   "runs": [
     {
       "scenario": "ELEC-S1",
@@ -172,7 +172,7 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":2}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":3}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
@@ -345,7 +345,7 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
           ]
         }
@@ -519,7 +519,7 @@
           },
           "console_sample": [
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
       ]
@@ -692,7 +692,7 @@
           },
           "console_sample": [
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
       ]
@@ -888,7 +888,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"495dd27c-1da2-4eb7-a4de-ea2c99a36390\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"dce544c8-9727-4742-bc68-e0eae8b01608\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
           ]
         }
       ]
@@ -1084,7 +1084,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"9ffe5043-5b19-4a01-b357-c48ab8762606\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"5fb20d0b-ffeb-4f03-bc45-27d0d3bcfc2a\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
           ]
         }
       ]
@@ -1546,14 +1546,14 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"52523729-1251-4af3-88e5-c2fe3e95426e\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_advice\",\"service_code\":\"el"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"dff76ab4-16cf-4db1-ab2b-829eb98e0028\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_advice\",\"service_code\":\"el"
           ]
         }
       ]
@@ -2015,14 +2015,14 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"8f8e0fc0-c510-4b68-8916-14e05a1956b8\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_advice\",\"service_code\":\"el"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"9c8fc99a-77b3-4211-a7c8-18ebbc38770e\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_advice\",\"service_code\":\"el"
           ]
         }
       ]
@@ -2367,8 +2367,8 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
           ]
         }
       ]
@@ -2541,7 +2541,7 @@
           },
           "console_sample": [
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
       ]
@@ -2944,7 +2944,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"1efb5412-7f28-435e-aeae-dbc513d3a3fe\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_advice\",\"service_code\":\"pl",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"4c2a66d2-af50-41e9-92e1-752b37023172\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_advice\",\"service_code\":\"pl",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
@@ -3176,7 +3176,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"628dbd87-d474-44f0-8065-4ccf6c55f394\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_advice\",\"service_code\":\"pl",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"f96f268a-b4d9-42cd-ac4c-cc3c5e57165c\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_advice\",\"service_code\":\"pl",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
@@ -3628,12 +3628,12 @@
           "console_sample": [
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":1}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"cadc0ca9-8dfe-47dc-87a7-8b4cd3ce6eec\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"fd0cbea5-75a5-4171-8ce6-6acdb87a5794\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
           ]
         }
       ]
@@ -4088,7 +4088,7 @@
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"31e09812-f5b0-45bb-89fe-385118d19b01\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"bffb7597-870e-4672-bfd0-aa92099065b8\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
           ]
         }
       ]
@@ -4433,7 +4433,7 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
@@ -4976,7 +4976,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"ed654deb-0b3e-4dd6-844d-946079ead1c4\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"clea"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"dce448fe-04c1-45f1-befc-4a8387fa0efc\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"clea"
           ]
         }
       ]
@@ -5172,7 +5172,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"33fa78d4-8646-4cf3-b5e2-7f298ed5a82f\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"clea"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"1eed33d3-5d9b-4a09-8644-4add26ad0fa0\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"clea"
           ]
         }
       ]
@@ -5631,13 +5631,13 @@
           "console_sample": [
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"e58f8e9f-8b4d-4444-942d-2e6b621e12e5\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"clea"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"fa9772c8-6059-4ca0-bfe8-80a34785d4b0\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"clea"
           ]
         }
       ]
@@ -6095,14 +6095,14 @@
           },
           "console_sample": [
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"e7e8ee18-1ff1-4251-925f-a22326d5f87f\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"clea"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"493ac589-2572-4474-a8a9-7cf544edb747\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"clea"
           ]
         }
       ]
@@ -6275,7 +6275,7 @@
           },
           "console_sample": [
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
           ]
         }
       ]
@@ -6620,7 +6620,7 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
           ]
         }
@@ -6990,7 +6990,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"1bd19b5d-033f-498e-857e-f08bd8db0fa8\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hvac"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"271e5eb5-e805-4ab2-b373-52c5b5d3c9ec\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hvac"
           ]
         }
       ]
@@ -7186,7 +7186,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"7e8e3d2f-dc56-483d-9c9a-41cf39a69d84\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hvac"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"092b6339-2e61-41d2-8c4d-62fc2ff87049\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hvac"
           ]
         }
       ]
@@ -7650,8 +7650,8 @@
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":1}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"5ae41b6c-ca0a-4489-8917-e673753b6211\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hvac"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"995e7fe9-8f1b-46d1-837f-b07078e1276d\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hvac"
           ]
         }
       ]
@@ -8108,15 +8108,15 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"0a6a1ad4-386e-429a-bf65-9ce22c1435f8\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hvac"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"a447d8e4-ad19-4545-9610-36c9a36b104d\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hvac"
           ]
         }
       ]
@@ -8288,8 +8288,8 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
       ]
@@ -8635,7 +8635,7 @@
           },
           "console_sample": [
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
       ]
@@ -9004,7 +9004,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"0ffaf733-13af-4da1-abae-e655179f323c\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"upho"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"5088076f-8508-43d6-a489-b772a8d11073\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"upho"
           ]
         }
       ]
@@ -9200,7 +9200,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"fdd1d127-c0a0-44c7-a798-cf341a3e1b62\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"upho"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"84d4ecbf-2e67-4342-bba2-de18a8fd9dc9\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"upho"
           ]
         }
       ]
@@ -9648,14 +9648,14 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"d4b2c0b7-9c94-47b1-beee-5f1a11eb24a8\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"upho"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"551ce0a0-8744-4517-ab36-5b9fb81f35f7\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"upho"
           ]
         }
       ]
@@ -10110,7 +10110,7 @@
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"e218de87-d447-44b8-a9f4-196809067f91\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"upho"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"1afb44ca-2dd5-4a0e-8930-14937f9c62c1\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"upho"
           ]
         }
       ]
@@ -10455,7 +10455,7 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
@@ -10628,8 +10628,8 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}"
           ]
         }
       ]
@@ -10998,7 +10998,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"687904a0-c8e0-4b40-9657-27d73c45a489\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hand"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"f6087f58-d3fc-469d-b8d7-4d7d630bb7cb\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hand"
           ]
         }
       ]
@@ -11194,7 +11194,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"ac7c69b2-d7b3-463b-8085-1f3f00ff1762\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hand"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"c99d0ed6-ef17-404a-bf36-b984688a5b3e\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hand"
           ]
         }
       ]
@@ -11651,15 +11651,15 @@
             ]
           },
           "console_sample": [
-            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":0}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":1}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"cbf75248-568d-498b-a2ac-4a726e0ddbf8\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hand"
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"6ae043a0-1630-407f-a634-6bcd8bef2fcc\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hand"
           ]
         }
       ]
@@ -12122,9 +12122,9 @@
             "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-flash\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000009\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"deepseek\",\"model\":\"deepseek-v4-pro\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000028\",\"latencyMs\":1}",
-            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":1}",
+            "info:AI provider transport success; structured validation pending {\"provider\":\"anthropic\",\"model\":\"claude-sonnet-5\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.000300\",\"latencyMs\":0}",
             "info:AI provider transport success; structured validation pending {\"provider\":\"perplexity\",\"model\":\"sonar\",\"inputTokens\":40,\"outputTokens\":12,\"costUsd\":\"0.005052\",\"latencyMs\":0}",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"f5d2c055-444d-4350-8f04-5fb1a195087c\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hand"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"ca9c9f0c-af15-48fc-a1f5-939bb41afa4d\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"hand"
           ]
         }
       ]
@@ -12320,7 +12320,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"4ff6575f-a078-4048-aa15-d2c6bd653248\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"47eeacb3-abde-43a7-ab7e-39b6eadcbe4c\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
           ]
         }
       ]
@@ -12516,7 +12516,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"6ef3309b-9b9f-4661-86d9-848767a5cd4b\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"1efa2483-0a5f-406a-98a7-75c82f8dd75a\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
           ]
         }
       ]
@@ -12712,7 +12712,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"59bae77e-17dc-428b-85a8-d5b143c0a198\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"6fdcdfe8-aebe-4e3f-85b5-063d463ff2bb\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
           ]
         }
       ]
@@ -12908,7 +12908,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"2fe3d18d-cc58-42e4-9d5b-e7ae26a680c4\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"2d773e7c-498e-44c6-bd92-9bbee8e5bd77\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
           ]
         }
       ]
@@ -13104,7 +13104,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"1f0d4c5b-6553-42fc-8610-0c86fb5ff584\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"59445cb0-5d3d-49a4-b9bc-6bd93d4880d0\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
           ]
         }
       ]
@@ -13300,7 +13300,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"20451685-7a1c-46f8-a4b0-bce540f27d4d\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"05315bc0-e05d-4ceb-97ea-ed7f138ea039\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
           ]
         }
       ]
@@ -13481,8 +13481,8 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"c3cf9b10-ee15-4bb2-9e76-92850a6472c8\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
-            "info:harness_event {\"p_event_id\":\"62b0b6ef-5c2d-4f51-aa73-57eb56941142\",\"p_run_id\":\"fe1fee47-4968-4ff9-8c44-b89651ae89a9\",\"p_trace_id\":\"c3cf9b10-ee15-4bb2-9e76-92850a6472c8\",\"p_parent_event_id\":null,\"p_tur"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"517657a3-6250-41d4-8652-9498a2959097\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
+            "info:harness_event {\"p_event_id\":\"2ba7ee4c-0bae-47ed-bc34-b813da68f056\",\"p_run_id\":\"ea56a331-69ae-4386-8d0f-53499d80d378\",\"p_trace_id\":\"517657a3-6250-41d4-8652-9498a2959097\",\"p_parent_event_id\":null,\"p_tur"
           ]
         },
         {
@@ -13654,8 +13654,8 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"7d79f7b2-02be-4ce6-b6fb-21599bebf0dc\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
-            "info:harness_event {\"p_event_id\":\"511b5484-a784-4321-83a2-b216de21ec8a\",\"p_run_id\":\"7029c6cb-9253-4711-b204-7b27001760d9\",\"p_trace_id\":\"7d79f7b2-02be-4ce6-b6fb-21599bebf0dc\",\"p_parent_event_id\":null,\"p_tur"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"25b08c3b-7de8-4ad8-9043-5e1f2c3ff724\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
+            "info:harness_event {\"p_event_id\":\"fcf62c25-8108-4527-b1c0-5f6a2ecdc1b7\",\"p_run_id\":\"05709439-15f7-4d37-ad00-6262d763cbff\",\"p_trace_id\":\"25b08c3b-7de8-4ad8-9043-5e1f2c3ff724\",\"p_parent_event_id\":null,\"p_tur"
           ]
         },
         {
@@ -13827,8 +13827,8 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"b81c62c7-9471-4932-9ee7-da061ce395c0\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
-            "info:harness_event {\"p_event_id\":\"8608c03e-6681-4054-9c33-f8cf4fdebddf\",\"p_run_id\":\"91736947-4eec-403e-b66f-2796c8132a74\",\"p_trace_id\":\"b81c62c7-9471-4932-9ee7-da061ce395c0\",\"p_parent_event_id\":null,\"p_tur"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"d6092ccd-6ab5-4050-8d8c-9983ba9274de\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
+            "info:harness_event {\"p_event_id\":\"d218021a-facc-4e96-9ed4-b20ab849bd74\",\"p_run_id\":\"29e7ccaa-f341-4ee8-8b1e-ca85b60a3a05\",\"p_trace_id\":\"d6092ccd-6ab5-4050-8d8c-9983ba9274de\",\"p_parent_event_id\":null,\"p_tur"
           ]
         }
       ]
@@ -14009,8 +14009,8 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"b99e008d-8244-485b-a48e-ade92e714046\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
-            "info:harness_event {\"p_event_id\":\"0db35f9e-aa29-4eb4-8e50-8c741b76767a\",\"p_run_id\":\"3a2a3852-db90-418c-93ea-385b2a5e005a\",\"p_trace_id\":\"b99e008d-8244-485b-a48e-ade92e714046\",\"p_parent_event_id\":null,\"p_tur"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"88c97cae-5c67-4484-b515-a064e70abd4f\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
+            "info:harness_event {\"p_event_id\":\"b28d3c68-3651-4e45-9a01-2c7c8f020f3d\",\"p_run_id\":\"4887e899-c444-4f31-b836-05af4486f5f0\",\"p_trace_id\":\"88c97cae-5c67-4484-b515-a064e70abd4f\",\"p_parent_event_id\":null,\"p_tur"
           ]
         },
         {
@@ -14182,8 +14182,8 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"acfd51dd-2828-484f-a99b-dd1e2d49d8cc\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
-            "info:harness_event {\"p_event_id\":\"98433f62-8d62-4bd6-85b0-997399053dac\",\"p_run_id\":\"36a5f567-4c20-41ed-917d-fb5487a18eaa\",\"p_trace_id\":\"acfd51dd-2828-484f-a99b-dd1e2d49d8cc\",\"p_parent_event_id\":null,\"p_tur"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"f9f216e1-3b74-4d22-be77-5ac854db9919\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
+            "info:harness_event {\"p_event_id\":\"2b665ec3-9b73-4b16-a25c-848cf7922aec\",\"p_run_id\":\"5e8b6d4c-3b55-4875-84fa-2ec162ff9d82\",\"p_trace_id\":\"f9f216e1-3b74-4d22-be77-5ac854db9919\",\"p_parent_event_id\":null,\"p_tur"
           ]
         },
         {
@@ -14355,8 +14355,8 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"aa51107a-6837-4c4d-ba61-e187dedd90e7\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
-            "info:harness_event {\"p_event_id\":\"451fe71e-0e31-4a15-9c68-9ba7a6a75de9\",\"p_run_id\":\"6a67bb7e-cc30-43ea-8d1d-762e87908674\",\"p_trace_id\":\"aa51107a-6837-4c4d-ba61-e187dedd90e7\",\"p_parent_event_id\":null,\"p_tur"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"95f3650f-9323-41b5-9066-564de56c0fec\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_guidance_only\",\"service_co",
+            "info:harness_event {\"p_event_id\":\"091ba83c-bb4c-4c37-8605-ed32c522ef81\",\"p_run_id\":\"f8b2a8ed-2f87-4cc1-b9c9-9744c2644ad4\",\"p_trace_id\":\"95f3650f-9323-41b5-9066-564de56c0fec\",\"p_parent_event_id\":null,\"p_tur"
           ]
         }
       ]
@@ -14552,7 +14552,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"88e62327-358b-49f2-9186-508ce3ad3be9\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"bc4240ab-65f7-4d6e-80ad-dccb12937ca2\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
           ]
         }
       ]
@@ -14748,7 +14748,7 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"ca68321e-db1a-4aa5-99ed-ea65b467d003\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"cddff786-984e-4b23-bc07-cfe363d3dbad\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"plum"
           ]
         }
       ]
@@ -15040,8 +15040,8 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"701cb1b6-83ca-4cf1-9ac3-a36a6473d6a6\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"78bf4689-a975-42a9-9c6e-814d3c98a9ee\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"bf3da85c-4049-4af2-95f7-7c54c1ac8adc\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"b75898ee-a76b-4eac-b212-c6d33aec7911\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
           ]
         }
       ]
@@ -15333,8 +15333,8 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"bc01510e-f4bf-4b78-83d1-dbc057891703\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"6cd6005c-9844-431e-adf5-d1f4182e2ace\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"075e4731-d728-4b99-95f5-87edbbbb5a51\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"e015ba9e-0d17-49cd-bb67-2bd074a1325a\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
           ]
         }
       ]

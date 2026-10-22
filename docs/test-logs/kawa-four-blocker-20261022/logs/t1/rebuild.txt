@@ -1,3 +1,3 @@
-453 canonical migrations of 463 inventory entries
-applied 453 migrations
+454 canonical migrations of 464 inventory entries
+applied 454 migrations
 seeded

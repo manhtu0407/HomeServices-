@@ -1,3 +1,5 @@
 comment-discipline: clean — no note-banner comments found.
 
 ----- stderr -----
+warning: in the working copy of 'config/harness/migration-inventory.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/tests/manual_bank_reconciliation_behavior_verification.sql', LF will be replaced by CRLF the next time Git touches it

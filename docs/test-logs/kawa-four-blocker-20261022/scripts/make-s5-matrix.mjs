@@ -58,7 +58,7 @@ const t1 = (checkpoint) => {
     case 'J10': return evidence.status_writers_closed ? { kind: 'corroborating', result: 'PASS', basis: 'T0 transition table stands; T1 shows every SQL writer of jobs.status is service-role only, and that SQL carries no second transition table' } : null
     case 'J11': return evidence.accept_sql && evidence.concurrency.confirmAccept ? { kind: 'generic', result: 'PASS', basis: 'non-Worker ids refused with zero writes, one winner under concurrency (worker_accept_authority; service-independent RPC exercised on a plumbing fixture)' } : null
     case 'J12': return evidence.reviewed_writers_closed && evidence.completion_sql ? { kind: 'corroborating', result: 'PASS', basis: 'reviewed is written only by service-role functions; review requires paid (canonical_completion_payment_authority)' } : null
-    case 'J14': return evidence.bank_sql && evidence.concurrency.payment ? { kind: 'generic', result: 'PASS_WITH_FINDING', basis: 'order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open' } : null
+    case 'J14': return evidence.bank_sql && evidence.concurrency.payment ? { kind: 'generic', result: 'PASS_WITH_FINDING', basis: 'order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; an order sent to reconciliation can be confirmed on the exact amount (F-PAY-1 fixed); F-PAY-2 (concurrent same-reference surfaces a raw unique violation) is open' } : null
     case 'J15': return evidence.gate_sql && evidence.concurrency.confirmAccept ? { kind: 'decisive', result: 'PASS', basis: 'unique (session, turn_index), per-actor RLS, no API write path, atomic refusal, concurrent confirmation and turn-index races (six_service_confirmation_gate + confirm-accept-concurrency)' } : null
     default: return null
   }
@@ -101,7 +101,7 @@ for (const checkpoint of CHECKPOINTS) {
   }).join(' | ')} |`)
 }
 lines.push(`| journey verdict | ${SERVICES.map((service) => out.verdicts[service]).join(' | ')} |`)
-lines.push('', 'T1 = the database decided the cell for that service. T0+T1c = the T0 Edge or state-machine result decides and T1 corroborates (no API role can write Jobs or Cases). T1g = generic service-independent RPC verified at T1 on a subset of services (J11 on a plumbing fixture; J14 order creation on all six, reconciliation on electrical, plumbing and cleaning). PASS* = passes the checks asked for with finding F-PAY-1 open.')
+lines.push('', 'T1 = the database decided the cell for that service. T0+T1c = the T0 Edge or state-machine result decides and T1 corroborates (no API role can write Jobs or Cases). T1g = generic service-independent RPC verified at T1 on a subset of services (J11 on a plumbing fixture; J14 order creation on all six, reconciliation on electrical, plumbing and cleaning). PASS* = passes the checks asked for with minor finding F-PAY-2 open.')
 writeFileSync(join(evidenceRoot, 'results/s5-matrix.md'), `${lines.join('\n')}\n`)
 console.log(lines.join('\n'))
 console.log(JSON.stringify(evidence))

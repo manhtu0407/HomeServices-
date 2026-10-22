@@ -3,10 +3,10 @@ exit=1
 Finding:     api_key = "REDACTED"
 Secret:      REDACTED
 RuleID:      generic-api-key
-Entropy:     3.712815
+Entropy:     3.646039
 File:        /scan/positive-control.txt
 Line:        1
 Fingerprint: /scan/positive-control.txt:generic-api-key:1
 
-9:07AM INF scanned ~53 bytes (53 bytes) in 21.4ms
-9:07AM WRN leaks found: 1
+9:39AM INF scanned ~53 bytes (53 bytes) in 34.3ms
+9:39AM WRN leaks found: 1

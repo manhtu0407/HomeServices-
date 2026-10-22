@@ -19,7 +19,7 @@ Contents
   file-digests.json               sha256 of every file here except itself
 
 Reproduce the database half (needs Docker and the image public.ecr.aws/supabase/postgres:17.6.1.121 already pulled)
-  bash scripts/t1/run-t1.sh        rebuilds the container ns-b4-pg and runs the SQL suite and both concurrency scripts
+  bash scripts/t1/run-t1.sh        rebuilds the container ns-b4-pg (454 canonical migrations, including the F-PAY-1 fix) and runs the SQL suite and both concurrency scripts
   bash scripts/t1/mutations.sh     mutation checks on the same container
   The container is disposable. The concurrency scripts leave committed fixtures behind because payment reconciliation
   events are immutable; never point them at a shared database.

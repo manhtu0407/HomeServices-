@@ -46,6 +46,13 @@ restore decide $T
 mutate "drop the bank-reference reuse check" decide "where duplicate_reference.bank_reference_hash = p_bank_reference_hash" "where false and duplicate_reference.bank_reference_hash = p_bank_reference_hash" $T
 restore decide $T
 
+mutate "disable the reopen of a reversed Worker credit (a pending ledger required again)" decide "and v_ledger.payment_state = 'reversed'" "and v_ledger.payment_state = 'never'" $T
+restore decide $T
+mutate "reopen a reversed credit whatever the order status" decide "and v_order.status = 'manual_reconcile_required'" "and true" $T
+restore decide $T
+mutate "reopen a reversed credit whatever its settlement reason" decide "and v_ledger.settlement_state = 'admin_rejected'" "and true" $T
+restore decide $T
+
 CONFIRM=$(psql_c -Atc "select p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'confirm_kael_chat_durable_atomic' and p.prosrc like '%TIER_A_INCOMPLETE%' limit 1" | tr -d '\r')
 save "$CONFIRM" confirm
 G=six_service_confirmation_gate_verification.sql

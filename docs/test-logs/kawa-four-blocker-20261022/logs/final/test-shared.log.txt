@@ -8,8 +8,8 @@
 
  Test Files  10 passed (10)
       Tests  189 passed (189)
-   Start at  15:45:36
-   Duration  1.14s (transform 2.60s, setup 0ms, import 4.83s, tests 284ms, environment 2ms)
+   Start at  16:27:48
+   Duration  1.08s (transform 2.23s, setup 0ms, import 4.29s, tests 300ms, environment 1ms)
 
 
 ----- stderr -----

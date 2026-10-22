@@ -152,7 +152,7 @@
     "t0_flags_on": "BLOCKED",
     "t1": "PASS_WITH_FINDING",
     "t1_kind": "generic",
-    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; an order sent to reconciliation can be confirmed on the exact amount (F-PAY-1 fixed); F-PAY-2 (concurrent same-reference surfaces a raw unique violation) is open",
     "final": "PASS_WITH_FINDING"
    },
    "J15": {
@@ -289,7 +289,7 @@
     "t0_flags_on": "BLOCKED",
     "t1": "PASS_WITH_FINDING",
     "t1_kind": "generic",
-    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; an order sent to reconciliation can be confirmed on the exact amount (F-PAY-1 fixed); F-PAY-2 (concurrent same-reference surfaces a raw unique violation) is open",
     "final": "PASS_WITH_FINDING"
    },
    "J15": {
@@ -426,7 +426,7 @@
     "t0_flags_on": "BLOCKED",
     "t1": "PASS_WITH_FINDING",
     "t1_kind": "generic",
-    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; an order sent to reconciliation can be confirmed on the exact amount (F-PAY-1 fixed); F-PAY-2 (concurrent same-reference surfaces a raw unique violation) is open",
     "final": "PASS_WITH_FINDING"
    },
    "J15": {
@@ -563,7 +563,7 @@
     "t0_flags_on": "BLOCKED",
     "t1": "PASS_WITH_FINDING",
     "t1_kind": "generic",
-    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; an order sent to reconciliation can be confirmed on the exact amount (F-PAY-1 fixed); F-PAY-2 (concurrent same-reference surfaces a raw unique violation) is open",
     "final": "PASS_WITH_FINDING"
    },
    "J15": {
@@ -700,7 +700,7 @@
     "t0_flags_on": "BLOCKED",
     "t1": "PASS_WITH_FINDING",
     "t1_kind": "generic",
-    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; an order sent to reconciliation can be confirmed on the exact amount (F-PAY-1 fixed); F-PAY-2 (concurrent same-reference surfaces a raw unique violation) is open",
     "final": "PASS_WITH_FINDING"
    },
    "J15": {
@@ -837,7 +837,7 @@
     "t0_flags_on": "BLOCKED",
     "t1": "PASS_WITH_FINDING",
     "t1_kind": "generic",
-    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; F-PAY-1 (a reconcile_required order cannot later be confirmed) is open",
+    "basis": "order opened for all six services, reconciliation exercised on electrical, plumbing and cleaning fixtures (service-independent code); manual-bank rail verified at T1 for all ten owner items; an order sent to reconciliation can be confirmed on the exact amount (F-PAY-1 fixed); F-PAY-2 (concurrent same-reference surfaces a raw unique violation) is open",
     "final": "PASS_WITH_FINDING"
    },
    "J15": {

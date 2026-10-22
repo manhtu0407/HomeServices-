@@ -17,4 +17,4 @@
 | J15 atomicity_rls_concurrency | PASS (T1) | PASS (T1) | PASS (T1) | PASS (T1) | PASS (T1) | PASS (T1) |
 | journey verdict | PASS_WITH_FINDING | PASS_WITH_FINDING | PASS_WITH_FINDING | PASS_WITH_FINDING | PASS_WITH_FINDING | PASS_WITH_FINDING |
 
-T1 = the database decided the cell for that service. T0+T1c = the T0 Edge or state-machine result decides and T1 corroborates (no API role can write Jobs or Cases). T1g = generic service-independent RPC verified at T1 on a subset of services (J11 on a plumbing fixture; J14 order creation on all six, reconciliation on electrical, plumbing and cleaning). PASS* = passes the checks asked for with finding F-PAY-1 open.
+T1 = the database decided the cell for that service. T0+T1c = the T0 Edge or state-machine result decides and T1 corroborates (no API role can write Jobs or Cases). T1g = generic service-independent RPC verified at T1 on a subset of services (J11 on a plumbing fixture; J14 order creation on all six, reconciliation on electrical, plumbing and cleaning). PASS* = passes the checks asked for with minor finding F-PAY-2 open.
