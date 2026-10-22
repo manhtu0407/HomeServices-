@@ -1,0 +1,3 @@
+check-test-integrity: 0 blocking, 0 report-only, 51 changed file(s) examined
+
+----- stderr -----

@@ -113,8 +113,6 @@ export async function submitKaelChatEvidence(
     message: texts,
     language: input.language ?? (previousSafeMetadata.language === "en" ? "en" : "vi"),
     serviceType: session.service_type,
-    persistedSafetySignals: asStringArray(previousSafeMetadata.intake_safety_signals),
-    actorId: ctx.user.id,
     parked,
   });
   if (emergency && (parked || emergency.stopsTurn)) {

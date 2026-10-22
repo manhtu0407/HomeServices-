@@ -32,7 +32,7 @@ export const PILLAR = {
   layer: 'integration',
   siblings: ['P407-kael-case-emergency-pending-confirmation', 'P406-kael-case-emergency-intake', 'P405-kael-emergency-signal-matrix'],
   mutation:
-    'read only the typed message on the turn route, stop at the first field that reports anything, or let the flagged-path deferral look at a different text than the pipeline does: the voice-transcript, cross-field and deferral rows turn red',
+    'read only the typed message on the turn route, or stop at the first field that reports anything: the voice-transcript and cross-field rows turn red',
 } as const satisfies PillarManifest
 
 installEdgeRuntimeTestHooks()
@@ -124,7 +124,7 @@ describe(`${PILLAR.id}: a reviewed voice transcript or note on the turn route`, 
   it('keeps the safety signal that a later field raised on the Case, not only the first field\'s', async () => {
     const world = activeWorld('electrical', { env: { KAEL_PLAYBOOK_ELECTRICAL_ENABLED: 'true' } })
 
-    const result = await world.request('', { message: BENIGN, language: 'vi', evidence_items: [voice('Ổ cắm đang bốc khói')] })
+    const result = await world.request('', { message: BENIGN, language: 'vi', evidence_items: [voice('Tủ điện nóng và có mùi khét')] })
     const signals = (world.session().safe_metadata as Record<string, unknown>).intake_safety_signals
     expect(result.status, pillarWhy(PILLAR, `status=${result.status}`)).toBe(200)
     expect(Array.isArray(signals) ? signals : [], pillarWhy(PILLAR, 'the typed message is ordinary; the transcript is what carries the hazard')).not.toEqual([])

@@ -1,0 +1,3 @@
+pillar registry problems:
+  - governance/protocols/test-pillars.md: pillar index is stale (run `node scripts/harness/pillar-registry.mjs --write`)
+exit=1

@@ -1,0 +1,3 @@
+source residue ok: 2784 source files (1625 runtime) — no focused or skipped tests, no debug probes, no runtime console.log
+
+----- stderr -----

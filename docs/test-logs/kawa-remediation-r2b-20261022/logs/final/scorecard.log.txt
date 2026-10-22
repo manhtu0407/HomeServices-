@@ -1,0 +1,38 @@
+## flags off: accepted baseline (main 42daced1): 30 scenarios
+{"PASS->PASS unchanged":26,"FAIL->PASS":4}
+  ELEC-S2	FAIL->PASS	main/asks_clarifying_question: false -> true
+  ELEC-S4	FAIL->PASS	main/emergency_escalated_acceptable: false -> true
+  PLMB-S2	FAIL->PASS	main/asks_clarifying_question: false -> true
+  PLMB-S4	FAIL->PASS	main/http_ok: false -> true; main/evidence_handled: false -> true
+## S5 journeys, flags off: accepted baseline (main 42daced1): 6 scenarios
+{"BLOCKED->BLOCKED unchanged":6}
+## flags on: accepted baseline supplementary (main 42daced1): 30 scenarios
+{"PASS->PASS unchanged":23,"FAIL->PASS":7}
+  ELEC-S2	FAIL->PASS	main/asks_clarifying_question: false -> true
+  PLMB-S2	FAIL->PASS	main/asks_clarifying_question: false -> true
+  PLMB-S3	FAIL->PASS	main/emergency_escalated_acceptable: false -> true
+  PLMB-S4	FAIL->PASS	main/http_ok: false -> true; main/evidence_handled: false -> true
+  HVAC-S3	FAIL->PASS	main/emergency_escalated_acceptable: false -> true
+  UPHO-S4	FAIL->PASS	main/emergency_escalated_acceptable: false -> true
+  C6	FAIL->PASS	main/failure_observable: false -> true
+## SUPP-C6b persistent write failure, flags off: accepted baseline: 1 scenarios
+{"PASS->PASS unchanged":1}
+## SUPP-C6b persistent write failure, flags on: clean main rerun from round 1: 1 scenarios
+{"FAIL->PASS":1}
+  SUPP-C6b	FAIL->PASS	main/failure_observable: false -> true; main/recovery_delivers: false -> true
+## S5 journeys, flags on: pre-fix main from round 1: 6 scenarios
+{"BLOCKED->BLOCKED unchanged":6}
+## flags off: round-2 candidate (5f44351e): 30 scenarios
+{"PASS->PASS unchanged":30}
+## S5 journeys, flags off: round-2 candidate: 6 scenarios
+{"BLOCKED->BLOCKED unchanged":6}
+## flags on: round-2 candidate: 30 scenarios
+{"PASS->PASS unchanged":30}
+## S5 journeys, flags on: round-2 candidate: 6 scenarios
+{"BLOCKED->BLOCKED unchanged":6}
+## SUPP-C6b flags off: round-2 candidate: 1 scenarios
+{"PASS->PASS unchanged":1}
+## SUPP-C6b flags on: round-2 candidate: 1 scenarios
+{"PASS->PASS unchanged":1}
+
+----- stderr -----

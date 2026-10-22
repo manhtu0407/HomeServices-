@@ -1,0 +1,2 @@
+comment-discipline: clean — no note-banner comments found.
+exit=0

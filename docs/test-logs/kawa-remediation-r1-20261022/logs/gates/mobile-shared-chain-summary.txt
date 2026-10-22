@@ -1,0 +1,5 @@
+type-check-shared -> exit=0
+test-shared -> exit=0
+type-check-mobile -> exit=0
+test-mobile -> exit=0
+done

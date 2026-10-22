@@ -1,0 +1,2 @@
+structure ok: 1457 source files; 9 grandfathered oversize, 120 grandfathered dup-type groups
+exit=0

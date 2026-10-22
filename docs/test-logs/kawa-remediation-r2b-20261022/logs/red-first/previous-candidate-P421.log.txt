@@ -1,0 +1,2081 @@
+
+ RUN  v4.1.6 C:/ns-fix/base/apps/api
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 4
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags off)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 2
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags off)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags off)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags on)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags on)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > never screens a reviewed voice transcript on the turn or the create route (pinned: an owner decision, not a fix)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > never screens a reviewed voice transcript on the turn or the create route (pinned: an owner decision, not a fix)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > never screens a reviewed voice transcript on the turn or the create route (pinned: an owner decision, not a fix)
+harness_event {
+  p_event_id: '73b8c2f5-9919-4be7-a620-a0ba4c0c90ec',
+  p_run_id: '282f9c4d-eef5-46ec-8230-8dd3bce8cbb2',
+  p_trace_id: '81ceca3a-827c-43ed-85b3-9883d2c095c8',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 3,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'VALIDATION',
+  p_safe_metadata: { status: 400 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > leaves a Case that is already closed closed, with no new row
+harness_event {
+  p_event_id: '99916189-dc77-456c-9ab8-b055d321dcad',
+  p_run_id: '5da29aaf-cf30-4b31-899e-94b6d217b11b',
+  p_trace_id: '4cf59ce7-e61c-49b7-a226-a29424aa984f',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INVALID_STATUS',
+  p_safe_metadata: { status: 409 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a stranger cannot close or write to the owner Case with an unsupported request
+harness_event {
+  p_event_id: '2941bb49-daea-4012-97aa-a6685b838bbb',
+  p_run_id: '86286869-74f7-4c96-bdc8-a3f776b24827',
+  p_trace_id: '834b6a2c-7a4e-44d3-9562-2a30b3a64e36',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 1,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'NOT_FOUND',
+  p_safe_metadata: { status: 404 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > an admin cannot close or write to the owner Case with an unsupported request
+harness_event {
+  p_event_id: '6976aec8-e68c-4d3a-8f26-40dbc36f6201',
+  p_run_id: '934c36dc-06e9-412c-a656-b0669b35f3fd',
+  p_trace_id: 'e348b964-6256-4723-a21d-d48a69dd1c0b',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 1,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'KAEL_PATH_CONTROL_DENIED',
+  p_safe_metadata: { status: 403 }
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts (254 tests | 18 failed) 3240ms
+     ✓ electrical: Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối. (frozen ELEC-S2: the washing machine is a suspected cause) stays open, flags off 23ms
+     ✓ electrical: Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối. (frozen ELEC-S2: the washing machine is a suspected cause) stays open, flags on 21ms
+     ✓ plumbing: Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa. (frozen PLMB-S2: the pump belongs to the building and is a suspected cause) stays open, flags off 7ms
+     ✓ plumbing: Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa. (frozen PLMB-S2: the pump belongs to the building and is a suspected cause) stays open, flags on 5ms
+     ✓ plumbing: Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm. (frozen PLMB-S4 step 3: the water heater is only said to be on the balcony) stays open, flags off 23ms
+     ✓ plumbing: Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm. (frozen PLMB-S4 step 3: the water heater is only said to be on the balcony) stays open, flags on 7ms
+     ✓ cleaning: Mình cần dọn dẹp tổng thể căn hộ, nhớ lau cả khu vực máy giặt và bếp từ. (cleaning an area that holds appliances) stays open, flags off 2ms
+     ✓ cleaning: Mình cần dọn dẹp tổng thể căn hộ, nhớ lau cả khu vực máy giặt và bếp từ. (cleaning an area that holds appliances) stays open, flags on 3ms
+     ✓ cleaning: Dọn vệ sinh tủ lạnh và bếp từ trước khi chuyển nhà. (cleaning the appliances themselves) stays open, flags off 1ms
+     ✓ cleaning: Dọn vệ sinh tủ lạnh và bếp từ trước khi chuyển nhà. (cleaning the appliances themselves) stays open, flags on 2ms
+     ✓ handyman: Mình cần lắp một cái kệ để đặt modem wifi cạnh tivi. (a shelf for a modem) stays open, flags off 1ms
+     ✓ handyman: Mình cần lắp một cái kệ để đặt modem wifi cạnh tivi. (a shelf for a modem) stays open, flags on 3ms
+     ✓ hvac: Cần vệ sinh hai máy lạnh, máy giặt đặt gần đó nên nhờ che chắn giúp. (a neighbouring appliance) stays open, flags off 1ms
+     ✓ hvac: Cần vệ sinh hai máy lạnh, máy giặt đặt gần đó nên nhờ che chắn giúp. (a neighbouring appliance) stays open, flags on 4ms
+     ✓ electrical: Ổ cắm gần bếp từ hay bị nóng, nhờ thợ kiểm tra. (an outlet near a hob) stays open, flags off 1ms
+     ✓ electrical: Ổ cắm gần bếp từ hay bị nóng, nhờ thợ kiểm tra. (an outlet near a hob) stays open, flags on 3ms
+     ✓ plumbing: Vòi nước ở bồn rửa rỉ nước, ống cấp nối với máy giặt cạnh đó. (a pipe that feeds an appliance) stays open, flags off 1ms
+     ✓ plumbing: Vòi nước ở bồn rửa rỉ nước, ống cấp nối với máy giặt cạnh đó. (a pipe that feeds an appliance) stays open, flags on 1ms
+     ✓ plumbing: ambiguous "Nước yếu, không biết do ống hay do máy giặt." (water pressure, pipe or washing machine) is left to the intake question, flags off 1ms
+     ✓ plumbing: ambiguous "Nước yếu, không biết do ống hay do máy giặt." (water pressure, pipe or washing machine) is left to the intake question, flags on 1ms
+     ✓ electrical: ambiguous "Đèn nhấp nháy, không rõ do tủ lạnh hay do dây điện." (flicker, refrigerator or wiring) is left to the intake question, flags off 1ms
+     ✓ electrical: ambiguous "Đèn nhấp nháy, không rõ do tủ lạnh hay do dây điện." (flicker, refrigerator or wiring) is left to the intake question, flags on 1ms
+     ✓ hvac: ambiguous "Máy lạnh chảy nước, không chắc do máy giặt gần đó hay do ống thoát." (dripping unit, washing machine or drain) is left to the intake question, flags off 1ms
+     ✓ hvac: ambiguous "Máy lạnh chảy nước, không chắc do máy giặt gần đó hay do ống thoát." (dripping unit, washing machine or drain) is left to the intake question, flags on 2ms
+     ✓ upholstery: ambiguous "Sofa có mùi lạ, mình nghĩ do máy giặt ở ban công bị rò nước." (smell blamed on a leaking appliance) is left to the intake question, flags off 1ms
+     ✓ upholstery: ambiguous "Sofa có mùi lạ, mình nghĩ do máy giặt ở ban công bị rò nước." (smell blamed on a leaking appliance) is left to the intake question, flags on 3ms
+     ✓ handyman: Mình cần sửa máy giặt, nó không vắt được. (repair verb before the appliance) is refused, flags off 2ms
+     ✓ handyman: Mình cần sửa máy giặt, nó không vắt được. (repair verb before the appliance) is refused, flags on 1ms
+     ✓ plumbing: Tủ lạnh nhà mình không lạnh nữa, nhờ thợ sửa. (refrigerator fault) is refused, flags off 1ms
+     ✓ plumbing: Tủ lạnh nhà mình không lạnh nữa, nhờ thợ sửa. (refrigerator fault) is refused, flags on 1ms
+     ✓ handyman: Wifi nhà mình bị mất kết nối liên tục, cần thợ xem. (Wi-Fi fault) is refused, flags off 1ms
+     ✓ handyman: Wifi nhà mình bị mất kết nối liên tục, cần thợ xem. (Wi-Fi fault) is refused, flags on 1ms
+     ✓ cleaning: Bếp từ hỏng rồi, cần sửa gấp. (induction hob fault) is refused, flags off 1ms
+     ✓ cleaning: Bếp từ hỏng rồi, cần sửa gấp. (induction hob fault) is refused, flags on 1ms
+     ✓ hvac: Lò vi sóng không nóng, nhờ sửa. (microwave fault) is refused, flags off 1ms
+     ✓ hvac: Lò vi sóng không nóng, nhờ sửa. (microwave fault) is refused, flags on 1ms
+     ✓ upholstery: Máy sấy quần áo không chạy. (dryer fault) is refused, flags off 1ms
+     ✓ upholstery: Máy sấy quần áo không chạy. (dryer fault) is refused, flags on 2ms
+     ✓ plumbing: Mình muốn sửa máy giặt ở nhà. (repair request that names a place) is refused, flags off 1ms
+     ✓ plumbing: Mình muốn sửa máy giặt ở nhà. (repair request that names a place) is refused, flags on 1ms
+     ✓ plumbing: Vòi nước bồn rửa bị rò, và nhờ sửa luôn máy giặt giúp mình. (an explicit unsupported request inside a mixed message) is refused, flags off 1ms
+     ✓ plumbing: Vòi nước bồn rửa bị rò, và nhờ sửa luôn máy giặt giúp mình. (an explicit unsupported request inside a mixed message) is refused, flags on 1ms
+     ✓ cleaning: Cho mình công thức nấu phở. (off-topic request) is refused, flags off 1ms
+     ✓ cleaning: Cho mình công thức nấu phở. (off-topic request) is refused, flags on 1ms
+     ✓ refuses a genuine fridge request on the electrical Case with the flag off and keeps the flagged policy refusal with it on 2ms
+     ✓ does not weaken the prompt-injection refusal 2ms
+     ✓ 'tủ lạnh': fault and service-request wording, every written form, every Case service, flags off and on 127ms
+     ✓ 'máy giặt': fault and service-request wording, every written form, every Case service, flags off and on 142ms
+     ✓ 'máy sấy': fault and service-request wording, every written form, every Case service, flags off and on 86ms
+     ✓ 'máy rửa bát': fault and service-request wording, every written form, every Case service, flags off and on 111ms
+     ✓ 'máy rửa chén': fault and service-request wording, every written form, every Case service, flags off and on 86ms
+     ✓ 'lò vi sóng': fault and service-request wording, every written form, every Case service, flags off and on 106ms
+     ✓ 'bếp ga': fault and service-request wording, every written form, every Case service, flags off and on 107ms
+     ✓ 'bếp từ': fault and service-request wording, every written form, every Case service, flags off and on 112ms
+     ✓ 'wifi': fault and service-request wording, every written form, every Case service, flags off and on 113ms
+     ✓ 'internet': fault and service-request wording, every written form, every Case service, flags off and on 82ms
+     ✓ 'tủ lạnh': a request with no fault word, every written form, every Case service, flags off and on 10ms
+     ✓ 'máy giặt': a request with no fault word, every written form, every Case service, flags off and on 11ms
+     ✓ 'máy sấy': a request with no fault word, every written form, every Case service, flags off and on 10ms
+     ✓ 'máy rửa bát': a request with no fault word, every written form, every Case service, flags off and on 10ms
+     ✓ 'máy rửa chén': a request with no fault word, every written form, every Case service, flags off and on 10ms
+     ✓ 'lò vi sóng': a request with no fault word, every written form, every Case service, flags off and on 9ms
+     ✓ 'bếp ga': a request with no fault word, every written form, every Case service, flags off and on 12ms
+     ✓ 'bếp từ': a request with no fault word, every written form, every Case service, flags off and on 9ms
+     ✓ 'wifi': a request with no fault word, every written form, every Case service, flags off and on 9ms
+     ✓ 'internet': a request with no fault word, every written form, every Case service, flags off and on 11ms
+     ✓ the Codex review example is refused 1ms
+     ✓ the Codex review example with the Case service varied is refused 1ms
+     ✓ a fault named after a comma is refused 1ms
+     ✓ an explicit unsupported request beside a supported one (the whole Case is still refused) is refused 1ms
+     ✓ a coordinated repair request is refused 1ms
+     ✓ a repair request that comes after a supported one is refused 1ms
+     × 'tủ lạnh': a new request after finished supported work in the same sentence is still refused 95ms
+     × 'máy giặt': a new request after finished supported work in the same sentence is still refused 72ms
+     × 'máy sấy': a new request after finished supported work in the same sentence is still refused 51ms
+     × 'máy rửa bát': a new request after finished supported work in the same sentence is still refused 59ms
+     × 'máy rửa chén': a new request after finished supported work in the same sentence is still refused 57ms
+     × 'lò vi sóng': a new request after finished supported work in the same sentence is still refused 58ms
+     × 'bếp ga': a new request after finished supported work in the same sentence is still refused 59ms
+     × 'bếp từ': a new request after finished supported work in the same sentence is still refused 54ms
+     × 'wifi': a new request after finished supported work in the same sentence is still refused 53ms
+     × 'internet': a new request after finished supported work in the same sentence is still refused 57ms
+     ✓ 'tủ lạnh': the same appliance finished, beside a supported request, stays open 12ms
+     ✓ 'máy giặt': the same appliance finished, beside a supported request, stays open 11ms
+     ✓ 'máy sấy': the same appliance finished, beside a supported request, stays open 10ms
+     ✓ 'máy rửa bát': the same appliance finished, beside a supported request, stays open 9ms
+     ✓ 'máy rửa chén': the same appliance finished, beside a supported request, stays open 12ms
+     ✓ 'lò vi sóng': the same appliance finished, beside a supported request, stays open 16ms
+     ✓ 'bếp ga': the same appliance finished, beside a supported request, stays open 11ms
+     ✓ 'bếp từ': the same appliance finished, beside a supported request, stays open 16ms
+     ✓ 'wifi': the same appliance finished, beside a supported request, stays open 14ms
+     ✓ 'internet': the same appliance finished, beside a supported request, stays open 10ms
+     × the detector reads the Codex review example as exactly the appliances still being asked for 2ms
+     × the detector reads a finished appliance is not named again as a request as exactly the appliances still being asked for 1ms
+     × the detector reads the finished appliance is the first of two as exactly the appliances still being asked for 1ms
+     × the detector reads finished work on a connection and a new request for a dryer as exactly the appliances still being asked for 1ms
+     ✓ the detector reads finished work followed by a supported check as exactly the appliances still being asked for 0ms
+     ✓ the detector reads finished work on the appliance alone as exactly the appliances still being asked for 0ms
+     ✓ the detector reads finished work on a pair of appliances as exactly the appliances still being asked for 0ms
+     ✓ probe written after the fix and run once, never adjusted to: "Vòi sen đã lắp xong rồi, giờ mình cần thợ xem lại cái máy giặt." 1ms
+     × probe written after the fix and run once, never adjusted to: "Mình đã bảo trì xong ổ cắm và nhờ thợ kiểm tra máy giặt luôn." 1ms
+     ✓ probe written after the fix and run once, never adjusted to: "Đã coi xong cái vòi nước rồi, còn máy sấy thì nhờ sửa giúp." 1ms
+     × probe written after the fix and run once, never adjusted to: "Em vừa kiểm tra xong đường ống và cần anh xem giúp bếp từ." 1ms
+     × probe written after the fix and run once, never adjusted to: "Mình mới sửa xong kệ giày rồi nên giờ cần sửa wifi nữa." 1ms
+     ✓ probe written after the fix and run once, never adjusted to: "Lắp xong đèn rồi, internet thì mình nhờ kiểm tra luôn nhé." 0ms
+     ✓ probe written after the fix and run once, never adjusted to: "Mình đã sửa xong máy sấy rồi, giờ chỉ cần lắp rèm." 0ms
+     ✓ probe written after the fix and run once, never adjusted to: "Thợ vừa kiểm tra xong tủ lạnh nên mình không cần xem thêm, chỉ nhờ thay bóng đèn." 1ms
+     ✓ probe written after the fix and run once, never adjusted to: "Đã bảo trì wifi xong rồi và cần dọn nhà thôi." 0ms
+     ✓ probe written after the fix and run once, never adjusted to: "Mình vừa sửa máy giặt xong rồi và nhờ lau cửa kính." 0ms
+     ✓ probe written after the fix and run once, never adjusted to: "Bếp ga đã được lắp xong rồi, giờ nhờ kiểm tra ống nước." 0ms
+     ✓ probe written after the fix and run once, never adjusted to: "Mình vừa lắp xong máy rửa bát rồi và cần xem hệ thống thoát nước." 0ms
+     × refuses a handyman Case that names finished plumbing work and a washing-machine repair, with the flags off and on 3ms
+     ✓ 'tủ lạnh': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 23ms
+     ✓ 'máy giặt': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 22ms
+     ✓ 'máy sấy': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 20ms
+     ✓ 'máy rửa bát': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 17ms
+     ✓ 'máy rửa chén': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 24ms
+     ✓ 'lò vi sóng': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 27ms
+     ✓ 'bếp ga': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 25ms
+     ✓ 'bếp từ': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 23ms
+     ✓ 'wifi': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 16ms
+     ✓ 'internet': a negated repair, a negated fault or a healthy appliance beside a supported request stays open 17ms
+     ✓ 'tủ lạnh': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 23ms
+     ✓ 'máy giặt': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 19ms
+     ✓ 'máy sấy': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 23ms
+     ✓ 'máy rửa bát': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 25ms
+     ✓ 'máy rửa chén': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 25ms
+     ✓ 'lò vi sóng': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 21ms
+     ✓ 'bếp ga': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 16ms
+     ✓ 'bếp từ': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 15ms
+     ✓ 'wifi': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 16ms
+     ✓ 'internet': a neighbour, a location, a suspected cause or a healthy mention beside a supported request stays open 19ms
+     ✓ the supported request has its own object and the appliance is only said to be fine stays open 2ms
+     ✓ a repair done by someone else is history stays open 2ms
+     ✓ a pipe fault that began when an appliance was fitted stays open 1ms
+     ✓ uncertainty about which of two things is broken stays open 1ms
+     ✓ a suspicion that names two appliances stays open 1ms
+     ✓ an appliance beside a mixed message with a negated unsupported request stays open 1ms
+     ✓ an outlet change beside an appliance stays open 1ms
+     ✓ handyman: "Máy giặt nhà mình bị hư, cần thợ đến xem." -> refuse 1ms
+     ✓ cleaning: "Tủ lạnh nhà mình hỏng rồi, ai sửa được không?" -> refuse 1ms
+     ✓ plumbing: "Anh ơi qua xem giúp em cái máy giặt với, nó cứ báo lỗi hoài." -> refuse 1ms
+     ✓ hvac: "Bếp từ nhà em không nhận nồi, nhờ bên mình kiểm tra." -> refuse 1ms
+     ✓ handyman: "Wifi chập chờn quá, nhờ thợ qua coi giúp." -> refuse 1ms
+     ✓ upholstery: "Lò vi sóng quay nhưng không nóng, cần thợ xem." -> refuse 1ms
+     ✓ electrical: "Máy sấy quần áo kêu to và không khô, tìm thợ sửa." -> refuse 1ms
+     ✓ handyman: "Cần tìm thợ sửa máy rửa bát, nó không xả nước." -> refuse 1ms
+     ✓ cleaning: "Bên mình có nhận bảo trì tủ lạnh không?" -> refuse 1ms
+     ✓ plumbing: "Gọi thợ qua kiểm tra giúp mình cái bếp ga, nó không lên lửa." -> refuse 1ms
+     ✓ electrical: "Internet nhà mình hay mất mạng, nhờ xem giúp." -> refuse 1ms
+     ✓ hvac: "Máy giặt rung lắc dữ dội khi vắt, nhờ anh qua xem." -> refuse 1ms
+     ✓ handyman: "Tủ lạnh bị đóng tuyết nhiều quá." -> refuse 1ms
+     ✓ upholstery: "Máy rửa chén nhà mình bị lỗi E24." -> refuse 1ms
+     ✓ hvac: "Ngoài máy lạnh, mình cũng nhờ sửa tủ lạnh luôn." -> refuse 1ms
+     ✓ cleaning: "Dọn dẹp xong thì nhờ thợ xem giúp cái bếp từ bị hỏng." -> refuse 1ms
+     ✓ electrical: "Không cần sửa máy giặt đâu, chỉ cần thay ổ cắm bị lỏng." -> open 1ms
+     ✓ handyman: "Tủ lạnh vẫn chạy bình thường, mình chỉ cần lắp thêm kệ phía trên." -> open 2ms
+     ✓ plumbing: "Máy giặt không hư gì, chỉ là ống thoát nước bị tắc." -> open 2ms
+     ✓ electrical: "Mình đã gọi hãng sửa tủ lạnh rồi, giờ chỉ cần thợ điện kiểm tra ổ cắm." -> open 1ms
+     ✓ cleaning: "Dọn nhà giúp mình, lau luôn bên ngoài tủ lạnh và bếp ga nhé." -> open 2ms
+     ✓ handyman: "Nhờ lắp giá treo tivi trên tường, phía dưới là tủ lạnh nên cần cẩn thận." -> open 2ms
+     ✓ electrical: "Mất điện từng lúc, không rõ tại máy giặt hay tại dây điện." -> open 2ms
+     ✓ hvac: "Máy lạnh chảy nước xuống tủ lạnh bên dưới." -> open 2ms
+     ✓ upholstery: "Ghế sofa gần bếp ga bị ám mùi khói, nhờ giặt giúp." -> open 1ms
+     ✓ handyman: "Mình muốn đục tường lắp ổ cắm cho bếp từ mới." -> open 1ms
+     ✓ electrical: "Cần đi dây cho máy giặt và tủ lạnh ở căn hộ mới." -> open 1ms
+     ✓ plumbing: "Cần lắp vòi nước cho máy giặt ngoài ban công." -> open 2ms
+     ✓ handyman: "Tủ lạnh nhà mình ổn, nhưng cánh tủ bếp bị bung bản lề." -> open 2ms
+     ✓ handyman: "Mình không muốn sửa tủ lạnh, chỉ cần treo thêm một bức tranh." -> open 2ms
+     ✓ electrical: "Đừng sửa máy giặt, mình chỉ nhờ kiểm tra ổ cắm điện." -> open 1ms
+     ✓ handyman: "Không phải sửa wifi, mình chỉ cần bắt thêm ổ cắm gần modem." -> open 2ms
+     ✓ plumbing: "Chưa cần sửa tủ lạnh, ưu tiên xử lý ống nước bị rò trước." -> open 2ms
+     ✓ cleaning: "Tủ lạnh không hỏng, chỉ cần vệ sinh bên trong khi dọn nhà." -> open 2ms
+     ✓ plumbing: "Nước nóng không lên, không biết do bình nóng lạnh hay do ống." -> open 1ms
+     ✓ hvac: "Không biết là máy lạnh hay tủ lạnh làm nhảy cầu dao." -> open 2ms
+     ✓ plumbing: "Cái tủ lạnh nhà em tự nhiên ngừng chạy luôn, anh chị có người sửa không ạ?" -> refuse 1ms
+     ✓ handyman: "Máy giặt cửa trước của mình bị rò nước ở gioăng cửa, cần thay gioăng." -> refuse 1ms
+     ✓ cleaning: "Muốn nhờ người bảo dưỡng máy sấy quần áo mỗi quý." -> refuse 1ms
+     ✓ upholstery: "Mạng internet bên mình rất chậm và hay rớt, bên bạn xử lý được không?" -> refuse 1ms
+     ✓ electrical: "Lò vi sóng nhà mình bấm không lên, nhờ kiểm tra giúp." -> refuse 0ms
+     ✓ handyman: "Hỏng máy rửa chén rồi, tìm đâu thợ sửa bây giờ?" -> refuse 1ms
+     ✓ plumbing: "Tối qua bếp ga nhà mình tự dưng không bật lên được nữa." -> refuse 1ms
+     ✓ cleaning: "Wifi ở phòng ngủ không bắt được sóng, thợ nào xử lý giúp mình với?" -> refuse 1ms
+     ✓ hvac: "Tôi cần người đến xem tủ lạnh, nghe tiếng kêu lạ từ máy nén." -> refuse 1ms
+     ✓ electrical: "Cần sửa gấp bếp từ và luôn cái lò vi sóng cạnh đó." -> refuse 0ms
+     ✓ handyman: "Cần lắp kệ bếp và sửa lò vi sóng luôn giúp mình." -> refuse 2ms
+     ✓ handyman: "Thay giúp mình bóng đèn ban công, tiện thì xem luôn cái tủ lạnh có kêu không." -> refuse 1ms
+     ✓ plumbing: "Vòi nước bếp chảy yếu hơn từ khi máy rửa chén mới được lắp." -> open 1ms
+     ✓ cleaning: "Mình cần tổng vệ sinh căn hộ, tủ lạnh và máy giặt cứ để nguyên không cần động vào." -> open 1ms
+     ✓ electrical: "Nghi ngờ dây điện cũ chứ không phải do bếp từ, nhờ thợ đo kiểm tra." -> open 1ms
+     ✓ handyman: "Khoan tường treo kệ ngay sau lưng tủ lạnh giúp mình." -> open 1ms
+     ✓ hvac: "Dàn nóng máy lạnh đặt cạnh khu bếp ga nên nhờ kiểm tra thông gió." -> open 1ms
+     ✓ upholstery: "Giặt thảm phòng khách, nhớ chừa lại khu vực dưới bếp từ." -> open 1ms
+     ✓ plumbing: "Ống thoát nước máy giặt bị tắc, cần thông cống." -> open 2ms
+     ✓ handyman: "Chưa cần thợ xem wifi đâu, hôm nay chỉ nhờ lắp rèm." -> open 2ms
+     ✓ electrical: "Aptomat tổng nhảy hoài, tủ lạnh và máy giặt vẫn chạy bình thường." -> open 1ms
+     ✓ handyman: "Lắp thanh treo khăn trong phòng tắm, chỗ máy giặt đang đặt thì để nguyên." -> open 2ms
+     ✓ cleaning: "Tôi không cần sửa gì ở bếp ga, chỉ nhờ dọn dầu mỡ xung quanh." -> open 1ms
+     ✓ plumbing: "Sau khi thợ sửa xong tủ lạnh hôm trước, giờ nhà mình bị rò nước ở ống cấp." -> open 2ms
+     ✓ electrical: "Thay ổ cắm bếp từ, còn máy giặt thì tạm thời chưa cần xem." -> open 1ms
+     ✓ cleaning: "Tủ lạnh nhà mình đang xả nước ra sàn, nhờ thợ qua kiểm tra." -> refuse 1ms
+     ✓ handyman: "Em muốn thuê người sửa wifi, sóng yếu ở phòng ngủ." -> refuse 1ms
+     ✓ upholstery: "Cần tìm chỗ sửa máy rửa bát, mình ở Quận 7." -> refuse 1ms
+     ✓ electrical: "Wifi nhà mình mất sóng từ hôm qua, nhờ kỹ thuật viên xem giúp." -> refuse 1ms
+     ✓ cleaning: "Cái bếp từ nhà mình bị chập, có mùi khét, nhờ kiểm tra." -> refuse 1ms
+     ✓ hvac: "Nhờ thợ qua nhà kiểm tra giúp mình cái máy rửa chén nhé." -> refuse 1ms
+     ✓ plumbing: "Máy giặt Samsung nhà mình đang bị lỗi E3, mình cần được hỗ trợ." -> refuse 1ms
+     ✓ electrical: "Cần đi lại dây cho ổ cắm sau tủ lạnh, ổ đang bị lỏng." -> open 1ms
+     ✓ plumbing: "Tắc bồn rửa chén, máy rửa bát thì vẫn dùng tốt." -> open 1ms
+     ✓ upholstery: "Giặt rèm và thảm, tiện thể lau luôn mặt trên của tủ lạnh nhé." -> open 2ms
+     ✓ handyman: "Mình cần khoan tường lắp giá treo cho tivi, bên cạnh bếp từ." -> open 1ms
+     ✓ cleaning: "Cảm ơn bạn, máy giặt và tủ lạnh nhà mình ổn rồi, chỉ cần dọn dẹp thôi." -> open 2ms
+     ✓ electrical: "Nhà mình hay nhảy cầu dao mỗi khi bật bếp từ cùng lúc với lò vi sóng." -> open 1ms
+     ✓ handyman: "Đừng động vào wifi, mình chỉ nhờ gắn thêm ổ cắm sạc ở đầu giường." -> open 1ms
+     ✓ cleaning: "Dọn nhà xong thì nhờ thợ qua xem sofa chứ không phải máy giặt." -> open 1ms
+     ✓ hvac: "Máy lạnh kêu to, hình như do rung từ máy giặt ở ban công." -> open 1ms
+     ✓ "Nhà có cái bếp từ đôi, mặt kính bị nứt và báo lỗi, mong được hỗ trợ sửa." (wanted: refuse) is decided the other way today 1ms
+     ✓ "Máy giặt của mình lâu rồi chưa được bảo trì, nhờ bên bạn kiểm tra tổng thể." (wanted: refuse) is decided the other way today 1ms
+     ✓ "Máy sấy nhà mình chạy mãi mà quần áo vẫn còn ướt." (wanted: refuse) is decided the other way today 1ms
+     ✓ "Lò vi sóng dùng được hai tháng rồi tự nhiên đơ, không bấm được nút nào." (wanted: refuse) is decided the other way today 1ms
+     ✓ "Cần lắp đặt thêm máy sấy quần áo cho căn hộ mới." (wanted: refuse) is decided the other way today 1ms
+     ✓ "Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối." (wanted: open) is decided the other way today 1ms
+     ✓ request words that parse two ways 2ms
+     ✓ attribution words before a mention 3ms
+     ✓ repair verbs before a mention 4ms
+     ✓ a conjunction chain 3ms
+     ✓ negations 3ms
+     ✓ commas 3ms
+     ✓ filler tokens 3ms
+     ✓ one mention repeated thousands of times 31ms
+     ✓ a clause that is almost all request words 2ms
+     ✓ faults repeated after a mention 3ms
+     ✓ 'electrical': 'frozen ELEC-S2: the washing machine i…' is not turned into an unsupported intent when the model returns nothing 1ms
+     ✓ 'plumbing': 'frozen PLMB-S2: the pump belongs to t…' is not turned into an unsupported intent when the model returns nothing 1ms
+     ✓ 'plumbing': 'frozen PLMB-S4 step 3: the water heat…' is not turned into an unsupported intent when the model returns nothing 0ms
+     ✓ 'handyman': "'Mình cần sửa máy giặt, nó không vắt đ…'" is still an unsupported intent 0ms
+     ✓ 'plumbing': "'Tủ lạnh nhà mình không lạnh nữa, nhờ …'" is still an unsupported intent 0ms
+     ✓ 'handyman': "'Internet nhà mình bị mất kết nối liên…'" is still an unsupported intent 0ms
+     ✓ "tu lanh": explicit wording is an unsupported intent and a negated or incidental mention keeps the Case service 7ms
+     ✓ "may giat": explicit wording is an unsupported intent and a negated or incidental mention keeps the Case service 4ms
+     ✓ "internet": explicit wording is an unsupported intent and a negated or incidental mention keeps the Case service 6ms
+     ✓ keeps the two service phrases the fallback already treated as unsupported 1ms
+     ✓ 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off')  324ms
+     ✓ 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on') 42ms
+     ✓ 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'off') 28ms
+     ✓ 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'on') 26ms
+     ✓ a location correction on an active plumbing Case keeps it active (flags off) 48ms
+     ✓ a location correction on an active plumbing Case keeps it active (flags on) 25ms
+     ✓ a genuine washing-machine request closes the Case as unsupported and says why (flags off) 9ms
+     ✓ a genuine washing-machine request closes the Case as unsupported and says why (flags on) 9ms
+     ✓ never screens a reviewed voice transcript on the turn or the create route (pinned: an owner decision, not a fix) 32ms
+     ✓ leaves a Case that is already closed closed, with no new row 4ms
+     ✓ a stranger cannot close or write to the owner Case with an unsupported request 4ms
+     ✓ an admin cannot close or write to the owner Case with an unsupported request 3ms
+
+ Test Files  1 failed (1)
+      Tests  18 failed | 236 passed (254)
+   Start at  12:57:59
+   Duration  12.11s (transform 7.40s, setup 0ms, import 8.63s, tests 3.24s, environment 0ms)
+
+JSON report written to C:/ns-fix/r1/docs/test-logs/kawa-remediation-r2b-20261022/results/red-first/previous-candidate-P421.json
+undefined
+C:\ns-fix\base\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts --reporter=default --reporter=json --outputFile.json=C:\ns-fix\r1\docs\test-logs\kawa-remediation-r2b-20261022\results\red-first\previous-candidate-P421.json
+
+----- stderr -----
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a genuine washing-machine request closes the Case as unsupported and says why (flags off)
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a genuine washing-machine request closes the Case as unsupported and says why (flags on)
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > an admin cannot close or write to the owner Case with an unsupported request
+kael path-control denied {
+  reasonCode: 'PATH_CONTROL_ACTOR_MISMATCH',
+  routeKind: 'kael.chat.turn',
+  actorRole: 'admin',
+  edgeRoute: 'POST /kael/chat/:id',
+  kaelPurpose: 'clarification'
+}
+
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 18 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'tủ lạnh': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for tủ lạnh after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa tủ lạnh.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa tủ lạnh.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua tu lanh.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA TỦ LẠNH.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai tu lanh.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra tủ lạnh.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa tủ lạnh.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa tủ lạnh.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua tu lanh.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai tu lanh.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra tủ lạnh.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa tủ lạnh.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa tủ lạnh.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua tu lanh.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai tu lanh.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra tủ lạnh.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa tủ lạnh.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa tủ lạnh.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua tu lanh.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai tu lanh.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra tủ lạnh.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa tủ lạnh.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa tủ lạnh.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua tu lanh.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai tu lanh.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra tủ lạnh.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra tu lanh.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa tủ lạnh.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua tu lanh.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA TỦ LẠNH.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai tu lanh.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa tủ lạnh.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua tu lanh.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai tu lanh.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa tủ lạnh.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua tu lanh.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai tu lanh.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa tủ lạnh.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua tu lanh.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai tu lanh.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa tủ lạnh.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua tu lanh.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA TỦ LẠNH.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái tủ lạnh.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai tu lanh.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI TỦ LẠNH.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra tu lanh.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA TỦ LẠNH.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'máy giặt': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for máy giặt after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa máy giặt.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua may giat.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA MÁY GIẶT.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái máy giặt.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai may giat.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra máy giặt.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa máy giặt.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa máy giặt.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua may giat.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái máy giặt.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai may giat.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra máy giặt.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa máy giặt.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa máy giặt.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua may giat.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái máy giặt.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai may giat.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra máy giặt.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa máy giặt.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa máy giặt.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua may giat.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái máy giặt.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai may giat.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra máy giặt.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa máy giặt.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa máy giặt.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua may giat.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái máy giặt.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai may giat.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra máy giặt.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra may giat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa máy giặt.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua may giat.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA MÁY GIẶT.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái máy giặt.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai may giat.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa máy giặt.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua may giat.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái máy giặt.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai may giat.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa máy giặt.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua may giat.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái máy giặt.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai may giat.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa máy giặt.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua may giat.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái máy giặt.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai may giat.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa máy giặt.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua may giat.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA MÁY GIẶT.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái máy giặt.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai may giat.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY GIẶT.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra may giat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA MÁY GIẶT.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'máy sấy': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for máy sấy after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa máy sấy.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua may say.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA MÁY SẤY.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa máy sấy.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua may say.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA MÁY SẤY.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái máy sấy.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai may say.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra máy sấy.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra may say.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa máy sấy.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua may say.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa máy sấy.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua may say.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái máy sấy.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai may say.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra máy sấy.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra may say.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa máy sấy.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua may say.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa máy sấy.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua may say.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái máy sấy.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai may say.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra máy sấy.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra may say.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa máy sấy.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua may say.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa máy sấy.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua may say.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái máy sấy.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai may say.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra máy sấy.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra may say.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa máy sấy.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua may say.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa máy sấy.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua may say.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái máy sấy.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai may say.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra máy sấy.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra may say.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua may say.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA MÁY SẤY.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa máy sấy.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua may say.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA MÁY SẤY.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái máy sấy.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai may say.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra may say.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua may say.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa máy sấy.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua may say.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái máy sấy.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai may say.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra may say.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua may say.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa máy sấy.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua may say.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái máy sấy.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai may say.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra may say.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua may say.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa máy sấy.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua may say.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái máy sấy.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai may say.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra may say.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua may say.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa máy sấy.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua may say.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA MÁY SẤY.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái máy sấy.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai may say.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY SẤY.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra may say.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA MÁY SẤY.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'máy rửa bát': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for máy rửa bát after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa máy rửa bát.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa máy rửa bát.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua may rua bat.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA MÁY RỬA BÁT.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai may rua bat.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra máy rửa bát.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa máy rửa bát.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa máy rửa bát.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua may rua bat.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai may rua bat.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra máy rửa bát.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa máy rửa bát.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa máy rửa bát.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua may rua bat.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai may rua bat.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra máy rửa bát.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa máy rửa bát.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa máy rửa bát.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua may rua bat.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai may rua bat.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra máy rửa bát.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa máy rửa bát.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa máy rửa bát.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua may rua bat.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai may rua bat.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra máy rửa bát.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra may rua bat.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa máy rửa bát.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua may rua bat.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA MÁY RỬA BÁT.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai may rua bat.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa máy rửa bát.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua may rua bat.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai may rua bat.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa máy rửa bát.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua may rua bat.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai may rua bat.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa máy rửa bát.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua may rua bat.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai may rua bat.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa máy rửa bát.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua may rua bat.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA MÁY RỬA BÁT.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái máy rửa bát.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai may rua bat.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA BÁT.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra may rua bat.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA MÁY RỬA BÁT.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'máy rửa chén': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for máy rửa chén after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa máy rửa chén.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa máy rửa chén.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua may rua chen.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai may rua chen.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra máy rửa chén.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa máy rửa chén.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa máy rửa chén.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua may rua chen.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai may rua chen.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra máy rửa chén.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa máy rửa chén.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa máy rửa chén.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua may rua chen.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai may rua chen.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra máy rửa chén.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa máy rửa chén.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa máy rửa chén.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua may rua chen.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai may rua chen.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra máy rửa chén.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa máy rửa chén.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa máy rửa chén.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua may rua chen.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai may rua chen.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra máy rửa chén.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra may rua chen.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa máy rửa chén.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua may rua chen.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai may rua chen.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa máy rửa chén.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua may rua chen.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai may rua chen.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa máy rửa chén.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua may rua chen.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai may rua chen.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa máy rửa chén.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua may rua chen.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai may rua chen.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa máy rửa chén.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua may rua chen.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA MÁY RỬA CHÉN.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái máy rửa chén.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai may rua chen.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI MÁY RỬA CHÉN.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra may rua chen.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA MÁY RỬA CHÉN.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'lò vi sóng': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for lò vi sóng after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa lò vi sóng.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa lò vi sóng.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua lo vi song.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA LÒ VI SÓNG.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai lo vi song.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra lò vi sóng.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa lò vi sóng.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa lò vi sóng.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua lo vi song.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai lo vi song.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra lò vi sóng.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa lò vi sóng.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa lò vi sóng.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua lo vi song.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai lo vi song.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra lò vi sóng.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa lò vi sóng.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa lò vi sóng.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua lo vi song.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai lo vi song.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra lò vi sóng.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa lò vi sóng.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa lò vi sóng.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua lo vi song.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai lo vi song.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra lò vi sóng.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra lo vi song.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa lò vi sóng.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua lo vi song.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA LÒ VI SÓNG.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai lo vi song.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa lò vi sóng.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua lo vi song.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai lo vi song.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa lò vi sóng.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua lo vi song.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai lo vi song.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa lò vi sóng.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua lo vi song.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai lo vi song.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa lò vi sóng.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua lo vi song.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA LÒ VI SÓNG.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái lò vi sóng.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai lo vi song.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI LÒ VI SÓNG.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra lo vi song.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA LÒ VI SÓNG.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'bếp ga': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for bếp ga after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa bếp ga.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA BẾP GA.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa bếp ga.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua bep ga.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA BẾP GA.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái bếp ga.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai bep ga.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra bếp ga.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa bếp ga.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa bếp ga.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua bep ga.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái bếp ga.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai bep ga.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra bếp ga.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa bếp ga.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa bếp ga.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua bep ga.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái bếp ga.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai bep ga.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra bếp ga.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa bếp ga.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa bếp ga.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua bep ga.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái bếp ga.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai bep ga.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra bếp ga.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa bếp ga.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa bếp ga.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua bep ga.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái bếp ga.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai bep ga.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra bếp ga.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra bep ga.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA BẾP GA.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa bếp ga.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua bep ga.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA BẾP GA.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái bếp ga.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai bep ga.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa bếp ga.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua bep ga.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái bếp ga.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai bep ga.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa bếp ga.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua bep ga.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái bếp ga.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai bep ga.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa bếp ga.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua bep ga.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái bếp ga.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai bep ga.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa bếp ga.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua bep ga.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA BẾP GA.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái bếp ga.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai bep ga.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP GA.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra bep ga.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA BẾP GA.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'bếp từ': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for bếp từ after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa bếp từ.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA BẾP TỪ.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa bếp từ.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua bep tu.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA BẾP TỪ.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái bếp từ.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai bep tu.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra bếp từ.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa bếp từ.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa bếp từ.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua bep tu.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái bếp từ.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai bep tu.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra bếp từ.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa bếp từ.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa bếp từ.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua bep tu.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái bếp từ.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai bep tu.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra bếp từ.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa bếp từ.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa bếp từ.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua bep tu.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái bếp từ.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai bep tu.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra bếp từ.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa bếp từ.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa bếp từ.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua bep tu.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái bếp từ.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai bep tu.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra bếp từ.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra bep tu.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA BẾP TỪ.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa bếp từ.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua bep tu.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA BẾP TỪ.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp cái bếp từ.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup cai bep tu.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa bếp từ.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua bep tu.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp cái bếp từ.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup cai bep tu.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa bếp từ.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua bep tu.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp cái bếp từ.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup cai bep tu.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa bếp từ.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua bep tu.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp cái bếp từ.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup cai bep tu.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa bếp từ.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua bep tu.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA BẾP TỪ.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp cái bếp từ.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup cai bep tu.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP CÁI BẾP TỪ.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra bep tu.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA BẾP TỪ.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'wifi': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for wifi after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa wifi.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA WIFI.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa wifi.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua wifi.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA WIFI.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp wifi.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup wifi.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra wifi.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA WIFI.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa wifi.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA WIFI.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa wifi.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua wifi.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA WIFI.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp wifi.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup wifi.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra wifi.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA WIFI.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa wifi.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA WIFI.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa wifi.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua wifi.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA WIFI.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp wifi.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup wifi.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra wifi.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA WIFI.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa wifi.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA WIFI.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa wifi.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua wifi.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA WIFI.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp wifi.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup wifi.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra wifi.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA WIFI.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa wifi.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA WIFI.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa wifi.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua wifi.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA WIFI.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp wifi.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup wifi.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra wifi.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra wifi.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA WIFI.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA WIFI.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa wifi.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua wifi.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA WIFI.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp wifi.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup wifi.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA WIFI.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA WIFI.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa wifi.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua wifi.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA WIFI.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp wifi.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup wifi.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA WIFI.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA WIFI.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa wifi.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua wifi.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA WIFI.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp wifi.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup wifi.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA WIFI.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA WIFI.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa wifi.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua wifi.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA WIFI.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp wifi.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup wifi.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA WIFI.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA WIFI.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa wifi.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua wifi.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA WIFI.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp wifi.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup wifi.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP WIFI.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra wifi.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA WIFI.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > 'internet': a new request after finished supported work in the same sentence is still refused
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    180 decisions for internet after finished work: expected [ …(110) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] electrical: \"Mình đã sửa xong vòi nước rồi và cần sửa internet.\" -> service_mismatch",
++   "[off] plumbing: \"Minh da sua xong voi nuoc roi va can sua internet.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA INTERNET.\" -> service_mismatch",
++   "[off] hvac: \"Mình đã sửa xong vòi nước và cần sửa internet.\" -> service_mismatch",
++   "[off] upholstery: \"Minh da sua xong voi nuoc va can sua internet.\" -> service_mismatch",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA INTERNET.\" -> service_mismatch",
++   "[off] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp internet.\" -> service_mismatch",
++   "[off] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup internet.\" -> service_mismatch",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> service_mismatch",
++   "[off] electrical: \"Mình vừa bảo trì xong vòi nước và cần thợ kiểm tra internet.\" -> service_mismatch",
++   "[off] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra internet.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> service_mismatch",
++   "[off] electrical: \"Mình đã sửa xong tay nắm cửa rồi và cần sửa internet.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong tay nam cua roi va can sua internet.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa internet.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong tay nam cua va can sua internet.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp internet.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup internet.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong tay nắm cửa và cần thợ kiểm tra internet.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra internet.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong kệ treo tường rồi và cần sửa internet.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong ke treo tuong roi va can sua internet.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa internet.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong ke treo tuong va can sua internet.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp internet.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup internet.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong kệ treo tường và cần thợ kiểm tra internet.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra internet.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bóng đèn rồi và cần sửa internet.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bong den roi va can sua internet.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bóng đèn và cần sửa internet.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bong den va can sua internet.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp internet.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup internet.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bóng đèn và cần thợ kiểm tra internet.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra internet.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> ok",
++   "[off] electrical: \"Mình đã sửa xong bồn rửa rồi và cần sửa internet.\" -> ok",
++   "[off] plumbing: \"Minh da sua xong bon rua roi va can sua internet.\" -> ok",
++   "[off] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[off] hvac: \"Mình đã sửa xong bồn rửa và cần sửa internet.\" -> ok",
++   "[off] upholstery: \"Minh da sua xong bon rua va can sua internet.\" -> ok",
++   "[off] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[off] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp internet.\" -> ok",
++   "[off] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup internet.\" -> ok",
++   "[off] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> ok",
++   "[off] electrical: \"Mình vừa bảo trì xong bồn rửa và cần thợ kiểm tra internet.\" -> ok",
++   "[off] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra internet.\" -> ok",
++   "[off] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong voi nuoc roi va can sua internet.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC RỒI VÀ CẦN SỬA INTERNET.\" -> service_mismatch",
++   "[on] hvac: \"Mình đã sửa xong vòi nước và cần sửa internet.\" -> service_mismatch",
++   "[on] upholstery: \"Minh da sua xong voi nuoc va can sua internet.\" -> service_mismatch",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG VÒI NƯỚC VÀ CẦN SỬA INTERNET.\" -> service_mismatch",
++   "[on] hvac: \"Đã kiểm tra xong vòi nước rồi và nhờ thợ xem giúp internet.\" -> service_mismatch",
++   "[on] upholstery: \"Da kiem tra xong voi nuoc roi va nho tho xem giup internet.\" -> service_mismatch",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG VÒI NƯỚC RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> service_mismatch",
++   "[on] plumbing: \"Minh vua bao tri xong voi nuoc va can tho kiem tra internet.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG VÒI NƯỚC VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> service_mismatch",
++   "[on] plumbing: \"Minh da sua xong tay nam cua roi va can sua internet.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA RỒI VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong tay nắm cửa và cần sửa internet.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong tay nam cua va can sua internet.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG TAY NẮM CỬA VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong tay nắm cửa rồi và nhờ thợ xem giúp internet.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong tay nam cua roi va nho tho xem giup internet.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG TAY NẮM CỬA RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong tay nam cua va can tho kiem tra internet.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG TAY NẮM CỬA VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong ke treo tuong roi va can sua internet.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG RỒI VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong kệ treo tường và cần sửa internet.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong ke treo tuong va can sua internet.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG KỆ TREO TƯỜNG VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong kệ treo tường rồi và nhờ thợ xem giúp internet.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong ke treo tuong roi va nho tho xem giup internet.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG KỆ TREO TƯỜNG RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong ke treo tuong va can tho kiem tra internet.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG KỆ TREO TƯỜNG VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bong den roi va can sua internet.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN RỒI VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bóng đèn và cần sửa internet.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bong den va can sua internet.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BÓNG ĐÈN VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bóng đèn rồi và nhờ thợ xem giúp internet.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bong den roi va nho tho xem giup internet.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BÓNG ĐÈN RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bong den va can tho kiem tra internet.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BÓNG ĐÈN VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> ok",
++   "[on] plumbing: \"Minh da sua xong bon rua roi va can sua internet.\" -> ok",
++   "[on] cleaning: \"MÌNH ĐÃ SỬA XONG BỒN RỬA RỒI VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[on] hvac: \"Mình đã sửa xong bồn rửa và cần sửa internet.\" -> ok",
++   "[on] upholstery: \"Minh da sua xong bon rua va can sua internet.\" -> ok",
++   "[on] handyman: \"MÌNH ĐÃ SỬA XONG BỒN RỬA VÀ CẦN SỬA INTERNET.\" -> ok",
++   "[on] hvac: \"Đã kiểm tra xong bồn rửa rồi và nhờ thợ xem giúp internet.\" -> ok",
++   "[on] upholstery: \"Da kiem tra xong bon rua roi va nho tho xem giup internet.\" -> ok",
++   "[on] handyman: \"ĐÃ KIỂM TRA XONG BỒN RỬA RỒI VÀ NHỜ THỢ XEM GIÚP INTERNET.\" -> ok",
++   "[on] plumbing: \"Minh vua bao tri xong bon rua va can tho kiem tra internet.\" -> ok",
++   "[on] cleaning: \"MÌNH VỪA BẢO TRÌ XONG BỒN RỬA VÀ CẦN THỢ KIỂM TRA INTERNET.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:267:130
+    265|       }
+    266|     }
+    267|     expect(misdecided(rows, false), pillarWhy(PILLAR, `${rows.length *…
+       |                                                                                                                                  ^
+    268|   })
+    269|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > the detector reads the Codex review example as exactly the appliances still being asked for
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    the Codex review example: "Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:291:109
+    289|     ['finished work on a pair of appliances', 'Mình đã sửa xong tủ lạn…
+    290|   ] as const)('the detector reads %s as exactly the appliances still b…
+    291|     expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, …
+       |                                                                                                             ^
+    292|   })
+    293|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > the detector reads a finished appliance is not named again as a request as exactly the appliances still being asked for
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    a finished appliance is not named again as a request: "Mình đã sửa xong tủ lạnh rồi và cần sửa máy giặt.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:291:109
+    289|     ['finished work on a pair of appliances', 'Mình đã sửa xong tủ lạn…
+    290|   ] as const)('the detector reads %s as exactly the appliances still b…
+    291|     expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, …
+       |                                                                                                             ^
+    292|   })
+    293|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > the detector reads the finished appliance is the first of two as exactly the appliances still being asked for
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    the finished appliance is the first of two: "Mình đã sửa máy giặt xong rồi và cần xem tủ lạnh.": expected [] to deeply equal [ 'tu lanh' ]
+
+- Expected
++ Received
+
+- [
+-   "tu lanh",
+- ]
++ []
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:291:109
+    289|     ['finished work on a pair of appliances', 'Mình đã sửa xong tủ lạn…
+    290|   ] as const)('the detector reads %s as exactly the appliances still b…
+    291|     expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, …
+       |                                                                                                             ^
+    292|   })
+    293|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > the detector reads finished work on a connection and a new request for a dryer as exactly the appliances still being asked for
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    finished work on a connection and a new request for a dryer: "Đã kiểm tra xong wifi rồi và nhờ thợ xem giúp cái máy sấy.": expected [] to deeply equal [ 'may say' ]
+
+- Expected
++ Received
+
+- [
+-   "may say",
+- ]
++ []
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:291:109
+    289|     ['finished work on a pair of appliances', 'Mình đã sửa xong tủ lạn…
+    290|   ] as const)('the detector reads %s as exactly the appliances still b…
+    291|     expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, …
+       |                                                                                                             ^
+    292|   })
+    293|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > probe written after the fix and run once, never adjusted to: "Mình đã bảo trì xong ổ cắm và nhờ thợ kiểm tra máy giặt luôn."
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    "Mình đã bảo trì xong ổ cắm và nhờ thợ kiểm tra máy giặt luôn.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:308:94
+    306|     ['Mình vừa lắp xong máy rửa bát rồi và cần xem hệ thống thoát nước…
+    307|   ] as const)('probe written after the fix and run once, never adjuste…
+    308|     expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, …
+       |                                                                                              ^
+    309|   })
+    310|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > probe written after the fix and run once, never adjusted to: "Em vừa kiểm tra xong đường ống và cần anh xem giúp bếp từ."
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    "Em vừa kiểm tra xong đường ống và cần anh xem giúp bếp từ.": expected [] to deeply equal [ 'bep tu' ]
+
+- Expected
++ Received
+
+- [
+-   "bep tu",
+- ]
++ []
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:308:94
+    306|     ['Mình vừa lắp xong máy rửa bát rồi và cần xem hệ thống thoát nước…
+    307|   ] as const)('probe written after the fix and run once, never adjuste…
+    308|     expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, …
+       |                                                                                              ^
+    309|   })
+    310|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > probe written after the fix and run once, never adjusted to: "Mình mới sửa xong kệ giày rồi nên giờ cần sửa wifi nữa."
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    "Mình mới sửa xong kệ giày rồi nên giờ cần sửa wifi nữa.": expected [] to deeply equal [ 'wifi' ]
+
+- Expected
++ Received
+
+- [
+-   "wifi",
+- ]
++ []
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:308:94
+    306|     ['Mình vừa lắp xong máy rửa bát rồi và cần xem hệ thống thoát nước…
+    307|   ] as const)('probe written after the fix and run once, never adjuste…
+    308|     expect([...detectRequestedApplianceWork(text)], pillarWhy(PILLAR, …
+       |                                                                                              ^
+    309|   })
+    310|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/18]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: finished work is scoped to the repair it describes > refuses a handyman Case that names finished plumbing work and a washing-machine repair, with the flags off and on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    finished plumbing work then a washing-machine request: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "[off] handyman: \"Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.\" -> service_mismatch",
++   "[off] plumbing: \"Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.\" -> ok",
++   "[on] handyman: \"Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.\" -> service_mismatch",
++   "[on] plumbing: \"Mình đã sửa xong vòi nước rồi và cần sửa máy giặt.\" -> ok",
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:313:96
+    311|   it('refuses a handyman Case that names finished plumbing work and a …
+    312|     const misses = misdecided([['handyman', 'Mình đã sửa xong vòi nước…
+    313|     expect(misses, pillarWhy(PILLAR, 'finished plumbing work then a wa…
+       |                                                                                                ^
+    314|   })
+    315| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/18]⎯
+

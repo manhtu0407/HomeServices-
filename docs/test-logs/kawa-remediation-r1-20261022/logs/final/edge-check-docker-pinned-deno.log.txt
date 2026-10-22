@@ -1,0 +1,57 @@
+check kael-learning-monitor
+check kael-matching-maintainer
+check kael-media-retention
+check mobile-api
+[0m[38;5;245mrunning 4 tests from ./supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts[0m
+P388-mobile-client-contract-compatibility: accepts the immediate legacy epoch at its explicit per-platform floor ... [0m[32mok[0m [0m[38;5;245m(21ms)[0m
+P388-mobile-client-contract-compatibility: rejects the immediate legacy epoch below its floor and all older epochs ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
+P388-mobile-client-contract-compatibility: requires exact release identity for the current epoch ... [0m[32mok[0m [0m[38;5;245m(687µs)[0m
+P388-mobile-client-contract-compatibility: accepts the current release-bound iOS build while preserving the previous build floor ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
+
+[0m[32mok[0m | 4 passed | 0 failed [0m[38;5;245m(32ms)[0m
+
+check payment-maintainer
+check system-monitor
+check sepay-webhook
+
+edge check: discovered=7 selected=7 checked=7 failed=0
+
+----- stderr -----
+ Image denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498 Skipped Image is already present locally
+ Container r1-deno-run-6edbb1819fc0 Creating 
+ Container r1-deno-run-6edbb1819fc0 Created 
+[0m[32mCheck[0m supabase/functions/kael-learning-monitor/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+ Container r1-deno-run-09ff1a2eb93a Creating 
+ Container r1-deno-run-09ff1a2eb93a Created 
+[0m[32mCheck[0m supabase/functions/kael-matching-maintainer/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+ Container r1-deno-run-a81c76ae637f Creating 
+ Container r1-deno-run-a81c76ae637f Created 
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+ Container r1-deno-run-ca6e35f6472c Creating 
+ Container r1-deno-run-ca6e35f6472c Created 
+[0m[32mCheck[0m supabase/functions/mobile-api/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+ Container r1-deno-run-2060bc0ef9e1 Creating 
+ Container r1-deno-run-2060bc0ef9e1 Created 
+[0m[32mCheck[0m supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+ Container r1-deno-run-d8bf2bd6bcc2 Creating 
+ Container r1-deno-run-d8bf2bd6bcc2 Created 
+[0m[32mCheck[0m supabase/functions/payment-maintainer/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+ Container r1-deno-run-dbba475d8c28 Creating 
+ Container r1-deno-run-dbba475d8c28 Created 
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+ Container r1-deno-run-cdb1bc0cb77f Creating 
+ Container r1-deno-run-cdb1bc0cb77f Created 
+[0m[32mCheck[0m supabase/functions/sepay-webhook/index.ts
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod

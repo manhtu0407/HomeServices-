@@ -11,3 +11,7 @@ ccb65dcdbf38369da56b7cd611f1cbab9a174f3b:scripts/system-monitor/verify-cloudflar
 6c9d557ba968986badb43a6af5f70ee28c3b4960:docs/test-logs/2026-05-26_f26-ab-pricesynth-decision.md:generic-api-key:15
 7fc7d75c47c8fbd6161329c1dcca34720eb38abe:docs/test-logs/2026-05-26_p17-staging-monitoring-ab.md:generic-api-key:53
 82fdd6fc1f3576fc98ff43dbec76463cc702318e:config/env/workspace.env.example:generic-api-key:46
+# Verified SHA-256 digests of three saved evidence logs, recomputed and equal to the stored values, not credentials. Each exception pins one finding of commit 04317126.
+04317126635a4207a3f9b9ba35ffccf053d16340:docs/test-logs/kawa-remediation-r1-20261022/file-digests.json:generic-api-key:29
+04317126635a4207a3f9b9ba35ffccf053d16340:docs/test-logs/kawa-remediation-r1-20261022/file-digests.json:generic-api-key:47
+04317126635a4207a3f9b9ba35ffccf053d16340:docs/test-logs/kawa-remediation-r1-20261022/file-digests.json:generic-api-key:67

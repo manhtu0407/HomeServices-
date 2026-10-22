@@ -1,0 +1,202 @@
+{
+ "schema": "nestscout.r2.triplet_table.v1",
+ "main_summary": {
+  "frozen/flags-off": {
+   "checkpoints": 21,
+   "route_correct": 20,
+   "visible_acceptable": 20,
+   "visible_exact": 20,
+   "metadata_present": 20
+  },
+  "created/flags-off": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  },
+  "frozen/flags-on": {
+   "checkpoints": 21,
+   "route_correct": 15,
+   "visible_acceptable": 17,
+   "visible_exact": 17,
+   "metadata_present": 15
+  },
+  "created/flags-on": {
+   "checkpoints": 15,
+   "route_correct": 10,
+   "visible_acceptable": 13,
+   "visible_exact": 13,
+   "metadata_present": 10
+  }
+ },
+ "round_one_summary": {
+  "frozen/flags-off": {
+   "checkpoints": 21,
+   "route_correct": 21,
+   "visible_acceptable": 21,
+   "visible_exact": 21,
+   "metadata_present": 21
+  },
+  "created/flags-off": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  },
+  "frozen/flags-on": {
+   "checkpoints": 21,
+   "route_correct": 21,
+   "visible_acceptable": 21,
+   "visible_exact": 21,
+   "metadata_present": 21
+  },
+  "created/flags-on": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  }
+ },
+ "round_two_summary": {
+  "frozen/flags-off": {
+   "checkpoints": 21,
+   "route_correct": 21,
+   "visible_acceptable": 21,
+   "visible_exact": 21,
+   "metadata_present": 21
+  },
+  "created/flags-off": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  },
+  "frozen/flags-on": {
+   "checkpoints": 21,
+   "route_correct": 21,
+   "visible_acceptable": 21,
+   "visible_exact": 21,
+   "metadata_present": 21
+  },
+  "created/flags-on": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  }
+ },
+ "changed_against_round_one": [],
+ "worse_than_round_one": [],
+ "changed_against_main": [
+  {
+   "key": "frozen|off|ELEC-S4/main/4",
+   "changed": [
+    "route_correct: false -> true",
+    "visible_acceptable: false -> true",
+    "visible_exact: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "frozen|on|ELEC-S3/main/1",
+   "changed": [
+    "route_correct: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "frozen|on|ELEC-S4/main/4",
+   "changed": [
+    "route_correct: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "frozen|on|PLMB-S3/main/1",
+   "changed": [
+    "route_correct: false -> true",
+    "visible_acceptable: false -> true",
+    "visible_exact: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "frozen|on|HVAC-S3/main/1",
+   "changed": [
+    "route_correct: false -> true",
+    "visible_acceptable: false -> true",
+    "visible_exact: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "frozen|on|UPHO-S4/main/4",
+   "changed": [
+    "route_correct: false -> true",
+    "visible_acceptable: false -> true",
+    "visible_exact: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "frozen|on|C6/main/1",
+   "changed": [
+    "visible_acceptable: false -> true",
+    "visible_exact: false -> true"
+   ]
+  },
+  {
+   "key": "frozen|on|C6/main/2",
+   "changed": [
+    "route_correct: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "created|on|ELEC-S3/main/1",
+   "changed": [
+    "route_correct: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "created|on|PLMB-S3/main/1",
+   "changed": [
+    "route_correct: false -> true",
+    "visible_acceptable: false -> true",
+    "visible_exact: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "created|on|HVAC-S3/main/1",
+   "changed": [
+    "route_correct: false -> true",
+    "visible_acceptable: false -> true",
+    "visible_exact: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "created|on|C6/main/1",
+   "changed": [
+    "route_correct: false -> true",
+    "metadata_present: false -> true"
+   ]
+  },
+  {
+   "key": "created|on|C6/main/2",
+   "changed": [
+    "route_correct: false -> true",
+    "metadata_present: false -> true"
+   ]
+  }
+ ],
+ "worse_than_main": [],
+ "monotonic_violations_flags_on_vs_off": []
+}

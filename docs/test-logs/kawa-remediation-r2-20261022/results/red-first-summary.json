@@ -1,0 +1,266 @@
+{
+ "schema": "nestscout.r2.red_first.v1",
+ "previous_candidate": "04317126635a4207a3f9b9ba35ffccf053d16340",
+ "exit_codes": {
+  "previous": {
+   "P419": 1,
+   "P420": 1,
+   "P421": 1
+  },
+  "current": {
+   "P419": 0,
+   "P420": 0,
+   "P421": 0
+  }
+ },
+ "pillars": {
+  "P419": {
+   "previous": {
+    "passed": 75,
+    "failed": 34,
+    "total": 109,
+    "groups": {
+     "P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard": {
+      "passed": 14,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: nothing that is not a live electrical spark is escalated": {
+      "passed": 15,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: each clause of the frozen transcript alone stays quiet (pinned: an owner decision, not a fix)": {
+      "passed": 3,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard": {
+      "passed": 6,
+      "failed": 28
+     },
+     "P419-kael-emergency-electrical-spark: a product mention never hides a spark that is actually happening": {
+      "passed": 25,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: reports the shared gate already missed before this round (pinned: an owner decision, not a fix)": {
+      "passed": 2,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: a long or hostile message is decided in bounded time": {
+      "passed": 6,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: development probes written before the fix, which the avoidance classes were widened to cover": {
+      "passed": 4,
+      "failed": 6
+     }
+    }
+   },
+   "current": {
+    "passed": 109,
+    "failed": 0,
+    "total": 109,
+    "groups": {
+     "P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard": {
+      "passed": 14,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: nothing that is not a live electrical spark is escalated": {
+      "passed": 15,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: each clause of the frozen transcript alone stays quiet (pinned: an owner decision, not a fix)": {
+      "passed": 3,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: a spark named only as a product feature or something to avoid is not a live hazard": {
+      "passed": 34,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: a product mention never hides a spark that is actually happening": {
+      "passed": 25,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: reports the shared gate already missed before this round (pinned: an owner decision, not a fix)": {
+      "passed": 2,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: a long or hostile message is decided in bounded time": {
+      "passed": 6,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: development probes written before the fix, which the avoidance classes were widened to cover": {
+      "passed": 10,
+      "failed": 0
+     }
+    }
+   }
+  },
+  "P420": {
+   "previous": {
+    "passed": 34,
+    "failed": 9,
+    "total": 43,
+    "groups": {
+     "P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on": {
+      "passed": 18,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: a safety signal an earlier turn persisted never replaces the answer": {
+      "passed": 1,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate": {
+      "passed": 4,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on": {
+      "passed": 7,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report": {
+      "passed": 1,
+      "failed": 9
+     },
+     "P420-kael-case-emergency-playbook-precedence: authorization and Case state do not change": {
+      "passed": 3,
+      "failed": 0
+     }
+    }
+   },
+   "current": {
+    "passed": 43,
+    "failed": 0,
+    "total": 43,
+    "groups": {
+     "P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on": {
+      "passed": 18,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: a safety signal an earlier turn persisted never replaces the answer": {
+      "passed": 1,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate": {
+      "passed": 4,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: ordinary wording is not escalated by turning a playbook on": {
+      "passed": 7,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: a request that only names spark protection is not a hazard report": {
+      "passed": 10,
+      "failed": 0
+     },
+     "P420-kael-case-emergency-playbook-precedence: authorization and Case state do not change": {
+      "passed": 3,
+      "failed": 0
+     }
+    }
+   }
+  },
+  "P421": {
+   "previous": {
+    "passed": 135,
+    "failed": 79,
+    "total": 214,
+    "groups": {
+     "P421-kael-boundary-requested-work: a mention is not a request": {
+      "passed": 26,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: a genuine unsupported request is still refused": {
+      "passed": 20,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording": {
+      "passed": 3,
+      "failed": 23
+     },
+     "P421-kael-boundary-requested-work: a negated, healthy or incidental appliance leaves the supported Case open": {
+      "passed": 2,
+      "failed": 25
+     },
+     "P421-kael-boundary-requested-work: development probes written before the fix, which the class-level rules were adjusted to": {
+      "passed": 24,
+      "failed": 12
+     },
+     "P421-kael-boundary-requested-work: a second probe set, written after the first implementation and run once before two class-level fixes": {
+      "passed": 15,
+      "failed": 10
+     },
+     "P421-kael-boundary-requested-work: a third probe set, written after the second fix, run once and never adjusted to": {
+      "passed": 14,
+      "failed": 2
+     },
+     "P421-kael-boundary-requested-work: wording the detector does not recognise today (pinned: a known miss, not a fix)": {
+      "passed": 3,
+      "failed": 3
+     },
+     "P421-kael-boundary-requested-work: a long or hostile message is decided in bounded time": {
+      "passed": 9,
+      "failed": 1
+     },
+     "P421-kael-boundary-requested-work: the deterministic intent fallback reads the same request": {
+      "passed": 7,
+      "failed": 3
+     },
+     "P421-kael-boundary-requested-work: the Case survives through the real handler": {
+      "passed": 12,
+      "failed": 0
+     }
+    }
+   },
+   "current": {
+    "passed": 214,
+    "failed": 0,
+    "total": 214,
+    "groups": {
+     "P421-kael-boundary-requested-work: a mention is not a request": {
+      "passed": 26,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: a genuine unsupported request is still refused": {
+      "passed": 20,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: an explicit unsupported request is refused whatever its wording": {
+      "passed": 26,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: a negated, healthy or incidental appliance leaves the supported Case open": {
+      "passed": 27,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: development probes written before the fix, which the class-level rules were adjusted to": {
+      "passed": 36,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: a second probe set, written after the first implementation and run once before two class-level fixes": {
+      "passed": 25,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: a third probe set, written after the second fix, run once and never adjusted to": {
+      "passed": 16,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: wording the detector does not recognise today (pinned: a known miss, not a fix)": {
+      "passed": 6,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: a long or hostile message is decided in bounded time": {
+      "passed": 10,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: the deterministic intent fallback reads the same request": {
+      "passed": 10,
+      "failed": 0
+     },
+     "P421-kael-boundary-requested-work: the Case survives through the real handler": {
+      "passed": 12,
+      "failed": 0
+     }
+    }
+   }
+  }
+ }
+}

@@ -1,0 +1,86 @@
+
+ RUN  v4.1.6 C:/ns-fix/r1/apps/api
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > screens a reviewed voice transcript only when it stands in for the typed message (pinned: an owner decision, not a fix)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > screens a reviewed voice transcript only when it stands in for the typed message (pinned: an owner decision, not a fix)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > screens a reviewed voice transcript only when it stands in for the typed message (pinned: an owner decision, not a fix)
+harness_event {
+  p_event_id: '6dc807a5-195f-4bc6-b74f-7147855ca9a7',
+  p_run_id: '443513e6-ebda-4bb5-810d-00e3279af5d6',
+  p_trace_id: 'd49c9870-97a1-41cb-be7c-9343756179fd',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'VALIDATION',
+  p_safe_metadata: { status: 400 }
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts (65 tests | 1 failed) 288ms
+     × screens a reviewed voice transcript only when it stands in for the typed message (pinned: an owner decision, not a fix) 18ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > screens a reviewed voice transcript only when it stands in for the typed message (pinned: an owner decision, not a fix)
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    alone=400/active (with no typed message the transcript is the message and is screened): expected [] to deeply equal [ 'out_of_scope' ]
+
+- Expected
++ Received
+
+- [
+-   "out_of_scope",
+- ]
++ []
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:220:121
+    218|     const aloneResult = await alone.request('', { message: '', languag…
+    219|     const whyAlone = pillarWhy(PILLAR, `alone=${aloneResult.status}/${…
+    220|     expect(boundaryReasons(alone), `${whyAlone} (with no typed message…
+       |                                                                                                                         ^
+    221|   })
+    222|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 64 passed (65)
+   Start at  08:38:02
+   Duration  5.65s (transform 4.27s, setup 0ms, import 5.13s, tests 288ms, environment 0ms)
+
+undefined
+C:\ns-fix\r1\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts
+exit=1

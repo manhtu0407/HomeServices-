@@ -1,0 +1,41 @@
+ship readiness on claude/nestscout-remediation-r1-20261022
+
+git state
+  FAIL  16 path(s) not committed — a push carries only what is committed
+          unstaged   apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-all-fields-pillar.test.ts
+          unstaged   apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts
+          unstaged   governance/protocols/test-pillars.md
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts
+          unstaged   supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts
+          unstaged   supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+          unstaged   supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+          unstaged   supabase/functions/mobile-api/_shared/kael/pipeline/utils.ts
+          untracked  apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts
+          untracked  apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts
+          untracked  apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts
+          untracked  docs/test-logs/kawa-remediation-r1-20261022/
+          untracked  supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+
+gates
+  ok    comment discipline         1.2s
+  ok    source residue             0.6s
+  ok    structure and ratchets     0.4s
+  ok    skills mirror              0.1s
+  ok    skill contracts            0.1s
+  ok    protocol routes            0.1s
+  ok    work-router coverage       0.1s
+  ok    runner parity              0.1s
+  ok    harness assurance          80.2s
+  ok    script fixture suites      67.2s
+
+not run by this command
+  pnpm type-check, test, build, lint         pnpm is not on PATH here
+  deno check on the Edge functions           deno is not on PATH here
+  migration replay and the SQL actor matrix  supabase is not on PATH here
+  CI runs all of these on the pull request. This command does not stand in for them.
+
+NOT READY — git state
+exit=1

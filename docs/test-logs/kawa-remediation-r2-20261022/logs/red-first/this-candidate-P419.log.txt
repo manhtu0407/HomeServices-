@@ -1,0 +1,15 @@
+
+ RUN  v4.1.6 C:/ns-fix/r1/apps/api
+
+ ✓ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts (109 tests) 1334ms
+     ✓ a spark phrase repeated thousands of times  338ms
+     ✓ hyphen chains  313ms
+
+ Test Files  1 passed (1)
+      Tests  109 passed (109)
+   Start at  11:26:13
+   Duration  1.69s (transform 88ms, setup 0ms, import 121ms, tests 1.33s, environment 0ms)
+
+JSON report written to C:/ns-fix/r1/docs/test-logs/kawa-remediation-r2-20261022/results/red-first/this-candidate-P419.json
+
+----- stderr -----

@@ -1,0 +1,452 @@
+{
+  "schema": "nestscout.audit.dx03_persisted.v1",
+  "snapshot": "post",
+  "records": [
+    {
+      "scenario": "UPHO-S4",
+      "flags": "off",
+      "log": [
+        {
+          "step": "1",
+          "status": 201,
+          "hazard": false,
+          "last_kael_text": "Món nào cần làm (sofa, nệm, rèm, thảm), bao nhiêu món và kích thước khoảng bao nhiêu?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "2",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Món nào cần làm (sofa, nệm, rèm, thảm), bao nhiêu món và kích thước khoảng bao nhiêu?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "3",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Kael đã tìm trong các bảng giá đã kiểm chứng tại TP.HCM cho vấn đề này. Kael chưa thể đưa ra giá có căn cứ từ kết quả này. Các bảng giá đã kiểm chứng chưa công bố giá cho đúng loại việc này. Bạn có th",
+          "last_kael_meta_keys": [
+            "diagnosis_scope",
+            "quote_readiness",
+            "price_gap_reason",
+            "price_gap_cached",
+            "next_actions",
+            "price_knowledge_id",
+            "reply_source"
+          ]
+        },
+        {
+          "before_step": "4",
+          "persisted_signals_before_hazard_step": [],
+          "gate_with_persisted": {
+            "route": "fire",
+            "stops": true
+          },
+          "gate_without_persisted": {
+            "route": "fire",
+            "stops": true
+          },
+          "predicate_with_persisted": false
+        },
+        {
+          "step": "4",
+          "status": 200,
+          "hazard": true,
+          "last_kael_text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+          "last_kael_meta_keys": [
+            "safety_source",
+            "emergency_route",
+            "turn_trace",
+            "reply_source"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "UPHO-S4",
+      "flags": "on",
+      "log": [
+        {
+          "step": "1",
+          "status": 201,
+          "hazard": false,
+          "last_kael_text": "Món nào cần làm (sofa, nệm, rèm, thảm), bao nhiêu món và kích thước khoảng bao nhiêu?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "intake_observation",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "2",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Món nào cần làm (sofa, nệm, rèm, thảm), bao nhiêu món và kích thước khoảng bao nhiêu?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "intake_observation",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "3",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Kael đã tìm trong các bảng giá đã kiểm chứng tại TP.HCM cho vấn đề này. Kael chưa thể đưa ra giá có căn cứ từ kết quả này. Các bảng giá đã kiểm chứng chưa công bố giá cho đúng loại việc này. Bạn có th",
+          "last_kael_meta_keys": [
+            "diagnosis_scope",
+            "quote_readiness",
+            "price_gap_reason",
+            "price_gap_cached",
+            "next_actions",
+            "price_knowledge_id",
+            "intake_observation",
+            "reply_source"
+          ]
+        },
+        {
+          "before_step": "4",
+          "persisted_signals_before_hazard_step": [
+            "bio_contamination"
+          ],
+          "gate_with_persisted": {
+            "route": "fire",
+            "stops": true
+          },
+          "gate_without_persisted": {
+            "route": "fire",
+            "stops": true
+          },
+          "predicate_with_persisted": true
+        },
+        {
+          "step": "4",
+          "status": 200,
+          "hazard": true,
+          "last_kael_text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+          "last_kael_meta_keys": [
+            "safety_source",
+            "emergency_route",
+            "turn_trace",
+            "reply_source"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "ELEC-S4",
+      "flags": "off",
+      "log": [
+        {
+          "step": "1",
+          "status": 201,
+          "hazard": false,
+          "last_kael_text": "Tình trạng cấp điện hiện tại tại khu vực bị ảnh hưởng là gì?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "2",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Tình trạng cấp điện hiện tại tại khu vực bị ảnh hưởng là gì?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "3",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Kael đã tìm trong các bảng giá đã kiểm chứng tại TP.HCM cho vấn đề này. Kael chưa thể đưa ra giá có căn cứ từ kết quả này. Các bảng giá đã kiểm chứng chưa công bố giá cho đúng loại việc này. Bạn có th",
+          "last_kael_meta_keys": [
+            "diagnosis_scope",
+            "quote_readiness",
+            "price_gap_reason",
+            "price_gap_cached",
+            "next_actions",
+            "price_knowledge_id",
+            "reply_source"
+          ]
+        },
+        {
+          "before_step": "4",
+          "persisted_signals_before_hazard_step": [],
+          "gate_with_persisted": {
+            "route": "electrical_water",
+            "stops": false
+          },
+          "gate_without_persisted": {
+            "route": "electrical_water",
+            "stops": false
+          },
+          "predicate_with_persisted": false
+        },
+        {
+          "step": "4",
+          "status": 200,
+          "hazard": true,
+          "last_kael_text": "Kael đã tìm giá cho vấn đề này cách đây không lâu và kết quả chưa thay đổi. Kael chưa thể đưa ra giá có căn cứ từ kết quả này. Các bảng giá đã kiểm chứng chưa công bố giá cho đúng loại việc này. Bạn c",
+          "last_kael_meta_keys": [
+            "diagnosis_scope",
+            "quote_readiness",
+            "price_gap_reason",
+            "price_gap_cached",
+            "next_actions",
+            "price_knowledge_id",
+            "reply_source"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "ELEC-S4",
+      "flags": "on",
+      "log": [
+        {
+          "step": "1",
+          "status": 201,
+          "hazard": false,
+          "last_kael_text": "Tình trạng cấp điện hiện tại tại khu vực bị ảnh hưởng là gì?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "intake_observation",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "2",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Tình trạng cấp điện hiện tại tại khu vực bị ảnh hưởng là gì?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "intake_observation",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "3",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Thiết bị hay mạch nào gặp vấn đề (ổ cắm, công tắc, đèn, máy nước nóng...)?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "intake_observation",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "before_step": "4",
+          "persisted_signals_before_hazard_step": [],
+          "gate_with_persisted": {
+            "route": "electrical_water",
+            "stops": false
+          },
+          "gate_without_persisted": {
+            "route": "electrical_water",
+            "stops": false
+          },
+          "predicate_with_persisted": true
+        },
+        {
+          "step": "4",
+          "status": 200,
+          "hazard": true,
+          "last_kael_text": "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần khu vực bị ảnh hưởng. Giữ mọi người tránh ",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "intake_observation",
+            "reply_source",
+            "next_actions"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "HVAC-S4",
+      "flags": "off",
+      "log": [
+        {
+          "step": "1",
+          "status": 201,
+          "hazard": false,
+          "last_kael_text": "Bạn cần vệ sinh định kỳ hay kiểm tra sửa lỗi?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "2",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Bạn cần vệ sinh định kỳ hay kiểm tra sửa lỗi?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "3",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Kael đã tìm trong các bảng giá đã kiểm chứng tại TP.HCM cho vấn đề này. Kael chưa thể đưa ra giá có căn cứ từ kết quả này. Các bảng giá đã kiểm chứng chưa công bố giá cho đúng loại việc này. Bạn có th",
+          "last_kael_meta_keys": [
+            "diagnosis_scope",
+            "quote_readiness",
+            "price_gap_reason",
+            "price_gap_cached",
+            "next_actions",
+            "price_knowledge_id",
+            "reply_source"
+          ]
+        },
+        {
+          "before_step": "4",
+          "persisted_signals_before_hazard_step": [],
+          "gate_with_persisted": {
+            "route": "fire",
+            "stops": true
+          },
+          "gate_without_persisted": {
+            "route": "fire",
+            "stops": true
+          },
+          "predicate_with_persisted": false
+        },
+        {
+          "step": "4",
+          "status": 200,
+          "hazard": true,
+          "last_kael_text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+          "last_kael_meta_keys": [
+            "safety_source",
+            "emergency_route",
+            "turn_trace",
+            "reply_source"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "HVAC-S4",
+      "flags": "on",
+      "log": [
+        {
+          "step": "1",
+          "status": 201,
+          "hazard": false,
+          "last_kael_text": "Bạn cần vệ sinh định kỳ hay kiểm tra sửa lỗi?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "intake_observation",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "2",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Bạn cần vệ sinh định kỳ hay kiểm tra sửa lỗi?",
+          "last_kael_meta_keys": [
+            "artifact_proposal",
+            "clarification_source",
+            "diagnosis_scope",
+            "intake_observation",
+            "reply_source",
+            "next_actions"
+          ]
+        },
+        {
+          "step": "3",
+          "status": 200,
+          "hazard": false,
+          "last_kael_text": "Kael đã tìm trong các bảng giá đã kiểm chứng tại TP.HCM cho vấn đề này. Kael chưa thể đưa ra giá có căn cứ từ kết quả này. Các bảng giá đã kiểm chứng chưa công bố giá cho đúng loại việc này. Bạn có th",
+          "last_kael_meta_keys": [
+            "diagnosis_scope",
+            "quote_readiness",
+            "price_gap_reason",
+            "price_gap_cached",
+            "next_actions",
+            "price_knowledge_id",
+            "intake_observation",
+            "reply_source"
+          ]
+        },
+        {
+          "before_step": "4",
+          "persisted_signals_before_hazard_step": [],
+          "gate_with_persisted": {
+            "route": "fire",
+            "stops": true
+          },
+          "gate_without_persisted": {
+            "route": "fire",
+            "stops": true
+          },
+          "predicate_with_persisted": false
+        },
+        {
+          "step": "4",
+          "status": 200,
+          "hazard": true,
+          "last_kael_text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+          "last_kael_meta_keys": [
+            "safety_source",
+            "emergency_route",
+            "turn_trace",
+            "reply_source"
+          ]
+        }
+      ]
+    }
+  ]
+}

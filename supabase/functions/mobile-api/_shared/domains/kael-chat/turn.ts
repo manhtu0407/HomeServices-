@@ -152,8 +152,6 @@ export async function sendKaelChatTurn(
     message: texts,
     language: input.language ?? (previousMetadata.language === "en" ? "en" : "vi"),
     serviceType: session.service_type,
-    persistedSafetySignals: asStringArray(previousMetadata.intake_safety_signals),
-    actorId: ctx.user.id,
     parked,
   });
   if (emergency && (parked || emergency.stopsTurn)) {

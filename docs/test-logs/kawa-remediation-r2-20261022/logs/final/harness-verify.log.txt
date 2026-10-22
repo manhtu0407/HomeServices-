@@ -1,0 +1,786 @@
+✔ recognizes fixed function configuration: set search_path = '' (5.7023ms)
+✔ recognizes fixed function configuration: SET search_path TO '' (0.8203ms)
+✔ tracks ALTER FUNCTION search_path TO configuration (0.6835ms)
+✔ does not infer an explicit fixed path from missing configuration (0.2465ms)
+✔ does not infer an explicit fixed path from SET search_path FROM CURRENT (0.1631ms)
+✔ tracks final function ACLs, dropped overloads, and invoker views (35.4627ms)
+✔ tracks explicit service-role table restrictions after default grants are revoked (19.6542ms)
+✔ rejects a broad SECURITY DEFINER function without a fixed search path (16.7086ms)
+✔ tracks every target in a multi-function execute revoke (38.9208ms)
+✔ rejects a public view without security_invoker (20.7334ms)
+✔ rejects policies that reference the wrong admin helper schema (17.6298ms)
+✔ uses the same migration digest across checkout line endings (17.4959ms)
+✔ backend release requires every catalog entry and runner assertion to pass (11.2679ms)
+✔ runner receipt cannot be reused against another release catalog or asserted count (4.206ms)
+✔ rollback capture maps the Production service-role secret required by release-control reads (0.685ms)
+✔ collector and rollback bind the service-role variable consumed by both monitor CLI helpers (0.3046ms)
+✔ system-monitor Edge proof is bound to the exact release, runtime config and downloaded source closure (0.9219ms)
+✔ backend gate receipts bind actual evidence bytes to source, baseline and the current workflow run (2.5437ms)
+✔ manual bank order and transfer claim retain payment confirmation envelopes (51.4503ms)
+✔ RFQ proposal and decision remain money-impacting with Customer-only approval (24.2003ms)
+✔ uses the same route digest across checkout line endings (22.3298ms)
+✔ accepts generated registry artifacts with checkout line endings (34.9733ms)
+✔ derives resource checks from route descriptor identifiers instead of route namespaces (17.2464ms)
+✔ marks Worker Edge routes as privileged service-owned operations (22.3359ms)
+✔ classifies server-owned Kael AI routes as privileged provider operations (16.7667ms)
+✔ marks user-scoped mutations that run on the service client as privileged so each call is audited (26.2139ms)
+✔ marks customer catalog routes that reconcile or mutate service-owned rows as privileged (21.9364ms)
+✔ accepts a complete semantic inventory (546.1329ms)
+✔ discovers a linked canonical skill directory (1186.0574ms)
+✔ rejects duplicate stable identifiers (1497.6743ms)
+✔ rejects a missing canonical path (730.6301ms)
+✔ rejects canonical checksum drift (878.179ms)
+✔ recordChecksums rewrites only the checksum on the named entry line (1.6576ms)
+✔ recordChecksums updates named entries independently in compact manifest JSON (0.5178ms)
+✔ recordChecksums preserves pretty JSON layout while updating named entries (0.4026ms)
+✔ recordChecksums refuses an id the manifest does not declare (1.3106ms)
+✔ the checksum-drift message names the command that records it (752.2448ms)
+✔ rejects human router count drift (594.928ms)
+✔ accepts declared provider adapters in the runtime inventory (779.2075ms)
+✔ rejects duplicate skill identifiers in the canonical router (590.6669ms)
+✔ requires runtime group for provider adapters (686.5331ms)
+✔ requires a capability for side-effecting entries (596.6052ms)
+✔ rejects undeclared runtime tools (484.4299ms)
+✔ rejects schema-level required field drift (262.5383ms)
+✔ uses Git clean filters for cross-platform checksums (433.4399ms)
+✔ rejects unknown inventory fields from the schema contract (249.8267ms)
+✔ canonical manifest hash is independent of object key order (0.422ms)
+✔ accepts the canonical privileged client factory (29.7079ms)
+✔ rejects direct service client construction outside the allowlist (28.613ms)
+✔ mobile-only changes stay in the focused workspace lane (4.1698ms)
+✔ generic API changes run runtime, integration, and security lanes without Kael evals (0.5692ms)
+✔ Kael backend changes opt into the full Kael lane (0.3179ms)
+✔ migration changes force the database and full workspace lanes (0.2851ms)
+✔ workflow and harness changes retain full safety coverage (0.3477ms)
+✔ manual and scheduled events fail open to every category (0.3724ms)
+✔ mixed mobile and API changes cannot take a focused lane (0.2679ms)
+✔ a path no lane claims fails closed to every lane (0.656ms)
+✔ documentation-only changes take no conditional lane (0.4426ms)
+✔ rules, skills, commands, and memory take no conditional lane (0.7906ms)
+✔ a regenerated pillar index does not widen a mobile-only change (0.6688ms)
+✔ a lane-neutral path never opens a lane by naming Kael (0.3585ms)
+✔ executable agent configuration keeps full safety coverage (0.2874ms)
+✔ both sides of a rename count as changed paths (1.9075ms)
+✔ a merge commit with no base still lists its changes instead of an empty diff (0.3558ms)
+hosted health probe unavailable, treating as no prior release: hosted deployment evidence request failed: 500 https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api/harness/health
+hosted health probe unavailable, treating as no prior release: hosted deployment evidence request failed: 500 https://iwevizmsedyqozxlawwl.supabase.co/functions/v1/mobile-api/harness/health
+✔ accepts one exact release, migration, and function snapshot (4.1012ms)
+✔ blocks missing, unknown, modified, mixed, and out-of-order state (0.8412ms)
+✔ rejects incomplete and ambiguous remote identity evidence (0.5212ms)
+✔ collects hosted health, migration, and deployed-function evidence from live APIs (47.1893ms)
+✔ rejects malformed or ambiguous hosted release-control evidence (9.2001ms)
+✔ rejects client compatibility from a release other than the active registered release (2.2831ms)
+✔ collects a null-release baseline when the hosted health probe fails closed pre-release (3.2761ms)
+✔ scopes the managed edge function set to the release-managed pair on a Production project hosting others too (3.7374ms)
+✔ refuses hosted evidence collection for retired non-production targets (0.661ms)
+✔ rejects mutable health identity when it is not the provider-managed mobile-api deployment (1.0499ms)
+✔ rejects hosted provider readiness drift even when a supplied fingerprint copies the manifest (0.5297ms)
+✔ accepts exact Supabase provider source paths for managed Edge functions (1.6125ms)
+✔ accepts exact absolute file URLs emitted by local and CI Supabase deploys (0.8569ms)
+✔ rejects local file URLs with traversal, a remote host, or the wrong function (0.9921ms)
+✔ rejects near-miss provider paths with the wrong source root or function (0.7176ms)
+✔ accepts the legacy parity snapshot only for a minimal release contract (0.646ms)
+✔ adds release identity to the production profile environment without changing other profiles (2.7181ms)
+✔ refuses incomplete release identity instead of building an unbound client (0.9596ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ binds the provider deployment to the exact redownloaded mobile-api import closure (12267.609ms)
+✔ rejects a provider identity that does not match the managed function ID and version (4437.018ms)
+✔ binds a second managed function to its own provider deployment identity (4023.7634ms)
+✔ accepts exact provider file URIs after a configuration-only version and rejects path identity drift (5068.4016ms)
+✔ accepts exact absolute deploy file URLs and canonicalizes them for hosted attestation (3797.5634ms)
+✔ rejects a redownload whose global shared dependency bytes differ from the reviewed candidate (5500.4951ms)
+✔ rejects a checksummed proof after any attested field is changed (3171.1669ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ evaluation config separates deterministic and live evidence layers (5.8091ms)
+✔ a failing critical case blocks release evidence (7.0001ms)
+✔ repeated samples expose mean and variance (0.5009ms)
+✔ assurance cases measure authorization, confirmation, counterfactual, and tool declarations (6.3417ms)
+✔ live evidence must match the executed sample count and selected release (1.0783ms)
+✔ live evidence rejects missing cost and latency instead of coercing them to zero (0.4775ms)
+✔ deterministic evaluation produces honest non-live release evidence (10933.5007ms)
+✔ rejects missing CLI values and repository-escaping release paths (1.381ms)
+✔ accepts repeated live evidence with registered evaluator identity (6.6764ms)
+✔ does not allow a deterministic evaluator to label itself live (2.6116ms)
+✔ rejects live evidence without complete trace lineage or matching release (1.083ms)
+✔ blocks a critical confirmation bypass even when aggregate quality is high (0.6534ms)
+✔ enforces minimum repeated samples for probabilistic evidence (0.5401ms)
+✔ detects quality and cost regressions against the selected baseline (0.5368ms)
+✔ requires live evaluation for prompt, provider, and runtime-tool changes (0.3248ms)
+✔ rejects missing CLI values and repository-escaping evaluation paths (1.055ms)
+✔ the local Stage 1 pipeline preserves its ordered release and recovery steps (1.4977ms)
+✔ GitHub stays read-only while the local runner owns the reviewed Production lane (2.5866ms)
+✔ Production release workflow has no GitHub reviewer gate (2.0722ms)
+✔ resolves one exact merged-main PR and separate approval on its current head (4.4883ms)
+✔ bounds each GitHub merge and review lookup request (2.5554ms)
+✔ rejects direct pushes, stale-head approvals, self-approval, and a later non-approval (1.7245ms)
+✔ checksum rejects any post-resolution PR or review mutation (0.9662ms)
+✔ parses only the remote version column from Supabase CLI output (2.8265ms)
+✔ rejects duplicate remote history (0.7625ms)
+✔ builds a deterministic repository migration inventory (822.7045ms)
+✔ published policy-evidence migrations retain their original SQL identity (197.7034ms)
+✔ immutable baseline covers the published release migration history (303.475ms)
+✔ rejects unknown remote migrations before deriving a pending set (1.2406ms)
+✔ recognizes the hosted matching-retry migration without aliasing the corrected migration (302.3421ms)
+✔ reports known migrations that remain pending (0.4129ms)
+✔ rejects malformed remote migration entries before any weaker comparison (0.3425ms)
+✔ rejects duplicate remote migration entries (0.6178ms)
+✔ permits only an explicitly documented two-version hosted alias pair (0.5764ms)
+✔ keeps duplicate hosted equivalence versions blocked without the explicit policy (1.5256ms)
+✔ limits the duplicate-hosted policy to exactly two versions (0.5267ms)
+✔ rejects a modified historical migration (76.8231ms)
+✔ ignores checkout line endings while preserving historical migration integrity (17.3426ms)
+✔ rejects a backdated migration outside the immutable baseline (18.5722ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ binds exact EAS iOS and Android store builds plus downloaded artifact bytes (74.0654ms)
+✔ rejects stale commit, wrong build number, or missing platform build (417.2368ms)
+✔ preserves SHA-256 EAS fingerprints without confusing them with artifact hashes (37.1363ms)
+✔ rejects missing or malformed EAS fingerprints and empty artifacts (286.8846ms)
+✔ does not invent EAS runtime identity or prefer conflicting normalized aliases (311.5071ms)
+✔ verification releases cannot attest a store build from another commit (82.2413ms)
+✔ the exact relation still refuses a build of another commit, and its receipt carries no relation field (105.197ms)
+✔ an unsupported relation cannot be forged to launder a build of another commit (26.9976ms)
+✔ exact selection chooses only the newest finished store build for this release commit and policy (0.7391ms)
+✔ Plan 55 attests the exact active Production EAS builds without requiring their commit to equal the backend release SHA (4531.8469ms)
+✔ Plan 55 active Production binary selection rejects stale, duplicate, and mismatched identities (3745.7165ms)
+✔ backend lane attests only exact active clients without raising their epoch (6147.3795ms)
+✔ builds a checksummed native simulator receipt with an explicit physical-device limitation (6.1092ms)
+✔ binds Android evidence to the Android application identity (1.2694ms)
+✔ rejects a release from another Git SHA and any evidence mutation (0.6856ms)
+✔ reads versions from arrays and from row shapes alike (3.2163ms)
+✔ writes an unregistered runtime through instead of substituting a value (0.6493ms)
+✔ never passes the manifest digest off as the migration-inventory digest (1.464ms)
+✔ feeds the drift gate a snapshot that names the missing migrations (0.7002ms)
+✔ an environment the caller did not intend is reported, not absorbed (0.3221ms)
+✔ a fully matching snapshot passes once the inventory digest is supplied (0.4636ms)
+✔ digestPath is deterministic for a bounded tracked fixture directory (23.6839ms)
+✔ digestPath refuses to escape the declared root (0.8871ms)
+✔ builds a source-attested inventory from exactly the applied Production migrations (27.0402ms)
+✔ selects canonical Production migrations when the source inventory contains superseded equivalents (352.8808ms)
+✔ rejects an applied Production migration missing from the source inventory (18.3522ms)
+✔ rejects target, release, duplicate, and ordering drift (27.286ms)
+✔ rejects inventory tampering before selecting the applied subset (25.9907ms)
+✔ builds deployed-guard proofs from exact Production deployment and fail-closed live preflight artifacts (29.9787ms)
+✔ rejects wrong Production target or deployed source before issuing gate proof (8.6254ms)
+✔ rejects deployed Edge digest drift from the source proof and attestation (1.567ms)
+✔ rejects absent scoped/global flag proof, provider readiness, and mutation evidence (6.6159ms)
+✔ rejects any applied-migration drift from the captured Production baseline (2.3999ms)
+✔ revalidates the generated proof against the exact archived source artifact bytes (2.3706ms)
+✔ requires exact source artifacts when verifying a deployed guard proof (1.6876ms)
+✔ packages all deployed-guard gates from one verified release artifact without external evidence (16.493ms)
+✔ rollback drill prerequisites are the exact wave-one inventory without its own result gate (14.274ms)
+✔ rollback drill must follow all wave-one prerequisites and finish before wave one starts (6.717ms)
+✔ packages only source-proven, exact-target PASS evidence into a closed artifact (171.3276ms)
+✔ auto-packages release-stage gates from the exact Production release artifact (27.9369ms)
+✔ rejects identity-only PASS evidence for receipt and cleanup gates (105.137ms)
+✔ canary evidence rejects altered slices, cleanup, G5 deltas, and source identity (20.2817ms)
+✔ repackages receipt evidence for later targets without claiming wave outcomes (19.7444ms)
+✔ emits source-bound canary evidence for every per-service actor lifecycle gate (36.7957ms)
+✔ reports every missing Plan 55 verifier and producer before artifact downloads (3.1729ms)
+✔ rollback drill has a dedicated semantic verifier and exact-source producer (2.5735ms)
+✔ publication proof is produced by the exact-source post-receipt finalizer (0.7472ms)
+✔ publication packet gate verifies and reloads the exact packet file from its finalizer artifact (32.5819ms)
+✔ publication packet gate rejects inconsistent embedded receipt checksums (2.1658ms)
+✔ coverage preflight names the full unsupported gate set in one error (0.772ms)
+✔ paired-wave outcome proof is exact-source, preregistered, complete, and threshold-bound (27.3486ms)
+✔ coverage inspection rejects malformed gate inventories without partial results (0.4415ms)
+✔ does not package an independent-outcome gate without its semantic verifier (0.7126ms)
+✔ workspace gate has a semantic verifier and rejects unrelated artifact evidence (209.1971ms)
+✔ rejects oversized and PII-bearing source evidence before packaging (282.9253ms)
+✔ loads exact source-bound gate receipts and verifies the referenced evidence bytes (311.3236ms)
+✔ rejects an incomplete, duplicate, or extra gate inventory (416.4324ms)
+✔ fails closed for stale source, release, policy, target, or non-pass evidence (936.5535ms)
+✔ rejects artifact provenance from a workflow outside the explicit trusted allowlist (248.3969ms)
+✔ rejects trusted workflow artifacts produced from a different source SHA (233.2212ms)
+✔ rejects tampered receipt/evidence bytes and paths outside the evidence set (657.7508ms)
+✔ verifies each immutable receipt artifact against the completed main-branch GitHub run (343.3037ms)
+✔ rejects a workflow-source mismatch before calling the GitHub API (313.1698ms)
+✔ rejects failed, stale, expired, or mismatched GitHub artifact provenance (325.714ms)
+✔ downloads an artifact only from its exact successful main-branch source run and name prefix (2.8579ms)
+✔ rejects artifacts with wrong source, run, name, path, status, expiry, or checksum (2.4651ms)
+✔ accepts only a closed gate-evidence artifact inventory with referenced receipts and evidence files (0.9529ms)
+✔ builds a source-bound pass only from exact Production snapshots and the locked source artifact (20.0053ms)
+✔ rejects wrong target, producer, release artifact and proof identity (6.3137ms)
+✔ rejects a current Production snapshot whose runtime or migration state drifted (9.9519ms)
+✔ requires immutable snapshot bytes to be present when building the pass proof (0.6067ms)
+✔ emits deterministic per-gate proofs bound to the exact main run and required successful steps (5.79ms)
+✔ keeps independent holdout attestation out of pre-deploy quality proofs (1.0772ms)
+✔ emits the independent holdout proof only after its exact-source attestation succeeds (1.8123ms)
+✔ binds the Docker, Edge, and SQL release gate to three distinct successful outcomes (1.3455ms)
+✔ rejects non-main, stale source, missing run identity, and any failed, skipped, or unknown step outcome (0.8031ms)
+✔ rejects untrusted or incomplete workflow evidence policy (0.6155ms)
+✔ round-trips the combined Docker, Edge, and SQL proof through its exact-source receipt artifact (78.3922ms)
+✔ builds the four Production baseline and rollback proofs from exact hosted snapshots (11.8729ms)
+✔ full Production readiness requires exact-source live push and reconciler evidence (21.737ms)
+✔ live provider evidence rejects stale, wrong-source, and cross-actor receipts (3.5813ms)
+✔ refuses a Production baseline that is not the pinned source and project (1.7175ms)
+✔ refuses a rollback snapshot that differs from the captured Production baseline (1.6759ms)
+✔ refuses an invalid or non-active-Production binary attestation (1.3783ms)
+✔ rejects proof edits and source snapshot changes after proof generation (2.017ms)
+✔ protected-boundary checks compare against the current pull request base (2.7163ms)
+✔ retired standard Stage 1 workflow tooling is an exact deletion exception (0.5453ms)
+✔ Plan 55 release dispatches from default main and enforces Production-base ancestry without targeting Staging (1.1586ms)
+✔ Plan 55 can be dispatched through the registered CI workflow without rerunning its other lanes (1.7041ms)
+✔ the serialized canary timeout reserves unconditional cleanup and setup time for checkpoint recovery (0.8199ms)
+✔ preflight gate proofs bind exact source and successful CI step outcomes before artifact upload (2.0003ms)
+✔ guard deploy is rollback-protected, deploys only mobile-api, and applies no migration or global service flag (0.6038ms)
+✔ release-stage gate proofs bind the pinned hosted baseline and rollback before the deploy step (0.8669ms)
+✔ independent holdout attestation gates the OFF-only guard deployment before any Production mutation (2.3854ms)
+✔ guard deployment stays OFF-only and cannot precede independent holdout attestation (0.8901ms)
+✔ holdout review is revalidated before any service actor or scoped flag mutation (3.1247ms)
+✔ Production source attestation is bound to downloaded hosted Edge bytes and live deployment metadata (1.2164ms)
+✔ deployed guard proofs consume only exact post-deploy Production evidence before disarming rollback (1.0436ms)
+✔ service workflow preserves order and resumes only an exact-source cleaned checkpoint (2.7725ms)
+✔ release workflows are covered by the deployed evaluator source attestation (0.4404ms)
+✔ Perplexity exception remains limited to the synthetic blind Plan 55 holdout (0.9887ms)
+✔ blind holdout review packaging is source-bound, read-only, and excludes label sources (0.8026ms)
+✔ gate evidence packaging preserves exact-source evidence and has no Production write capability (1.6171ms)
+✔ post-receipt hosted drift is read-only, exact-source, and bound to immutable Production snapshots (0.616ms)
+✔ rollback drill prerequisites can be packaged without accepting the drill result itself (1.664ms)
+✔ post-receipt finalization consumes separately attested exact-source artifacts and cannot mutate Production (1.6634ms)
+✔ successful six-service receipts automatically package and finalize the receipts_validated packet (1.6349ms)
+✔ API JSON evidence is emitted by Vitest without dropping the Node contract suite (1.3945ms)
+✔ isolated workdir keeps the exact hosted alias and excludes equivalent replay (24.2965ms)
+✔ release apply plan accepts the observed production ledger aliases without replaying their canonical migrations (2.7235ms)
+✔ planner rejects a receipt that silently omits or adds a migration (1.2298ms)
+✔ catch-up mode is locked after the Staging backend retirement (0.3678ms)
+✔ empty reset replays one canonical migration per equivalence group (0.4467ms)
+✔ only the isolated empty-reset workdir pins the patched Postgres image (43.6638ms)
+✔ canonical empty-reset workdir can be reused when it still matches the inventory (32.7578ms)
+✔ refreshing a stale empty-reset workdir preserves the old snapshot and installs the current inventory (74.7812ms)
+✔ reads the locked Supabase CLI version and rejects a changed image set (5.5753ms)
+✔ plans only digest-verified Supabase runtime images for linux amd64 (2.0201ms)
+✔ adds the pinned Edge runtime only when the integration lane requests it (0.4064ms)
+✔ pulls by verified digest and tags the exact ECR reference consumed by the CLI (2.0455ms)
+✔ fails closed if the cache tag is not the pinned linux amd64 image (0.4883ms)
+✔ identifies the image service when a digest pull fails (0.4527ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ builds exact RPC args only from matching Production UI, cleanup, promotion, and hosted evidence (1774.9153ms)
+✔ rejects a UI receipt from different source and leftover cohort state (1423.8725ms)
+✔ hashes the exact hosted-state bytes retained for Production review (0.7136ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ parses the local release command with explicit execute and platform selection (17.1819ms)
+✔ reads all release stages from the standalone local pipeline and binds secret references by name (4.3873ms)
+✔ release steps receive stored secrets only through explicit step-level references (0.7982ms)
+✔ preflight passes only when main, current review, exact-SHA CI, credentials, target, candidate, and services agree (1.2637ms)
+✔ preflight blocks a wrong branch, wrong SHA, dirty main, or remote main mismatch (0.6092ms)
+✔ preflight blocks failed CI, absent independent review, wrong project, and conflicting Supabase target (0.56ms)
+✔ preflight blocks missing secure credentials, PAT scopes, EAS identity, and any active candidate (0.6097ms)
+✔ no Production pipeline or Expo submission starts when any preflight gate is blocked (0.5833ms)
+✔ a passing preflight stays read-only unless the current invocation includes --execute (0.3787ms)
+✔ mocked execution submits only the explicitly requested Expo platforms after a successful release (0.8796ms)
+✔ a failed Expo upload produces a failing CLI exit code after Production release succeeds (0.5179ms)
+✔ mocked smoke failure executes both rollback and reconciliation steps and marks incomplete rollback unproven (0.7359ms)
+✔ the bounded canary and both recovery steps finish before scheduled stale reconciliation (0.4541ms)
+✔ EAS submission refuses a build or attestation from a different SHA, version, or build number (10576.2148ms)
+✔ EAS submission waits for the attested build ID upload and rejects invalid command identities (1.2794ms)
+✔ secret redaction removes raw, encoded, bearer, and URL query values (1.6219ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ Plan 55 gate producer source contains no duplicate JSON keys (5.1774ms)
+✔ promotion CLI paths reject traversal and links escaping the repository root (31.0671ms)
+✔ validates transition, runbook, kill-switch, and SLO policy (3.0468ms)
+✔ Plan 55 outcome thresholds are explicit and source-bound (9.9009ms)
+✔ Plan 55 has a separate fail-closed Production-only transition policy with no Staging path (16.4072ms)
+✔ rollback drill is a wave-one prerequisite and is not duplicated in the wave-two delta (1.2924ms)
+✔ read-only receipt and rollback-drill packets do not require a second rollback bundle (9.014ms)
+✔ Plan 55 validates mapped producer workflows and fails closed on missing gate coverage (21.308ms)
+✔ Plan 55 promotion fails closed when a required gate has no semantic verifier (4791.9417ms)
+✔ publication packet proof binds an immutable receipts_validated packet to its main-branch run (4098.9013ms)
+✔ Plan 55 paired-wave promotion requires v2 source-locked preregistration (3316.6445ms)
+✔ blocks a canary when a critical threshold fails (0.428ms)
+✔ fails closed when an abort-threshold metric is missing (0.2273ms)
+✔ simulates a canary abort with containment for a critical failure (0.1756ms)
+✔ builds and verifies an approved canary packet with a compatible rollback release (8.8517ms)
+✔ rejects a rollback release with incompatible schema identity (14.1084ms)
+✔ rejects evaluation evidence from a different prompt bundle (4.2845ms)
+✔ rejects remote promotion without explicit approval (4.16ms)
+✔ verifier rejects a remote packet without approval or an exact policy binding (6.7418ms)
+✔ rejects secret-shaped incident evidence (0.2565ms)
+✔ builds a deterministic rollback control packet (12.9877ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ builds a complete immutable release-ledger registration statement (10520.4582ms)
+✔ rejects an invalid release artifact and an output path outside the repository (1.4758ms)
+✔ accepts the argument separator forwarded by the package wrapper (1.6928ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ Production readiness providers stay a strict subset of the release readiness schema (6.046ms)
+✔ builds a deterministic immutable release bundle (15016.6772ms)
+✔ Production release pins the Cloudflare observer identity while other environments omit it (7118.6668ms)
+✔ legacy Production manifests without observer identity remain readable (2971.9286ms)
+✔ detects release bundle tampering (2690.6197ms)
+✔ binds the deterministic release ID to its immutable contents (2560.1099ms)
+✔ rejects a manifest that omits release-integrity fingerprints (2618.7767ms)
+✔ fails a Production release when either native push provider or the receipt reconciler is unproven (2608.89ms)
+✔ a verification release records unready push honestly and stays valid; a strict one does not (5232.045ms)
+✔ the verification lane relaxes only the three push flags (114.9814ms)
+✔ the lane is part of the release identity and a strict release carries no lane field (5056.0494ms)
+✔ Plan 55 Production-only release lane replaces only the Staging dependency with explicit pre-canary gates (2584.0011ms)
+✔ Plan 55 release derives active client identity only from the exact hosted-before snapshot (2533.4624ms)
+✔ Plan 55 release generation requires an exact hosted-before snapshot and binds its applied inventory (2599.0702ms)
+✔ a lane cannot be forged onto a strict release or applied outside production (40.3741ms)
+✔ keeps release artifacts inside the repository root (1.7525ms)
+✔ refuses a production release from a dirty Git worktree (374.7119ms)
+✔ Edge source digests and runtime configuration identities are separated (41.2819ms)
+✔ backend lane preserves hosted clients with strict coverage while push is disabled (2579.0872ms)
+✔ successive backend releases preserve the exact older mobile contract epoch (2508.3009ms)
+✔ hosted historical backend artifacts validate their stored source identities (2536.7919ms)
+✔ release registration binds the complete immutable artifact without exposing credentials (2.5723ms)
+✔ hosted control uses exact target and service-role RPC without logging response bodies (1.8101ms)
+✔ hosted control refuses a production/staging target mix (0.4178ms)
+✔ hosted release artifact read is exact, single-row, and service-role scoped (1.8744ms)
+✔ a control read classifies an absent stage1_release_controls table from the exact PostgREST error (2.9103ms)
+✔ a control read never classifies a bare 404, another table, another status, or a permission failure as absent (1.6586ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ parseReleaseControlArgs keeps secrets out of CLI and requires explicit action (3.7503ms)
+✔ backend system-health promotion uses only the source-bound atomic RPC (4292.843ms)
+✔ buildReleaseControlInvocation binds register and configure to immutable evidence (1.4994ms)
+✔ Plan 55 release-control cohort is derived from preregistration and bound to the exact Production release (1.0317ms)
+✔ Plan 55 release-control can configure only wave one and activate only after wave three (0.5143ms)
+✔ Plan 55 release-control refuses hosted mutation while checked-in preregistration is absent (3467.283ms)
+✔ Plan 55 abort refuses an unregistered failure cohort before hosted mutation (1.0961ms)
+✔ buildReleaseControlInvocation converts strict smoke evidence without weakening gates (3.2513ms)
+✔ executeReleaseControl reads state without RPC and returns sanitized result (0.2942ms)
+✔ stale reconciliation is a CAS no-op for no candidate or a recent candidate (0.7174ms)
+✔ stale reconciliation reports an absent release-control table as its own mode and never mutates (0.2451ms)
+✔ only reconciliation tolerates an absent control table; every other read and unclassified failure stays fatal (0.4147ms)
+✔ stale reconciliation over the real client skips only a table PostgREST reports as absent (0.5706ms)
+✔ stale reconciliation clears only the exact revision and verifies hosted state (0.3471ms)
+✔ stale reconciliation rejects a concurrent promotion as an abort result (0.1739ms)
+✔ promotion and abort require exact revision or checksummed failure receipt (1.1601ms)
+✔ executeReleaseControl rejects a hosted mutation that did not atomically apply (1.2517ms)
+✔ recover aborts a committed candidate even when configure response was ambiguous (0.445ms)
+✔ recover atomically rolls an ambiguously promoted release back to the exact previous release (0.2274ms)
+✔ recover verifies hosted state after an ambiguous rollback RPC response (0.1733ms)
+✔ recover fails closed on unrelated control state (0.1583ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ without hosted evidence parity is UNVERIFIED and no deployed value is invented (2.7036ms)
+✔ an identical GitHub main ref never upgrades parity (0.4386ms)
+✔ a snapshot that merely looks like a match is UNVERIFIED unless the hosted collector produced it (0.5036ms)
+✔ a hosted snapshot with no release identity is UNVERIFIED, not drift (0.2569ms)
+✔ an exact hosted snapshot is VERIFIED_MATCH and fills the deployed rows with their source (4.0593ms)
+✔ a hosted snapshot on another release is VERIFIED_DRIFT and names the mismatch (1.1861ms)
+✔ missing migrations are drift even when the release identity matches (0.804ms)
+✔ an expected release that could not be computed leaves parity UNVERIFIED even with hosted evidence (0.3486ms)
+✔ a dirty worktree is stated next to the computed release (5.0923ms)
+✔ the markdown report states every row with a source and ends with the parity state (12.2604ms)
+✔ collecting offline inputs reads the checkout only and never reaches the network (10333.69ms)
+✔ release target requires the exact registered production project and origin (7.0926ms)
+✔ pending migrations reject unknown history and accept only registered semantic aliases (1.5997ms)
+✔ one exact remote hotfix alias satisfies its canonical migration without replay (1.0414ms)
+✔ expand-only audit accepts additive DDL and the exact cohort-scoped cleanup allowlist (4.1137ms)
+✔ expand-only audit rejects destructive top-level schema and data changes (0.8089ms)
+✔ expand-only audit rejects trigger/policy replacement by drop and destructive stored SQL (1.2908ms)
+✔ expand-only audit accepts an exact absent trigger proof only when the migration recreates it (1.1897ms)
+✔ expand-only audit accepts only a hosted-proven strict CHECK relaxation (2.1003ms)
+✔ expand-only receipt binds the exact target, hosted watermark, and SQL bytes (2.3801ms)
+✔ synthetic cohort and smoke acceptance are release-bound and three-run strict (0.9674ms)
+✔ failure receipt is safe, immutable-release-bound, and checksummed (2.9622ms)
+✔ Plan 55 failure receipts accept only a bounded synthetic Plan 55 cohort (1.9763ms)
+✔ accepts the complete operation, retry, budget, and circuit contract (3.4751ms)
+✔ accepts generated registry artifacts with checkout line endings (0.8421ms)
+✔ rejects money retries and missing confirmation (1.5942ms)
+✔ rejects provider operation without a budget reservation (1.1375ms)
+✔ rejects undeclared route operation classes (7.3006ms)
+✔ accepts an exact identity, aborted control, forward schema, and byte-identical downloaded source (4.3852ms)
+✔ Plan 55 rollback drill restores the hosted source without activating the candidate release-control lane (14.5495ms)
+✔ Plan 55 rollback drill rejects candidate activation or any release-control mutation (18.9606ms)
+✔ Plan 55 rollback drill requires and binds the archived raw evidence bytes (33.0934ms)
+✔ Plan 55 rollback drill rejects wrong source, baseline, deployment order, bindings, digest, and flags (27.7745ms)
+✔ rejects a candidate identity or source that survived rollback (0.7533ms)
+✔ rejects a missing redeploy or migration history rewrite (0.6416ms)
+✔ accepts hosted deploy paths that differ only by the redeployed version (0.9807ms)
+✔ normalizes a legacy unreleased hosted identity on both sides (0.6608ms)
+✔ replaces dblink transport while preserving setup and post-assertion SQL (2.4526ms)
+✔ isolates the learning crash rollback probe from the batched main assertion (0.4533ms)
+✔ injects deterministic seed data inside a rollback-only verification transaction (1.9934ms)
+✔ refuses non-rollback and dblink files in the linked Staging lane (0.5885ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ release source paths exclude only Git-confirmed unstaged deletions (1055.1895ms)
+✔ release source paths retain missing skip-worktree files so digesting still fails closed (803.0887ms)
+✔ Edge health preserves the release manifest provider readiness contract without exposing credentials (8148.6945ms)
+✔ Edge push readiness requires explicit flags and stays false for absent or invalid values (1.1492ms)
+✔ staging native builds bind only with matching release and embedded artifact identity (4507.1161ms)
+✔ native staging evidence rejects unfinished, stale, mixed-target and incomplete artifacts (4005.0779ms)
+✔ candidate bindings require the complete checksummed production release (3317.4686ms)
+✔ Plan 55 release lane is bound through runtime health and cannot be set in Staging (2942.9036ms)
+✔ Backend lane keeps Build55 as a legacy client and binds the checked-in current app policy (2712.8666ms)
+✔ Backend lane binds without native binary attestation while preserving the Build55 legacy floor (5251.0452ms)
+✔ staging bindings require explicit compatibility evidence from real EAS inventory (2585.3402ms)
+✔ staging bindings reject invented or cross-environment client evidence (2652.61ms)
+✔ rollback bindings preserve exact hosted identity and fail closed to unreleased or unknown (0.6287ms)
+✔ rollback restores each observed push capability instead of inheriting candidate flags (0.153ms)
+✔ rollback bindings reject the wrong project and shell-unsafe values (0.2444ms)
+✔ rollback preflight accepts only a complete exact hosted Production binding snapshot (1.001ms)
+✔ rollback preflight round-trips release-bound EAS identity only for the Backend lane (0.5221ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ buildStage1PromotionPacket binds release, rollback source, and expand audit (7.3251ms)
+✔ packet creation fails when a required gate or exact target is missing (1.6994ms)
+✔ tolerates an out-of-order hotfix already applied past the pending watermark (1.1955ms)
+✔ still refuses a genuine gap between the pending and release migration watermarks (0.6713ms)
+✔ packet verification detects any post-build evidence mutation (0.8457ms)
+✔ a verification packet names its lane, its binary relation, and the gaps it acknowledges (1.0381ms)
+✔ a strict packet stays free of the verification fields and refuses them (1.1458ms)
+✔ a verification packet requires exact-release binaries and acknowledgement evidence (1.3327ms)
+✔ packet verification rejects a lane that was added or stripped even when the checksum is recomputed (2.1466ms)
+✔ a verification packet must still carry its release lane, exact binaries, and extra gate (2.4013ms)
+✔ nearest-rank p95 uses the nineteenth value across twenty runs (1.7941ms)
+✔ Staging SLO accepts one slow outlier when the nineteenth result is inside the threshold (8.0505ms)
+✔ Staging SLO fails when p95 breaches or a functional invariant is invalid (3.2132ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ binds one Staging cohort to live hosted SQL, release identity, and both source proofs (11317.3505ms)
+✔ accepts exact hosted migration aliases through the canonical equivalence registry (5628.2814ms)
+✔ accepts only the exact operational error with safe support lineage (2.9561ms)
+✔ rejects a copied status without the expected code, support code, or trace (1.3357ms)
+✔ names every acknowledged gap and binds it by digest (11.0192ms)
+✔ a fully mapped catalog acknowledges nothing (3.6536ms)
+✔ refuses a receipt when any bound assertion did not execute and pass (62.2747ms)
+✔ refuses runner-less proof and entries that have no reviewed binding (3.3316ms)
+✔ detects a receipt edited after it was written, by rule and not only by checksum (4.6045ms)
+✔ transaction coverage baseline satisfies the pinned contract (87.6639ms)
+✔ transaction coverage reports a missing critical route (83.2657ms)
+✔ transaction coverage reports actor widening and a dormant pillar reference (93.5734ms)
+✔ one unrelated route-preview pillar cannot stand in for the entire transaction (95.2096ms)
+✔ a mapped binding cannot omit a newly required state or its public HTTP seam (137.4745ms)
+✔ catalog metadata alone leaves every transaction entry unproven (5.4605ms)
+✔ the mapping precheck lists exactly the entries that are not MAPPED (11.0659ms)
+✔ the mapping precheck passes only when every entry has a MAPPED binding (4.1932ms)
+✔ the release quality job fails on an unmapped transaction before it spends runner time on tests (1.1453ms)
+✔ a mapped slice requires exact passed assertion names in the bound file (3.0787ms)
+✔ required behavioral proof rejects missing test execution (2.0722ms)
+✔ required behavioral proof rejects pending test execution (1.7965ms)
+✔ required behavioral proof rejects skipped test execution (1.4177ms)
+✔ required behavioral proof rejects failed test execution (1.9851ms)
+✔ required behavioral proof rejects ambiguous test execution (1.9345ms)
+✔ a red runner report cannot prove selected green assertions (3.127ms)
+✔ passing bound cases do not erase explicitly remaining transaction gaps (4.1422ms)
+✔ PR assertion verification preserves completion debt without treating it as a failed test (2.5482ms)
+✔ PR assertion verification still rejects missing execution (2.4417ms)
+✔ PR assertion verification still rejects pending execution (1.7569ms)
+✔ PR assertion verification still rejects skipped execution (1.6451ms)
+✔ PR assertion verification still rejects failed execution (1.7879ms)
+✔ PR assertion verification still rejects ambiguous execution (1.655ms)
+✔ PR assertion verification still rejects wrong-file execution (1.6291ms)
+✔ PR assertion verification still rejects red-runner execution (1.3794ms)
+✔ PR assertion verification refuses absent reports and empty reviewed bindings (1.6279ms)
+✔ PR and Production workflows keep different evidence obligations (1.3347ms)
+✔ Plan 55 canary requires bound assertions without moving full readiness ahead of receipts (1.5468ms)
+✔ Local integration checks out the PR head required by its release preflight (0.5412ms)
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it
+✔ whole-workspace CI uses the same native-WebSocket-capable Node major as the release tests (3.0946ms)
+✔ native builds use the verified checkout branch instead of a stale project environment label (15251.0014ms)
+✔ native identity inputs are bound in the dispatched job environment (0.8332ms)
+✔ native identity rejection reports its failed gate without dumping environment values (160.9469ms)
+✔ EAS upload retains every tracked input used by the full-source release identity (349.5301ms)
+✔ ci.yml requires fresh API and mobile assertions for its evidence gate (0.7211ms)
+✔ release-production.yml requires fresh API and mobile assertions for its evidence gate (0.5089ms)
+ℹ tests 457
+ℹ suites 0
+ℹ pass 457
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 62736.9272
+harness manifest ok: 52 repository skills, 11 runtime tools, 1 provider adapters, 2 routers; sha256:7d8c90a9c443285e1733dc1b1c27716658d1a1c284e753fd554e469e9d253920
+capability registry ok: 275 routes
+privileged Supabase client boundary ok
+access matrix ok: 210 tables, 380 functions
+migration inventory ok: 463 migrations
+price evidence artifacts ok: 4 ledgers, 30 snapshots
+reliability registry ok: 6 operation classes, 6 dependencies
+transaction-critical catalog integrity ok: 65 actor-state entries, 53 routes, 8 system surfaces, 414 collected pillars
+behavioral verification: 0 UNVERIFIED, 0 PARTIAL; 0/445 bound assertions passed
+release evidence outside behavioral mapping: 77 item(s) across 63 entry/entries
+  RELEASE GAP customer.matching-selection: Rollback-only P110/P112 SQL and local RNTL cover persisted selection and fallback behavior; concurrent connections, hosted Edge-to-SQL, physical native relaunch and Production delivery remain unverified.
+  RELEASE GAP customer.matching-selection.read: Physical native relaunch, hosted Edge and Production proof remain unverified.
+  RELEASE GAP auth.customer.public-providers: Real provider configuration, callback exchange, hosted Auth, native browser return, and Production proof remain unverified.
+  RELEASE GAP auth.worker.email-password: Real Supabase Auth, hosted role lookup, native relaunch, concurrent account changes, and Production proof remain open.
+  RELEASE GAP worker.application.read: Separate Staging SQL proves revision lineage but does not replace hosted HTTP-to-SQL execution or real Auth. Concurrent application/review changes are not race-tested. Physical native relaunch and Production source evidence remain open.
+  RELEASE GAP worker.application.submit: P161 proves receipt integrity and retry identity with scripted DB responses; Supabase Auth login, concurrent SQL writes, current-source hosted onboarding, native relaunch, approval/revision UI, and Production proof remain open.
+  RELEASE GAP admin.worker-access.decision: Hosted Admin UI, multi-connection SQL race behavior and Production source/release proof remain open.
+  RELEASE GAP worker.kyc.draft: Hosted Edge-to-SQL execution, concurrent draft replay, physical native relaunch, and Production proof remain open.
+  RELEASE GAP worker.kyc.submit: The local HTTP test uses an authenticated fixture and scripted RPC receipt; live Auth and hosted Edge-to-SQL execution remain unverified. Concurrent Storage races, physical native relaunch, and Production source/release evidence remain open.
+  RELEASE GAP worker.kyc.command.submit: The mapped HTTP/UI assertions use scripted DB receipts; separate Staging SQL covers sequential receipt replay and partial-document preservation, not multi-connection races. Hosted HTTP-to-SQL execution, concurrent SQL/Storage behavior, physical native process-death/relaunch, and Production evidence remain open. Storage orphan retention and support-led corrupt-journal recovery require separate proof.
+  RELEASE GAP worker.kyc.command.reconcile: Hosted Edge-to-SQL execution, physical device process-death recovery, real-account Auth, and Production proof remain open.
+  RELEASE GAP admin.worker-kyc.decision: Local diagnostic codes are not hosted traces. Separate Staging rollback SQL proves 100 sequential replays, immutable history and new-round isolation. Multi-connection races, durable Admin close/relaunch recovery, parent Admin session/cache retirement, hosted HTTP-to-SQL, full readiness, native devices and Production proof remain open.
+  RELEASE GAP worker.readiness.read: The profile endpoint remains a projection; matching eligibility is covered by the separate P71 path. Current-source hosted Edge-to-SQL, native UI/recovery and Production evidence remain open.
+  RELEASE GAP customer.intake.create: Scripted local Supabase clients do not prove real Auth, hosted Edge-to-SQL execution, or multi-connection session-ownership races. Native process-death/relaunch behavior and Production source identity remain unverified.
+  RELEASE GAP customer.intake.turn: Provider interoperability is fixture-only in local tests; hosted Edge-to-SQL, native conversation recovery, and Production proof remain open.
+  RELEASE GAP customer.coverage.read: Live Postgres validation of eligible/reachable capacity and concurrent reservations, hosted Edge-to-SQL, native recovery, and Production proof remain open.
+  RELEASE GAP customer.kael-confirm: The HTTP POST boundary projects a scripted recovery_required RPC receipt into the public response and does not broadcast. P108 rollback-only Staging SQL proves persisted intent and serial replay, but not replay after that state transition; concurrent database races, legacy ownerless recovery, current-source hosted Edge, physical native relaunch, and Production proof remain open.
+  RELEASE GAP customer.confirm-operation.read: Hosted operation reads, real Auth sessions, concurrent DB state changes, physical native process death, and Production proof remain open.
+  RELEASE GAP customer.direct-confirm: Hosted Edge-to-SQL execution, multi-connection concurrency, physical native relaunch and Production proof remain unverified.
+  RELEASE GAP customer.matching-retry-recovery: Hosted Edge-to-SQL execution, multi-connection concurrency, physical native relaunch and Production proof remain unverified.
+  RELEASE GAP customer.matching-parent-read: Hosted Edge-to-SQL execution, multi-connection concurrency, physical native relaunch and Production proof remain unverified.
+  RELEASE GAP system.confirmation.atomic: Multi-connection SQL atomicity, hosted current-source Edge execution, provider delivery recovery, physical native relaunch and Production proof remain open.
+  RELEASE GAP system.matching.outbox: Rollback-only local SQL proofs cover lease authority, immutable consent, fallback atomicity and serial replay. Hosted Edge-to-SQL, simultaneous DB races, notification crash recovery, native and Production delivery proof remain open.
+  RELEASE GAP worker.reachability.heartbeat: Hosted Edge-to-SQL heartbeat persistence and concurrent lease refresh remain open. Native foreground lifecycle, real device push proof, and Production release evidence remain open.
+  RELEASE GAP worker.push.register: Real device permission/token acquisition, hosted SQL, native builds, and Production proof remain unverified.
+  RELEASE GAP worker.push.unregister: Real device-token permission and lifecycle behavior, hosted SQL, native sign-out, and Production proof remain unverified.
+  RELEASE GAP system.delivery.reconcile: Hosted maintainer scheduling, real Expo receipts, concurrent leases, native delivery, and Production proof remain open.
+  RELEASE GAP worker.offers.read: Hosted Edge-to-SQL read, physical native Worker inbox proof and Production proof remain open.
+  RELEASE GAP worker.offer.seen: Hosted SQL execution, real device delivery, and Production source/release proof remain unverified.
+  RELEASE GAP worker.delivery.ack: Hosted Auth/SQL, real device-open delivery and Production proof remain open.
+  RELEASE GAP worker.offer.accept: Hosted SQL execution, native customer-confirmation delivery, and Production source/release proof remain unverified.
+  RELEASE GAP worker.offer.decline: Hosted SQL, concurrent accept/decline races, fallback delivery, physical native Worker UI and Production proof remain open.
+  RELEASE GAP customer.candidate.read: Hosted Edge-to-SQL proof, concurrent candidate changes, physical native recovery, and Production proof remain open.
+  RELEASE GAP customer.candidate.confirm: Hosted Edge-to-SQL, concurrent candidate races, physical native relaunch and Production proof remain open.
+  RELEASE GAP customer.candidate.reject: Hosted Edge-to-SQL proof, concurrent accept/decline races, physical native relaunch, and Production proof remain open.
+  RELEASE GAP customer.apartment-access.authorize: Hosted Edge-to-SQL verification remains open. Concurrent access races, physical native relaunch and Production proof remain open.
+  RELEASE GAP worker.fulfillment.media: Hosted SQL/RLS quota and Storage behavior, concurrent upload races, native media permission and relaunch evidence, and Production proof remain open.
+  RELEASE GAP customer.fulfillment.media: Hosted Storage/RLS and quota behavior, concurrent upload races, native media permission and relaunch evidence, and Production proof remain open.
+  RELEASE GAP worker.scope-change.propose: Hosted Edge-to-SQL and concurrent scope-change races remain unverified. Real provider responses and native relaunch remain unverified. Production route identity and behavior remain unverified.
+  RELEASE GAP customer.scope-change.decide: Hosted Edge-to-SQL concurrent scope-decision races remain unverified. Native relaunch after a saved scope decision remains unverified. Production route identity and behavior remain unverified.
+  RELEASE GAP customer.completion.confirm: Hosted SQL/RLS, multi-connection concurrency, physical native relaunch, and Production source identity remain unverified.
+  RELEASE GAP customer.payment-order.read: Live Supabase Auth/SQL receipt execution, duplicate and race behavior, hosted Edge and Production proof remain open.
+  RELEASE GAP customer.payment-order.claim: Live Supabase Auth/SQL atomic receipt execution, duplicate and race behavior, hosted Edge and Production proof remain open.
+  RELEASE GAP admin.payment.reconciliation.read: Hosted Auth and SQL execution, concurrent assignment changes, native Admin UI and Production proof remain open.
+  RELEASE GAP admin.payment.reconciliation.decide: Hosted SQL/RLS, concurrent reconciliation changes, audited Admin UI/native flow, and Production proof remain unverified.
+  RELEASE GAP customer.cancellation.request: P118/P89 rollback-only SQL fixtures do not prove multi-connection cancellation or refund races. Hosted current-source Edge-to-SQL and real Supabase Auth remain unverified. Physical native relaunch and push delivery remain unverified. Production cancellation and refund-review behavior remain unverified.
+  RELEASE GAP worker.cancellation.request: Hosted Edge-to-SQL, concurrent cancellation races, physical native relaunch and Production proof remain open.
+  RELEASE GAP customer.dispute.open: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP worker.dispute.open: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP customer.dispute.counter-statement: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP worker.dispute.counter-statement: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP admin.dispute.decide: Hosted SQL/RLS coverage for live roles, concurrent dispute races, evidence Storage coverage, native lifecycle behavior, and Production source identity remain open.
+  RELEASE GAP admin.recovery.list: Hosted Auth and SQL projection, concurrent recovery changes, native Admin UI and Production proof remain open.
+  RELEASE GAP admin.recovery.detail: Hosted Auth and SQL projection, concurrent recovery changes, durable Admin refresh, native UI and Production proof remain open.
+  RELEASE GAP admin.recovery.action: Hosted Edge-to-SQL and live RLS/service-role binding are not verified. Real multi-connection optimistic-concurrency and native Admin UI proof remain open.
+  RELEASE GAP system.recovery.scan: Hosted scanner scheduling, multi-connection leases, live SQL execution and Production recovery evidence remain open.
+  RELEASE GAP system.synthetic.terminal-payment: This isolated synthetic-terminal proof is not real-user payment evidence, hosted Production SQL proof, provider settlement, or Production health/release proof.
+  RELEASE GAP system.release.health: The current registered Production runtime predates origin/main and lacks the System Health monitor. Native readiness, hosted monitor convergence and rollout/soak evidence remain open.
+  RELEASE GAP worker.rfq-price.propose: Hosted Edge-to-SQL execution, concurrent database races, physical native relaunch, and Production evidence remain open.
+  RELEASE GAP customer.rfq-price.decide: Hosted Edge-to-SQL execution, concurrent decision races, physical native relaunch, and Production proof remain open.
+  RELEASE GAP customer.rfq-price.reconcile: Hosted Edge-to-SQL execution, concurrent proposal changes, physical native relaunch, and Production proof remain open.
+  RELEASE GAP worker.rfq-price.reconcile: Hosted SQL/RLS, concurrent proposal changes, physical native relaunch, and Production proof remain open.
+  RELEASE GAP system.release.production-promotion: The last official Production run stopped at the strict behavioral gate. The currently registered Production release predates origin/main and lacks the System Health monitor; APNs/FCM readiness, native evidence, monitor deployment, promotion and post-release soak remain open.
+standard promotion policy ok: 8 states, 8 kill switches, 4 SLOs
+production UI normality passed: 777 files, 30658 visible literals, 9934 localized literals, 0 unsafe terms
+test collection ok: 13 CI-named test filter(s) checked, 13 resolve to collected files, 0 declared
+harness-04317126635a-7c4209c68206 .scratch/harness-verification/release-manifest.json
+release bundle ok: harness-04317126635a-7c4209c68206
+passed .scratch/harness-verification/evaluation-report.json
+evaluation report ok: 663b197c-5115-4fdb-ab86-05ada21d9c8d
+Harness assurance verification passed
+
+----- stderr -----
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts', LF will be replaced by CRLF the next time Git touches it

@@ -9,7 +9,7 @@ import {
 import { setRequestEmergencyGuidance } from "../../platform/emergency-guidance.ts";
 import { ApiFailure, apiFailure } from "../../platform/api-failure.ts";
 import type { MobileApiContext } from "../../platform/auth.ts";
-import { asKaelChatStatus, asNumber, asRecord, nullableServiceType } from "../../platform/coercions.ts";
+import { asKaelChatStatus, asNumber, asRecord } from "../../platform/coercions.ts";
 import { db, dbQuery, type DbClient } from "../../platform/db.ts";
 import {
   buildKaelTurnTrace,
@@ -17,7 +17,6 @@ import {
   type KaelTurnTrace,
   type KaelTurnTraceIdentity,
 } from "../../platform/turn-trace.ts";
-import { requiresImmediateKaelSafetyPathForTexts } from "./intake-safety.ts";
 import {
   appendKaelSystemTurn,
   assertKaelSessionOwnership,
@@ -36,8 +35,6 @@ type CaseEmergencyInput = {
   readonly message: string | readonly string[];
   readonly language: "vi" | "en";
   readonly serviceType: unknown;
-  readonly persistedSafetySignals?: readonly string[];
-  readonly actorId?: string | null;
   readonly parked?: boolean;
 };
 
@@ -107,19 +104,7 @@ export function resolveCaseEmergency(input: CaseEmergencyInput): CaseEmergency |
   });
   if (!guidance) return null;
   if (input.parked) return { guidance, stopsTurn: true };
-  const hazardOnly = guidance.route === "electrical_water";
-  const flaggedPathOwnsHazard = guidance.route === "fire" || hazardOnly;
-  const serviceType = nullableServiceType(input.serviceType);
-  if (
-    flaggedPathOwnsHazard && serviceType &&
-    requiresImmediateKaelSafetyPathForTexts(
-      texts,
-      serviceType,
-      input.persistedSafetySignals,
-      input.actorId,
-    )
-  ) return null;
-  return { guidance, stopsTurn: !hazardOnly };
+  return { guidance, stopsTurn: guidance.route !== "electrical_water" };
 }
 
 type EmergencyOutcome = "emergency_stop" | "emergency_advice" | "emergency_guidance_only" | "emergency_write_failed";

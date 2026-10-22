@@ -1,0 +1,4 @@
+comment-discipline: clean — no note-banner comments found.
+
+----- stderr -----
+warning: in the working copy of 'apps/api/src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it

@@ -1,0 +1,11 @@
+previous-candidate	P419	exit=1
+previous-candidate	P420	exit=1
+previous-candidate	P421	exit=1
+this-candidate	P419	exit=0
+this-candidate	P420	exit=0
+this-candidate	P421	exit=0
+P419	previous: 39 failed of 191	this: 0 failed of 191
+P420	previous: 2 failed of 47	this: 0 failed of 47
+P421	previous: 18 failed of 254	this: 0 failed of 254
+
+----- stderr -----

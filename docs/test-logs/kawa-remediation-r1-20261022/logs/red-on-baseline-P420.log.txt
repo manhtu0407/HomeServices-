@@ -1,0 +1,524 @@
+
+ RUN  v4.1.6 C:/ns-fix/base/apps/api
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '2fd0227a-32a8-4613-895c-fd13a3020581',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'plumbing',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'HVAC-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'aa3411cb-0c85-4c74-9d91-80d5054df6b5',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'HVAC-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'HVAC-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'UPHO-S4/4 with a stale persisted sign…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '5a0b93f6-dcd1-4e5e-8b8f-9081a9633a12',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'upholstery',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'UPHO-S4/4 with a stale persisted sign…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'UPHO-S4/4 with a stale persisted sign…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S3': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'ad109a92-3727-4402-9bd9-09f490d2c677',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S3': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C2 price question over a smoking outl…': route, visible numbers and metadata match the flags-off answer
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'b2506331-8686-490d-a727-06f68a7e2c2f',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C2 price question over a smoking outl…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C2 price question over a smoking outl…': route, visible numbers and metadata match the flags-off answer
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a safety signal an earlier turn persisted never replaces the answer > answers a smoking cable on an upholstery Case that already carries bio_contamination, instead of a price lookup
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a safety signal an earlier turn persisted never replaces the answer > answers a smoking cable on an upholstery Case that already carries bio_contamination, instead of a price lookup
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > answers on the same request when one write fails once (flags on)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > answers on the same request when one write fails once (flags on)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > answers on the same request when one write fails once (flags on)
+harness_event {
+  p_event_id: 'a05bd3a1-6ddd-408f-a783-89cf5a930c0b',
+  p_run_id: '11ff5da4-3374-4bd0-a56b-eece021e3ab7',
+  p_trace_id: 'ff86b465-e5a3-469d-a1b1-cbb8b2a13063',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'failed',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 6,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'DB_ERROR',
+  p_safe_metadata: { status: 500 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags on)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags on)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags on)
+harness_event {
+  p_event_id: '33189eb6-262c-433b-885a-0b48467a7899',
+  p_run_id: 'c4af14ca-2791-4c84-804b-65122063d5f3',
+  p_trace_id: '8a5a8fa6-20c8-4a0e-ac1b-bef5163b036f',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'failed',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 6,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'DB_ERROR',
+  p_safe_metadata: { status: 500 }
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts (33 tests | 9 failed) 539ms
+     × 'PLMB-S3': route, visible numbers and metadata match the flags-off answer 200ms
+     × 'HVAC-S3': route, visible numbers and metadata match the flags-off answer 29ms
+     × 'UPHO-S4/4 with a stale persisted sign…': route, visible numbers and metadata match the flags-off answer 17ms
+     × 'ELEC-S3': route, visible numbers and metadata match the flags-off answer 29ms
+     × 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer 21ms
+     × 'C2 price question over a smoking outl…': route, visible numbers and metadata match the flags-off answer 12ms
+     × answers a smoking cable on an upholstery Case that already carries bio_contamination, instead of a price lookup 9ms
+     × answers on the same request when one write fails once (flags on) 10ms
+     × a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags on) 8ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 9 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'PLMB-S3': route, visible numbers and metadata match the flags-off answer
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    PLMB-S3: off=200/112,114,115/electrical_water on=200// (route correctness: the turn carries the gate route): expected [] to include 'electrical_water'
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:93:94
+     91|     expect(off.result.status, `${why} (flags off answers in a 2xx)`).t…
+     92|     expect(on.result.status, `${why} (flags on answers in a 2xx)`).toB…
+     93|     expect(on.metadataRoutes, `${why} (route correctness: the turn car…
+       |                                                                                              ^
+     94|     expect(off.metadataRoutes, `${why} (route correctness with flags o…
+     95|     for (const number of required) expect(on.numbers, `${why} (visible…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/9]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'HVAC-S3': route, visible numbers and metadata match the flags-off answer
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    HVAC-S3: off=200/114/fire on=200// (route correctness: the turn carries the gate route): expected [] to include 'fire'
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:93:94
+     91|     expect(off.result.status, `${why} (flags off answers in a 2xx)`).t…
+     92|     expect(on.result.status, `${why} (flags on answers in a 2xx)`).toB…
+     93|     expect(on.metadataRoutes, `${why} (route correctness: the turn car…
+       |                                                                                              ^
+     94|     expect(off.metadataRoutes, `${why} (route correctness with flags o…
+     95|     for (const number of required) expect(on.numbers, `${why} (visible…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/9]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'UPHO-S4/4 with a stale persisted sign…': route, visible numbers and metadata match the flags-off answer
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    UPHO-S4/4 with a stale persisted signal: off=200/114/fire on=200// (route correctness: the turn carries the gate route): expected [] to include 'fire'
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:93:94
+     91|     expect(off.result.status, `${why} (flags off answers in a 2xx)`).t…
+     92|     expect(on.result.status, `${why} (flags on answers in a 2xx)`).toB…
+     93|     expect(on.metadataRoutes, `${why} (route correctness: the turn car…
+       |                                                                                              ^
+     94|     expect(off.metadataRoutes, `${why} (route correctness with flags o…
+     95|     for (const number of required) expect(on.numbers, `${why} (visible…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/9]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S3': route, visible numbers and metadata match the flags-off answer
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    ELEC-S3: off=200/114/fire on=200/112,114,115/ (route correctness: the turn carries the gate route): expected [] to include 'fire'
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:93:94
+     91|     expect(off.result.status, `${why} (flags off answers in a 2xx)`).t…
+     92|     expect(on.result.status, `${why} (flags on answers in a 2xx)`).toB…
+     93|     expect(on.metadataRoutes, `${why} (route correctness: the turn car…
+       |                                                                                              ^
+     94|     expect(off.metadataRoutes, `${why} (route correctness with flags o…
+     95|     for (const number of required) expect(on.numbers, `${why} (visible…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/9]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'ELEC-S4/4': route, visible numbers and metadata match the flags-off answer
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    ELEC-S4/4: off=200// on=200/112,114,115/ (route correctness: the turn carries the gate route): expected [] to include 'electrical_water'
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:93:94
+     91|     expect(off.result.status, `${why} (flags off answers in a 2xx)`).t…
+     92|     expect(on.result.status, `${why} (flags on answers in a 2xx)`).toB…
+     93|     expect(on.metadataRoutes, `${why} (route correctness: the turn car…
+       |                                                                                              ^
+     94|     expect(off.metadataRoutes, `${why} (route correctness with flags o…
+     95|     for (const number of required) expect(on.numbers, `${why} (visible…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/9]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: the gate answers the current hazard with every playbook flag on > 'C2 price question over a smoking outl…': route, visible numbers and metadata match the flags-off answer
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    C2 price question over a smoking outlet: off=200/114/fire on=200/112,114,115/ (route correctness: the turn carries the gate route): expected [] to include 'fire'
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:93:94
+     91|     expect(off.result.status, `${why} (flags off answers in a 2xx)`).t…
+     92|     expect(on.result.status, `${why} (flags on answers in a 2xx)`).toB…
+     93|     expect(on.metadataRoutes, `${why} (route correctness: the turn car…
+       |                                                                                              ^
+     94|     expect(off.metadataRoutes, `${why} (route correctness with flags o…
+     95|     for (const number of required) expect(on.numbers, `${why} (visible…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/9]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a safety signal an earlier turn persisted never replaces the answer > answers a smoking cable on an upholstery Case that already carries bio_contamination, instead of a price lookup
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    visible=Món nào cần làm (sofa, nệm, rèm, thảm), bao nhiêu món và kích thước khoảng bao nhiêu?
+: expected [] to include '114'
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:116:29
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/9]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > answers on the same request when one write fails once (flags on)
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    flags=on status=500 visible=Không thể lưu lượt chat Kael: expected 500 to be 200 // Object.is equality
+
+- Expected
++ Received
+
+- 200
++ 500
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:128:41
+    126|     const observed = await observe(smoking, flags, { failReplyInserts:…
+    127|     const why = pillarWhy(PILLAR, `flags=${flags} status=${observed.re…
+    128|     expect(observed.result.status, why).toBe(200)
+       |                                         ^
+    129|     expect(observed.numbers, why).toContain('114')
+    130|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/9]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts > P420-kael-case-emergency-playbook-precedence: a failed reply write does not silence the gate > a write that keeps failing is a visible error carrying the guidance, and the retry delivers it (flags on)
+AssertionError: [P420-kael-case-emergency-playbook-precedence] enabling a service playbook never removes, suppresses or downgrades the shared gate guidance for a hazard the customer reports in the current turn: the route, the visible numbers and the structured metadata are the same with every playbook flag on as with every flag off, a safety signal persisted by an earlier turn never replaces the answer, the gate speaks once, and the Case, its owner and its business tables are untouched
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01 six-service diagnostic DX-03 (playbook flags replaced the gate with advice that carried no number)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P406-kael-case-emergency-intake, P408-kael-case-emergency-all-fields, P409-kael-case-emergency-write-integrity
+detail:    flags=on first=500 visible=Không thể lưu lượt chat Kael (the error body carries the guidance): expected [] to include '114'
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts:136:75
+    134|     const why = pillarWhy(PILLAR, `flags=${flags} first=${first.result…
+    135|     expect(first.result.status, `${why} (a failed write is not reporte…
+    136|     expect(first.numbers, `${why} (the error body carries the guidance…
+       |                                                                           ^
+    137|     expect(first.structured, `${why} (the error body carries the struc…
+    138|     const retry = await send(first.world, smoking)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/9]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  9 failed | 24 passed (33)
+   Start at  08:49:51
+   Duration  7.19s (transform 5.40s, setup 0ms, import 6.40s, tests 539ms, environment 0ms)
+
+undefined
+C:\ns-fix\base\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts
+exit=1

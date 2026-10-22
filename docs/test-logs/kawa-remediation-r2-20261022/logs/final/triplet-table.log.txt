@@ -1,0 +1,97 @@
+{
+ "main": {
+  "frozen/flags-off": {
+   "checkpoints": 21,
+   "route_correct": 20,
+   "visible_acceptable": 20,
+   "visible_exact": 20,
+   "metadata_present": 20
+  },
+  "created/flags-off": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  },
+  "frozen/flags-on": {
+   "checkpoints": 21,
+   "route_correct": 15,
+   "visible_acceptable": 17,
+   "visible_exact": 17,
+   "metadata_present": 15
+  },
+  "created/flags-on": {
+   "checkpoints": 15,
+   "route_correct": 10,
+   "visible_acceptable": 13,
+   "visible_exact": 13,
+   "metadata_present": 10
+  }
+ },
+ "round_one": {
+  "frozen/flags-off": {
+   "checkpoints": 21,
+   "route_correct": 21,
+   "visible_acceptable": 21,
+   "visible_exact": 21,
+   "metadata_present": 21
+  },
+  "created/flags-off": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  },
+  "frozen/flags-on": {
+   "checkpoints": 21,
+   "route_correct": 21,
+   "visible_acceptable": 21,
+   "visible_exact": 21,
+   "metadata_present": 21
+  },
+  "created/flags-on": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  }
+ },
+ "round_two": {
+  "frozen/flags-off": {
+   "checkpoints": 21,
+   "route_correct": 21,
+   "visible_acceptable": 21,
+   "visible_exact": 21,
+   "metadata_present": 21
+  },
+  "created/flags-off": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  },
+  "frozen/flags-on": {
+   "checkpoints": 21,
+   "route_correct": 21,
+   "visible_acceptable": 21,
+   "visible_exact": 21,
+   "metadata_present": 21
+  },
+  "created/flags-on": {
+   "checkpoints": 15,
+   "route_correct": 15,
+   "visible_acceptable": 15,
+   "visible_exact": 15,
+   "metadata_present": 15
+  }
+ },
+ "worse_than_round_one": 0,
+ "worse_than_main": 0,
+ "monotonic_violations": 0
+}
+
+----- stderr -----

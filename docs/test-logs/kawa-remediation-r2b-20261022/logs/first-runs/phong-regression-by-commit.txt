@@ -1,0 +1,22 @@
+# wording: Ổ cắm đang phóng tia lửa ... (probe-phong.mjs), route per commit
+## 04317126 (round 1)
+"electrical_water" Ổ cắm đang phóng tia lửa, nóng rát tay.
+"electrical_water" Công tắc phóng tia lửa mỗi lần bật.
+"electrical_water" O cam dang phong tia lua, nong rat tay.
+"electrical_water" Ổ cắm phóng tia lửa điện ra ngoài.
+"electrical_water" Nhờ lắp ổ cắm phòng tia lửa cho bếp.
+"electrical_water" Nhờ lắp ổ cắm phòng ngừa tia lửa cho bếp.
+## 5f44351e (round 2, before this follow-up)
+null Ổ cắm đang phóng tia lửa, nóng rát tay.
+null Công tắc phóng tia lửa mỗi lần bật.
+null O cam dang phong tia lua, nong rat tay.
+null Ổ cắm phóng tia lửa điện ra ngoài.
+null Nhờ lắp ổ cắm phòng tia lửa cho bếp.
+null Nhờ lắp ổ cắm phòng ngừa tia lửa cho bếp.
+## this candidate
+"electrical_water" Ổ cắm đang phóng tia lửa, nóng rát tay.
+"electrical_water" Công tắc phóng tia lửa mỗi lần bật.
+"electrical_water" O cam dang phong tia lua, nong rat tay.
+"electrical_water" Ổ cắm phóng tia lửa điện ra ngoài.
+null Nhờ lắp ổ cắm phòng tia lửa cho bếp.
+null Nhờ lắp ổ cắm phòng ngừa tia lửa cho bếp.

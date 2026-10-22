@@ -1,0 +1,279 @@
+
+ RUN  v4.1.6 C:/ns-fix/r1/apps/api
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 4
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags off)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags off)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags off)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags on)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 2
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags on)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > never screens a reviewed voice transcript on the turn or the create route (pinned: an owner decision, not a fix)
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > never screens a reviewed voice transcript on the turn or the create route (pinned: an owner decision, not a fix)
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > never screens a reviewed voice transcript on the turn or the create route (pinned: an owner decision, not a fix)
+harness_event {
+  p_event_id: 'a8ccb4e2-10cf-4662-82ff-aabcd374df69',
+  p_run_id: '36a27297-de86-47d5-bbc7-9575fdd338ad',
+  p_trace_id: 'f03d7ed3-5c06-4da5-8318-6ff9ba00f490',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 4,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'VALIDATION',
+  p_safe_metadata: { status: 400 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > leaves a Case that is already closed closed, with no new row
+harness_event {
+  p_event_id: 'b6c7417f-7d29-48c5-a8b2-1ee8741d5c36',
+  p_run_id: 'a3e76eec-a7a4-414a-bdb2-71ed2b883adb',
+  p_trace_id: '20a0cae4-f297-4127-b37f-ddc9b4919954',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'INVALID_STATUS',
+  p_safe_metadata: { status: 409 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a stranger cannot close or write to the owner Case with an unsupported request
+harness_event {
+  p_event_id: 'd9f444ed-4b9d-4641-ad5b-11712aa4da04',
+  p_run_id: '2351271d-db25-49d1-a3c6-7b9e7af42647',
+  p_trace_id: 'bf7f1768-f9dd-4495-bf61-150953fd514e',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 2,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'NOT_FOUND',
+  p_safe_metadata: { status: 404 }
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > an admin cannot close or write to the owner Case with an unsupported request
+harness_event {
+  p_event_id: '2a0adc5e-7e06-4832-84e7-97cc2f1849f5',
+  p_run_id: 'e0d23afe-546a-4048-9151-eea0c251643f',
+  p_trace_id: 'bc3172b0-8e65-412e-a101-cbe35bb7212d',
+  p_parent_event_id: null,
+  p_turn_id: null,
+  p_tool_call_id: null,
+  p_event_class: 'request.blocked',
+  p_stage: 'kael.chat.turn',
+  p_status: 'blocked',
+  p_attempt_number: 1,
+  p_tool_id: null,
+  p_provider: null,
+  p_model: null,
+  p_cost_usd: null,
+  p_latency_ms: 1,
+  p_release_id: 'unreleased',
+  p_environment: 'local',
+  p_error_code: 'KAEL_PATH_CONTROL_DENIED',
+  p_safe_metadata: { status: 403 }
+}
+
+ ✓ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts (254 tests) 2856ms
+     ✓ 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off')  332ms
+
+ Test Files  1 passed (1)
+      Tests  254 passed (254)
+   Start at  12:58:25
+   Duration  12.02s (transform 7.65s, setup 0ms, import 8.93s, tests 2.86s, environment 0ms)
+
+JSON report written to C:/ns-fix/r1/docs/test-logs/kawa-remediation-r2b-20261022/results/red-first/this-candidate-P421.json
+
+----- stderr -----
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a genuine washing-machine request closes the Case as unsupported and says why (flags off)
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a genuine washing-machine request closes the Case as unsupported and says why (flags on)
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > an admin cannot close or write to the owner Case with an unsupported request
+kael path-control denied {
+  reasonCode: 'PATH_CONTROL_ACTOR_MISMATCH',
+  routeKind: 'kael.chat.turn',
+  actorRole: 'admin',
+  edgeRoute: 'POST /kael/chat/:id',
+  kaelPurpose: 'clarification'
+}
+

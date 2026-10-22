@@ -1,0 +1,521 @@
+
+ RUN  v4.1.6 C:/ns-fix/base/apps/api
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+kael_chat boundary decline {
+  sessionId: 'kael_chat_sessions-1',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+kael_chat boundary decline {
+  sessionId: 'kael_chat_sessions-1',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+kael_chat boundary decline {
+  sessionId: 'kael_chat_sessions-1',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags off)
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags on)
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts (65 tests | 28 failed) 287ms
+     × electrical: Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối. (frozen ELEC-S2: the washing machine is a suspected cause) stays open, flags off 14ms
+     × plumbing: Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa. (frozen PLMB-S2: the pump belongs to the building and is a suspected cause) stays open, flags off 3ms
+     × plumbing: Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa. (frozen PLMB-S2: the pump belongs to the building and is a suspected cause) stays open, flags on 2ms
+     × plumbing: Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm. (frozen PLMB-S4 step 3: the water heater is only said to be on the balcony) stays open, flags off 1ms
+     × plumbing: Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm. (frozen PLMB-S4 step 3: the water heater is only said to be on the balcony) stays open, flags on 1ms
+     × cleaning: Mình cần dọn dẹp tổng thể căn hộ, nhớ lau cả khu vực máy giặt và bếp từ. (cleaning an area that holds appliances) stays open, flags off 1ms
+     × cleaning: Mình cần dọn dẹp tổng thể căn hộ, nhớ lau cả khu vực máy giặt và bếp từ. (cleaning an area that holds appliances) stays open, flags on 1ms
+     × cleaning: Dọn vệ sinh tủ lạnh và bếp từ trước khi chuyển nhà. (cleaning the appliances themselves) stays open, flags off 1ms
+     × cleaning: Dọn vệ sinh tủ lạnh và bếp từ trước khi chuyển nhà. (cleaning the appliances themselves) stays open, flags on 1ms
+     × handyman: Mình cần lắp một cái kệ để đặt modem wifi cạnh tivi. (a shelf for a modem) stays open, flags off 1ms
+     × handyman: Mình cần lắp một cái kệ để đặt modem wifi cạnh tivi. (a shelf for a modem) stays open, flags on 1ms
+     × hvac: Cần vệ sinh hai máy lạnh, máy giặt đặt gần đó nên nhờ che chắn giúp. (a neighbouring appliance) stays open, flags off 1ms
+     × hvac: Cần vệ sinh hai máy lạnh, máy giặt đặt gần đó nên nhờ che chắn giúp. (a neighbouring appliance) stays open, flags on 1ms
+     × plumbing: Vòi nước ở bồn rửa rỉ nước, ống cấp nối với máy giặt cạnh đó. (a pipe that feeds an appliance) stays open, flags off 1ms
+     × plumbing: Vòi nước ở bồn rửa rỉ nước, ống cấp nối với máy giặt cạnh đó. (a pipe that feeds an appliance) stays open, flags on 1ms
+     × plumbing: ambiguous "Nước yếu, không biết do ống hay do máy giặt." (water pressure, pipe or washing machine) is left to the intake question, flags off 1ms
+     × plumbing: ambiguous "Nước yếu, không biết do ống hay do máy giặt." (water pressure, pipe or washing machine) is left to the intake question, flags on 0ms
+     × hvac: ambiguous "Máy lạnh chảy nước, không chắc do máy giặt gần đó hay do ống thoát." (dripping unit, washing machine or drain) is left to the intake question, flags off 1ms
+     × hvac: ambiguous "Máy lạnh chảy nước, không chắc do máy giặt gần đó hay do ống thoát." (dripping unit, washing machine or drain) is left to the intake question, flags on 1ms
+     × upholstery: ambiguous "Sofa có mùi lạ, mình nghĩ do máy giặt ở ban công bị rò nước." (smell blamed on a leaking appliance) is left to the intake question, flags off 1ms
+     × upholstery: ambiguous "Sofa có mùi lạ, mình nghĩ do máy giặt ở ban công bị rò nước." (smell blamed on a leaking appliance) is left to the intake question, flags on 1ms
+     × 'electrical': 'frozen ELEC-S2: the washing machine i…' is not turned into an unsupported intent when the model returns nothing 2ms
+     × 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off') 119ms
+     × 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on') 37ms
+     × 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'off') 7ms
+     × 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'on') 5ms
+     × a location correction on an active plumbing Case keeps it active (flags off) 10ms
+     × a location correction on an active plumbing Case keeps it active (flags on) 6ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 28 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > electrical: Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối. (frozen ELEC-S2: the washing machine is a suspected cause) stays open, flags off
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    frozen ELEC-S2: the washing machine is a suspected cause: "Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối." -> out_of_scope oos:may giat: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:87:149
+     85|     (service, text, label, flags) => {
+     86|       const got = decide(service, text, flags)
+     87|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     88|     },
+     89|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > plumbing: Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa. (frozen PLMB-S2: the pump belongs to the building and is a suspected cause) stays open, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > plumbing: Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa. (frozen PLMB-S2: the pump belongs to the building and is a suspected cause) stays open, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    frozen PLMB-S2: the pump belongs to the building and is a suspected cause: "Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa." -> out_of_scope oos:may bom: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:87:149
+     85|     (service, text, label, flags) => {
+     86|       const got = decide(service, text, flags)
+     87|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     88|     },
+     89|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > plumbing: Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm. (frozen PLMB-S4 step 3: the water heater is only said to be on the balcony) stays open, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > plumbing: Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm. (frozen PLMB-S4 step 3: the water heater is only said to be on the balcony) stays open, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    frozen PLMB-S4 step 3: the water heater is only said to be on the balcony: "Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm." -> out_of_scope oos:binh nong lanh: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:87:149
+     85|     (service, text, label, flags) => {
+     86|       const got = decide(service, text, flags)
+     87|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     88|     },
+     89|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > cleaning: Mình cần dọn dẹp tổng thể căn hộ, nhớ lau cả khu vực máy giặt và bếp từ. (cleaning an area that holds appliances) stays open, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > cleaning: Mình cần dọn dẹp tổng thể căn hộ, nhớ lau cả khu vực máy giặt và bếp từ. (cleaning an area that holds appliances) stays open, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    cleaning an area that holds appliances: "Mình cần dọn dẹp tổng thể căn hộ, nhớ lau cả khu vực máy giặt và bếp từ." -> out_of_scope oos:may giat,oos:bep tu: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:87:149
+     85|     (service, text, label, flags) => {
+     86|       const got = decide(service, text, flags)
+     87|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     88|     },
+     89|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > cleaning: Dọn vệ sinh tủ lạnh và bếp từ trước khi chuyển nhà. (cleaning the appliances themselves) stays open, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > cleaning: Dọn vệ sinh tủ lạnh và bếp từ trước khi chuyển nhà. (cleaning the appliances themselves) stays open, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    cleaning the appliances themselves: "Dọn vệ sinh tủ lạnh và bếp từ trước khi chuyển nhà." -> out_of_scope oos:tu lanh,oos:bep tu: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:87:149
+     85|     (service, text, label, flags) => {
+     86|       const got = decide(service, text, flags)
+     87|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     88|     },
+     89|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > handyman: Mình cần lắp một cái kệ để đặt modem wifi cạnh tivi. (a shelf for a modem) stays open, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > handyman: Mình cần lắp một cái kệ để đặt modem wifi cạnh tivi. (a shelf for a modem) stays open, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    a shelf for a modem: "Mình cần lắp một cái kệ để đặt modem wifi cạnh tivi." -> out_of_scope oos:wifi: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:87:149
+     85|     (service, text, label, flags) => {
+     86|       const got = decide(service, text, flags)
+     87|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     88|     },
+     89|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > hvac: Cần vệ sinh hai máy lạnh, máy giặt đặt gần đó nên nhờ che chắn giúp. (a neighbouring appliance) stays open, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > hvac: Cần vệ sinh hai máy lạnh, máy giặt đặt gần đó nên nhờ che chắn giúp. (a neighbouring appliance) stays open, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    a neighbouring appliance: "Cần vệ sinh hai máy lạnh, máy giặt đặt gần đó nên nhờ che chắn giúp." -> out_of_scope oos:may giat: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:87:149
+     85|     (service, text, label, flags) => {
+     86|       const got = decide(service, text, flags)
+     87|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     88|     },
+     89|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > plumbing: Vòi nước ở bồn rửa rỉ nước, ống cấp nối với máy giặt cạnh đó. (a pipe that feeds an appliance) stays open, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > plumbing: Vòi nước ở bồn rửa rỉ nước, ống cấp nối với máy giặt cạnh đó. (a pipe that feeds an appliance) stays open, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    a pipe that feeds an appliance: "Vòi nước ở bồn rửa rỉ nước, ống cấp nối với máy giặt cạnh đó." -> out_of_scope oos:may giat: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:87:149
+     85|     (service, text, label, flags) => {
+     86|       const got = decide(service, text, flags)
+     87|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     88|     },
+     89|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > plumbing: ambiguous "Nước yếu, không biết do ống hay do máy giặt." (water pressure, pipe or washing machine) is left to the intake question, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > plumbing: ambiguous "Nước yếu, không biết do ống hay do máy giặt." (water pressure, pipe or washing machine) is left to the intake question, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    water pressure, pipe or washing machine: "Nước yếu, không biết do ống hay do máy giặt." -> out_of_scope oos:may giat: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:95:149
+     93|     (service, text, label, flags) => {
+     94|       const got = decide(service, text, flags)
+     95|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     96|     },
+     97|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > hvac: ambiguous "Máy lạnh chảy nước, không chắc do máy giặt gần đó hay do ống thoát." (dripping unit, washing machine or drain) is left to the intake question, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > hvac: ambiguous "Máy lạnh chảy nước, không chắc do máy giặt gần đó hay do ống thoát." (dripping unit, washing machine or drain) is left to the intake question, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    dripping unit, washing machine or drain: "Máy lạnh chảy nước, không chắc do máy giặt gần đó hay do ống thoát." -> out_of_scope oos:may giat: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:95:149
+     93|     (service, text, label, flags) => {
+     94|       const got = decide(service, text, flags)
+     95|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     96|     },
+     97|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > upholstery: ambiguous "Sofa có mùi lạ, mình nghĩ do máy giặt ở ban công bị rò nước." (smell blamed on a leaking appliance) is left to the intake question, flags off
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: a mention is not a request > upholstery: ambiguous "Sofa có mùi lạ, mình nghĩ do máy giặt ở ban công bị rò nước." (smell blamed on a leaking appliance) is left to the intake question, flags on
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    smell blamed on a leaking appliance: "Sofa có mùi lạ, mình nghĩ do máy giặt ở ban công bị rò nước." -> out_of_scope oos:may giat: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:95:149
+     93|     (service, text, label, flags) => {
+     94|       const got = decide(service, text, flags)
+     95|       expect(got.ok, pillarWhy(PILLAR, `${label}: ${JSON.stringify(tex…
+       |                                                                                                                                                     ^
+     96|     },
+     97|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the deterministic intent fallback reads the same request > 'electrical': 'frozen ELEC-S2: the washing machine i…' is not turned into an unsupported intent when the model returns nothing
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    "Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối." -> unsupported: expected 'unsupported' to be 'electrical' // Object.is equality
+
+Expected: "electrical"
+Received: "unsupported"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:127:107
+    125|     ({ service, text }) => {
+    126|       const intent = buildFallbackIntent(service, [], text)
+    127|       expect(intent.service_type, pillarWhy(PILLAR, `${JSON.stringify(…
+       |                                                                                                           ^
+    128|     },
+    129|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flags=off status=201 session=unsupported reasons=out_of_scope (a valid Case is not closed as unsupported): expected 'unsupported' not to be 'unsupported' // Object.is equality
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:182:94
+    180|     const why = pillarWhy(PILLAR, `${service} flags=${flags} status=${…
+    181|     expect(result.status, why).toBeLessThan(300)
+    182|     expect(world.session().status, `${why} (a valid Case is not closed…
+       |                                                                                              ^
+    183|     expect(boundaryReasons(world), `${why} (no boundary decline was wr…
+    184|     expect(world.db.tables.kael_chat_turns.filter((turn) => turn.role …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'electrical': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flags=on status=201 session=active reasons= (the customer is not told the service is unsupported): expected [ { id: 'kael_chat_turns-7', …(12) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "ai_model": null,
++     "ai_provider": null,
++     "content_type": "error",
++     "cost_usd": null,
++     "created_at": "2026-10-22T01:50:06.949Z",
++     "id": "kael_chat_turns-7",
++     "latency_ms": null,
++     "media_refs": [],
++     "role": "kael",
++     "safe_metadata": {
++       "intake_observation": {
++         "modelId": "deterministic-fallback",
++         "needsClarification": false,
++         "playbookVersion": "electrical-playbook-2026-10-20.v3",
++         "problemSlug": null,
++         "promptVersion": "2026-08-15.v3",
++         "safetySignals": [],
++         "scopeSignal": "out_of_scope",
++         "suggestedService": null,
++       },
++     },
++     "session_id": "kael_chat_sessions-1",
++     "text_content": "Kael hiện hỗ trợ sửa điện, sửa nước, vệ sinh nhà, điều hòa, vệ sinh sofa/nệm/rèm/thảm và sửa vặt/lắp đặt nhỏ tại TP.HCM.",
++     "turn_index": 2,
++   },
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:184:181
+    182|     expect(world.session().status, `${why} (a valid Case is not closed…
+    183|     expect(boundaryReasons(world), `${why} (no boundary decline was wr…
+    184|     expect(world.db.tables.kael_chat_turns.filter((turn) => turn.role …
+       |                                                                                                                                                                                     ^
+    185|     expect(world.unexpectedWrites(), `${why} (no business table was to…
+    186|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'off')
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    plumbing flags=off status=201 session=unsupported reasons=out_of_scope (a valid Case is not closed as unsupported): expected 'unsupported' not to be 'unsupported' // Object.is equality
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:182:94
+    180|     const why = pillarWhy(PILLAR, `${service} flags=${flags} status=${…
+    181|     expect(result.status, why).toBeLessThan(300)
+    182|     expect(world.session().status, `${why} (a valid Case is not closed…
+       |                                                                                              ^
+    183|     expect(boundaryReasons(world), `${why} (no boundary decline was wr…
+    184|     expect(world.db.tables.kael_chat_turns.filter((turn) => turn.role …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > 'plumbing': creating a Case from the frozen ambiguous text keeps it active (flags 'on')
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    plumbing flags=on status=201 session=unsupported reasons=out_of_scope (a valid Case is not closed as unsupported): expected 'unsupported' not to be 'unsupported' // Object.is equality
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:182:94
+    180|     const why = pillarWhy(PILLAR, `${service} flags=${flags} status=${…
+    181|     expect(result.status, why).toBeLessThan(300)
+    182|     expect(world.session().status, `${why} (a valid Case is not closed…
+       |                                                                                              ^
+    183|     expect(boundaryReasons(world), `${why} (no boundary decline was wr…
+    184|     expect(world.db.tables.kael_chat_turns.filter((turn) => turn.role …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags off)
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    flags=off status=200 session=unsupported: expected 'unsupported' to be 'active' // Object.is equality
+
+Expected: "active"
+Received: "unsupported"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:193:41
+    191|     const why = pillarWhy(PILLAR, `flags=${flags} status=${result.stat…
+    192|     expect(result.status, why).toBe(200)
+    193|     expect(world.session().status, why).toBe('active')
+       |                                         ^
+    194|     expect(boundaryReasons(world), why).toEqual([])
+    195|     expect(world.unexpectedWrites(), why).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/28]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: the Case survives through the real handler > a location correction on an active plumbing Case keeps it active (flags on)
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done; the same word as a suspected cause, a location, a neighbour or a building fixture inside a supported request leaves the Case active and asks its next question, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    flags=on status=200 session=unsupported: expected 'unsupported' to be 'active' // Object.is equality
+
+Expected: "active"
+Received: "unsupported"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:193:41
+    191|     const why = pillarWhy(PILLAR, `flags=${flags} status=${result.stat…
+    192|     expect(result.status, why).toBe(200)
+    193|     expect(world.session().status, why).toBe('active')
+       |                                         ^
+    194|     expect(boundaryReasons(world), why).toEqual([])
+    195|     expect(world.unexpectedWrites(), why).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/28]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  28 failed | 37 passed (65)
+   Start at  08:50:00
+   Duration  6.51s (transform 4.98s, setup 0ms, import 5.98s, tests 287ms, environment 0ms)
+
+undefined
+C:\ns-fix\base\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts
+exit=1

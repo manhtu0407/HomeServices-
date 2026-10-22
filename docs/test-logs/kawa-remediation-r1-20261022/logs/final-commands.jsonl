@@ -1,0 +1,19 @@
+{"utc":"2026-10-22T01:57:16.033Z","name":"api-full-suite","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api test","exit":0}
+{"utc":"2026-10-22T01:58:19.724Z","name":"red-on-baseline-P419","cwd":"<baseline-worktree>","command":"corepack pnpm --filter @nestscout/api exec vitest run src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts","exit":1}
+{"utc":"2026-10-22T01:58:21.973Z","name":"red-on-baseline-P420","cwd":"<baseline-worktree>","command":"corepack pnpm --filter @nestscout/api exec vitest run src/__tests__/kael-edge-runtime/domains/kael-case-emergency-playbook-precedence-pillar.test.ts","exit":1}
+{"utc":"2026-10-22T01:58:28.989Z","name":"red-on-baseline-P421","cwd":"<baseline-worktree>","command":"corepack pnpm --filter @nestscout/api exec vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts","exit":1}
+{"utc":"2026-10-22T01:58:35.524Z","name":"type-check-api","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-package-script @nestscout/api type-check","exit":0}
+{"utc":"2026-10-22T01:58:49.266Z","name":"lint-comments-working","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/check-comment-discipline.mjs --working","exit":0}
+{"utc":"2026-10-22T01:58:50.467Z","name":"lint-test-integrity-working","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/check-test-integrity.mjs --working","exit":0}
+{"utc":"2026-10-22T01:58:51.292Z","name":"lint-added-hygiene-working","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/check-added-source-hygiene.mjs --working","exit":0}
+{"utc":"2026-10-22T01:58:52.104Z","name":"lint-structure","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/lint-structure.mjs","exit":0}
+{"utc":"2026-10-22T01:58:53.037Z","name":"lint-baseline","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/check-structure-baseline.mjs","exit":0}
+{"utc":"2026-10-22T01:58:53.698Z","name":"lint-edge-db","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs","exit":0}
+{"utc":"2026-10-22T01:58:55.333Z","name":"lint-authority","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/check-authority-citations.mjs","exit":1}
+{"utc":"2026-10-22T01:58:56.536Z","name":"pillar-registry-check","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/harness/pillar-registry.mjs","exit":0}
+{"utc":"2026-10-22T01:58:57.251Z","name":"edge-check-docker-pinned-deno","cwd":"<remediation-worktree>","command":"node scripts/run.mjs docker/scripts/edge-check","exit":0}
+{"utc":"2026-10-22T02:00:51.075Z","name":"ship-check","cwd":"<remediation-worktree>","command":"node scripts/run.mjs run-node scripts/check-ship-ready.mjs","exit":1}
+{"utc":"2026-10-22T02:07:18.092Z","name":"matrix-and-drivers","cwd":"<remediation-worktree>","command":"node docs/test-logs/kawa-remediation-r1-20261022/scripts/reproduce.mjs post","exit":0}
+{"utc":"2026-10-22T02:08:27.495Z","name":"scorecard","cwd":"<remediation-worktree>","command":"node docs/test-logs/kawa-remediation-r1-20261022/scripts/scorecard.mjs","exit":0}
+{"utc":"2026-10-22T02:08:27.629Z","name":"triplet-table","cwd":"<remediation-worktree>","command":"node docs/test-logs/kawa-remediation-r1-20261022/scripts/triplet-table.mjs","exit":0}
+{"utc":"2026-10-22T02:08:27.739Z","name":"tables","cwd":"<remediation-worktree>","command":"node docs/test-logs/kawa-remediation-r1-20261022/scripts/make-tables.mjs","exit":0}

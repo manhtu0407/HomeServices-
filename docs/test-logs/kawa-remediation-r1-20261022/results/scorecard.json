@@ -1,0 +1,753 @@
+{
+ "schema": "nestscout.r1.scorecard.v1",
+ "generated_by": "scorecard.mjs from raw result files",
+ "matrix_flags_off": {
+  "label": "flags off: accepted baseline (main 42daced1) vs candidate",
+  "scenarios": 30,
+  "tally": {
+   "PASS->PASS unchanged": 26,
+   "FAIL->PASS": 4
+  },
+  "rows": [
+   {
+    "id": "ELEC-S1",
+    "service": "electrical",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "ELEC-S2",
+    "service": "electrical",
+    "class": "S2",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/asks_clarifying_question: false -> true"
+    ]
+   },
+   {
+    "id": "ELEC-S3",
+    "service": "electrical",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "ELEC-S4",
+    "service": "electrical",
+    "class": "S4",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/emergency_escalated_acceptable: false -> true"
+    ]
+   },
+   {
+    "id": "PLMB-S1",
+    "service": "plumbing",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "PLMB-S2",
+    "service": "plumbing",
+    "class": "S2",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/asks_clarifying_question: false -> true"
+    ]
+   },
+   {
+    "id": "PLMB-S3",
+    "service": "plumbing",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "PLMB-S4",
+    "service": "plumbing",
+    "class": "S4",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/http_ok: false -> true",
+     "main/evidence_handled: false -> true"
+    ]
+   },
+   {
+    "id": "CLEN-S1",
+    "service": "cleaning",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "CLEN-S2",
+    "service": "cleaning",
+    "class": "S2",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "CLEN-S3",
+    "service": "cleaning",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "CLEN-S4",
+    "service": "cleaning",
+    "class": "S4",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S1",
+    "service": "hvac",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S2",
+    "service": "hvac",
+    "class": "S2",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S3",
+    "service": "hvac",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S4",
+    "service": "hvac",
+    "class": "S4",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S1",
+    "service": "upholstery",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S2",
+    "service": "upholstery",
+    "class": "S2",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S3",
+    "service": "upholstery",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S4",
+    "service": "upholstery",
+    "class": "S4",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S1",
+    "service": "handyman",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S2",
+    "service": "handyman",
+    "class": "S2",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S3",
+    "service": "handyman",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S4",
+    "service": "handyman",
+    "class": "S4",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C1",
+    "service": "plumbing",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C2",
+    "service": "electrical",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C3",
+    "service": "plumbing",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C4",
+    "service": "plumbing",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C5",
+    "service": "plumbing",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C6",
+    "service": "electrical",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   }
+  ]
+ },
+ "journey_flags_off": {
+  "label": "S5 journeys, flags off",
+  "scenarios": 6,
+  "tally": {
+   "BLOCKED->BLOCKED unchanged": 6
+  },
+  "rows": [
+   {
+    "id": "ELEC-S5",
+    "service": "electrical",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "PLMB-S5",
+    "service": "plumbing",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "CLEN-S5",
+    "service": "cleaning",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S5",
+    "service": "hvac",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S5",
+    "service": "upholstery",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S5",
+    "service": "handyman",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   }
+  ]
+ },
+ "matrix_flags_on": {
+  "label": "flags on: accepted baseline supplementary vs candidate",
+  "scenarios": 30,
+  "tally": {
+   "PASS->PASS unchanged": 23,
+   "FAIL->PASS": 7
+  },
+  "rows": [
+   {
+    "id": "ELEC-S1",
+    "service": "electrical",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "ELEC-S2",
+    "service": "electrical",
+    "class": "S2",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/asks_clarifying_question: false -> true"
+    ]
+   },
+   {
+    "id": "ELEC-S3",
+    "service": "electrical",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "ELEC-S4",
+    "service": "electrical",
+    "class": "S4",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "PLMB-S1",
+    "service": "plumbing",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "PLMB-S2",
+    "service": "plumbing",
+    "class": "S2",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/asks_clarifying_question: false -> true"
+    ]
+   },
+   {
+    "id": "PLMB-S3",
+    "service": "plumbing",
+    "class": "S3",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/emergency_escalated_acceptable: false -> true"
+    ]
+   },
+   {
+    "id": "PLMB-S4",
+    "service": "plumbing",
+    "class": "S4",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/http_ok: false -> true",
+     "main/evidence_handled: false -> true"
+    ]
+   },
+   {
+    "id": "CLEN-S1",
+    "service": "cleaning",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "CLEN-S2",
+    "service": "cleaning",
+    "class": "S2",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "CLEN-S3",
+    "service": "cleaning",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "CLEN-S4",
+    "service": "cleaning",
+    "class": "S4",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S1",
+    "service": "hvac",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S2",
+    "service": "hvac",
+    "class": "S2",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S3",
+    "service": "hvac",
+    "class": "S3",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/emergency_escalated_acceptable: false -> true"
+    ]
+   },
+   {
+    "id": "HVAC-S4",
+    "service": "hvac",
+    "class": "S4",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S1",
+    "service": "upholstery",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S2",
+    "service": "upholstery",
+    "class": "S2",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S3",
+    "service": "upholstery",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S4",
+    "service": "upholstery",
+    "class": "S4",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/emergency_escalated_acceptable: false -> true"
+    ]
+   },
+   {
+    "id": "HAND-S1",
+    "service": "handyman",
+    "class": "S1",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S2",
+    "service": "handyman",
+    "class": "S2",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S3",
+    "service": "handyman",
+    "class": "S3",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S4",
+    "service": "handyman",
+    "class": "S4",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C1",
+    "service": "plumbing",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C2",
+    "service": "electrical",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C3",
+    "service": "plumbing",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C4",
+    "service": "plumbing",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C5",
+    "service": "plumbing",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   },
+   {
+    "id": "C6",
+    "service": "electrical",
+    "class": "C",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/failure_observable: false -> true"
+    ]
+   }
+  ]
+ },
+ "supp_c6b_flags_off": {
+  "label": "SUPP-C6b persistent write failure, flags off",
+  "scenarios": 1,
+  "tally": {
+   "PASS->PASS unchanged": 1
+  },
+  "rows": [
+   {
+    "id": "SUPP-C6b",
+    "service": "electrical",
+    "class": "C",
+    "from": "PASS",
+    "to": "PASS",
+    "change": "PASS->PASS unchanged",
+    "assertions": []
+   }
+  ]
+ },
+ "supp_c6b_flags_on": {
+  "label": "SUPP-C6b persistent write failure, flags on (clean main 42daced1 rerun vs candidate)",
+  "scenarios": 1,
+  "tally": {
+   "FAIL->PASS": 1
+  },
+  "rows": [
+   {
+    "id": "SUPP-C6b",
+    "service": "electrical",
+    "class": "C",
+    "from": "FAIL",
+    "to": "PASS",
+    "change": "FAIL->PASS",
+    "assertions": [
+     "main/failure_observable: false -> true",
+     "main/recovery_delivers: false -> true"
+    ]
+   }
+  ]
+ },
+ "journey_flags_on": {
+  "label": "S5 journeys, flags on (pre-fix main vs candidate)",
+  "scenarios": 6,
+  "tally": {
+   "BLOCKED->BLOCKED unchanged": 6
+  },
+  "rows": [
+   {
+    "id": "ELEC-S5",
+    "service": "electrical",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "PLMB-S5",
+    "service": "plumbing",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "CLEN-S5",
+    "service": "cleaning",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HVAC-S5",
+    "service": "hvac",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "UPHO-S5",
+    "service": "upholstery",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   },
+   {
+    "id": "HAND-S5",
+    "service": "handyman",
+    "class": "S5",
+    "from": "BLOCKED",
+    "to": "BLOCKED",
+    "change": "BLOCKED->BLOCKED unchanged",
+    "assertions": []
+   }
+  ]
+ }
+}

@@ -201,8 +201,6 @@ async function advanceConfirmedIntakeEstimate(
     message: confirmation.intake.description,
     language: metadata.language === "en" ? "en" : "vi",
     serviceType,
-    persistedSafetySignals: asStringArray(metadata.intake_safety_signals),
-    actorId: ctx.user.id,
   });
   if (emergency) {
     await answerCaseEmergency(db(ctx), sessionId, emergency, { entry: "confirm", identity: ctx });

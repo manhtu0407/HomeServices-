@@ -1,0 +1,217 @@
+
+ RUN  v4.1.6 C:/ns-fix/r1/apps/api
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts > P406-kael-case-emergency-intake: the flagged electrical path > does not say it twice: critical guidance from the playbook path is the only safety message
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'f8c18867-d9b3-44b0-aaee-a79385b0af85',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-all-fields-pillar.test.ts > P408-kael-case-emergency-all-fields: a reviewed voice transcript or note on the turn route > keeps the safety signal that a later field raised on the Case, not only the first field's
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'a06a7910-d6d7-47a8-9f0d-dbb9d9c5748d',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_stop',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_FIRE',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts > P406-kael-case-emergency-intake: the flagged electrical path > defers a smoke and sparking report to the HVAC flagged path instead of adding a second message
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '77aee1e8-14ac-4d38-9f37-fab561856875',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'hvac',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts > P406-kael-case-emergency-intake: the flagged electrical path > defers a smoke and sparking report to the HVAC flagged path instead of adding a second message
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 2
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts > P406-kael-case-emergency-intake: the flagged electrical path > defers a smoke and sparking report to the HVAC flagged path instead of adding a second message
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 2
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-all-fields-pillar.test.ts (44 tests | 1 failed) 2124ms
+     × keeps the safety signal that a later field raised on the Case, not only the first field's 41ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts (60 tests | 2 failed) 2168ms
+     × does not say it twice: critical guidance from the playbook path is the only safety message 34ms
+     × defers a smoke and sparking report to the HVAC flagged path instead of adding a second message 118ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-all-fields-pillar.test.ts > P408-kael-case-emergency-all-fields: a reviewed voice transcript or note on the turn route > keeps the safety signal that a later field raised on the Case, not only the first field's
+AssertionError: [P408-kael-case-emergency-all-fields] every customer-authored text a Case request carries (the message, a reviewed voice transcript, a text note, an evidence summary, a skip reason, the booking description) is checked for a reported emergency before any model, evidence consumption or phase change, on the turn, price-question, create and evidence routes; hazards reported in different fields are routed exactly as if they were one text; the answer writes only what the customer said and one deterministic reply, leaves the Case in the phase it was in, and leaves a bounded, redacted, correlated trace
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never confirms, creates or advances money-impacting state) | governance/RULES.md #3 (the safety text is deterministic server copy, not raw model output) | governance/RULES.md #9 (logs carry ids, codes and safe metadata only, never raw chat text or PII) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage) and W03 (observability)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P407-kael-case-emergency-pending-confirmation, P406-kael-case-emergency-intake, P405-kael-emergency-signal-matrix
+detail:    the typed message is ordinary; the transcript is what carries the hazard: expected [] to not deeply equal []
+
+Compared values have no visual difference.
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-all-fields-pillar.test.ts:130:150
+    128|     const signals = (world.session().safe_metadata as Record<string, u…
+    129|     expect(result.status, pillarWhy(PILLAR, `status=${result.status}`)…
+    130|     expect(Array.isArray(signals) ? signals : [], pillarWhy(PILLAR, 't…
+       |                                                                                                                                                      ^
+    131|   })
+    132| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts > P406-kael-case-emergency-intake: the flagged electrical path > does not say it twice: critical guidance from the playbook path is the only safety message
+AssertionError: [P406-kael-case-emergency-intake] a reported fire, medical, police or unclear emergency in a Case is answered by deterministic Vietnam emergency guidance before any model call, boundary decline or pipeline step, whether or not a playbook flag is on; the Case keeps its owner, facts, offer and phase, and no Job, quote, match or payment is created; ordinary service wording continues through the normal intake
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never creates or advances money-impacting state) | governance/RULES.md #3 (the safety text is deterministic server copy, not raw model output) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage, no flag bypass)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P401-kael-emergency-routing, P405-kael-emergency-signal-matrix, P398-kael-recurring-incident-e2e
+detail:    status=200 purposes= (the gate defers to the structured path): expected [ { id: 'kael_chat_turns-2', …(12) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "ai_model": null,
++     "ai_provider": null,
++     "content_type": "analysis",
++     "cost_usd": null,
++     "created_at": "2026-10-22T01:24:51.110Z",
++     "id": "kael_chat_turns-2",
++     "latency_ms": null,
++     "media_refs": [],
++     "role": "kael",
++     "safe_metadata": {
++       "emergency_route": "fire",
++       "reply_source": "template",
++       "safety_source": "deterministic_emergency",
++       "turn_trace": {
++         "case_phase": "analysis",
++         "correlation_id": "f8c18867-d9b3-44b0-aaee-a79385b0af85",
++         "edge_release_id": "unreleased",
++         "emergency_gate_version": "case_emergency_gate.v2",
++         "gate_entry": "turn",
++         "outcome": "emergency_stop",
++         "permission_reason": "EMERGENCY_FIRE",
++         "route": "case_emergency",
++         "schema": "kael_turn_trace.v1",
++         "service_code": "electrical",
++         "stage": "emergency_gate",
++       },
++     },
++     "session_id": "39800000-0000-4000-8000-000000000001",
++     "text_content": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
++     "turn_index": 4,
++   },
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts:143:86
+    141|     const why = pillarWhy(PILLAR, `status=${result.status} purposes=${…
+    142|     expect(result.status, why).toBe(200)
+    143|     expect(emergencyTurns(world), `${why} (the gate defers to the stru…
+       |                                                                                      ^
+    144|     const guided = world.kaelTurns().filter((turn) => String(turn.text…
+    145|     expect(guided.length, `${why} (exactly one reply carries the 114 g…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts > P406-kael-case-emergency-intake: the flagged electrical path > defers a smoke and sparking report to the HVAC flagged path instead of adding a second message
+AssertionError: [P406-kael-case-emergency-intake] a reported fire, medical, police or unclear emergency in a Case is answered by deterministic Vietnam emergency guidance before any model call, boundary decline or pipeline step, whether or not a playbook flag is on; the Case keeps its owner, facts, offer and phase, and no Job, quote, match or payment is created; ordinary service wording continues through the normal intake
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate and never creates or advances money-impacting state) | governance/RULES.md #3 (the safety text is deterministic server copy, not raw model output) | governance/RULES.md #8 (a failed write is a visible error, never a fabricated success) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (Case intake emergency coverage, no flag bypass)
+target:    supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts
+next:      P401-kael-emergency-routing, P405-kael-emergency-signal-matrix, P398-kael-recurring-incident-e2e
+detail:    status=200 purposes=deepseek:unknown,anthropic:unknown (the flagged path owns the hazard reply): expected [ { id: 'kael_chat_turns-2', …(12) } ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "ai_model": null,
++     "ai_provider": null,
++     "content_type": "analysis",
++     "cost_usd": null,
++     "created_at": "2026-10-22T01:24:51.155Z",
++     "id": "kael_chat_turns-2",
++     "latency_ms": null,
++     "media_refs": [],
++     "role": "kael",
++     "safe_metadata": {
++       "emergency_route": "electrical_water",
++       "reply_source": "template",
++       "safety_source": "deterministic_emergency",
++       "turn_trace": {
++         "case_phase": "analysis",
++         "correlation_id": "77aee1e8-14ac-4d38-9f37-fab561856875",
++         "edge_release_id": "unreleased",
++         "emergency_gate_version": "case_emergency_gate.v2",
++         "gate_entry": "turn",
++         "outcome": "emergency_advice",
++         "permission_reason": "EMERGENCY_ELECTRICAL_WATER",
++         "route": "case_emergency",
++         "schema": "kael_turn_trace.v1",
++         "service_code": "hvac",
++         "stage": "emergency_gate",
++       },
++     },
++     "session_id": "39800000-0000-4000-8000-000000000001",
++     "text_content": "Không chạm vào dây điện, ổ điện, thiết bị hoặc nước gần nguồn điện. Tránh xa và giữ người khác tránh xa; không tự ngắt điện nếu phải đi tới khu vực nguy hiểm. Nếu có khói hoặc lửa, gọi 114; nếu có người bị điện giật hoặc bị thương, gọi 115. Nếu nguy cơ khẩn cấp chưa rõ, gọi 112.",
++     "turn_index": 4,
++   },
++ ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-case-emergency-intake-pillar.test.ts:155:86
+    153|     const why = pillarWhy(PILLAR, `status=${result.status} purposes=${…
+    154|     expect(result.status, why).toBe(200)
+    155|     expect(emergencyTurns(world), `${why} (the flagged path owns the h…
+       |                                                                                      ^
+    156|     expect(result.purposes, `${why} (a safety turn is not routed throu…
+    157|     expect(world.unexpectedWrites(), why).toEqual([])
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  2 failed | 111 passed (113)
+      Tests  3 failed | 1713 passed (1716)
+   Start at  08:24:41
+   Duration  28.23s (transform 107.67s, setup 0ms, import 363.79s, tests 48.10s, environment 22ms)
+
+undefined
+C:\ns-fix\r1\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains
+exit=1

@@ -1,0 +1,3 @@
+protocol routes ok: 12/15 protocols selected by a routing row (3 exempt), every routed name resolves
+
+----- stderr -----

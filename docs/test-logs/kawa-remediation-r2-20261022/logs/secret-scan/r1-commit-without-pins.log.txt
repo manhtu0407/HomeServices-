@@ -1,0 +1,36 @@
+$ gitleaks git (round-1 commit, repository ignore file as it was)
+exit=1
+Finding:     "logs/final/api-full-suite.log.txt": "REDACTED"
+Secret:      REDACTED
+RuleID:      generic-api-key
+Entropy:     3.912142
+File:        docs/test-logs/kawa-remediation-r1-20261022/file-digests.json
+Line:        29
+Commit:      04317126635a4207a3f9b9ba35ffccf053d16340
+Date:        2026-10-22T02:18:05Z
+Fingerprint: 04317126635a4207a3f9b9ba35ffccf053d16340:docs/test-logs/kawa-remediation-r1-20261022/file-digests.json:generic-api-key:29
+
+Finding:     "logs/final/type-check-api.log.txt": "REDACTED"
+Secret:      REDACTED
+RuleID:      generic-api-key
+Entropy:     3.865322
+File:        docs/test-logs/kawa-remediation-r1-20261022/file-digests.json
+Line:        47
+Commit:      04317126635a4207a3f9b9ba35ffccf053d16340
+Date:        2026-10-22T02:18:05Z
+Fingerprint: 04317126635a4207a3f9b9ba35ffccf053d16340:docs/test-logs/kawa-remediation-r1-20261022/file-digests.json:generic-api-key:47
+
+Finding:     "logs/gates/type-check-api.log.txt": "REDACTED"
+Secret:      REDACTED
+RuleID:      generic-api-key
+Entropy:     3.868443
+File:        docs/test-logs/kawa-remediation-r1-20261022/file-digests.json
+Line:        67
+Commit:      04317126635a4207a3f9b9ba35ffccf053d16340
+Date:        2026-10-22T02:18:05Z
+Fingerprint: 04317126635a4207a3f9b9ba35ffccf053d16340:docs/test-logs/kawa-remediation-r1-20261022/file-digests.json:generic-api-key:67
+
+4:33AM INF Unknown SCM platform. Use --platform to include links in findings. host=
+4:33AM INF 1 commits scanned.
+4:33AM INF scanned ~6411476 bytes (6.41 MB) in 4.76s
+4:33AM WRN leaks found: 3

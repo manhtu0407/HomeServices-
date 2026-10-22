@@ -16,6 +16,12 @@ Entry shape:
 - Risk / follow-up: <what could make this worth collapsing later, or "none">
 ```
 
+## 2026-10-22 supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts:detectRequestedApplianceWork
+
+- Found: `normalize`, `escapeRegExp` and the appliance subset of `OUT_OF_SCOPE_KEYWORDS` in `kael-guardrails/boundary-guard.ts`, all module-private.
+- Wrote new code because: the same requested-work test must also run from `pipeline/utils.ts:hasUnsupportedRepairIntent`, and importing it from `boundary-guard.ts` would make `boundary-guard.ts` and the pipeline import each other; a small leaf module is the only shape without a cycle.
+- Risk / follow-up: the 12 appliance keywords are listed in two places (`OUT_OF_SCOPE_KEYWORDS` and `APPLIANCE_REQUEST_KEYWORDS`); collapse them into one exported list if the catalogue is edited again.
+
 ## 2026-10-20 supabase/functions/mobile-api/_shared/domains/kael-chat/case-context.ts:assertCaseContextOwner
 
 - Found: `assertKaelSessionOwnership` in `domains/kael-chat/session-store.ts` (owner check on a session row).
