@@ -1,3 +1,5 @@
+import { maskExplicitlyExcludedScopeForIntent } from "./scope-exclusions.ts";
+
 export const APPLIANCE_REQUEST_KEYWORDS: readonly string[] = [
   "tu lanh",
   "may giat",
@@ -21,7 +23,7 @@ const ENGLISH_APPLIANCES: Readonly<Record<string, string>> = {
   "gas stove": "bep ga", "gas hob": "bep ga", "gas cooker": "bep ga",
   "water heater": "binh nong lanh", "wifi router": "wifi",
 };
-const ENGLISH_NONREQUEST = /\b(?:(?:do not|don t|no need to|not to|never) (?:fix|repair|check|inspect|service|install|replace)\b.*?(?=\b(?:but|however|instead|just|only|although|though)\b|$)|(?:already|previously) (?:fixed|repaired|checked|serviced|installed|replaced)\b)/g;
+const ENGLISH_NONREQUEST = /\b(?:(?:do not|don t|no need to|not to|never) (?:fix|repair|check|inspect|service|install|replace)|(?:already|previously) (?:fixed|repaired|checked|serviced|installed|replaced))\b.*?(?=\b(?:but|however|instead|just|only|although|though)\b|\band (?:(?:now|please) ){0,2}(?:fix|repair|check|inspect|service|install|replace)\b|$)/g;
 const ENGLISH_NEGATED_FAULT = /\b(?:(?:is|are|was|were) not|isn t|aren t|wasn t|weren t|not) (?:really |actually )?(?:broken|faulty|stuck|jammed|leaking)\b/g;
 const SUPPLY_FAULT_AFTER = /^(?: (?:nha|cua|minh|toi|em|my|our|the)){0,4} (?:mat nguon|khong (?:len nguon|co dien|vao dien)|(?:has )?no power)\b/;
 const INTERNAL_FAULT = /\b(?:bo mach|bang dieu khien|bao loi|khong nong|khong nhan noi|circuit board|control board|not heating|error code)\b/;
@@ -188,6 +190,6 @@ function isRequested(clauses: readonly Clause[], keyword: string, selectedServic
 }
 
 export function detectRequestedApplianceWork(text: string, selectedService?: string): ReadonlySet<string> {
-  const clauses = splitClauses(normalizeRequestText(text));
+  const clauses = splitClauses(normalizeRequestText(maskExplicitlyExcludedScopeForIntent(text)));
   return new Set(APPLIANCE_REQUEST_KEYWORDS.filter((keyword) => isRequested(clauses, keyword, selectedService)));
 }

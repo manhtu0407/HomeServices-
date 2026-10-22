@@ -1,0 +1,37 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (46 tests | 1 failed | 45 skipped) 16ms
+     × keeps shared exclusion filtering stable across primary and fallback callers 15ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps shared exclusion filtering stable across primary and fallback callers
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    repeated normalization keeps scope and later work unchanged: expected 'Fix the faucet, [[excluded scope].but…' to be 'Fix the faucet, [excluded scope].but …' // Object.is equality
+
+Expected: "Fix the faucet, [excluded scope].but repair the fridge."
+Received: "Fix the faucet, [[excluded scope].but repair the fridge."
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:59:138
+     57|   it('keeps shared exclusion filtering stable across primary and fallb…
+     58|     const once = maskExplicitlyExcludedScopeForIntent('Fix the faucet,…
+     59|     expect(maskExplicitlyExcludedScopeForIntent(once), pillarWhy(PILLA…
+       |                                                                                                                                          ^
+     60|   })
+     61|   it.each(unsupported)('refuses unsupported work: %s', (text) => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 45 skipped (46)
+   Start at  04:38:03
+   Duration  7.01s (transform 4.96s, setup 0ms, import 6.05s, tests 16ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts --testNamePattern=keeps shared exclusion filtering stable

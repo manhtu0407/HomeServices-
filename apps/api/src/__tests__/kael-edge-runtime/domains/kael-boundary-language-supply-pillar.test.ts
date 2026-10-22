@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { pillarWhy, type PillarManifest } from '../../pillar-manifest'
 import { evaluateMessageBoundary } from '../../../../../../supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard'
-import { hasUnsupportedRepairIntent } from '../../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/utils'
+import { hasUnsupportedRepairIntent, maskExplicitlyExcludedScopeForIntent } from '../../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/utils'
 import { buildFallbackIntent } from '../../../../../../supabase/functions/mobile-api/_shared/kael/tools/intent'
 import { OWNER, installEdgeRuntimeTestHooks } from '../harness'
 import { activeWorld, type Service } from '../harness/emergency-fixtures'
@@ -54,6 +54,10 @@ function boundary(text: string, service: Service, enabled: boolean) {
 }
 
 describe(PILLAR.id, () => {
+  it('keeps shared exclusion filtering stable across primary and fallback callers', () => {
+    const once = maskExplicitlyExcludedScopeForIntent('Fix the faucet, excluding the washing machine but repair the fridge.')
+    expect(maskExplicitlyExcludedScopeForIntent(once), pillarWhy(PILLAR, 'repeated normalization keeps scope and later work unchanged')).toBe(once)
+  })
   it.each(unsupported)('refuses unsupported work: %s', (text) => {
     for (const service of services) for (const enabled of [false, true]) {
       const result = boundary(text, service, enabled)
@@ -83,6 +87,13 @@ describe(PILLAR.id, () => {
       expect(buildFallbackIntent('electrical', [], text, enabled).service_type).toBe('electrical')
     }
     expect(buildFallbackIntent('electrical', [], 'Đèn không sáng và sửa wifi, không bao gồm máy sấy.', enabled).service_type).toBe('unsupported')
+  })
+  it.each([false, true])('the primary boundary honors English exclusions and keeps later requests visible, flags=%s', (enabled) => {
+    const text = 'Please fix the faucet, excluding the washing machine that will not start.'
+    expect(boundary(text, 'plumbing', enabled).ok, pillarWhy(PILLAR, text)).toBe(true)
+    const mixed = boundary('Please fix the faucet, excluding the washing machine but repair the fridge.', 'plumbing', enabled)
+    expect(mixed.ok).toBe(false)
+    if (!mixed.ok) expect(mixed.reason).toBe('out_of_scope')
   })
   it.each([false, true])('delivers visible emergency guidance and metadata before the refusal, flags=%s', async (enabled) => {
     const world = activeWorld('electrical', { env: enabled ? flagsOn : {} })

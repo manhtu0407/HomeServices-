@@ -98,6 +98,13 @@ describe(`${PILLAR.id}: an ordinary event is not an emergency`, () => {
 })
 
 const LIVE_GAS_ALARMS = [
+  'The gas leak alarm started going off.',
+  'The gas leak detector is loudly beeping.',
+  'The gas leak alarm began rapidly ringing.',
+  'The gas leak detector started to beep.',
+  'The gas leak alarm has begun to sound.',
+  'The gas leak alarm started very loudly beeping.',
+  'The gas leak alarm is again beeping.',
   'My gas leak alarm is going off.',
   'The gas leak detector is sounding continuously.',
   'Our gas leak sensors are still beeping.',

@@ -6,7 +6,7 @@ import { detectRequestedApplianceWork } from '../../../../../supabase/functions/
 export const PILLAR = {
   id: 'P431-kael-requested-work-english-negation',
   invariant:
-    'English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance',
+    'English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work',
   authority: [
     'governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work)',
     'KAWA_01 six-service diagnostic DX-01 (a mention is not a request)',
@@ -22,6 +22,9 @@ export const PILLAR = {
 const requested = (text: string) => [...detectRequestedApplianceWork(text, 'electrical')].sort()
 
 const REFUSED: ReadonlyArray<readonly [string, string]> = [
+  ['We already repaired the dishwasher that was broken. Please fix the outlet.', 'completed work covers its historical fault'],
+  ['We previously fixed the fridge which was faulty. Please repair the outlet.', 'previously completed work'],
+  ['Please fix the faucet, excluding the washing machine that will not start.', 'an excluded English appliance alias'],
   ['My fridge works fine but the outlet is broken. Please fix the outlet.', 'another subject after but'],
   ['My washing machine is fine and the outlet is broken. Please fix the outlet.', 'another subject after and'],
   ['My dishwasher works fine while the faucet is leaking. Please repair the faucet.', 'another subject after while'],
@@ -39,6 +42,9 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const STILL_REQUESTED: ReadonlyArray<readonly [string, readonly string[], string]> = [
+  ['We already repaired the dishwasher that was broken, but repair the washing machine.', ['may giat'], 'new work after completed work'],
+  ['We already repaired the dishwasher that was broken and please repair the fridge.', ['tu lanh'], 'new work after and'],
+  ['Please fix the faucet, excluding the washing machine but repair the fridge.', ['tu lanh'], 'a request after an exclusion contrast'],
   ['Please repair the outlet and my washing machine.', ['may giat'], 'coordinated appliance work is still requested'],
   ['My fridge was fine but now broken.', ['tu lanh'], 'a same-subject contrast still describes an appliance fault'],
   ['My washing machine and its motor are broken.', ['may giat'], 'a component of the same appliance is faulty'],

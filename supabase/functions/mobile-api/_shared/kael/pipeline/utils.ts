@@ -1,5 +1,8 @@
 import { sanitizeForLLM } from "../../../../_shared/domain.ts";
 import { detectRequestedApplianceWork } from "../kael-guardrails/requested-work.ts";
+import { maskExplicitlyExcludedScopeForIntent } from "../kael-guardrails/scope-exclusions.ts";
+
+export { maskExplicitlyExcludedScopeForIntent };
 
 export function readBooleanEnvFlag(
   value: string | undefined,
@@ -42,13 +45,6 @@ export function looksLikePrivateUnitIdentifier(value: string, trailingContext = 
 
 function followsServiceMeasurementUnit(trailingContext: string) {
   return /^[^\S\r\n]*(?:HP|BTU|V|A|W|kW|KW|Hz)\b/u.test(trailingContext);
-}
-
-export function maskExplicitlyExcludedScopeForIntent(input: string): string {
-  return input.replace(
-    /(^|[^\p{L}\p{N}])(?:loại trừ|loai tru|không bao gồm|khong bao gom|không gồm|khong gom|excluding|excluded|not included)[^.;\n]*(?:[.;]|\n|$)/giu,
-    "$1[excluded scope].",
-  );
 }
 
 export function scrubSensitiveForLLM(input: string): string {
