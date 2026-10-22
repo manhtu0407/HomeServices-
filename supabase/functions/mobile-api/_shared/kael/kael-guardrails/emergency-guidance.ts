@@ -90,7 +90,10 @@ const EXPOSED_WIRE_TONES: ToneRules = { ho: /^h[o\u1edf]$/u };
 const WIRED_FIXTURE_IN_SEGMENT = new RegExp(`\\b(?:${WIRED_FIXTURES})\\b`, "u");
 const WIRED_FIXTURE_IN_SEGMENT_EN = /\b(?:outlets?|sockets?|wiring|wires?|breakers?|switchboard|junction box|(?:electrical|electric|breaker|fuse|distribution|circuit) (?:panel|box|board|cabinet))\b/u;
 const SPARK_NOT_ELECTRICAL = /\b(?:bep (?:ga|gas)|phao hoa|firework|gas stove|welding|welder|tho han|may han)\b/u;
-const SPARK_NEGATED_BEFORE = "(?<!\\b(?:khong|chua|chang|het|no|not|never|cannot|can t|won t|wouldn t|couldn t|unable to|fail(?:s|ed)? to)(?: [a-z]+)? )";
+const SPARK_ENDED_EN = /\b(?:stopped|ceased|quit|ended|finished)\s+spark(?:s|ing)?\b|\bspark(?:s|ing)?\s+(?:(?:has|have|had|is|are|was|were)\s+)?(?:(?:now|already)\s+)?(?:stopped|ceased|ended|gone)\b/u;
+const SPARK_ENDED_VI = /\bngung (?:(?:ban|phat|xet|toe) )?(?:ra )?tia lua\b/u;
+const SPARK_NOT_LIVE = new RegExp(`${SPARK_NOT_ELECTRICAL.source}|${SPARK_ENDED_EN.source}|${SPARK_ENDED_VI.source}`, "u");
+const SPARK_NEGATED_BEFORE ="(?<!\\b(?:khong|chua|chang|het|no|not|never|cannot|can t|won t|wouldn t|couldn t|unable to|fail(?:s|ed)? to)(?: [a-z]+)? )";
 const SPARK_AVOIDED_VI = "(?:chong|ngan(?: ngua)?|phong(?: ngua)?|han che|giam(?: thieu)?|tranh|chiu|chan|bao ve(?: khoi| chong)?)(?: (?:khoi|hien tuong|su|viec|cac|nhung|phat|sinh|gay|tao|ra|xuat hien)){0,3} tia lua(?: dien)?";
 const SPARK_FEW_VI = "it (?:phat sinh|sinh|phat|tao|gay)(?: ra)? tia lua(?: dien)?";
 const SPARK_AVOIDED_EN = "(?:(?:anti|non)[- ]?spark(?:s|ing)?|spark[- ]?(?:proof|free|resistant|safe|rated|less|arrest\\w*|protect\\w*|prevent\\w*|suppress\\w*|guard\\w*|shield\\w*)|(?:prevent|avoid|stop|reduc|suppress|limit|eliminat|minimi[sz]|resist)(?:e|es|ed|ing|s)?(?: (?:the|any|all|against|from))? spark(?:s|ing)?|(?:protect(?:s|ed|ing)?|guard(?:s|ed|ing)?|shield(?:s|ed|ing)?|rated|safe) (?:from|against) (?:the |any |all )?spark(?:s|ing)?)";
@@ -168,8 +171,8 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
     cue(/\bday dien (?:bi |dang )?(?:ho|troc)\b/u, { toneRules: EXPOSED_WIRE_TONES }),
     cue(new RegExp(`\\b(?:${WIRED_FIXTURES})(?: [a-z]+){0,2} (?:bi |dang )?(?:ngam|ngap) nuoc\\b`, "u"), { toneRules: { ...WATER_TONES, ...SOAKED_TONES } }),
     cue(new RegExp(`\\btia lua(?: [a-z]+){0,2} (?:tu|o|ngay|tai|phat ra tu|bat ra tu) (?:${WIRED_FIXTURES})\\b`, "u")),
-    cue(/\btia lua\b/u, { requires: [WIRED_FIXTURE_IN_SEGMENT], unless: SPARK_NOT_ELECTRICAL }),
-    cue(/\bspark(?:s|ed|ing)?\b/u, { requires: [WIRED_FIXTURE_IN_SEGMENT_EN], unless: SPARK_NOT_ELECTRICAL }),
+    cue(/\btia lua\b/u, { requires: [WIRED_FIXTURE_IN_SEGMENT], unless: SPARK_NOT_LIVE }),
+    cue(/\bspark(?:s|ed|ing)?\b/u, { requires: [WIRED_FIXTURE_IN_SEGMENT_EN], unless: SPARK_NOT_LIVE }),
     cue(new RegExp(`\\b(?:mua|nuoc mua) (?:tat|hat|bat) (?:vao|toi) (?:[a-z]+ ){0,2}(?:${WIRED_FIXTURES})\\b`, "u"), { toneRules: RAIN_TONES }),
     cue(new RegExp(`\\bnuoc(?: [a-z]+){0,8} (?:cham|lan|bat) (?:toi|vao|den|sat) (?:[a-z]+ ){0,1}(?:${WIRED_FIXTURES})\\b`, "u"), { toneRules: FILLER_TONES }),
     cue(new RegExp(`\\b(?:ngap nuoc|nuoc ngap|tran nuoc)(?: [a-z]+,?){0,8} (?:${WIRED_FIXTURES})\\b`, "u"), { toneRules: WATER_TONES }),

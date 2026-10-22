@@ -4,7 +4,7 @@
   "harness_version": "kawa-diag-harness.v1.1",
   "snapshot": "post-journey-flags-on",
   "matrix_sha256": "dd8392cbcc2fec7ad4f0b1611a52abea0cb7ed86fc681972fec9707c74a51dd7",
-  "executed_at": "2026-10-22T05:18:58.047Z",
+  "executed_at": "2026-10-22T05:43:22.827Z",
   "runs": [
     {
       "scenario": "ELEC-S5",

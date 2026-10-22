@@ -3,7 +3,7 @@
   "harness_version": "kawa-diag-harness.v1.1",
   "snapshot": "post-supp-c6b",
   "matrix_sha256": "a657eb4f61be4fe8ce7a16e0312de63acc916d868229551fab76c741cbf5d20c",
-  "executed_at": "2026-10-22T05:19:05.030Z",
+  "executed_at": "2026-10-22T05:43:30.169Z",
   "runs": [
     {
       "scenario": "SUPP-C6b",
@@ -278,9 +278,9 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"7d589f8c-0e36-4527-8be0-b92de604ab87\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_write_failed\",\"service_cod",
-            "info:harness_event {\"p_event_id\":\"826841bb-b8d7-4ac0-8654-f4b46bbfd9d0\",\"p_run_id\":\"13a65753-6fbc-4ff4-afb2-d80919d82e21\",\"p_trace_id\":\"7d589f8c-0e36-4527-8be0-b92de604ab87\",\"p_parent_event_id\":null,\"p_tur",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"0a9c891b-402c-4b47-9172-fab899746080\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"e82c7254-0479-470a-9a7f-2f1404e4b479\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_write_failed\",\"service_cod",
+            "info:harness_event {\"p_event_id\":\"6257b470-3d4c-4a88-99ae-26d53705270f\",\"p_run_id\":\"c7bada86-da58-4874-a1e3-45ff07c43503\",\"p_trace_id\":\"e82c7254-0479-470a-9a7f-2f1404e4b479\",\"p_parent_event_id\":null,\"p_tur",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"26fc9087-28a4-49e4-8ffd-57c35af1365f\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
           ]
         }
       ]
@@ -558,9 +558,9 @@
             ]
           },
           "console_sample": [
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"fded5dae-2cf5-4691-b5ed-a2f86a18edff\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_write_failed\",\"service_cod",
-            "info:harness_event {\"p_event_id\":\"2a6af60f-4d76-4b9f-8dbf-eab890bf79c9\",\"p_run_id\":\"6a2f5b9f-c39f-40e3-9a4a-835f334b7646\",\"p_trace_id\":\"fded5dae-2cf5-4691-b5ed-a2f86a18edff\",\"p_parent_event_id\":null,\"p_tur",
-            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"1c58e9f6-8843-4c64-b874-d33dbf03bba4\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"e0a3cd8f-73b3-41f0-9370-f2e6728fc36c\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_write_failed\",\"service_cod",
+            "info:harness_event {\"p_event_id\":\"0f3e7da7-821f-47a8-adde-e1c61c5f2c8f\",\"p_run_id\":\"5176ba5d-6f2c-4fff-8ec2-742de29b09ef\",\"p_trace_id\":\"e0a3cd8f-73b3-41f0-9370-f2e6728fc36c\",\"p_parent_event_id\":null,\"p_tur",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"7efee1ad-80e7-4c0e-b290-a8f6834ad9ba\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
           ]
         }
       ]

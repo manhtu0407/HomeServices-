@@ -16,9 +16,9 @@
  "pillars": {
   "P419": {
    "previous": {
-    "passed": 147,
-    "failed": 28,
-    "total": 175,
+    "passed": 152,
+    "failed": 39,
+    "total": 191,
     "groups": {
      "P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard": {
       "passed": 14,
@@ -43,6 +43,10 @@
      "P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description": {
       "passed": 16,
       "failed": 14
+     },
+     "P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard": {
+      "passed": 5,
+      "failed": 11
      },
      "P419-kael-emergency-electrical-spark: a spark that is shot out is a report although \"phóng\" and \"phòng\" share a plain spelling": {
       "passed": 6,
@@ -71,9 +75,9 @@
     }
    },
    "current": {
-    "passed": 175,
+    "passed": 191,
     "failed": 0,
-    "total": 175,
+    "total": 191,
     "groups": {
      "P419-kael-emergency-electrical-spark: a spark beside wired equipment is an electrical hazard": {
       "passed": 14,
@@ -97,6 +101,10 @@
      },
      "P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description": {
       "passed": 30,
+      "failed": 0
+     },
+     "P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard": {
+      "passed": 16,
       "failed": 0
      },
      "P419-kael-emergency-electrical-spark: a spark that is shot out is a report although \"phóng\" and \"phòng\" share a plain spelling": {

@@ -4,8 +4,8 @@
 
  Test Files  1 passed (1)
       Tests  2 passed (2)
-   Start at  12:18:59
-   Duration  5.78s (transform 4.51s, setup 0ms, import 5.44s, tests 124ms, environment 0ms)
+   Start at  12:43:24
+   Duration  6.13s (transform 4.77s, setup 0ms, import 5.77s, tests 126ms, environment 0ms)
 
 
 ----- stderr -----

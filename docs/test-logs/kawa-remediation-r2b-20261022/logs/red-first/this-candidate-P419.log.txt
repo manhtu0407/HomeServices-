@@ -1,15 +1,15 @@
 
  RUN  v4.1.6 C:/ns-fix/r1/apps/api
 
- ✓ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts (175 tests) 2587ms
-     ✓ a spark phrase repeated thousands of times  346ms
-     ✓ hyphen chains  343ms
-     ✓ an avoidance phrase and its source repeated thousands of times  586ms
+ ✓ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts (191 tests) 2777ms
+     ✓ a spark phrase repeated thousands of times  356ms
+     ✓ hyphen chains  327ms
+     ✓ an avoidance phrase and its source repeated thousands of times  640ms
 
  Test Files  1 passed (1)
-      Tests  175 passed (175)
-   Start at  12:16:31
-   Duration  2.95s (transform 91ms, setup 0ms, import 124ms, tests 2.59s, environment 0ms)
+      Tests  191 passed (191)
+   Start at  12:58:13
+   Duration  3.11s (transform 85ms, setup 0ms, import 116ms, tests 2.78s, environment 0ms)
 
 JSON report written to C:/ns-fix/r1/docs/test-logs/kawa-remediation-r2b-20261022/results/red-first/this-candidate-P419.json
 

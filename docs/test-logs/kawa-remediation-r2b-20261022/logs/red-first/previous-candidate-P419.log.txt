@@ -1,12 +1,12 @@
 
  RUN  v4.1.6 C:/ns-fix/base/apps/api
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts (175 tests | 28 failed) 2786ms
-     ✓ frozen ELEC-S4 transcript -> electrical_water 41ms
-     ✓ frozen transcript without diacritics -> electrical_water 8ms
-     ✓ frozen transcript in capitals -> electrical_water 1ms
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts (191 tests | 39 failed) 2485ms
+     ✓ frozen ELEC-S4 transcript -> electrical_water 47ms
+     ✓ frozen transcript without diacritics -> electrical_water 9ms
+     ✓ frozen transcript in capitals -> electrical_water 0ms
      ✓ spark without smell or heat -> electrical_water 0ms
-     ✓ spark named before the equipment -> electrical_water 1ms
+     ✓ spark named before the equipment -> electrical_water 0ms
      ✓ socket that is hot, smells burnt and flashes -> electrical_water 0ms
      ✓ distribution board flash -> electrical_water 0ms
      ✓ single-change control: spark from the equipment -> electrical_water 0ms
@@ -15,7 +15,7 @@
      ✓ English sparks at a breaker box -> electrical_water 0ms
      ✓ names 112, 114 and 115 for the frozen transcript, in the language it was written in 1ms
      ✓ keeps the route a single-change counterfactual already had: flames named instead of sparks is still a fire 4ms
-     ✓ does not depend on the Case service: the same words route from any of the six services 2ms
+     ✓ does not depend on the Case service: the same words route from any of the six services 1ms
      ✓ negated spark and smell -> no route 2ms
      ✓ negated spark without diacritics -> no route 0ms
      ✓ spark reported yesterday -> no route 1ms
@@ -34,16 +34,16 @@
      ✓ the hot panel alone -> no route 0ms
      ✓ the burning smell alone -> no route 0ms
      ✓ the spark alone, no equipment named -> no route 0ms
-     ✓ Vietnamese: "chống tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
+     ✓ Vietnamese: "chống tia lửa" in installation, replacement, quote and advice requests stays quiet 10ms
      ✓ Vietnamese: "ngăn tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
      ✓ Vietnamese: "ngăn ngừa tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
-     ✓ Vietnamese: "phòng ngừa tia lửa" in installation, replacement, quote and advice requests stays quiet 10ms
+     ✓ Vietnamese: "phòng ngừa tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
      ✓ Vietnamese: "hạn chế tia lửa" in installation, replacement, quote and advice requests stays quiet 10ms
-     ✓ Vietnamese: "giảm tia lửa" in installation, replacement, quote and advice requests stays quiet 8ms
-     ✓ Vietnamese: "tránh tia lửa" in installation, replacement, quote and advice requests stays quiet 10ms
+     ✓ Vietnamese: "giảm tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
+     ✓ Vietnamese: "tránh tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
      ✓ Vietnamese: "chịu tia lửa" in installation, replacement, quote and advice requests stays quiet 9ms
      ✓ Vietnamese: "chống phát sinh tia lửa" in installation, replacement, quote and advice requests stays quiet 8ms
-     ✓ Vietnamese: "hạn chế phát sinh tia lửa" in installation, replacement, quote and advice requests stays quiet 8ms
+     ✓ Vietnamese: "hạn chế phát sinh tia lửa" in installation, replacement, quote and advice requests stays quiet 10ms
      ✓ English: "anti-spark" fixtures in installation, replacement and quote requests stay quiet 2ms
      ✓ English: "spark-proof" fixtures in installation, replacement and quote requests stay quiet 2ms
      ✓ English: "spark-resistant" fixtures in installation, replacement and quote requests stay quiet 2ms
@@ -55,11 +55,11 @@
      ✓ English: "spark protection" as the thing being fitted stays quiet 1ms
      ✓ English: "spark suppression" as the thing being fitted stays quiet 1ms
      ✓ English: "spark prevention" as the thing being fitted stays quiet 1ms
-     ✓ English: a request for equipment that will prevent sparks stays quiet 1ms
+     ✓ English: a request for equipment that will prevent sparks stays quiet 2ms
      ✓ English: a request for equipment that will avoid sparks stays quiet 1ms
      ✓ English: a request for equipment that will stop sparks stays quiet 1ms
      ✓ English: a request for equipment that will reduce sparks stays quiet 1ms
-     ✓ English: a request for equipment that will suppress sparks stays quiet 1ms
+     ✓ English: a request for equipment that will suppress sparks stays quiet 2ms
      ✓ English: a request for equipment that will limit sparks stays quiet 1ms
      ✓ the Codex review example in Vietnamese -> no route 0ms
      ✓ the Codex review example in English -> no route 0ms
@@ -69,7 +69,7 @@
      ✓ a plain English replacement request -> no route 0ms
      ✓ a routine wiring quote -> no route 0ms
      ✓ Vietnamese: after "chống tia lửa" a real spark in the same message still routes 3ms
-     ✓ Vietnamese: after "ngăn tia lửa" a real spark in the same message still routes 3ms
+     ✓ Vietnamese: after "ngăn tia lửa" a real spark in the same message still routes 2ms
      ✓ Vietnamese: after "ngăn ngừa tia lửa" a real spark in the same message still routes 3ms
      ✓ Vietnamese: after "phòng ngừa tia lửa" a real spark in the same message still routes 3ms
      ✓ Vietnamese: after "hạn chế tia lửa" a real spark in the same message still routes 3ms
@@ -93,8 +93,8 @@
      ✓ English: cannot stop the sparks -> electrical_water 0ms
      ✓ English: protection that fails to stop sparks -> electrical_water 0ms
      ✓ a few sparks are still sparks -> electrical_water 0ms
-     × Vietnamese: "ngăn tia lửa" while trying, asking for help or saying where it comes from still routes 19ms
-     × Vietnamese: "chặn tia lửa" while trying, asking for help or saying where it comes from still routes 11ms
+     × Vietnamese: "ngăn tia lửa" while trying, asking for help or saying where it comes from still routes 18ms
+     × Vietnamese: "chặn tia lửa" while trying, asking for help or saying where it comes from still routes 12ms
      × Vietnamese: "ngăn ngừa tia lửa" while trying, asking for help or saying where it comes from still routes 12ms
      × Vietnamese: "hạn chế tia lửa" while trying, asking for help or saying where it comes from still routes 11ms
      × Vietnamese: "chống tia lửa" while trying, asking for help or saying where it comes from still routes 12ms
@@ -102,46 +102,62 @@
      × English: "stop sparks" while trying, asking for help or saying where they come from still routes 3ms
      × English: "suppress sparks" while trying, asking for help or saying where they come from still routes 3ms
      × English: "limit sparks" while trying, asking for help or saying where they come from still routes 4ms
-     × English: "reduce sparks" while trying, asking for help or saying where they come from still routes 4ms
+     × English: "reduce sparks" while trying, asking for help or saying where they come from still routes 3ms
      × the Codex review example -> electrical_water 1ms
-     × trying, with diacritics, and no place named -> electrical_water 1ms
-     × trying, in capitals -> electrical_water 1ms
+     × trying, with diacritics, and no place named -> electrical_water 0ms
+     × trying, in capitals -> electrical_water 0ms
      × English: trying to stop sparks -> electrical_water 0ms
      ✓ Vietnamese: "chống tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 11ms
      ✓ Vietnamese: "ngăn tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 12ms
-     ✓ Vietnamese: "ngăn ngừa tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 11ms
-     ✓ Vietnamese: "phòng ngừa tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 11ms
+     ✓ Vietnamese: "ngăn ngừa tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 12ms
+     ✓ Vietnamese: "phòng ngừa tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 12ms
      ✓ Vietnamese: "hạn chế tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 11ms
      ✓ Vietnamese: "giảm tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 10ms
-     ✓ Vietnamese: "tránh tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 11ms
+     ✓ Vietnamese: "tránh tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 10ms
      ✓ Vietnamese: "chịu tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 10ms
-     ✓ Vietnamese: "chống phát sinh tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 11ms
-     ✓ Vietnamese: "hạn chế phát sinh tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 12ms
+     ✓ Vietnamese: "chống phát sinh tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 10ms
+     ✓ Vietnamese: "hạn chế phát sinh tia lửa" asked for, offered, described as a capability or given as a purpose stays quiet 11ms
      ✓ English: a product that can prevent sparks, asked for in a request, stays quiet 2ms
      ✓ English: a product that can avoid sparks, asked for in a request, stays quiet 2ms
      ✓ English: a product that can stop sparks, asked for in a request, stays quiet 2ms
      ✓ English: a product that can reduce sparks, asked for in a request, stays quiet 2ms
      ✓ English: a product that can suppress sparks, asked for in a request, stays quiet 2ms
      ✓ English: a product that can limit sparks, asked for in a request, stays quiet 2ms
-     × ổ cắm: "phóng tia lửa" in every written form still routes 2ms
+     × English: "outlet" with sparking that stopped, ceased, quit or ended stays quiet 2ms
+     × English: "socket" with sparking that stopped, ceased, quit or ended stays quiet 1ms
+     × English: "breaker" with sparking that stopped, ceased, quit or ended stays quiet 1ms
+     × English: "electrical panel" with sparking that stopped, ceased, quit or ended stays quiet 1ms
+     × English: "junction box" with sparking that stopped, ceased, quit or ended stays quiet 1ms
+     × Vietnamese: "ổ cắm" that stopped shooting sparks stays quiet 1ms
+     × Vietnamese: "công tắc" that stopped shooting sparks stays quiet 1ms
+     × Vietnamese: "aptomat" that stopped shooting sparks stays quiet 1ms
+     × Vietnamese: "cầu dao" that stopped shooting sparks stays quiet 1ms
+     × Vietnamese: "bảng điện" that stopped shooting sparks stays quiet 1ms
+     × Vietnamese: "tủ điện" that stopped shooting sparks stays quiet 1ms
+     ✓ sparking that is happening now still routes: The outlet is sparking right now. 0ms
+     ✓ a stopped spark beside a live one in the next clause still routes: The outlet stopped sparking but now the wire is sparking. 0ms
+     ✓ a spark that began after the work was finished still routes: The electrician finished and the breaker box is sparking again. 0ms
+     ✓ a Vietnamese spark that is happening now still routes: Ổ cắm vừa bắn tia lửa, nóng rát tay. 0ms
+     ✓ keeps the negated "has not stopped" reading the shared gate already had (pinned: an owner decision, not a fix) 0ms
+     × ổ cắm: "phóng tia lửa" in every written form still routes 3ms
      × công tắc: "phóng tia lửa" in every written form still routes 2ms
-     × aptomat: "phóng tia lửa" in every written form still routes 2ms
+     × aptomat: "phóng tia lửa" in every written form still routes 1ms
      × cầu dao: "phóng tia lửa" in every written form still routes 1ms
-     × bảng điện: "phóng tia lửa" in every written form still routes 2ms
+     × bảng điện: "phóng tia lửa" in every written form still routes 1ms
      × tủ điện: "phóng tia lửa" in every written form still routes 1ms
      ✓ ổ cắm: "phòng tia lửa" typed with its tone, as a feature of a new fixture, stays quiet 1ms
      ✓ công tắc: "phòng tia lửa" typed with its tone, as a feature of a new fixture, stays quiet 0ms
      ✓ aptomat: "phòng tia lửa" typed with its tone, as a feature of a new fixture, stays quiet 0ms
-     ✓ cầu dao: "phòng tia lửa" typed with its tone, as a feature of a new fixture, stays quiet 1ms
+     ✓ cầu dao: "phòng tia lửa" typed with its tone, as a feature of a new fixture, stays quiet 0ms
      ✓ bảng điện: "phòng tia lửa" typed with its tone, as a feature of a new fixture, stays quiet 0ms
      ✓ tủ điện: "phòng tia lửa" typed with its tone, as a feature of a new fixture, stays quiet 0ms
-     × report: "vi" 1ms
+     × report: "vi" 0ms
      × report: "vi" 0ms
      ✓ report: "vi" 0ms
      × report: "vi" 0ms
      × report: "en" 0ms
      × report: "en" 0ms
-     × report: "vi" 1ms
+     × report: "vi" 0ms
      ✓ report: "vi" 0ms
      ✓ quiet: "vi" 0ms
      ✓ quiet: "vi" 0ms
@@ -156,32 +172,32 @@
      ✓ "to prevent" is a hypothetical frame in the shared gate 0ms
      ✓ a negated verb in front of the spark reads as a negated spark -> no route 1ms
      ✓ a spark clause split from its equipment by a contrast word -> no route 0ms
-     ✓ avoidance words before a Vietnamese spark 90ms
-     ✓ avoidance words before an English spark 170ms
-     ✓ negations before an avoidance phrase 167ms
-     ✓ connector words between an avoidance word and a spark 68ms
-     ✓ a spark phrase repeated thousands of times  306ms
-     ✓ hyphen chains 280ms
-     ✓ attempt words before a Vietnamese avoidance phrase 116ms
-     ✓ progressive words after an avoidance phrase 81ms
-     ✓ purpose words before an avoidance phrase 151ms
-     ✓ an avoidance phrase and its source repeated thousands of times  770ms
-     ✓ English attempt words before a spark 122ms
-     ✓ Mình muốn đổi sang loại ổ điện có màng chắn tia lửa cho an toàn. -> no route 0ms
-     ✓ Thợ có bán công tắc không phát ra tia lửa khi bật không? -> no route 0ms
+     ✓ avoidance words before a Vietnamese spark 99ms
+     ✓ avoidance words before an English spark 154ms
+     ✓ negations before an avoidance phrase 121ms
+     ✓ connector words between an avoidance word and a spark 63ms
+     ✓ a spark phrase repeated thousands of times 278ms
+     ✓ hyphen chains 273ms
+     ✓ attempt words before a Vietnamese avoidance phrase 94ms
+     ✓ progressive words after an avoidance phrase 59ms
+     ✓ purpose words before an avoidance phrase 99ms
+     ✓ an avoidance phrase and its source repeated thousands of times  595ms
+     ✓ English attempt words before a spark 160ms
+     ✓ Mình muốn đổi sang loại ổ điện có màng chắn tia lửa cho an toàn. -> no route 1ms
+     ✓ Thợ có bán công tắc không phát ra tia lửa khi bật không? -> no route 1ms
      ✓ Ổ cắm loại an toàn, ít sinh tia lửa, giá bao nhiêu vậy? -> no route 0ms
      ✓ Cần lắp thêm cầu dao tự ngắt để phòng tia lửa điện ở bếp. -> no route 0ms
-     ✓ Nhờ thay ổ cắm cũ bằng loại có nắp, không bắn tia lửa khi cắm sạc. -> no route 0ms
-     ✓ Do you sell sockets that do not spark when plugged in? -> no route 0ms
-     ✓ We offer spark-safe wiring upgrades for older apartments, can you quote one? -> no route 0ms
+     ✓ Nhờ thay ổ cắm cũ bằng loại có nắp, không bắn tia lửa khi cắm sạc. -> no route 1ms
+     ✓ Do you sell sockets that do not spark when plugged in? -> no route 1ms
+     ✓ We offer spark-safe wiring upgrades for older apartments, can you quote one? -> no route 1ms
      ✓ Quote for fitting spark suppression on the distribution board. -> no route 0ms
      ✓ Looking for an outlet cover that stops sparks reaching the curtains. -> no route 0ms
      ✓ The new outlets are rated against sparking, please fit them on the balcony. -> no route 0ms
 
  Test Files  1 failed (1)
-      Tests  28 failed | 147 passed (175)
-   Start at  12:16:09
-   Duration  3.18s (transform 95ms, setup 0ms, import 131ms, tests 2.79s, environment 0ms)
+      Tests  39 failed | 152 passed (191)
+   Start at  12:57:43
+   Duration  3.10s (transform 127ms, setup 0ms, import 158ms, tests 2.49s, environment 0ms)
 
 JSON report written to C:/ns-fix/r1/docs/test-logs/kawa-remediation-r2b-20261022/results/red-first/previous-candidate-P419.json
 undefined
@@ -190,7 +206,7 @@ C:\ns-fix\base\apps\api:
 
 ----- stderr -----
 
-⎯⎯⎯⎯⎯⎯ Failed Tests 28 ⎯⎯⎯⎯⎯⎯⎯
+⎯⎯⎯⎯⎯⎯ Failed Tests 39 ⎯⎯⎯⎯⎯⎯⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > Vietnamese: "ngăn tia lửa" while trying, asking for help or saying where it comes from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -304,7 +320,7 @@ detail:    90 written forms of "ngăn tia lửa": expected [ …(90) ] to deeply
     244|   })
     245|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > Vietnamese: "chặn tia lửa" while trying, asking for help or saying where it comes from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -418,7 +434,7 @@ detail:    90 written forms of "chặn tia lửa": expected [ …(90) ] to deepl
     244|   })
     245|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > Vietnamese: "ngăn ngừa tia lửa" while trying, asking for help or saying where it comes from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -532,7 +548,7 @@ detail:    90 written forms of "ngăn ngừa tia lửa": expected [ …(90) ] to
     244|   })
     245|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > Vietnamese: "hạn chế tia lửa" while trying, asking for help or saying where it comes from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -646,7 +662,7 @@ detail:    90 written forms of "hạn chế tia lửa": expected [ …(90) ] to 
     244|   })
     245|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > Vietnamese: "chống tia lửa" while trying, asking for help or saying where it comes from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -760,7 +776,7 @@ detail:    90 written forms of "chống tia lửa": expected [ …(90) ] to deep
     244|   })
     245|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > Vietnamese: "giảm tia lửa" while trying, asking for help or saying where it comes from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -874,7 +890,7 @@ detail:    90 written forms of "giảm tia lửa": expected [ …(90) ] to deepl
     244|   })
     245|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > English: "stop sparks" while trying, asking for help or saying where they come from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -918,7 +934,7 @@ detail:    20 sentences with "stop": expected [ …(20) ] to deeply equal []
     249|   })
     250|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > English: "suppress sparks" while trying, asking for help or saying where they come from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -962,7 +978,7 @@ detail:    20 sentences with "suppress": expected [ …(20) ] to deeply equal []
     249|   })
     250|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > English: "limit sparks" while trying, asking for help or saying where they come from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1006,7 +1022,7 @@ detail:    20 sentences with "limit": expected [ …(20) ] to deeply equal []
     249|   })
     250|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > English: "reduce sparks" while trying, asking for help or saying where they come from still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1050,7 +1066,7 @@ detail:    20 sentences with "reduce": expected [ …(20) ] to deeply equal []
     249|   })
     250|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > the Codex review example -> electrical_water
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1073,7 +1089,7 @@ null
     259|   })
     260|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > trying, with diacritics, and no place named -> electrical_water
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1096,7 +1112,7 @@ null
     259|   })
     260|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > trying, in capitals -> electrical_water
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1119,7 +1135,7 @@ null
     259|   })
     260|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: an attempt to stop a spark that is happening is a report, not a product description > English: trying to stop sparks -> electrical_water
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1142,7 +1158,309 @@ null
     259|   })
     260|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > English: "outlet" with sparking that stopped, ceased, quit or ended stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    7 sentences with outlet: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"The outlet has stopped sparking.\" -> electrical_water",
++   "\"The outlet stopped sparking after the electrician fixed it.\" -> electrical_water",
++   "\"The outlet ceased sparking on its own.\" -> electrical_water",
++   "\"The outlet quit sparking once I switched it off.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:287:98
+    285|   it.each(EN_FIXTURES)('English: "%s" with sparking that stopped, ceas…
+    286|     const rows = ENDED_SPARK_CARRIERS.map((carrier) => [carrier(fixtur…
+    287|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                  ^
+    288|   })
+    289|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > English: "socket" with sparking that stopped, ceased, quit or ended stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    7 sentences with socket: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"The socket has stopped sparking.\" -> electrical_water",
++   "\"The socket stopped sparking after the electrician fixed it.\" -> electrical_water",
++   "\"The socket ceased sparking on its own.\" -> electrical_water",
++   "\"The socket quit sparking once I switched it off.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:287:98
+    285|   it.each(EN_FIXTURES)('English: "%s" with sparking that stopped, ceas…
+    286|     const rows = ENDED_SPARK_CARRIERS.map((carrier) => [carrier(fixtur…
+    287|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                  ^
+    288|   })
+    289|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > English: "breaker" with sparking that stopped, ceased, quit or ended stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    7 sentences with breaker: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"The breaker has stopped sparking.\" -> electrical_water",
++   "\"The breaker stopped sparking after the electrician fixed it.\" -> electrical_water",
++   "\"The breaker ceased sparking on its own.\" -> electrical_water",
++   "\"The breaker quit sparking once I switched it off.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:287:98
+    285|   it.each(EN_FIXTURES)('English: "%s" with sparking that stopped, ceas…
+    286|     const rows = ENDED_SPARK_CARRIERS.map((carrier) => [carrier(fixtur…
+    287|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                  ^
+    288|   })
+    289|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > English: "electrical panel" with sparking that stopped, ceased, quit or ended stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    7 sentences with electrical panel: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"The electrical panel has stopped sparking.\" -> electrical_water",
++   "\"The electrical panel stopped sparking after the electrician fixed it.\" -> electrical_water",
++   "\"The electrical panel ceased sparking on its own.\" -> electrical_water",
++   "\"The electrical panel quit sparking once I switched it off.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:287:98
+    285|   it.each(EN_FIXTURES)('English: "%s" with sparking that stopped, ceas…
+    286|     const rows = ENDED_SPARK_CARRIERS.map((carrier) => [carrier(fixtur…
+    287|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                  ^
+    288|   })
+    289|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > English: "junction box" with sparking that stopped, ceased, quit or ended stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    7 sentences with junction box: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"The junction box has stopped sparking.\" -> electrical_water",
++   "\"The junction box stopped sparking after the electrician fixed it.\" -> electrical_water",
++   "\"The junction box ceased sparking on its own.\" -> electrical_water",
++   "\"The junction box quit sparking once I switched it off.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:287:98
+    285|   it.each(EN_FIXTURES)('English: "%s" with sparking that stopped, ceas…
+    286|     const rows = ENDED_SPARK_CARRIERS.map((carrier) => [carrier(fixtur…
+    287|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                  ^
+    288|   })
+    289|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > Vietnamese: "ổ cắm" that stopped shooting sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    3 written forms with ổ cắm: expected [ …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Ổ cắm đã ngừng bắn tia lửa.\" -> electrical_water",
++   "\"O cam da ngung ban tia lua.\" -> electrical_water",
++   "\"Ổ CẮM ĐÃ NGỪNG BẮN TIA LỬA.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:292:102
+    290|   it.each(VI_FIXTURES)('Vietnamese: "%s" that stopped shooting sparks …
+    291|     const rows = WRITTEN_FORMS.map(([, write]) => [write(`${fixture.ch…
+    292|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                      ^
+    293|   })
+    294|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > Vietnamese: "công tắc" that stopped shooting sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    3 written forms with công tắc: expected [ …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Công tắc đã ngừng bắn tia lửa.\" -> electrical_water",
++   "\"Cong tac da ngung ban tia lua.\" -> electrical_water",
++   "\"CÔNG TẮC ĐÃ NGỪNG BẮN TIA LỬA.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:292:102
+    290|   it.each(VI_FIXTURES)('Vietnamese: "%s" that stopped shooting sparks …
+    291|     const rows = WRITTEN_FORMS.map(([, write]) => [write(`${fixture.ch…
+    292|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                      ^
+    293|   })
+    294|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > Vietnamese: "aptomat" that stopped shooting sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    3 written forms with aptomat: expected [ …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Aptomat đã ngừng bắn tia lửa.\" -> electrical_water",
++   "\"Aptomat da ngung ban tia lua.\" -> electrical_water",
++   "\"APTOMAT ĐÃ NGỪNG BẮN TIA LỬA.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:292:102
+    290|   it.each(VI_FIXTURES)('Vietnamese: "%s" that stopped shooting sparks …
+    291|     const rows = WRITTEN_FORMS.map(([, write]) => [write(`${fixture.ch…
+    292|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                      ^
+    293|   })
+    294|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > Vietnamese: "cầu dao" that stopped shooting sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    3 written forms with cầu dao: expected [ …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Cầu dao đã ngừng bắn tia lửa.\" -> electrical_water",
++   "\"Cau dao da ngung ban tia lua.\" -> electrical_water",
++   "\"CẦU DAO ĐÃ NGỪNG BẮN TIA LỬA.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:292:102
+    290|   it.each(VI_FIXTURES)('Vietnamese: "%s" that stopped shooting sparks …
+    291|     const rows = WRITTEN_FORMS.map(([, write]) => [write(`${fixture.ch…
+    292|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                      ^
+    293|   })
+    294|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > Vietnamese: "bảng điện" that stopped shooting sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    3 written forms with bảng điện: expected [ …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Bảng điện đã ngừng bắn tia lửa.\" -> electrical_water",
++   "\"Bang dien da ngung ban tia lua.\" -> electrical_water",
++   "\"BẢNG ĐIỆN ĐÃ NGỪNG BẮN TIA LỬA.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:292:102
+    290|   it.each(VI_FIXTURES)('Vietnamese: "%s" that stopped shooting sparks …
+    291|     const rows = WRITTEN_FORMS.map(([, write]) => [write(`${fixture.ch…
+    292|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                      ^
+    293|   })
+    294|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/39]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > Vietnamese: "tủ điện" that stopped shooting sparks stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    3 written forms with tủ điện: expected [ …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"Tủ điện đã ngừng bắn tia lửa.\" -> electrical_water",
++   "\"Tu dien da ngung ban tia lua.\" -> electrical_water",
++   "\"TỦ ĐIỆN ĐÃ NGỪNG BẮN TIA LỬA.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:292:102
+    290|   it.each(VI_FIXTURES)('Vietnamese: "%s" that stopped shooting sparks …
+    291|     const rows = WRITTEN_FORMS.map(([, write]) => [write(`${fixture.ch…
+    292|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} wr…
+       |                                                                                                      ^
+    293|   })
+    294|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that is shot out is a report although "phóng" and "phòng" share a plain spelling > ổ cắm: "phóng tia lửa" in every written form still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1167,15 +1485,15 @@ detail:    9 written forms with ổ cắm: expected [ …(9) ] to deeply equal [
 +   "\"THẤY Ổ CẮM PHÓNG TIA LỬA ĐIỆN RA NGOÀI.\" -> null",
 + ]
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:283:116
-    281|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
-    282|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
-    283|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:320:116
+    318|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
+    319|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
+    320|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
        |                                                                                                                    ^
-    284|   })
-    285|
+    321|   })
+    322|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that is shot out is a report although "phóng" and "phòng" share a plain spelling > công tắc: "phóng tia lửa" in every written form still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1200,15 +1518,15 @@ detail:    9 written forms with công tắc: expected [ …(9) ] to deeply equal
 +   "\"THẤY CÔNG TẮC PHÓNG TIA LỬA ĐIỆN RA NGOÀI.\" -> null",
 + ]
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:283:116
-    281|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
-    282|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
-    283|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:320:116
+    318|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
+    319|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
+    320|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
        |                                                                                                                    ^
-    284|   })
-    285|
+    321|   })
+    322|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that is shot out is a report although "phóng" and "phòng" share a plain spelling > aptomat: "phóng tia lửa" in every written form still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1233,15 +1551,15 @@ detail:    9 written forms with aptomat: expected [ …(9) ] to deeply equal []
 +   "\"THẤY APTOMAT PHÓNG TIA LỬA ĐIỆN RA NGOÀI.\" -> null",
 + ]
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:283:116
-    281|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
-    282|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
-    283|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:320:116
+    318|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
+    319|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
+    320|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
        |                                                                                                                    ^
-    284|   })
-    285|
+    321|   })
+    322|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that is shot out is a report although "phóng" and "phòng" share a plain spelling > cầu dao: "phóng tia lửa" in every written form still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1266,15 +1584,15 @@ detail:    9 written forms with cầu dao: expected [ …(9) ] to deeply equal [
 +   "\"THẤY CẦU DAO PHÓNG TIA LỬA ĐIỆN RA NGOÀI.\" -> null",
 + ]
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:283:116
-    281|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
-    282|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
-    283|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:320:116
+    318|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
+    319|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
+    320|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
        |                                                                                                                    ^
-    284|   })
-    285|
+    321|   })
+    322|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that is shot out is a report although "phóng" and "phòng" share a plain spelling > bảng điện: "phóng tia lửa" in every written form still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1299,15 +1617,15 @@ detail:    9 written forms with bảng điện: expected [ …(9) ] to deeply eq
 +   "\"THẤY BẢNG ĐIỆN PHÓNG TIA LỬA ĐIỆN RA NGOÀI.\" -> null",
 + ]
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:283:116
-    281|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
-    282|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
-    283|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:320:116
+    318|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
+    319|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
+    320|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
        |                                                                                                                    ^
-    284|   })
-    285|
+    321|   })
+    322|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that is shot out is a report although "phóng" and "phòng" share a plain spelling > tủ điện: "phóng tia lửa" in every written form still routes
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1332,15 +1650,15 @@ detail:    9 written forms with tủ điện: expected [ …(9) ] to deeply equa
 +   "\"THẤY TỦ ĐIỆN PHÓNG TIA LỬA ĐIỆN RA NGOÀI.\" -> null",
 + ]
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:283:116
-    281|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
-    282|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
-    283|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:320:116
+    318|   it.each(VI_FIXTURES)('%s: "phóng tia lửa" in every written form stil…
+    319|     const rows = SHOT_SPARK_CARRIERS.flatMap((carrier) => WRITTEN_FORM…
+    320|     expect(misrouted(rows, 'electrical_water'), pillarWhy(PILLAR, `${r…
        |                                                                                                                    ^
-    284|   })
-    285|
+    321|   })
+    322|
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a second probe set, written after the first implementation and run once (14 of 15 as labelled; the miss and the phóng/phòng defect it led to are fixed at class level) > report: "vi"
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1355,15 +1673,15 @@ detail:    report: "Em đang cố chặn tia lửa nhảy ra từ cái ổ cắm
 + Received:
 null
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:317:101
-    315|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
-    316|     const got = route(text, language)
-    317|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:354:101
+    352|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
+    353|     const got = route(text, language)
+    354|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
        |                                                                                                     ^
-    318|   })
-    319| })
+    355|   })
+    356| })
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a second probe set, written after the first implementation and run once (14 of 15 as labelled; the miss and the phóng/phòng defect it led to are fixed at class level) > report: "vi"
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1378,15 +1696,15 @@ detail:    report: "Cứu với, ổ cắm đang phóng tia lửa, tôi đang c�
 + Received:
 null
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:317:101
-    315|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
-    316|     const got = route(text, language)
-    317|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:354:101
+    352|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
+    353|     const got = route(text, language)
+    354|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
        |                                                                                                     ^
-    318|   })
-    319| })
+    355|   })
+    356| })
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a second probe set, written after the first implementation and run once (14 of 15 as labelled; the miss and the phóng/phòng defect it led to are fixed at class level) > report: "vi"
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1401,15 +1719,15 @@ detail:    report: "Tôi cố gắng chặn tia lửa bắn từ bảng điện 
 + Received:
 null
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:317:101
-    315|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
-    316|     const got = route(text, language)
-    317|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:354:101
+    352|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
+    353|     const got = route(text, language)
+    354|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
        |                                                                                                     ^
-    318|   })
-    319| })
+    355|   })
+    356| })
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a second probe set, written after the first implementation and run once (14 of 15 as labelled; the miss and the phóng/phòng defect it led to are fixed at class level) > report: "en"
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1424,15 +1742,15 @@ detail:    report: "Can you help me stop the sparks flying out of my breaker pan
 + Received:
 null
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:317:101
-    315|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
-    316|     const got = route(text, language)
-    317|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:354:101
+    352|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
+    353|     const got = route(text, language)
+    354|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
        |                                                                                                     ^
-    318|   })
-    319| })
+    355|   })
+    356| })
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a second probe set, written after the first implementation and run once (14 of 15 as labelled; the miss and the phóng/phòng defect it led to are fixed at class level) > report: "en"
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1447,15 +1765,15 @@ detail:    report: "I keep trying to stop sparks jumping from the wall socket." 
 + Received:
 null
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:317:101
-    315|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
-    316|     const got = route(text, language)
-    317|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:354:101
+    352|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
+    353|     const got = route(text, language)
+    354|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
        |                                                                                                     ^
-    318|   })
-    319| })
+    355|   })
+    356| })
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a second probe set, written after the first implementation and run once (14 of 15 as labelled; the miss and the phóng/phòng defect it led to are fixed at class level) > report: "vi"
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1470,15 +1788,15 @@ detail:    report: "Mình đang tìm cách ngăn tia lửa phát ra từ ổ c�
 + Received:
 null
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:317:101
-    315|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
-    316|     const got = route(text, language)
-    317|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:354:101
+    352|   it.each(SECOND_SPARK_PROBE_SET)('%s: "%s"', (expected, language, tex…
+    353|     const got = route(text, language)
+    354|     expect(got, pillarWhy(PILLAR, `${expected}: ${JSON.stringify(text)…
        |                                                                                                     ^
-    318|   })
-    319| })
+    355|   })
+    356| })
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: wording that reads two ways (pinned: decided on the safe side or missed before this round, an owner decision, not a fix) > without its tone "phong tia lua" cannot be told from "phóng tia lửa" and is read as a report
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1493,15 +1811,15 @@ detail:    without its tone "phong tia lua" cannot be told from "phóng tia lử
 + Received:
 null
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:329:98
-    327|   ] as const)('%s', (label, text, language, expected) => {
-    328|     const got = route(text, language)
-    329|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:366:98
+    364|   ] as const)('%s', (label, text, language, expected) => {
+    365|     const got = route(text, language)
+    366|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
        |                                                                                                  ^
-    330|   })
-    331| })
+    367|   })
+    368| })
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/39]⎯
 
  FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: wording that reads two ways (pinned: decided on the safe side or missed before this round, an owner decision, not a fix) > a product question that names where the spark comes from is read as a report
 AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
@@ -1516,13 +1834,13 @@ detail:    a product question that names where the spark comes from is read as a
 + Received:
 null
 
- ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:329:98
-    327|   ] as const)('%s', (label, text, language, expected) => {
-    328|     const got = route(text, language)
-    329|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:366:98
+    364|   ] as const)('%s', (label, text, language, expected) => {
+    365|     const got = route(text, language)
+    366|     expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} r…
        |                                                                                                  ^
-    330|   })
-    331| })
+    367|   })
+    368| })
 
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/28]⎯
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/39]⎯
 

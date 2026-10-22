@@ -16,7 +16,7 @@ export const PILLAR = {
   layer: 'unit',
   siblings: ['P405-kael-emergency-signal-matrix', 'P410-kael-emergency-phrase-sets', 'P408-kael-case-emergency-all-fields'],
   mutation:
-    'delete the spark-with-wired-equipment cue from the electrical_water list: every positive row, including the frozen transcript, turns red while the negative rows stay green; delete the spark-prevention mask: the product and prevention rows turn red while the positive rows stay green; delete the attempt and source test from the mask: the attempt rows turn red while the product rows stay green',
+    'delete the spark-with-wired-equipment cue from the electrical_water list: every positive row, including the frozen transcript, turns red while the negative rows stay green; delete the spark-prevention mask: the product and prevention rows turn red while the positive rows stay green; delete the attempt and source test from the mask: the attempt rows turn red while the product rows stay green; delete the ended-spark exclusion from the two spark cues: the resolved-spark rows turn red while the live-spark rows stay green',
 } as const satisfies PillarManifest
 
 const route = (text: string, language: 'vi' | 'en' = 'vi') =>
@@ -268,6 +268,43 @@ describe(`${PILLAR.id}: an attempt to stop a spark that is happening is a report
   it.each(EN_PREVENTION_VERBS)('English: a product that can %s sparks, asked for in a request, stays quiet', (verb) => {
     const rows = EN_FIXTURES.flatMap((fixture) => EN_NEED_CARRIERS.map((carrier) => [carrier(fixture, verb), 'en'] as const))
     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} sentences with "${verb}"`)).toEqual([])
+  })
+})
+
+const ENDED_SPARK_CARRIERS: ReadonlyArray<(fixture: string) => string> = [
+  (fixture) => `The ${fixture} has stopped sparking.`,
+  (fixture) => `The ${fixture} stopped sparking after the electrician fixed it.`,
+  (fixture) => `The ${fixture} ceased sparking on its own.`,
+  (fixture) => `The ${fixture} quit sparking once I switched it off.`,
+  (fixture) => `Sparking at the ${fixture} has stopped.`,
+  (fixture) => `The sparks from the ${fixture} have stopped.`,
+  (fixture) => `The sparking at the ${fixture} ended yesterday.`,
+]
+
+describe(`${PILLAR.id}: a spark that has already stopped is a resolved report, not a live hazard`, () => {
+  it.each(EN_FIXTURES)('English: "%s" with sparking that stopped, ceased, quit or ended stays quiet', (fixture) => {
+    const rows = ENDED_SPARK_CARRIERS.map((carrier) => [carrier(fixture), 'en'] as const)
+    expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} sentences with ${fixture}`)).toEqual([])
+  })
+
+  it.each(VI_FIXTURES)('Vietnamese: "%s" that stopped shooting sparks stays quiet', (fixture) => {
+    const rows = WRITTEN_FORMS.map(([, write]) => [write(`${fixture.charAt(0).toUpperCase()}${fixture.slice(1)} đã ngừng bắn tia lửa.`), 'vi'] as const)
+    expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} written forms with ${fixture}`)).toEqual([])
+  })
+
+  it.each([
+    ['sparking that is happening now', 'The outlet is sparking right now.', 'en'],
+    ['a stopped spark beside a live one in the next clause', 'The outlet stopped sparking but now the wire is sparking.', 'en'],
+    ['a spark that began after the work was finished', 'The electrician finished and the breaker box is sparking again.', 'en'],
+    ['a Vietnamese spark that is happening now', 'Ổ cắm vừa bắn tia lửa, nóng rát tay.', 'vi'],
+  ] as const)('%s still routes: %s', (label, text, language) => {
+    const got = route(text, language)
+    expect(got, pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)} routed to ${String(got)}`)).toBe('electrical_water')
+  })
+
+  it('keeps the negated "has not stopped" reading the shared gate already had (pinned: an owner decision, not a fix)', () => {
+    const got = route('The outlet has not stopped sparking.', 'en')
+    expect(got, pillarWhy(PILLAR, `routed to ${String(got)}`)).toBeNull()
   })
 })
 
