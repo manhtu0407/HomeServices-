@@ -552,11 +552,6 @@ export function evaluateMessageBoundary(
     };
   }
 
-  // The flagged electrical path uses the high-precision deterministic policy
-  // above and leaves ambiguous cases to the structured intent model. The broad
-  // legacy keyword gate remains byte-for-byte available when the flag is off.
-  if (electricalPolicyEnabled) return { ok: true };
-
   // detectOutOfScope carries an escape for electrical infrastructure, but this call erased the
   // argument that reaches it, so the one guard written to stop a live fault being declined could
   // never run on the electrical path. The argument stays erased for the keyword gate itself, which

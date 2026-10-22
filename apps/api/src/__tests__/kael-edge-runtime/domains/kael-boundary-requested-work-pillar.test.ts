@@ -185,13 +185,10 @@ const INCIDENTAL_FRAMES: ReadonlyArray<(appliance: Appliance, work: string) => s
   (appliance, work) => `Không biết là ${appliance.name} hay đường dây bị hỏng, nhờ ${work}.`,
 ]
 
-const handedToRoutingPolicy = (service: Service, flags: 'off' | 'on') => service === 'electrical' && flags === 'on'
-
 function misdecided(rows: ReadonlyArray<readonly [Service, string]>, expectOk: boolean) {
   const misses: string[] = []
   for (const flags of ['off', 'on'] as const) {
     for (const [service, text] of rows) {
-      if (!expectOk && handedToRoutingPolicy(service, flags)) continue
       const got = decide(service, text, flags)
       const reason = got.ok ? 'ok' : got.reason
       if (got.ok !== expectOk || (!expectOk && reason !== 'out_of_scope')) misses.push(`[${flags}] ${service}: ${JSON.stringify(text)} -> ${reason}`)
