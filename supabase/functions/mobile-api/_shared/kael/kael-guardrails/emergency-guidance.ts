@@ -51,7 +51,9 @@ const SMOKE_OUT_TONES: ToneRules = {
   toa: /^(?:toa|t\u1ecfa)$/u,
   tran: /^(?:tran|tr\u00e0n)$/u,
 };
-const COOKING_SMOKE = /\b(?:nau|nuong|chien|xao|thuoc|nhang|huong|bbq|barbecue|grill|cigarette|incense|cooking|frying|toast|candle|nen|roast)\b/u;
+const SOOT_CLEANING = /\bve sinh\b/u;
+const ELECTRIC_SHOCK_CONTEXT = /\b(?:dien|o cam|cau dao|aptomat|cong tac|day sac|day nguon|voi nuoc|voi sen|binh nong lanh|cham vao|cham tay|so vao|te tay|ro dien|chap dien)\b/u;
+const COOKING_SMOKE =/\b(?:nau|nuong|chien|xao|thuoc|nhang|huong|bbq|barbecue|grill|cigarette|incense|cooking|frying|toast|candle|nen|roast)\b/u;
 const FALL_TONES: ToneRules = {
   nga: /^(?:nga|ng\u00e3)$/u,
   day: /^(?:day|d\u1eady)$/u,
@@ -109,7 +111,7 @@ const SPARK_SOURCE_AFTER = /^(?: (?:dang|van|cu|lien tuc)){0,3} (?:ban|phong|pha
 
 const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   fire: [
-    cue(/\bkhoi (?:den(?: day dac| mu mit)?|day dac)\b/u, { toneRules: THICK_SMOKE_TONES }),
+    cue(/(?<!\b(?:vet|am|bam|dinh|lop|mang) )\bkhoi (?:den(?: day dac| mu mit)?|day dac)\b/u, { toneRules: THICK_SMOKE_TONES, unless: SOOT_CLEANING }),
     cue(/\b(?:dang|van) (?:boc|bung) lua\b|\blua (?:van )?chua tat\b/u, { toneRules: CATCH_FIRE_TONES }),
     cue(/\b(?:boc khoi|phat khoi|tuon khoi|toa khoi|bao dong chay)\b/u),
     cue(/(?<!\bbep )\b(?:dang co|dang thay|co|thay|ngui thay) khoi(?! (?:thuoc|nhang|huong|bep|xe|bui|tran|dong co|than|hut|luong|nghiep|dau|lap|dong|cong|sac|su|phat|tao))\b/u),
@@ -134,7 +136,7 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
     cue(/(?<!\b(?:de|kho|chong|khong|vai|chat lieu) )\b(?:boc|bung|bat) chay\b/u, { tone: "acute", toneRules: CATCH_FIRE_TONES }),
   ],
   medical: [
-    cue(/\bbi giat(?! minh\b)\b/u),
+    cue(/\bbi giat(?! minh\b)\b/u, { requires: [ELECTRIC_SHOCK_CONTEXT] }),
     cue(/\bbi ngat\b/u, { toneRules: FAINT_TONES }),
     cue(/\b(?:mixed|mixing) (?:bleach and ammonia|ammonia and bleach)\b/u, { requires: [/\b(?:coughing|dizzy|breathless|struggling to breathe)\b/u] }),
     cue(/\b(?:dien giat|giat dien|bat tinh|ngat xiu|ngat roi|ngung tho|ngung tim|khong tho (?:duoc|noi)|tho khong (?:duoc|noi)|ngat tho|nghet tho|khong the tho|co giat|dot quy|bi thuong|kho tho|dau nguc|cap cuu|bi bong nang|ngo doc|chay mau(?: nhieu| khong ngung| ao at| rat nhieu)?)\b/u),
