@@ -69,7 +69,7 @@ Every service: journey PASS_WITH_FINDING. Not run: the Edge handler against a re
 
 - Final regression on the candidate: API **4,019 pass + 6 skipped** (203 files), mobile **2,660**, shared **189**, type-checks API, shared and mobile pass, Edge check of all 8 function entry points in the pinned Deno image, every structure, governance, comment, test-integrity, edge-db, work-plan, workflow-cost, skills, manifest and pillar-registry gate passes. `lint:authority` fails on the one pre-existing citation (`apps/mobile/lib/__tests__/normal-chat-suggestions-cache-pillar-test.tsx:31`), identical on clean main.
 - PR #405 at `8e859073`: all nine CI checks SUCCESS or SKIPPED; Codex has not re-reviewed that head, no open finding.
-- This branch: see the closing section added after the push.
+- This branch: PR #406, stacked on #405 (three commits on top of `8e859073`: the boundary change, the SQL proofs, this evidence). Local secret scan with the repository ruleset and the pinned scanner: 116 changed or new files and the three commits clean, with a positive control that fires (`logs/secret-scan/`). CI and Codex results for this head are recorded on the PR, not in this file, because a push restarts CI.
 
 ## 7. Merge-readiness
 
