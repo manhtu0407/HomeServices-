@@ -22,6 +22,7 @@ const ENGLISH_APPLIANCES: Readonly<Record<string, string>> = {
   "water heater": "binh nong lanh", "wifi router": "wifi",
 };
 const ENGLISH_NONREQUEST = /\b(?:(?:do not|don t|no need to|not to|never) (?:fix|repair|check|inspect|service|install|replace)\b.*?(?=\b(?:but|however|instead|just|only|although|though)\b|$)|(?:already|previously) (?:fixed|repaired|checked|serviced|installed|replaced)\b)/g;
+const ENGLISH_NEGATED_FAULT = /\b(?:(?:is|are|was|were) not|isn t|aren t|wasn t|weren t|not) (?:really |actually )?(?:broken|faulty|stuck|jammed|leaking)\b/g;
 const SUPPLY_FAULT_AFTER = /^(?: (?:nha|cua|minh|toi|em|my|our|the)){0,4} (?:mat nguon|khong (?:len nguon|co dien|vao dien)|(?:has )?no power)\b/;
 const INTERNAL_FAULT = /\b(?:bo mach|bang dieu khien|bao loi|khong nong|khong nhan noi|circuit board|control board|not heating|error code)\b/;
 
@@ -37,7 +38,7 @@ const BARE_REQUEST_PHRASES: ReadonlySet<string> = new Set([...REPAIR_ACT_WORDS, 
 
 const FAULT_BARE = "hu(?: hong)?|hong|loi|ket (?:cua|nut)|tu nhien do|chay mai(?: [a-z]+){0,6} van(?: con)? uot|broken|faulty|stuck|jammed|leaking|ro ri|ro nuoc|ro dien|chay nuoc|dong tuyet|dong bang|rung(?: lac)?|keu(?: to| la| ten| ro)?|co mui (?:la|khet|hoi)|bao loi|chap chon|mat (?:ket noi|mang|song|nuoc|dien|nguon|tin hieu)|rot (?:mang|ket noi)|co van de|co su co|gap (?:su co|van de|loi)|truc trac|ngung (?:hoat dong|chay)|khong on dinh|(?:rat |qua |hoi |kha )?(?:yeu|cham)";
 const FAULT_BI = "bi (?:hu|hong|loi|nut|ket(?! noi)|dung|treo|liet|cham|yeu|ro|rot|truc trac|mat|ngung|dong tuyet|chap)";
-const FAULT_FUNCTION = "khong(?: (?:duoc|con|the|hay))? (?:bam(?: duoc)?|chay|hoat dong|len(?: nguon| lua)?|vao dien|vao duoc|co (?:mang|song|nuoc|dien|nguon|tin hieu)|ket noi|lanh|nong|say|kho|vat|giat|xa(?: nuoc)?|thoat nuoc|cap nuoc|hut|quay|xoay|nhan(?: noi)?|danh lua|bat|tat|khoi dong|dong da|lam da|mo|sang|dung|su dung|xai|truy cap|vao mang|ra nuoc)|(?:does not|doesn t|will not|won t|cannot|can t) (?:work|run|start|heat|cool|drain|spin|turn on)";
+const FAULT_FUNCTION = "khong(?: (?:duoc|con|the|hay))? (?:bam(?: duoc)?|chay|hoat dong|len(?: nguon| lua)?|vao dien|vao duoc|co (?:mang|song|nuoc|dien|nguon|tin hieu)|ket noi|lanh|nong|say|kho|vat|giat|xa(?: nuoc)?|thoat nuoc|cap nuoc|hut|quay|xoay|nhan(?: noi)?|danh lua|bat|tat|khoi dong|dong da|lam da|mo|sang|dung|su dung|xai|truy cap|vao mang|ra nuoc)|(?:does not|doesn t|will not|won t|cannot|can t) (?:work|run|start|heat|cool|drain|spin|turn on)|(?:is not|isn t|are not|aren t) (?:working|running|starting|heating|cooling|draining|spinning)";
 const FAULT = `(?:${FAULT_BI}|${FAULT_BARE}|${FAULT_FUNCTION})`;
 
 const FAULT_AFTER = new RegExp(`^(?: (?!(?:khong|chua|chang|dau|hay|hoac|va|voi|cung|do|vi|tai|nghi|ma|nhung|de|neu)\\b)[a-z0-9]+){0,8}(?: (?:hay|cung|van|dang|lai)){0,2} ${FAULT}\\b`);
@@ -93,7 +94,7 @@ function splitClauses(normalized: string): Clause[] {
   normalized.split(SENTENCE_SPLIT).forEach((sentence, index) => {
     for (const part of sentence.split(CLAUSE_SPLIT)) {
       const text = part.replace(/\s+/g, " ").trim();
-      if (text.length > 0) clauses.push({ text: blank(blank(blank(text, NEGATED_ACT), NEGATED_FAULT), ENGLISH_NONREQUEST), sentence: index });
+      if (text.length > 0) clauses.push({ text: blank(blank(blank(blank(text, NEGATED_ACT), NEGATED_FAULT), ENGLISH_NONREQUEST), ENGLISH_NEGATED_FAULT), sentence: index });
     }
   });
   return clauses;

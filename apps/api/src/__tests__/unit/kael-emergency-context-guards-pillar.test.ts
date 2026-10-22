@@ -6,7 +6,7 @@ import { resolveReportedEmergencyGuidance } from '../../../../../supabase/functi
 export const PILLAR = {
   id: 'P430-kael-emergency-context-guards',
   invariant:
-    'a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics',
+    'shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames and directly denied injury stay quiet, while active smoke, spreading flames and hazards nobody notices or can stop retain emergency routing across written forms and all six services',
   authority: [
     'governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm)',
     'governance/RULES.md #8 (an emergency reply is explicit and never a silent drop)',
@@ -26,6 +26,10 @@ const SERVICES = ['handyman', 'electrical', 'cleaning', 'upholstery', 'plumbing'
 const route = (text: string, service: (typeof SERVICES)[number]) => resolveReportedEmergencyGuidance(text, 'vi', { serviceType: service })?.route ?? 'none'
 
 const PULLED_OBJECT = [
+  'Ngăn kéo bị giật bung ray khi chạm vỏ tủ.',
+  'Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ.',
+  'Ngăn kéo tủ lạnh bị giật bung ray, nhờ gắn lại.',
+  'Cánh cửa tủ điện bị giật bung bản lề, nhờ lắp lại.',
   'Rèm cửa bị giật đứt móc treo, nhờ lắp lại.',
   'Mình bị giật túi ngoài chợ, nhờ lắp khóa cửa.',
   'Ngăn kéo bị giật mạnh nên hỏng ray, nhờ sửa.',
@@ -34,6 +38,10 @@ const PULLED_OBJECT = [
 ]
 
 const SOOT_TO_CLEAN = [
+  'Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp.',
+  'Bếp đang bốc lửa nhỏ đều để nấu ăn.',
+  'No one was electrocuted. Please replace the outlet.',
+  'Nobody is bleeding. Please clean the floor.',
   'Cần vệ sinh vết khói đen trên tường bếp.',
   'Cần giặt rèm bị ám khói đen.',
   'Nhờ tẩy vết khói đen bám ở trần nhà.',
@@ -51,6 +59,14 @@ const REAL_SHOCK = [
 ]
 
 const LIVE_SMOKE = [
+  'Nobody noticed the house is on fire.',
+  'No one noticed the house is on fire.',
+  'Nobody can stop the smoke coming from the outlet.',
+  'No one can stop the smoke coming from the outlet.',
+  'Bếp gas vẫn bốc lửa lan sang tủ bếp.',
+  'Bếp gas đang bốc lửa ra ngoài họng bếp.',
+  'Đang vệ sinh thì khói đen dày đặc trong phòng.',
+  'Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh.',
   'Khói đen đang bốc ra từ ổ cắm',
   'Có khói đen dày đặc trong phòng',
   'Khói đen mù mịt, ai đó gọi giúp mình số cứu hỏa',

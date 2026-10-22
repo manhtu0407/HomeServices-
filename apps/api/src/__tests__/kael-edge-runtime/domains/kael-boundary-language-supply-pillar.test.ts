@@ -21,6 +21,7 @@ afterEach(() => vi.unstubAllGlobals())
 const services: readonly Service[] = ['electrical', 'plumbing', 'cleaning', 'hvac', 'upholstery', 'handyman']
 const flagsOn = Object.fromEntries(services.map((service) => [`KAEL_PLAYBOOK_${service.toUpperCase()}_ENABLED`, 'true']))
 const unsupported = [
+  'Nhờ sửa RCBO trong phòng tắm và sửa tủ lạnh bị hỏng.',
   'Please fix my washing machine.', 'Could you repair the refrigerator?', 'Please service our dishwasher.',
   'The microwave door is stuck.', 'Our dryer is broken.', 'Please check the induction hob.',
   'Can someone repair the wifi router?', 'Máy giặt kẹt cửa.', 'May giat ket cua.',
@@ -31,6 +32,10 @@ const unsupported = [
   'Máy giặt không bấm được nút khởi động.',
 ]
 const supported = [
+  'CB nhà vệ sinh hay nhảy khi bật vòi nước nóng, nhờ kiểm tra.',
+  'Nhờ sửa RCBO trong phòng tắm, cứ mở vòi nước là nhảy.',
+  'My fridge is not broken. Please repair the outlet.',
+  'My washing machine is not faulty, please repair the outlet.',
   'Repair the outlet behind the fridge.', 'Replace the faucet near the washing machine.',
   'Do not fix the fridge; just repair the outlet.', "Don't repair my washing machine, replace the light switch.",
   'The washing machine works fine. Please repair the outlet.',

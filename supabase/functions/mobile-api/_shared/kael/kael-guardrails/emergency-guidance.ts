@@ -51,8 +51,8 @@ const SMOKE_OUT_TONES: ToneRules = {
   toa: /^(?:toa|t\u1ecfa)$/u,
   tran: /^(?:tran|tr\u00e0n)$/u,
 };
-const SOOT_CLEANING = /\bve sinh\b/u;
-const ELECTRIC_SHOCK_CONTEXT = /\b(?:dien|o cam|cau dao|aptomat|cong tac|day sac|day nguon|voi nuoc|voi sen|binh nong lanh|cham vao|cham tay|cham (?:vao )?(?:voi|vo)|so vao|te tay|ro dien|chap dien)\b/u;
+const SOOT_CLEANING = /\bkhoi (?:den(?: day dac| mu mit)?|day dac) (?:bam|am|dinh) (?:tren|vao|o)\b/u;
+const ELECTRIC_SHOCK_CONTEXT = /\b(?:dien|o cam|cau dao|aptomat|cong tac|day sac|day nguon|voi nuoc|voi sen|binh nong lanh|may giat|tu lanh|may say|bep tu|cham (?:vao )?voi|te tay|ro dien|chap dien)\b/u;
 const COOKING_SMOKE =/\b(?:nau|nuong|chien|xao|thuoc|nhang|huong|bbq|barbecue|grill|cigarette|incense|cooking|frying|toast|candle|nen|roast)\b/u;
 const FALL_TONES: ToneRules = {
   nga: /^(?:nga|ng\u00e3)$/u,
@@ -112,7 +112,7 @@ const SPARK_SOURCE_AFTER = /^(?: (?:dang|van|cu|lien tuc)){0,3} (?:ban|phong|pha
 const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   fire: [
     cue(/(?<!\b(?:vet|am|bam|dinh|lop|mang) )\bkhoi (?:den(?: day dac| mu mit)?|day dac)\b/u, { toneRules: THICK_SMOKE_TONES, unless: SOOT_CLEANING }),
-    cue(/\b(?:dang|van) (?:boc|bung) lua\b|\blua (?:van )?chua tat\b/u, { toneRules: CATCH_FIRE_TONES }),
+    cue(/\b(?:dang|van) (?:boc|bung) lua(?! (?:xanh|nho|deu|vang)\b)\b|\blua (?:van )?chua tat\b/u, { toneRules: CATCH_FIRE_TONES }),
     cue(/\b(?:boc khoi|phat khoi|tuon khoi|toa khoi|bao dong chay)\b/u),
     cue(/(?<!\bbep )\b(?:dang co|dang thay|co|thay|ngui thay) khoi(?! (?:thuoc|nhang|huong|bep|xe|bui|tran|dong co|than|hut|luong|nghiep|dau|lap|dong|cong|sac|su|phat|tao))\b/u),
     cue(new RegExp(`\\b(?:${HOME_NOUNS})(?: (?:toi|minh|ben canh|hang xom|ben|nha))?(?: dang| bi) chay(?! (?:nuoc|mau|chua))\\b`, "u")),
@@ -136,7 +136,7 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
     cue(/(?<!\b(?:de|kho|chong|khong|vai|chat lieu) )\b(?:boc|bung|bat) chay\b/u, { tone: "acute", toneRules: CATCH_FIRE_TONES }),
   ],
   medical: [
-    cue(/\bbi giat(?! minh\b)\b/u, { requires: [ELECTRIC_SHOCK_CONTEXT] }),
+    cue(/\bbi giat(?! (?:minh\b|bung (?:ray|ban le|moc(?: treo)?)\b|dut (?:moc(?: treo)?|day)\b))\b/u, { requires: [ELECTRIC_SHOCK_CONTEXT] }),
     cue(/\bbi ngat\b/u, { toneRules: FAINT_TONES }),
     cue(/\b(?:mixed|mixing) (?:bleach and ammonia|ammonia and bleach)\b/u, { requires: [/\b(?:coughing|dizzy|breathless|struggling to breathe)\b/u] }),
     cue(/\b(?:dien giat|giat dien|bat tinh|ngat xiu|ngat roi|ngung tho|ngung tim|khong tho (?:duoc|noi)|tho khong (?:duoc|noi)|ngat tho|nghet tho|khong the tho|co giat|dot quy|bi thuong|kho tho|dau nguc|cap cuu|bi bong nang|ngo doc|chay mau(?: nhieu| khong ngung| ao at| rat nhieu)?)\b/u),
@@ -246,7 +246,7 @@ const UNCERTAIN_GENERIC_CUES = [
 const PREVENTION_PHRASES =
   /\b(?:canh (?:co )?(?:chay|hoa hoan)|phong chay chua chay|chua chay|binh chua chay|binh cuu hoa|cuu hoa|pccc|(?:canh )?bao ro (?:khi )?(?:gas|ga)|dau do (?:khi )?(?:gas|ga)|cam bien (?:khi )?(?:gas|ga)|(?:kiem tra|do) ro (?:khi )?(?:gas|ga)|gas (?:leak )?(?:detectors?|alarms?|sensors?)|(?:check|checking|test|testing|detect|detecting) (?:for )?(?:a )?gas leaks?|fire (?:drill|safety|prevention|extinguisher|exit|escape|door|rated|proof|sprinkler|code)|fire-?proof|smoke (?:detectors?|alarms?) (?:battery|install\w*|replac\w*|test\w*))\b/u;
 
-const NEGATED_CUE_SUFFIX = /\b(?:khong|chua|chang|het|no|nobody|no one|not|never|without|no longer|does not|do not|is not|are not|was not|were not|doesn t|don t|isn t|aren t)\b(?:\s+[\p{L}\p{N}]+){0,4}\s*$/u;
+const NEGATED_CUE_SUFFIX = /\b(?:khong|chua|chang|het|no(?! one\b)|not|never|without|no longer|does not|do not|is not|are not|was not|were not|doesn t|don t|isn t|aren t)\b(?:\s+[\p{L}\p{N}]+){0,4}\s*$|\b(?:nobody|no one)(?: (?:is|was|has been|had been|got|gets|has|had))?\s*$/u;
 const SELF_NEGATION = /\b(?:khong phai|khong|chua|chang)\s+(?:phai\s+)?(?:la\s+)?(?:toi|minh|tui|em|chung toi|nha toi|bon toi)\b|\b(?:toi|minh|tui|em|chung toi)\s+(?:khong|chua|chang)\b|\b(?:not|never)\s+(?:me|i|us|myself)\b|\b(?:i|we)\s+(?:am not|m not|was not|wasn t|did not|didn t|have not|haven t|do not|don t)\b/u;
 const THIRD_PARTY_REST = /\b(?:nguoi (?:ben canh|khac|nha|kia|ay|do|trong nha)|ai do|hang xom|(?:ong|ba|anh|chi|co|chu|bac|em|con|be) (?:ay|kia|do|ben canh|hang xom))(?: [a-z]+){0,2} (?:moi|cung|thi|dang) bi\b|\bma la (?:con|chong|vo|me|bo|ba|ong|anh|chi|em|nguoi|hang xom|be)\b|\b(?:con|chong|vo|me|bo) (?:toi|minh|nha toi) thi co\b/u;
 const HYPOTHETICAL_BEFORE = /\b(?:neu|neu nhu|gia su|gia dinh|gia nhu|lo ma|phong khi|de phong|de tranh|if|what if|in case|suppose|supposing|should there be|to prevent|to avoid)\b/u;

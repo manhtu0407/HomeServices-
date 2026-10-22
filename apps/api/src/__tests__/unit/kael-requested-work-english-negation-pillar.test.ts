@@ -6,7 +6,7 @@ import { detectRequestedApplianceWork } from '../../../../../supabase/functions/
 export const PILLAR = {
   id: 'P431-kael-requested-work-english-negation',
   invariant:
-    'an English request that refuses work on an appliance ("do not repair", "no need to check", "never fix") refuses the appliance and the fault described with it, so "Do not repair my washing machine that will not start; just fix the outlet." asks for no unsupported work, while the refusal ends at a contrast word or a new clause and the appliance that is asked for next, or beside a refusal that names something else, is still requested',
+    'English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance',
   authority: [
     'governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work)',
     'KAWA_01 six-service diagnostic DX-01 (a mention is not a request)',
@@ -22,6 +22,10 @@ export const PILLAR = {
 const requested = (text: string) => [...detectRequestedApplianceWork(text, 'electrical')].sort()
 
 const REFUSED: ReadonlyArray<readonly [string, string]> = [
+  ['My fridge is not broken. Please repair the outlet.', 'a negated broken adjective'],
+  ['My washing machine is not faulty, please repair the outlet.', 'a negated faulty adjective'],
+  ["The dishwasher isn't leaking. Please fix the socket.", 'a contracted negated fault'],
+  ['My dryer is not stuck. Please repair the light switch.', 'a negated stuck adjective'],
   ['Do not repair my washing machine that will not start; just fix the outlet.', 'a washing machine with a fault clause'],
   ['Do not fix my dryer which is stuck, just replace the outlet.', 'a dryer with a relative clause'],
   ["Don't repair the fridge, it's broken, only replace the outlet.", 'a fridge with a fault clause after a comma'],
@@ -31,6 +35,8 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const STILL_REQUESTED: ReadonlyArray<readonly [string, readonly string[], string]> = [
+  ['My washing machine is not working. Please repair it.', ['may giat'], 'a negative functioning predicate is a real fault'],
+  ['My fridge is not broken, but please repair my dryer.', ['may say'], 'a separate affirmative appliance request'],
   ['Please repair my washing machine that will not start.', ['may giat'], 'a plain request'],
   ['Do not repair my fridge, but repair my washing machine that will not start.', ['may giat'], 'a refusal then a contrast'],
   ['Do not repair the outlet, fix my washing machine.', ['may giat'], 'a refusal that names something else'],

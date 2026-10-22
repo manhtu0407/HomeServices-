@@ -1,0 +1,1068 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts (18 tests | 6 failed) 46ms
+     × My fridge is not broken. Please repair the outlet. asks for no unsupported work (a negated broken adjective) 33ms
+     × My washing machine is not faulty, please repair the outlet. asks for no unsupported work (a negated faulty adjective) 4ms
+     × The dishwasher isn't leaking. Please fix the socket. asks for no unsupported work (a contracted negated fault) 1ms
+     × My dryer is not stuck. Please repair the light switch. asks for no unsupported work (a negated stuck adjective) 1ms
+     × My washing machine is not working. Please repair it. asks for ["may giat"] (a negative functioning predicate is a real fault) 2ms
+     × My fridge is not broken, but please repair my dryer. asks for ["may say"] (a separate affirmative appliance request) 1ms
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts (612 tests | 180 failed) 248ms
+     × Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the handyman Case 50ms
+     × Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the electrical Case 8ms
+     × Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the cleaning Case 1ms
+     × Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the upholstery Case 1ms
+     × Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the plumbing Case 1ms
+     × Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the hvac Case 1ms
+     × Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the handyman Case 1ms
+     × Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the electrical Case 1ms
+     × Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the cleaning Case 1ms
+     × Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the upholstery Case 1ms
+     × Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the plumbing Case 1ms
+     × Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the hvac Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the handyman Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the electrical Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the cleaning Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the upholstery Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the plumbing Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the hvac Case 1ms
+     × Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the handyman Case 1ms
+     × Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the electrical Case 0ms
+     × Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the cleaning Case 1ms
+     × Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the upholstery Case 0ms
+     × Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the plumbing Case 0ms
+     × Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the hvac Case 0ms
+     × Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the handyman Case 0ms
+     × Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the electrical Case 0ms
+     × Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the cleaning Case 1ms
+     × Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the upholstery Case 0ms
+     × Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the plumbing Case 1ms
+     × Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the hvac Case 0ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the handyman Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the electrical Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the cleaning Case 1ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the upholstery Case 0ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the plumbing Case 0ms
+     × NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the hvac Case 0ms
+     × Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the handyman Case 1ms
+     × Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the electrical Case 1ms
+     × Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the cleaning Case 0ms
+     × Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the upholstery Case 0ms
+     × Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the plumbing Case 0ms
+     × Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the hvac Case 1ms
+     × Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the handyman Case 0ms
+     × Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the electrical Case 0ms
+     × Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the cleaning Case 0ms
+     × Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the upholstery Case 1ms
+     × Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the plumbing Case 0ms
+     × Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the hvac Case 0ms
+     × BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the handyman Case 0ms
+     × BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the electrical Case 0ms
+     × BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the cleaning Case 0ms
+     × BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the upholstery Case 0ms
+     × BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the plumbing Case 0ms
+     × BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the hvac Case 0ms
+     × Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the handyman Case 0ms
+     × Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the electrical Case 0ms
+     × Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the cleaning Case 0ms
+     × Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the upholstery Case 1ms
+     × Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the plumbing Case 0ms
+     × Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the hvac Case 0ms
+     × Bep dang boc lua nho deu de nau an. stays quiet on the handyman Case 0ms
+     × Bep dang boc lua nho deu de nau an. stays quiet on the electrical Case 2ms
+     × Bep dang boc lua nho deu de nau an. stays quiet on the cleaning Case 1ms
+     × Bep dang boc lua nho deu de nau an. stays quiet on the upholstery Case 1ms
+     × Bep dang boc lua nho deu de nau an. stays quiet on the plumbing Case 0ms
+     × Bep dang boc lua nho deu de nau an. stays quiet on the hvac Case 0ms
+     × BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the handyman Case 0ms
+     × BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the electrical Case 0ms
+     × BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the cleaning Case 0ms
+     × BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the upholstery Case 1ms
+     × BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the plumbing Case 0ms
+     × BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the hvac Case 0ms
+     × Nobody noticed the house is on fire. routes on the handyman Case 1ms
+     × Nobody noticed the house is on fire. routes on the electrical Case 0ms
+     × Nobody noticed the house is on fire. routes on the cleaning Case 0ms
+     × Nobody noticed the house is on fire. routes on the upholstery Case 0ms
+     × Nobody noticed the house is on fire. routes on the plumbing Case 0ms
+     × Nobody noticed the house is on fire. routes on the hvac Case 0ms
+     × Nobody noticed the house is on fire. routes on the handyman Case 0ms
+     × Nobody noticed the house is on fire. routes on the electrical Case 0ms
+     × Nobody noticed the house is on fire. routes on the cleaning Case 0ms
+     × Nobody noticed the house is on fire. routes on the upholstery Case 0ms
+     × Nobody noticed the house is on fire. routes on the plumbing Case 0ms
+     × Nobody noticed the house is on fire. routes on the hvac Case 0ms
+     × NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the handyman Case 0ms
+     × NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the electrical Case 1ms
+     × NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the cleaning Case 1ms
+     × NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the upholstery Case 1ms
+     × NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the plumbing Case 1ms
+     × NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the hvac Case 0ms
+     × No one noticed the house is on fire. routes on the handyman Case 0ms
+     × No one noticed the house is on fire. routes on the electrical Case 1ms
+     × No one noticed the house is on fire. routes on the cleaning Case 0ms
+     × No one noticed the house is on fire. routes on the upholstery Case 0ms
+     × No one noticed the house is on fire. routes on the plumbing Case 0ms
+     × No one noticed the house is on fire. routes on the hvac Case 0ms
+     × No one noticed the house is on fire. routes on the handyman Case 0ms
+     × No one noticed the house is on fire. routes on the electrical Case 0ms
+     × No one noticed the house is on fire. routes on the cleaning Case 0ms
+     × No one noticed the house is on fire. routes on the upholstery Case 0ms
+     × No one noticed the house is on fire. routes on the plumbing Case 0ms
+     × No one noticed the house is on fire. routes on the hvac Case 1ms
+     × NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the handyman Case 0ms
+     × NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the electrical Case 0ms
+     × NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the cleaning Case 0ms
+     × NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the upholstery Case 0ms
+     × NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the plumbing Case 0ms
+     × NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the hvac Case 1ms
+     × Nobody can stop the smoke coming from the outlet. routes on the handyman Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the electrical Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the cleaning Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the upholstery Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the plumbing Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the hvac Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the handyman Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the electrical Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the cleaning Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the upholstery Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the plumbing Case 0ms
+     × Nobody can stop the smoke coming from the outlet. routes on the hvac Case 0ms
+     × NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the handyman Case 0ms
+     × NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the electrical Case 0ms
+     × NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the cleaning Case 0ms
+     × NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the upholstery Case 0ms
+     × NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the plumbing Case 0ms
+     × NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the hvac Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the handyman Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the electrical Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the cleaning Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the upholstery Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the plumbing Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the hvac Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the handyman Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the electrical Case 0ms
+     × No one can stop the smoke coming from the outlet. routes on the cleaning Case 1ms
+     × No one can stop the smoke coming from the outlet. routes on the upholstery Case 1ms
+     × No one can stop the smoke coming from the outlet. routes on the plumbing Case 1ms
+     × No one can stop the smoke coming from the outlet. routes on the hvac Case 1ms
+     × NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the handyman Case 0ms
+     × NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the electrical Case 3ms
+     × NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the cleaning Case 1ms
+     × NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the upholstery Case 1ms
+     × NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the plumbing Case 0ms
+     × NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the hvac Case 0ms
+     × Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the handyman Case 1ms
+     × Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the electrical Case 0ms
+     × Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the cleaning Case 1ms
+     × Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the upholstery Case 0ms
+     × Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the plumbing Case 1ms
+     × Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the hvac Case 1ms
+     × Dang ve sinh thi khoi den day dac trong phong. routes on the handyman Case 3ms
+     × Dang ve sinh thi khoi den day dac trong phong. routes on the electrical Case 1ms
+     × Dang ve sinh thi khoi den day dac trong phong. routes on the cleaning Case 1ms
+     × Dang ve sinh thi khoi den day dac trong phong. routes on the upholstery Case 1ms
+     × Dang ve sinh thi khoi den day dac trong phong. routes on the plumbing Case 0ms
+     × Dang ve sinh thi khoi den day dac trong phong. routes on the hvac Case 2ms
+     × ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the handyman Case 0ms
+     × ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the electrical Case 0ms
+     × ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the cleaning Case 0ms
+     × ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the upholstery Case 0ms
+     × ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the plumbing Case 0ms
+     × ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the hvac Case 0ms
+     × Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the handyman Case 1ms
+     × Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the electrical Case 1ms
+     × Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the cleaning Case 0ms
+     × Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the upholstery Case 1ms
+     × Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the plumbing Case 0ms
+     × Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the hvac Case 0ms
+     × Khoi den day dac tran vao phong luc toi ve sinh. routes on the handyman Case 0ms
+     × Khoi den day dac tran vao phong luc toi ve sinh. routes on the electrical Case 0ms
+     × Khoi den day dac tran vao phong luc toi ve sinh. routes on the cleaning Case 0ms
+     × Khoi den day dac tran vao phong luc toi ve sinh. routes on the upholstery Case 0ms
+     × Khoi den day dac tran vao phong luc toi ve sinh. routes on the plumbing Case 1ms
+     × Khoi den day dac tran vao phong luc toi ve sinh. routes on the hvac Case 1ms
+     × KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the handyman Case 1ms
+     × KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the electrical Case 0ms
+     × KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the cleaning Case 0ms
+     × KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the upholstery Case 0ms
+     × KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the plumbing Case 0ms
+     × KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the hvac Case 0ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (39 tests | 4 failed) 266ms
+     × keeps supported work open: CB nhà vệ sinh hay nhảy khi bật vòi nước nóng, nhờ kiểm tra. 8ms
+     × keeps supported work open: Nhờ sửa RCBO trong phòng tắm, cứ mở vòi nước là nhảy. 2ms
+     × keeps supported work open: My fridge is not broken. Please repair the outlet. 1ms
+     × keeps supported work open: My washing machine is not faulty, please repair the outlet. 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 190 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vỏ tủ. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Ngăn kéo bị giật bung ray khi chạm vỏ tủ.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:78:77
+     76|     '%s stays quiet on the %s Case',
+     77|     (text, service) => {
+     78|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     79|     },
+     80|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vo tu. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Ngan keo bi giat bung ray khi cham vo tu.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:78:77
+     76|     '%s stays quiet on the %s Case',
+     77|     (text, service) => {
+     78|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     79|     },
+     80|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VỎ TỦ.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:78:77
+     76|     '%s stays quiet on the %s Case',
+     77|     (text, service) => {
+     78|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     79|     },
+     80|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Ngăn kéo bị giật bung ray khi chạm vào vỏ tủ.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:78:77
+     76|     '%s stays quiet on the %s Case',
+     77|     (text, service) => {
+     78|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     79|     },
+     80|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ngan keo bi giat bung ray khi cham vao vo tu. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Ngan keo bi giat bung ray khi cham vao vo tu.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:78:77
+     76|     '%s stays quiet on the %s Case',
+     77|     (text, service) => {
+     78|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     79|     },
+     80|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NGĂN KÉO BỊ GIẬT BUNG RAY KHI CHẠM VÀO VỎ TỦ.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:78:77
+     76|     '%s stays quiet on the %s Case',
+     77|     (text, service) => {
+     78|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     79|     },
+     80|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Bếp gas vẫn bốc lửa xanh đều, chỉ cần vệ sinh bếp.": expected 'fire' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "fire"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:85:77
+     83|     '%s stays quiet on the %s Case',
+     84|     (text, service) => {
+     85|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     86|     },
+     87|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep gas van boc lua xanh deu, chi can ve sinh bep. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Bep gas van boc lua xanh deu, chi can ve sinh bep.": expected 'fire' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "fire"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:85:77
+     83|     '%s stays quiet on the %s Case',
+     84|     (text, service) => {
+     85|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     86|     },
+     87|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "BẾP GAS VẪN BỐC LỬA XANH ĐỀU, CHỈ CẦN VỆ SINH BẾP.": expected 'fire' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "fire"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:85:77
+     83|     '%s stays quiet on the %s Case',
+     84|     (text, service) => {
+     85|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     86|     },
+     87|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bếp đang bốc lửa nhỏ đều để nấu ăn. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Bếp đang bốc lửa nhỏ đều để nấu ăn.": expected 'fire' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "fire"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:85:77
+     83|     '%s stays quiet on the %s Case',
+     84|     (text, service) => {
+     85|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     86|     },
+     87|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep dang boc lua nho deu de nau an. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep dang boc lua nho deu de nau an. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep dang boc lua nho deu de nau an. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep dang boc lua nho deu de nau an. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep dang boc lua nho deu de nau an. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Bep dang boc lua nho deu de nau an. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Bep dang boc lua nho deu de nau an.": expected 'fire' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "fire"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:85:77
+     83|     '%s stays quiet on the %s Case',
+     84|     (text, service) => {
+     85|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     86|     },
+     87|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "BẾP ĐANG BỐC LỬA NHỎ ĐỀU ĐỂ NẤU ĂN.": expected 'fire' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "fire"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:85:77
+     83|     '%s stays quiet on the %s Case',
+     84|     (text, service) => {
+     85|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+     86|     },
+     87|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody noticed the house is on fire. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Nobody noticed the house is on fire.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY NOTICED THE HOUSE IS ON FIRE. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NOBODY NOTICED THE HOUSE IS ON FIRE.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one noticed the house is on fire. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "No one noticed the house is on fire.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE NOTICED THE HOUSE IS ON FIRE. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NO ONE NOTICED THE HOUSE IS ON FIRE.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Nobody can stop the smoke coming from the outlet. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Nobody can stop the smoke coming from the outlet.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NOBODY CAN STOP THE SMOKE COMING FROM THE OUTLET.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > No one can stop the smoke coming from the outlet. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "No one can stop the smoke coming from the outlet.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NO ONE CAN STOP THE SMOKE COMING FROM THE OUTLET.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Đang vệ sinh thì khói đen dày đặc trong phòng. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Đang vệ sinh thì khói đen dày đặc trong phòng.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Dang ve sinh thi khoi den day dac trong phong. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Dang ve sinh thi khoi den day dac trong phong. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Dang ve sinh thi khoi den day dac trong phong. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Dang ve sinh thi khoi den day dac trong phong. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Dang ve sinh thi khoi den day dac trong phong. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Dang ve sinh thi khoi den day dac trong phong. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Dang ve sinh thi khoi den day dac trong phong.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "ĐANG VỆ SINH THÌ KHÓI ĐEN DÀY ĐẶC TRONG PHÒNG.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Khói đen dày đặc tràn vào phòng lúc tôi vệ sinh.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khoi den day dac tran vao phong luc toi ve sinh. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khoi den day dac tran vao phong luc toi ve sinh. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khoi den day dac tran vao phong luc toi ve sinh. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khoi den day dac tran vao phong luc toi ve sinh. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khoi den day dac tran vao phong luc toi ve sinh. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > Khoi den day dac tran vao phong luc toi ve sinh. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Khoi den day dac tran vao phong luc toi ve sinh.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/190]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: the real report still routes > KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH. routes on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] a word that names a hazard in one sentence and an ordinary event in another needs its context before it stops the intake: "bị giật" is a medical emergency only beside electricity or a touched fixture, never for a curtain, a bag or a drawer that was pulled, and thick black smoke is a fire only when it is happening, never when it is soot to be cleaned from a wall or a curtain; the real shock, the live smoke and the dense-smoke report still route, with and without diacritics
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "KHÓI ĐEN DÀY ĐẶC TRÀN VÀO PHÒNG LÚC TÔI VỆ SINH.": expected 'none' not to be 'none' // Object.is equality
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:101:81
+     99|     '%s routes on the %s Case',
+    100|     (text, service) => {
+    101|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                                 ^
+    102|     },
+    103|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/190]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > My fridge is not broken. Please repair the outlet. asks for no unsupported work (a negated broken adjective)
+AssertionError: [P431-kael-requested-work-english-negation] an English request that refuses work on an appliance ("do not repair", "no need to check", "never fix") refuses the appliance and the fault described with it, so "Do not repair my washing machine that will not start; just fix the outlet." asks for no unsupported work, while the refusal ends at a contrast word or a new clause and the appliance that is asked for next, or beside a refusal that names something else, is still requested
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a negated broken adjective: "My fridge is not broken. Please repair the outlet.": expected [ 'tu lanh' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "tu lanh",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:50:85
+     48| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     49|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     50|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     51|   })
+     52| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/190]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > My washing machine is not faulty, please repair the outlet. asks for no unsupported work (a negated faulty adjective)
+AssertionError: [P431-kael-requested-work-english-negation] an English request that refuses work on an appliance ("do not repair", "no need to check", "never fix") refuses the appliance and the fault described with it, so "Do not repair my washing machine that will not start; just fix the outlet." asks for no unsupported work, while the refusal ends at a contrast word or a new clause and the appliance that is asked for next, or beside a refusal that names something else, is still requested
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a negated faulty adjective: "My washing machine is not faulty, please repair the outlet.": expected [ 'may giat' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "may giat",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:50:85
+     48| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     49|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     50|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     51|   })
+     52| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/190]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > The dishwasher isn't leaking. Please fix the socket. asks for no unsupported work (a contracted negated fault)
+AssertionError: [P431-kael-requested-work-english-negation] an English request that refuses work on an appliance ("do not repair", "no need to check", "never fix") refuses the appliance and the fault described with it, so "Do not repair my washing machine that will not start; just fix the outlet." asks for no unsupported work, while the refusal ends at a contrast word or a new clause and the appliance that is asked for next, or beside a refusal that names something else, is still requested
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a contracted negated fault: "The dishwasher isn't leaking. Please fix the socket.": expected [ 'may rua bat' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "may rua bat",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:50:85
+     48| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     49|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     50|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     51|   })
+     52| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/190]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > My dryer is not stuck. Please repair the light switch. asks for no unsupported work (a negated stuck adjective)
+AssertionError: [P431-kael-requested-work-english-negation] an English request that refuses work on an appliance ("do not repair", "no need to check", "never fix") refuses the appliance and the fault described with it, so "Do not repair my washing machine that will not start; just fix the outlet." asks for no unsupported work, while the refusal ends at a contrast word or a new clause and the appliance that is asked for next, or beside a refusal that names something else, is still requested
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a negated stuck adjective: "My dryer is not stuck. Please repair the light switch.": expected [ 'may say' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "may say",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:50:85
+     48| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     49|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     50|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     51|   })
+     52| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/190]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > My washing machine is not working. Please repair it. asks for ["may giat"] (a negative functioning predicate is a real fault)
+AssertionError: [P431-kael-requested-work-english-negation] an English request that refuses work on an appliance ("do not repair", "no need to check", "never fix") refuses the appliance and the fault described with it, so "Do not repair my washing machine that will not start; just fix the outlet." asks for no unsupported work, while the refusal ends at a contrast word or a new clause and the appliance that is asked for next, or beside a refusal that names something else, is still requested
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a negative functioning predicate is a real fault: "My washing machine is not working. Please repair it.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:56:85
+     54| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     55|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     56|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     57|   })
+     58| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/190]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > My fridge is not broken, but please repair my dryer. asks for ["may say"] (a separate affirmative appliance request)
+AssertionError: [P431-kael-requested-work-english-negation] an English request that refuses work on an appliance ("do not repair", "no need to check", "never fix") refuses the appliance and the fault described with it, so "Do not repair my washing machine that will not start; just fix the outlet." asks for no unsupported work, while the refusal ends at a contrast word or a new clause and the appliance that is asked for next, or beside a refusal that names something else, is still requested
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a separate affirmative appliance request: "My fridge is not broken, but please repair my dryer.": expected [ 'may say', 'tu lanh' ] to deeply equal [ 'may say' ]
+
+- Expected
++ Received
+
+  [
+    "may say",
++   "tu lanh",
+  ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:56:85
+     54| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     55|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     56|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     57|   })
+     58| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/190]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps supported work open: CB nhà vệ sinh hay nhảy khi bật vòi nước nóng, nhờ kiểm tra.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    CB nhà vệ sinh hay nhảy khi bật vòi nước nóng, nhờ kiểm tra.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:66:111
+     64|   it.each(supported)('keeps supported work open: %s', (text) => {
+     65|     const service: Service = text === 'Đường ống nước nóng nối với bìn…
+     66|     for (const enabled of [false, true]) expect(boundary(text, service…
+       |                                                                                                               ^
+     67|   })
+     68|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/190]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps supported work open: Nhờ sửa RCBO trong phòng tắm, cứ mở vòi nước là nhảy.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Nhờ sửa RCBO trong phòng tắm, cứ mở vòi nước là nhảy.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:66:111
+     64|   it.each(supported)('keeps supported work open: %s', (text) => {
+     65|     const service: Service = text === 'Đường ống nước nóng nối với bìn…
+     66|     for (const enabled of [false, true]) expect(boundary(text, service…
+       |                                                                                                               ^
+     67|   })
+     68|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/190]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps supported work open: My fridge is not broken. Please repair the outlet.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    My fridge is not broken. Please repair the outlet.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:66:111
+     64|   it.each(supported)('keeps supported work open: %s', (text) => {
+     65|     const service: Service = text === 'Đường ống nước nóng nối với bìn…
+     66|     for (const enabled of [false, true]) expect(boundary(text, service…
+       |                                                                                                               ^
+     67|   })
+     68|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/190]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps supported work open: My washing machine is not faulty, please repair the outlet.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    My washing machine is not faulty, please repair the outlet.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:66:111
+     64|   it.each(supported)('keeps supported work open: %s', (text) => {
+     65|     const service: Service = text === 'Đường ống nước nóng nối với bìn…
+     66|     for (const enabled of [false, true]) expect(boundary(text, service…
+       |                                                                                                               ^
+     67|   })
+     68|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/190]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  190 failed | 479 passed (669)
+   Start at  03:34:38
+   Duration  7.29s (transform 5.25s, setup 0ms, import 6.77s, tests 559ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts
