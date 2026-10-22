@@ -59,6 +59,8 @@ describe(PILLAR.id, () => {
       'Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra.',
       'Tủ lạnh cạnh ổ cắm không làm đá, nhờ kiểm tra.',
       'We already repaired the outlet and now my washing machine will not start, please repair it.',
+      'Nha toi bi hong may giat dat canh o cam, nho sua.',
+      'Hong cai may giat canh o cam, nho kiem tra.',
     ]) {
       const result = boundary(text, 'electrical', enabled)
       expect(result.ok, pillarWhy(PILLAR, text)).toBe(false)

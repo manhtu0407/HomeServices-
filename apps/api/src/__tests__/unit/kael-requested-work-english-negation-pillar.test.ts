@@ -48,6 +48,8 @@ const REFUSED: ReadonlyArray<readonly [string, string]> = [
 ]
 
 const STILL_REQUESTED: ReadonlyArray<readonly [string, readonly string[], string]> = [
+  ['Nha toi bi hong may giat dat canh o cam, nho sua.', ['may giat'], 'an explicit appliance fault precedes its incidental placement'],
+  ['Hong cai may giat canh o cam, nho kiem tra.', ['may giat'], 'a fault before the appliance outranks later placement'],
   ['Máy giặt cạnh ổ cắm không xả nước, nhờ kiểm tra.', ['may giat'], 'draining remains an appliance function after placement'],
   ['Tủ lạnh cạnh ổ cắm không làm đá, nhờ kiểm tra.', ['tu lanh'], 'ice making remains an appliance function after placement'],
   ['May giat canh o cam does not drain.', ['may giat'], 'the shared English function grammar remains active'],

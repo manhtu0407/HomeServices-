@@ -169,10 +169,11 @@ function mentionIsRequested(clauses: readonly Clause[], at: number, start: numbe
   const coordinated = coordinatedActStart(prefix);
   if (coordinated >= 0 && unfinished(coordinated)) return true;
   if (PLACEMENT_BEFORE.test(prefix)) return false;
+  if (FAULT_BEFORE.test(prefix)) return true;
   const fixture = PLACED_BY_FIXTURE.exec(suffix);
   if (fixture && !INTERNAL_FAULT.test(suffix) &&
     (!FUNCTION_FAULT_IN_CONTEXT.test(suffix) || FIXTURE_CONTROL_FAULT_AFTER.test(suffix.slice(fixture[0].length)))) return false;
-  if (FAULT_BEFORE.test(prefix) || FAULT_AFTER.test(suffix)) return true;
+  if (FAULT_AFTER.test(suffix)) return true;
   if (NOT_FAULTY_AFTER.test(suffix)) return false;
   const actAfter = ACT_AFTER.exec(suffix);
   if (actAfter && unfinished(mentionEnd + actAfter[0].length - (actAfter[1] as string).length)) return true;
