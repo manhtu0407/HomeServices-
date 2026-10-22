@@ -1,0 +1,75 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '012fbc2a-451d-456b-b782-b306b6034722',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'f70dd06d-5356-47b5-a788-13c4261a1fec',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (29 tests | 2 failed) 283ms
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+     × delivers visible emergency guidance and metadata before the refusal, flags=false 153ms
+     × delivers visible emergency guidance and metadata before the refusal, flags=true 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+AssertionError: Target cannot be null or undefined.
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:74:34
+     72|     expect(String(replies[0]?.text_content)).toContain('115')
+     73|     expect(replies[0]?.safe_metadata).toMatchObject({ emergency_route:…
+     74|     expect(world.db.tables.jobs).toHaveLength(0)
+       |                                  ^
+     75|   })
+     76| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  2 failed | 393 passed (395)
+   Start at  21:27:09
+   Duration  6.93s (transform 12.76s, setup 0ms, import 16.23s, tests 2.11s, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts

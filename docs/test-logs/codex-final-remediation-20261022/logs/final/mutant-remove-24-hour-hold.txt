@@ -1,0 +1,7 @@
+mutant_exit=3
+
+ERROR:  the exact payment was not verified: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000101","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-22T14:45:38.384305+00:00","event_id_out":"d6d14898-3492-4f0e-be6a-c6a575873580","version_out":3,"generated_at_out":"2026-10-22T14:45:38.384205+00:00"}
+CONTEXT:  PL/pgSQL function inline_code_block line 15 at RAISE
+
+restore_exit=0
+control_exit=0

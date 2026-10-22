@@ -1,0 +1,42 @@
+check kael-learning-monitor
+check kael-matching-maintainer
+check kael-media-retention
+check mobile-api
+[0m[38;5;245mrunning 4 tests from ./supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts[0m
+P388-mobile-client-contract-compatibility: accepts the immediate legacy epoch at its explicit per-platform floor ... [0m[32mok[0m [0m[38;5;245m(19ms)[0m
+P388-mobile-client-contract-compatibility: rejects the immediate legacy epoch below its floor and all older epochs ... [0m[32mok[0m [0m[38;5;245m(1ms)[0m
+P388-mobile-client-contract-compatibility: requires exact release identity for the current epoch ... [0m[32mok[0m [0m[38;5;245m(618µs)[0m
+P388-mobile-client-contract-compatibility: accepts the current release-bound iOS build while preserving the previous build floor ... [0m[32mok[0m [0m[38;5;245m(888µs)[0m
+
+[0m[32mok[0m | 4 passed | 0 failed [0m[38;5;245m(31ms)[0m
+
+check payment-maintainer
+check system-monitor
+check sepay-webhook
+
+edge check: discovered=7 selected=7 checked=7 failed=0
+
+ Image denoland/deno:2.9.4@sha256:c777b4b225501a61074837e90a826a58f99124837824023cd60334b1e2374498 Skipped Image is already present locally
+ Container b4-deno-run-aa93a57c95a2 Creating 
+ Container b4-deno-run-aa93a57c95a2 Created 
+[0m[32mCheck[0m supabase/functions/kael-learning-monitor/index.ts
+ Container b4-deno-run-abd6a0680fe3 Creating 
+ Container b4-deno-run-abd6a0680fe3 Created 
+[0m[32mCheck[0m supabase/functions/kael-matching-maintainer/index.ts
+ Container b4-deno-run-60b4189c90ff Creating 
+ Container b4-deno-run-60b4189c90ff Created 
+ Container b4-deno-run-f5439befdcd5 Creating 
+ Container b4-deno-run-f5439befdcd5 Created 
+[0m[32mCheck[0m supabase/functions/mobile-api/index.ts
+ Container b4-deno-run-bdc38a8463c4 Creating 
+ Container b4-deno-run-bdc38a8463c4 Created 
+[0m[32mCheck[0m supabase/functions/mobile-api/_shared/http/request-runtime-pillar.test.ts
+ Container b4-deno-run-9445cfbd572f Creating 
+ Container b4-deno-run-9445cfbd572f Created 
+[0m[32mCheck[0m supabase/functions/payment-maintainer/index.ts
+ Container b4-deno-run-2ce0588ca00c Creating 
+ Container b4-deno-run-2ce0588ca00c Created 
+ Container b4-deno-run-fceffaca8bef Creating 
+ Container b4-deno-run-fceffaca8bef Created 
+[0m[32mCheck[0m supabase/functions/sepay-webhook/index.ts
+

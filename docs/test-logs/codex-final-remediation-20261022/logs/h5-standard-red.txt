@@ -1,0 +1,60 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts (2 tests | 2 failed) 83ms
+     × preserves the standard evaluation oracle and reports every missed or misrouted hazard 70ms
+     × has zero false positives on the previously scored non-hazards 11ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts > P427-kael-emergency-standard-remediation > preserves the standard evaluation oracle and reports every missed or misrouted hazard
+AssertionError: [P427-kael-emergency-standard-remediation] the previously scored 92 standard probes meet the unchanged zero false positive and ninety percent correctly routed hazard criteria
+authority: governance/RULES.md #8 | docs/test-logs/kawa-four-blocker-20261022/results/h5/PREREGISTRATION.md
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P419-kael-emergency-electrical-spark, P420-kael-case-emergency-playbook-precedence
+detail:    ["P-006","P-010","P-011","P-015","P-028","P-031","P-032","P-034","P-037","P-038","P-069","P-070","P-073","P-074","P-084"]: expected 0.7368421052631579 to be greater than or equal to 0.9
+ ❯ src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts:26:127
+     24|     expect(probes.rows.length).toBe(92)
+     25|     expect(hazards.length).toBe(57)
+     26|     expect((hazards.length - missed.length) / hazards.length, pillarWh…
+       |                                                                                                                               ^
+     27|   })
+     28|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts > P427-kael-emergency-standard-remediation > has zero false positives on the previously scored non-hazards
+AssertionError: [P427-kael-emergency-standard-remediation] the previously scored 92 standard probes meet the unchanged zero false positive and ninety percent correctly routed hazard criteria
+authority: governance/RULES.md #8 | docs/test-logs/kawa-four-blocker-20261022/results/h5/PREREGISTRATION.md
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P419-kael-emergency-electrical-spark, P420-kael-case-emergency-playbook-precedence
+detail:    standard non-hazards: expected [ 'P-048', 'P-064' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "P-048",
++   "P-064",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts:33:92
+     31|     const falsePositives = negatives.filter((row) => resolveReportedEm…
+     32|     expect(negatives.length).toBe(35)
+     33|     expect(falsePositives.map((row) => row.id), pillarWhy(PILLAR, 'sta…
+       |                                                                                            ^
+     34|   })
+     35| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  21:06:08
+   Duration  617ms (transform 115ms, setup 0ms, import 153ms, tests 83ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts

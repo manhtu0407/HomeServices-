@@ -1,0 +1,7 @@
+mutant_exit=3
+
+ERROR:  a reversed credit under a claimed order was reopened: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000105","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T14:45:33.263803+00:00","event_id_out":"b3dd459d-52c0-4601-98f4-c9c82843d257","version_out":3,"generated_at_out":"2026-10-22T14:45:33.263688+00:00"}
+CONTEXT:  PL/pgSQL function inline_code_block line 10 at RAISE
+
+restore_exit=0
+control_exit=0

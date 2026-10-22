@@ -1,0 +1,3 @@
+runner parity ok: 14 runners dispatched, 12 cross-platform, 2 Windows-only by declaration
+
+

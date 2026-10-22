@@ -418,7 +418,7 @@
    "text": "Mình vừa chạm vào vỏ tủ lạnh thì bị giật một cái",
    "expected": "medical",
    "kind": "judgement",
-   "currently": null
+   "currently": "medical"
   },
   {
    "id": "H2-069",

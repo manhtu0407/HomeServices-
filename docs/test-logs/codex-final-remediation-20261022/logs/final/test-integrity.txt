@@ -1,0 +1,6 @@
+REPORT apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts [expected-literal-changed] an expected value changed while product source changed in the same diff
+REPORT apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts [expected-literal-changed] an expected value changed while product source changed in the same diff
+REPORT config/harness/manifest.json [protected-surface] gate, config, or workflow changed; list it under "Gate or protected-surface changes"
+check-test-integrity: 0 blocking, 3 report-only, 122 changed file(s) examined
+
+

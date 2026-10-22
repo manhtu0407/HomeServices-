@@ -1,0 +1,23 @@
+{
+  "snapshot": "9609675a1e85b316aabb8af6545b0c5e5ac02988",
+  "fixedPoint": "7e59b91085825a11168b2b2e1c68225a2dcc17f0",
+  "snapshotBatchesRead": 30,
+  "reviewableFiles": 72,
+  "reviewed": 72,
+  "skipped": 0,
+  "jsonFilesParsed": 49,
+  "spec": "User final remediation instruction; unchanged H5 preregistration; Master Plan 02 PDF pages 1-5",
+  "specCompliance": "H5 standard, DX boundaries, local payment recovery and domain concurrency implemented. Higher tier evaluation stays separate.",
+  "standards": "Owner-authorized behavior pins only. Expected H5 labels and 92 probes unchanged. No sealed evaluation, hosted mutation, release, merge or paid provider calls.",
+  "maintainability": "Existing bounded cue/request modules reused; no new production subsystem or dependency. New migration differs from F-PAY-1 only by NULL guards and narrow unique-violation handling.",
+  "selfReviewFindings": [],
+  "independentReview": "PENDING exact pushed HEAD",
+  "protectedSurfaceChanges": [
+    "config/harness/manifest.json: runtime.kael.intent checksum only; no capability, policy or threshold changed"
+  ],
+  "limits": [
+    "T0 in-memory provider stubs and T1 local PostgreSQL with compatibility auth/storage stubs; no PostgREST/JWT/device claim",
+    "Existing authority-citation failure on baseline-equivalent clean checkout",
+    "Historical evidence preserved even where its dated status is superseded by this candidate"
+  ]
+}

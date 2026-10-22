@@ -100,13 +100,13 @@ describe(`${PILLAR.id}: an unsupported request is refused the same way with the 
   })
 })
 
-describe(`${PILLAR.id}: coverage the detector does not have yet is the same with the flag off and on`, () => {
+describe(`${PILLAR.id}: previously missed requests are refused with the flag off and on`, () => {
   it.each([
     ['a stuck washing-machine door named without a request verb', 'Máy giặt kẹt cửa.', 'vi'],
     ['an English request for an unsupported appliance', 'Please fix my washing machine.', 'en'],
     ['an English connection fault', 'Can someone repair the wifi router?', 'en'],
-  ] as const)('pinned gap, not an endorsement: %s is accepted with the flag off and on', (label, text, language) => {
-    expect([verdict(text, 'off', language), verdict(text, 'on', language)], pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)}`)).toEqual(['ok', 'ok'])
+  ] as const)('fixed gap: %s is refused with the flag off and on', (label, text, language) => {
+    expect([verdict(text, 'off', language), verdict(text, 'on', language)], pillarWhy(PILLAR, `${label}: ${JSON.stringify(text)}`)).toEqual(['out_of_scope', 'out_of_scope'])
   })
 })
 
@@ -153,9 +153,9 @@ describe(`${PILLAR.id}: a message that mixes supported and unsupported work is d
   })
 
   it.each(MIXED_PASSED_BY_THE_INFRASTRUCTURE_ESCAPE)(
-    'pinned reading, not an endorsement: %s names a fault on a fixed electrical component, so the infrastructure escape lets it through with the flag off and on',
+    '%s refuses the unsupported request beside a fixed electrical component with the flag off and on',
     (text) => {
-      expect([verdict(text, 'off'), verdict(text, 'on')], pillarWhy(PILLAR, JSON.stringify(text))).toEqual(['ok', 'ok'])
+      expect([verdict(text, 'off'), verdict(text, 'on')], pillarWhy(PILLAR, JSON.stringify(text))).toEqual(['out_of_scope', 'out_of_scope'])
     },
   )
 })

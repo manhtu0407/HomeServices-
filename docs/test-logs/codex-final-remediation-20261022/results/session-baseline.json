@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-22",
+  "repository": "manhtu0407/HomeServices-",
+  "worktree": "C:/ns-fix/b4",
+  "branch": "claude/nestscout-four-blocker-20261022",
+  "inheritedHead": "c086cdf888b8fc489a45fe945f6d7707c6bb2dff",
+  "inheritedStatus": "clean",
+  "pr405Merge": "7e59b91085825a11168b2b2e1c68225a2dcc17f0",
+  "synchronization": "non-rewriting merge of origin/main",
+  "synchronizedHead": "7dfaac2987f2899e479f7c9d251f9829208aa8e3",
+  "baselineTree": "992c50a81aa1737e43be986b9fea29064bbf982d",
+  "baselineAuthorityRun": "C:/ns-fix/r1 at 8e859073; its clean tree equals merged origin/main tree",
+  "dockerVersionAttempt": "stable updater timed out after 300 seconds; owner explicitly authorized using installed Docker 29.9.2 / Compose 5.6.0 without another update or restart",
+  "localTargets": [
+    "ns-codex-final-pg",
+    "ns-codex-final-verify-pg"
+  ],
+  "hostedMutations": false,
+  "paidProviderCalls": 0,
+  "realPayments": 0
+}

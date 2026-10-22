@@ -88,7 +88,7 @@ const WATER_TONES: ToneRules = {
 };
 const EXPOSED_WIRE_TONES: ToneRules = { ho: /^h[o\u1edf]$/u };
 const WIRED_FIXTURE_IN_SEGMENT = new RegExp(`\\b(?:${WIRED_FIXTURES})\\b`, "u");
-const WIRED_FIXTURE_IN_SEGMENT_EN = /\b(?:outlets?|sockets?|wiring|wires?|breakers?|switchboard|junction box|(?:electrical|electric|breaker|fuse|distribution|circuit) (?:panel|box|board|cabinet))\b/u;
+const WIRED_FIXTURE_IN_SEGMENT_EN = /\b(?:outlets?|sockets?|wiring|wires?|breakers?|cords?|cables?|power strips?|switchboard|junction box|(?:electrical|electric|breaker|fuse|distribution|circuit) (?:panel|box|board|cabinet))\b/u;
 const SPARK_NOT_ELECTRICAL = /\b(?:bep (?:ga|gas)|phao hoa|firework|gas stove|welding|welder|tho han|may han)\b/u;
 const SPARK_ENDED_EN = /\b(?:stopped|ceased|quit|ended|finished)\s+spark(?:s|ing)?\b|\bspark(?:s|ing)?\s+(?:(?:has|have|had|is|are|was|were)\s+)?(?:(?:now|already)\s+)?(?:stopped|ceased|ended|gone)\b/u;
 const SPARK_ENDED_VI = /\bngung (?:(?:ban|phat|xet|toe) )?(?:ra )?tia lua\b/u;
@@ -109,6 +109,8 @@ const SPARK_SOURCE_AFTER = /^(?: (?:dang|van|cu|lien tuc)){0,3} (?:ban|phong|pha
 
 const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
   fire: [
+    cue(/\bkhoi (?:den(?: day dac| mu mit)?|day dac)\b/u, { toneRules: THICK_SMOKE_TONES }),
+    cue(/\b(?:dang|van) (?:boc|bung) lua\b|\blua (?:van )?chua tat\b/u, { toneRules: CATCH_FIRE_TONES }),
     cue(/\b(?:boc khoi|phat khoi|tuon khoi|toa khoi|bao dong chay)\b/u),
     cue(/(?<!\bbep )\b(?:dang co|dang thay|co|thay|ngui thay) khoi(?! (?:thuoc|nhang|huong|bep|xe|bui|tran|dong co|than|hut|luong|nghiep|dau|lap|dong|cong|sac|su|phat|tao))\b/u),
     cue(new RegExp(`\\b(?:${HOME_NOUNS})(?: (?:toi|minh|ben canh|hang xom|ben|nha))?(?: dang| bi) chay(?! (?:nuoc|mau|chua))\\b`, "u")),
@@ -132,6 +134,9 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
     cue(/(?<!\b(?:de|kho|chong|khong|vai|chat lieu) )\b(?:boc|bung|bat) chay\b/u, { tone: "acute", toneRules: CATCH_FIRE_TONES }),
   ],
   medical: [
+    cue(/\bbi giat(?! minh\b)\b/u),
+    cue(/\bbi ngat\b/u, { toneRules: FAINT_TONES }),
+    cue(/\b(?:mixed|mixing) (?:bleach and ammonia|ammonia and bleach)\b/u, { requires: [/\b(?:coughing|dizzy|breathless|struggling to breathe)\b/u] }),
     cue(/\b(?:dien giat|giat dien|bat tinh|ngat xiu|ngat roi|ngung tho|ngung tim|khong tho (?:duoc|noi)|tho khong (?:duoc|noi)|ngat tho|nghet tho|khong the tho|co giat|dot quy|bi thuong|kho tho|dau nguc|cap cuu|bi bong nang|ngo doc|chay mau(?: nhieu| khong ngung| ao at| rat nhieu)?)\b/u),
     cue(/\b(?:electric(?:al)? shock|electrocuted|got shocked|was shocked|unconscious|passed out|not breathing|stopped breathing|difficulty breathing|struggling to breathe|can t breathe|cannot breathe|shortness of breath|chest pain|heart attack|seizure|overdose|medical emergency|needs? an ambulance|call an ambulance|injured|i m hurt|(?:someone|somebody|he|she|they|person|child|kid|baby|man|woman) (?:is|was|got|s) (?:badly |seriously )?hurt|seriously hurt|badly hurt)\b/u),
     cue(/\b(?:(?:i|he|she|they|someone|somebody|person|child|kid|baby|man|woman)(?: m| s| is| am| are| was)?(?: badly| heavily)? bleeding|bleeding (?:heavily|badly|profusely|a lot|won t stop))\b/u, { technicalBleeding: true }),
@@ -147,6 +152,7 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
     cue(/\b(?:he|she|they|someone|somebody|person|man|woman|child|kid|baby|dad|mum|mom|mother|father|grandma|grandpa)(?: s| is| was| are)? (?:not|isn t|aren t|wasn t) (?:moving|responding|breathing)\b/u),
   ],
   police: [
+    cue(/\b(?:cam|vung|rut|chia) (?:dao|sung|vu khi)(?: [a-z]+){0,3} (?:doa|de doa|tan cong)\b/u, { toneRules: ARMED_TONES }),
     cue(/\b(?:dot nhap|co nguoi dot nhap|dang bi tan cong|bi tan cong|bi de doa|dang bi de doa|bi cuop|dang bi cuop|bao luc|co trom|ke trom|bi xam hai)\b/u),
     cue(/\b(?:intruder|breaking in|break in|being attacked|being threatened|robbery in progress|assault in progress|burglar|burglary in progress|someone is in my (?:house|home|apartment|room))\b/u),
     cue(/\b(?:ke la|nguoi la|ke gian|ten trom|ai do|co nguoi) (?:dang )?(?:cay|pha|dap|nay) (?:cua|khoa)\b/u),
@@ -162,6 +168,7 @@ const EMERGENCY_CUES: Record<CueRoute, readonly Cue[]> = {
     cue(/\b(?:(?:trying|tried|attempting|attempts?|about) to break (?:in|into)|break(?:ing)? into (?:my|our|the) (?:house|home|apartment|flat|room|unit|place)|(?:someone|somebody|a stranger|strangers|people|men|a man) (?:is |are )?(?:forcing|prying|picking|kicking) (?:open )?(?:the |my |our )?(?:door|lock))\b/u),
   ],
   electrical_water: [
+    cue(/\b(?:nong chay|chay xem(?: den)?|chay den)\b/u, { requires: [WIRED_FIXTURE_IN_SEGMENT, /\bmui khet\b/u], toneRules: { chay: /^ch[aáả]y$/u } }),
     cue(/\b(?:tia lua dien|phat tia lua|toe lua|danh lua|o dien (?:co )?(?:tia lua|phat tia lua)|day dien lo|day dien tran|day dien dang co dien|day dien phat tia lua)\b/u),
     cue(/\b(?:nuoc (?:dang )?ngap (?:gan|quanh) (?:o dien|o cam|nguon dien|day dien)|nuoc gan (?:o dien|o cam|day dien)|nuoc dang cham vao o dien|nuoc cham vao day dien)\b/u),
     cue(/\b(?:electrical sparking|(?:outlet|socket|wire|panel|breaker) is sparking|sparking (?:from|at) (?:an? )?(?:outlet|socket|wire)|exposed live wire|live wire exposed|water near live wire|water touching an outlet|water near (?:an? )?(?:outlet|electricity|electrical equipment)|water (?:is )?(?:rising|flooding) near (?:an? )?(?:outlet|electricity)|electrical flooding|flooding near electricity|electrical hazard)\b/u),
@@ -235,9 +242,9 @@ const UNCERTAIN_GENERIC_CUES = [
 ];
 
 const PREVENTION_PHRASES =
-  /\b(?:canh (?:co )?(?:chay|hoa hoan)|phong chay chua chay|chua chay|binh chua chay|binh cuu hoa|cuu hoa|pccc|(?:canh )?bao ro (?:khi )?(?:gas|ga)|dau do (?:khi )?(?:gas|ga)|cam bien (?:khi )?(?:gas|ga)|(?:kiem tra|do) ro (?:khi )?(?:gas|ga)|gas (?:detectors?|alarms?|sensors?)|(?:check|checking|test|testing|detect|detecting) (?:for )?(?:a )?gas leaks?|fire (?:drill|safety|prevention|extinguisher|exit|escape|door|rated|proof|sprinkler|code)|fire-?proof|smoke (?:detectors?|alarms?) (?:battery|install\w*|replac\w*|test\w*))\b/u;
+  /\b(?:canh (?:co )?(?:chay|hoa hoan)|phong chay chua chay|chua chay|binh chua chay|binh cuu hoa|cuu hoa|pccc|(?:canh )?bao ro (?:khi )?(?:gas|ga)|dau do (?:khi )?(?:gas|ga)|cam bien (?:khi )?(?:gas|ga)|(?:kiem tra|do) ro (?:khi )?(?:gas|ga)|gas (?:leak )?(?:detectors?|alarms?|sensors?)|(?:check|checking|test|testing|detect|detecting) (?:for )?(?:a )?gas leaks?|fire (?:drill|safety|prevention|extinguisher|exit|escape|door|rated|proof|sprinkler|code)|fire-?proof|smoke (?:detectors?|alarms?) (?:battery|install\w*|replac\w*|test\w*))\b/u;
 
-const NEGATED_CUE_SUFFIX = /\b(?:khong|chua|chang|het|no|not|never|without|no longer|does not|do not|is not|are not|was not|were not|doesn t|don t|isn t|aren t)\b(?:\s+[\p{L}\p{N}]+){0,4}\s*$/u;
+const NEGATED_CUE_SUFFIX = /\b(?:khong|chua|chang|het|no|nobody|no one|not|never|without|no longer|does not|do not|is not|are not|was not|were not|doesn t|don t|isn t|aren t)\b(?:\s+[\p{L}\p{N}]+){0,4}\s*$/u;
 const SELF_NEGATION = /\b(?:khong phai|khong|chua|chang)\s+(?:phai\s+)?(?:la\s+)?(?:toi|minh|tui|em|chung toi|nha toi|bon toi)\b|\b(?:toi|minh|tui|em|chung toi)\s+(?:khong|chua|chang)\b|\b(?:not|never)\s+(?:me|i|us|myself)\b|\b(?:i|we)\s+(?:am not|m not|was not|wasn t|did not|didn t|have not|haven t|do not|don t)\b/u;
 const THIRD_PARTY_REST = /\b(?:nguoi (?:ben canh|khac|nha|kia|ay|do|trong nha)|ai do|hang xom|(?:ong|ba|anh|chi|co|chu|bac|em|con|be) (?:ay|kia|do|ben canh|hang xom))(?: [a-z]+){0,2} (?:moi|cung|thi|dang) bi\b|\bma la (?:con|chong|vo|me|bo|ba|ong|anh|chi|em|nguoi|hang xom|be)\b|\b(?:con|chong|vo|me|bo) (?:toi|minh|nha toi) thi co\b/u;
 const HYPOTHETICAL_BEFORE = /\b(?:neu|neu nhu|gia su|gia dinh|gia nhu|lo ma|phong khi|de phong|de tranh|if|what if|in case|suppose|supposing|should there be|to prevent|to avoid)\b/u;
@@ -416,10 +423,12 @@ const NEGATION_SPELLINGS: Readonly<Record<string, readonly string[]>> = {
 
 function negationText(plainPrefix: string, accentedPrefix: string): string {
   const accentedWords = accentedPrefix.split(" ");
-  return plainPrefix.split(" ")
+  const plainWords = plainPrefix.split(" ");
+  return plainWords
     .map((word, index) => {
       const spellings = Object.hasOwn(NEGATION_SPELLINGS, word) ? NEGATION_SPELLINGS[word] : undefined;
-      return spellings && !spellings.includes(accentedWords[index] ?? "") ? "_" : word;
+      return (word === "no" && /^(?:tung|bung|lon|roi)$/.test(plainWords[index + 1] ?? "")) ||
+        (spellings && !spellings.includes(accentedWords[index] ?? "")) ? "_" : word;
     })
     .join(" ");
 }

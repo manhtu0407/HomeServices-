@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 464,
+  "migrationCount": 465,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "3fbfba07ef751af01869e34287977bc36f75d553887d93ec0a9f0a10341cb2c5",
+  "migrationsSha256": "48203ae04aef620adda0d6731086ae86b326689ef0df6b6c3b7d7746f6a3e02b",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e91abb2c693df49897a6652798f230ed94e32cad54732be7471069a5f1bb857f"
@@ -3355,6 +3355,13 @@
       "file": "supabase/migrations/20261022100000_reopen_reconciled_manual_bank_ledger.sql",
       "sha256": "d20eeda943ca6b7800335f2571073454bf1183cbd9391c82285c9d27cd5baaaf",
       "bytes": 12224
+    },
+    {
+      "version": "20261022141232",
+      "name": "control_bank_reference_race",
+      "file": "supabase/migrations/20261022141232_control_bank_reference_race.sql",
+      "sha256": "a540c241657ac535c94b6bc4bfcb6eddfa4de711e72b3f9af12bf81887a85b50",
+      "bytes": 12662
     }
   ]
 }

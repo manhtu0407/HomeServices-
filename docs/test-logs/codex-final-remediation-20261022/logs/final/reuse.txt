@@ -1,0 +1,7 @@
+reuse-ladder: 2 new exported symbol(s) in 2 file(s) — observational only, not a gate.
+  supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts:188 export detectRequestedApplianceWork
+  supabase/functions/mobile-api/_shared/kael/pipeline/utils.ts:103 export hasUnsupportedRepairIntent
+Before reporting done, confirm the Reuse-Before-Build Ladder ran for each (governance/skills.md Core Skill 2; karpathy-guidelines "Reuse check" field). Found a reuse candidate but wrote new code anyway? Log why in docs/reuse-ladder-debt.md. Skipping either trips the No False Completion gate (governance/critical.md section 3), not this script.
+
+warning: in the working copy of 'apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts', LF will be replaced by CRLF the next time Git touches it
+

@@ -100,11 +100,11 @@ export function scrubCustomerCaseContextForLLM(input: string): string {
   return scrubbed;
 }
 
-export function hasUnsupportedRepairIntent(input: string): boolean {
+export function hasUnsupportedRepairIntent(input: string, selectedService?: string): boolean {
   const normalized = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  const requested = detectRequestedApplianceWork(input);
-  return ["tu lanh", "may giat", "internet"].some((keyword) => requested.has(keyword)) ||
+  const requested = detectRequestedApplianceWork(input, selectedService);
+  return [...requested].some((keyword) => keyword !== "may bom") ||
     ["sua khoa", "son nha"].some((keyword) => normalized.includes(keyword));
 }
 

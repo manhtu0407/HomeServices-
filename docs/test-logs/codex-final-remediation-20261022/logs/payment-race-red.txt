@@ -1,0 +1,9 @@
+CREATE EXTENSION
+INSERT 0 4
+UPDATE 1
+UPDATE 2
+INSERT 0 1
+INSERT 0 1
+DO
+psql:/tmp/reference-race-red.sql:44: ERROR:  password or GSSAPI delegated credentials required
+DETAIL:  Non-superusers must provide a password in the connection string or send delegated GSSAPI credentials.

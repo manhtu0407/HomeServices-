@@ -1,0 +1,3 @@
+work-router coverage ok: 52/52 skills reachable (4 always-on exempt, 12 protocol-only names trapped)
+
+

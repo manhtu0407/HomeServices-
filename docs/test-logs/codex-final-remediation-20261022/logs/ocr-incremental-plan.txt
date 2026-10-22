@@ -1,0 +1,278 @@
+# OCR review plan
+
+Worktree: C:/ns-fix/b4 (linked worktree)
+Branch: claude/nestscout-four-blocker-20261022
+Base: origin/main (merge-base 9609675a1e85b316aabb8af6545b0c5e5ac02988)
+Review: incremental, incremental since the last review
+From: 9609675a1e85b316aabb8af6545b0c5e5ac02988
+Snapshot: 6fe5a55a1967648a171750e726fc793b1faa8194
+
+23 reviewable files, 75976 changed lines, 17 batches.
+Coverage contract: every file below ends the review as reviewed or skipped with a reason. Review each file against the rule group of its batch, and report only what the diff supports.
+
+## Batch 1 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 266 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/final-commands.json (added, +266/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/final-commands.json
+
+## Batch 2 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 13105 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/h5-newly-authored-final.json (added, +13105/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/h5-newly-authored-final.json
+
+## Batch 3 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 454 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/h5-newly-authored-summary.json (added, +454/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/h5-newly-authored-summary.json
+
+## Batch 4 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 15525 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/h5-previously-scored-final.json (added, +15525/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/h5-previously-scored-final.json
+
+## Batch 5 of 17: rule group 1 (system: **/*.{json,json5}), 3 files, 767 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/h5-previously-scored-summary.json (added, +583/-0)
+- docs/test-logs/codex-final-remediation-20261022/results/payment-mutations.json (added, +62/-0)
+- docs/test-logs/codex-final-remediation-20261022/results/post/dx03-language.json (added, +122/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/h5-previously-scored-summary.json docs/test-logs/codex-final-remediation-20261022/results/payment-mutations.json docs/test-logs/codex-final-remediation-20261022/results/post/dx03-language.json
+
+## Batch 6 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 452 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/dx03-persisted.json (added, +452/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/dx03-persisted.json
+
+## Batch 7 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 4988 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/handler.json (added, +4988/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/handler.json
+
+## Batch 8 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 1390 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/journey-flags-on.json (added, +1390/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/journey-flags-on.json
+
+## Batch 9 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 1390 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/journey.json (added, +1390/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/journey.json
+
+## Batch 10 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 15343 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/matrix-flags-on.json (added, +15343/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/matrix-flags-on.json
+
+## Batch 11 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 15365 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/matrix.json (added, +15365/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/matrix.json
+
+## Batch 12 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 569 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/supp-c6b-flags-on.json (added, +569/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/supp-c6b-flags-on.json
+
+## Batch 13 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 569 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/supp-c6b.json (added, +569/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/supp-c6b.json
+
+## Batch 14 of 17: rule group 1 (system: **/*.{json,json5}), 1 files, 5430 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/post/triplet.json (added, +5430/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/post/triplet.json
+
+## Batch 15 of 17: rule group 1 (system: **/*.{json,json5}), 2 files, 121 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/postgres-final-commands.json (added, +98/-0)
+- docs/test-logs/codex-final-remediation-20261022/results/self-review.json (added, +23/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/results/postgres-final-commands.json docs/test-logs/codex-final-remediation-20261022/results/self-review.json
+
+## Batch 16 of 17: rule group 2 (system: **/*.{ts,js,tsx,jsx,mjs,cjs}), 3 files, 153 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/scripts/payment-mutations.mjs (added, +43/-0)
+- docs/test-logs/codex-final-remediation-20261022/scripts/scan-secrets.mjs (added, +33/-0)
+- docs/test-logs/codex-final-remediation-20261022/scripts/verify-final.mjs (added, +77/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/scripts/payment-mutations.mjs docs/test-logs/codex-final-remediation-20261022/scripts/scan-secrets.mjs docs/test-logs/codex-final-remediation-20261022/scripts/verify-final.mjs
+
+## Batch 17 of 17: rule group 3 (system: default), 2 files, 89 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/scripts/prepare-postgres.ps1 (added, +36/-0)
+- docs/test-logs/codex-final-remediation-20261022/scripts/verify-postgres.ps1 (added, +53/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 9609675a1e85b316aabb8af6545b0c5e5ac02988 --to 6fe5a55a1967648a171750e726fc793b1faa8194 docs/test-logs/codex-final-remediation-20261022/scripts/prepare-postgres.ps1 docs/test-logs/codex-final-remediation-20261022/scripts/verify-postgres.ps1
+
+## Rule group 1 (system: **/*.{json,json5})
+
+Check JSON files for spelling errors in json-keys; ignore the content of json-values.
+
+## Rule group 2 (system: **/*.{ts,js,tsx,jsx,mjs,cjs})
+
+#### Obvious Typos or Spelling Errors
+- Spelling errors in variable names, function names, component names, or Props property names
+- Strings in log or error messages containing spelling errors that affect readability
+
+#### Dead Code
+- Code blocks that will never be executed (e.g., branches where the condition is always false, code after a return statement)
+- Variables that are declared but never read or referenced
+- Large blocks of commented-out code (with no apparent intent to retain)
+
+#### Code Quality Checks
+- **Duplicate Code**: Check for common logic that can be extracted
+- **Code Comments**: Complex business logic should have clear explanatory comments (avoid commenting obvious code)
+- **Hardcoding**: Business-related hardcoded strings are prohibited, especially URL paths and business numbers; simple UI text may be relaxed
+- **Variable Declarations**: Using `var` is strictly prohibited; use `let` or `const`
+- **Equality Comparisons**: Using `==` and `!=` is prohibited; use strict equality `===` and `!==`
+- **TypeScript Types**: Avoid using `any` type; if necessary, provide a comment explaining the reason
+- **Null Checks**: Perform null checks when accessing values or destructuring to avoid null pointer exceptions
+- **Ternary Expressions**: Nested ternary expressions are not allowed
+
+#### React Best Practices
+- **Hooks Usage**: Verify compliance with Hooks rules (only call at the top level, only call in React functions)
+- **State Management**: Ensure state is placed at the appropriate level; avoid unnecessary state lifting
+- **Side Effect Handling**: Verify useEffect correctly handles dependencies and cleanup functions
+- **Performance Optimization**: Verify proper use of React.memo, useMemo, useCallback (based on performance analysis; avoid over-optimization)
+- **Render Side Effects**: Side effects in React component render methods are strictly prohibited (e.g., API calls, DOM manipulation)
+- **Inline Styles**: Avoid using inline `style` attributes, except for dynamic styles
+- **Inner Components**: Declaring new components inside a component is prohibited; use render methods instead (e.g., `renderItem`, not `<Item/>`)
+
+#### Async Handling Standards
+- **Error Handling**: Async functions must include proper error handling with user-friendly error messages
+- **Prefer async/await**: Prefer async/await over Promises; callback hell is prohibited
+- **Async in Loops**: Distinguish between independent async operations (use `Promise.all` for parallelism) and dependent async operations (use sequential execution); prefer `Promise.all` for performance
+
+#### Code Security Checks
+- **XSS Protection**: Verify that user input is properly escaped
+- **innerHTML Safety**: Using innerHTML to directly insert user input is prohibited; use textContent or apply XSS protection
+- **Code Injection Protection**: Using eval(), Function() constructor, and string argument forms of setTimeout/setInterval is strictly prohibited
+- **Dangerous Methods**: Using document.write() is prohibited as it causes page reflow and security issues
+- **Sensitive Information**: Check whether API keys or sensitive data are exposed
+- **Prototype Chain Safety**: Modifying native object prototypes (e.g., Array.prototype, Object.prototype) is prohibited
+
+## Rule group 3 (system: default)
+
+#### Correctness
+Is the logic correct? Are there missing boundary conditions?
+Are exceptions handled properly?
+Is it thread-safe in concurrent scenarios?
+
+#### Security
+Are there security vulnerabilities such as SQL injection or XSS?
+Is sensitive information handled correctly?
+Is permission validation complete?
+
+#### Performance
+Are there obvious performance issues (e.g., N+1 queries, unnecessary loops)?
+Are resources properly released?
+
+#### Maintainability
+Is the code clear and easy to understand?
+Do names accurately express intent?
+Does it follow the project’s existing code style and architecture patterns?
+
+#### Test Coverage
+Do critical logic paths have corresponding test cases?
+Do test cases cover boundary conditions?
+
+## Not reviewed by OCR
+
+These changed files were not selected by OCR. Review them by hand or state that they were not reviewed.
+
+- docs/test-logs/codex-final-remediation-20261022/logs/commands.jsonl (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/added-hygiene.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/artifact-assertions.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/authority.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/baseline.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/comments-full.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/comments-working.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/confirm-accept-concurrency.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/edge-db.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/edge-rpc-catalog-parity-initial-format-error.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/edge-rpc-catalog-parity.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/edge-types.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/frozen-matrix-and-drivers.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/h5-newly-authored-analysis.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/h5-newly-authored.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/h5-previously-scored-analysis.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/h5-previously-scored.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/harness.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/manifest.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/manual-qr-probe-transformed.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/manual-qr-probe.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/mutant-allow-null-reference.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/mutant-allow-unclaimed-order.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/mutant-disable-reopen.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/mutant-ignore-wrong-amount.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/mutant-remove-24-hour-hold.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/mutant-remove-base-finance-authority.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/mutant-reopen-any-order-status.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/mutant-reopen-any-reversal-reason.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/payment-mutations.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/pillars.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/postgres-replay.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/postgres-sql-suite.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/protocol-routes.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/residue.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/reuse.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/runner-parity.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/secret-scan-candidate.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/secret-scan-positive-control.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-cleaning-accept.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-cleaning-bank.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-electrical-accept.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-electrical-bank.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-handyman-accept.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-handyman-bank.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-hvac-accept.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-hvac-bank.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-plumbing-accept.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-plumbing-bank.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-upholstery-accept.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/service-upholstery-bank.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/skill-contracts.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/skills-sync.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/status-writers.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/structure.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/test-api.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/test-collection.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/test-integrity.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/test-mobile.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/test-shared.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/types-api.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/types-mobile.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/types-shared.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/workflow-cost.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/final/workplan-coverage.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/ocr-incremental-plan.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/ocr-plan.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-dx03-language.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-dx03-persisted.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-handler.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-journey-flags-on.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-journey.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-matrix-flags-on.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-matrix.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-supp-c6b-flags-on.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-supp-c6b.log.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/post-triplet.log.txt (unsupported_ext)
+
+## When the review is finished
+
+node scripts/run.mjs run-node scripts/ocr-review.mjs mark --snapshot 6fe5a55a1967648a171750e726fc793b1faa8194 --base origin/main
+

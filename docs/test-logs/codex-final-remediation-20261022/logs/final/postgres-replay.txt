@@ -1,0 +1,8 @@
+455 canonical migrations of 465 inventory entries
+553066b7596cffa4223aceb20c01c5e68f176c55fe0b86e0bfc90b041ff568bb
+psql:/tmp/patch.sql:19: NOTICE:  column "last_sign_in_at" of relation "users" already exists, skipping
+psql:/tmp/patch.sql:19: NOTICE:  column "confirmation_token" of relation "users" already exists, skipping
+psql:/tmp/patch.sql:19: NOTICE:  column "raw_user_meta_data" of relation "users" already exists, skipping
+applied 455 migrations
+PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit
+Local replay and seed PASS: ns-codex-final-verify-pg; no host port published.

@@ -474,10 +474,10 @@ describe(`${PILLAR.id}: a third probe set, written after the second fix, run onc
   })
 })
 
-describe(`${PILLAR.id}: wording the detector does not recognise today (pinned: a known miss, not a fix)`, () => {
-  it.each([...KNOWN_MISSES])('"%s" (wanted: %s) is decided the other way today', (text, wanted) => {
-    const got = decide('handyman', text, 'off')
-    expect(got.ok, pillarWhy(PILLAR, `known miss: ${JSON.stringify(text)}`)).toBe(wanted === 'refuse')
+describe(`${PILLAR.id}: previously pinned incorrect decisions now meet the requested-work policy`, () => {
+  it.each([...KNOWN_MISSES])('"%s" (wanted: %s) is decided correctly', (text, wanted) => {
+    const got = decide(wanted === 'open' ? 'plumbing' : 'handyman', text, 'off')
+    expect(got.ok, pillarWhy(PILLAR, `known miss: ${JSON.stringify(text)}`)).toBe(wanted === 'open')
   })
 })
 

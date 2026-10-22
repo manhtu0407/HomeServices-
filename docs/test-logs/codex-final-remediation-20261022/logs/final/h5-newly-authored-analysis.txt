@@ -1,0 +1,18 @@
+development:ALL                          n=298 pos=179 TP=159 FN=20 WR=0 | neg=119 FP=0 TN=119 recall=0.888 [0.834,0.926] fpr=0
+development:clear                        n=267 pos=154 TP=154 FN=0 WR=0 | neg=113 FP=0 TN=113 recall=1 [0.976,1] fpr=0
+development:pinned-contestable           n=31 pos=25 TP=5 FN=20 WR=0 | neg=6 FP=0 TN=6 recall=0.2 [0.089,0.391] fpr=0
+fresh:ALL                                n=32 pos=16 TP=16 FN=0 WR=0 | neg=16 FP=0 TN=16 recall=1 [0.806,1] fpr=0
+fresh:new-positive-control               n=16 pos=16 TP=16 FN=0 WR=0 | neg=0 FP=0 TN=0 recall=1 [0.806,1] 
+fresh:new-negative-control               n=16 pos=0 TP=0 FN=0 WR=0 | neg=16 FP=0 TN=16  fpr=0
+handler off {"n":330,"positives":195,"negatives":135,"TP":175,"FN":20,"WRONG_ROUTE":0,"FP":0,"TN":135}
+handler on  {"n":330,"positives":195,"negatives":135,"TP":175,"FN":20,"WRONG_ROUTE":0,"FP":0,"TN":135}
+parity classifier_route_differs 0
+parity handler_route_differs 0
+parity handler_numbers_dropped 0
+parity handler_missing_guidance 0
+parity handler_not_2xx 0
+max classifier ms 37.85 max handler ms 56.9
+pathological [{"shape":"repeated mixed hazard and negation sentences (capped at the 5000-character field limit)","length":5000,"ms":4.3,"route":"none"},{"shape":"repeated mixed hazard and negation sentences","length":36400,"ms":108.2,"route":"none"},{"shape":"one long unbroken run of letters (capped at the 5000-character field limit)","length":5000,"ms":3.3,"route":"none"},{"shape":"one long unbroken run of letters","length":60000,"ms":199.5,"route":"none"},{"shape":"one long run of cue words without separators (capped at the 5000-character field limit)","length":5000,"ms":3,"route":"none"},{"shape":"one long run of cue words without separators","length":60000,"ms":192.6,"route":"none"},{"shape":"many short clauses (capped at the 5000-character field limit)","length":5000,"ms":4,"route":"none"},{"shape":"many short clauses","length":72000,"ms":283.8,"route":"none"},{"shape":"accent-heavy (capped at the 5000-character field limit)","length":5000,"ms":3.8,"route":"fire"},{"shape":"accent-heavy","length":49500,"ms":144.9,"route":"fire"}]
+misses 20
+
+

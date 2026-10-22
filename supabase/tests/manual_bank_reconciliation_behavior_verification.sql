@@ -414,6 +414,29 @@ begin
 end;
 $wrong_amount$;
 
+do $reference_required$
+declare
+  v_order uuid;
+  v_result record;
+  v_index integer;
+begin
+  select id into strict v_order from public.job_payment_orders where job_id = 'd6910000-0000-4000-8000-000000000101';
+  for v_index in 1..2 loop
+    select * into strict v_result from public.admin_decide_payment_reconciliation_v2(
+      'd6910000-0000-4000-8000-000000000004', v_order, 2, gen_random_uuid(),
+      'confirm', 460000, case when v_index = 1 then null else repeat('a', 64) end,
+      case when v_index = 2 then null else 'REF-0001' end, now() - interval '1 minute', null);
+    if v_result.ok or v_result.error_code is distinct from 'INVALID_INPUT' then
+      raise exception 'null bank-reference field % bypassed verification: %', v_index, row_to_json(v_result);
+    end if;
+  end loop;
+  if (select status from public.jobs where id = 'd6910000-0000-4000-8000-000000000101') <> 'payment_pending'::public.job_status
+    or (select payment_state from public.worker_payment_ledger where job_id = 'd6910000-0000-4000-8000-000000000101') <> 'pending'
+    or (select version from public.job_payment_orders where id = v_order) <> 2
+  then raise exception 'invalid bank-reference input left partial payment effects'; end if;
+end;
+$reference_required$;
+
 -- 9. The exact amount with an unused reference pays once: Job paid, order verified, Worker credit held, immutable trail.
 do $verified$
 declare

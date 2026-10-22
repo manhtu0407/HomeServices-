@@ -1,0 +1,122 @@
+{
+  "schema": "nestscout.audit.dx03_language.v1",
+  "snapshot": "post",
+  "records": [
+    {
+      "case": "hvac-vi",
+      "flags": "off",
+      "open_status": 201,
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+      "reply_source": [
+        "template"
+      ]
+    },
+    {
+      "case": "hvac-vi",
+      "flags": "on",
+      "open_status": 201,
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+      "reply_source": [
+        "template"
+      ]
+    },
+    {
+      "case": "hvac-en",
+      "flags": "off",
+      "open_status": 201,
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "text": "There may be active smoke or fire. Leave the area, alert others only if safe, and call 114. Do not touch the equipment or outlet.",
+      "reply_source": [
+        "template"
+      ]
+    },
+    {
+      "case": "hvac-en",
+      "flags": "on",
+      "open_status": 201,
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "text": "There may be active smoke or fire. Leave the area, alert others only if safe, and call 114. Do not touch the equipment or outlet.",
+      "reply_source": [
+        "template"
+      ]
+    },
+    {
+      "case": "plumbing-vi",
+      "flags": "off",
+      "open_status": 201,
+      "status": 200,
+      "numbers": [
+        "114",
+        "115",
+        "112"
+      ],
+      "text": "Không chạm vào dây điện, ổ điện, thiết bị hoặc nước gần nguồn điện. Tránh xa và giữ người khác tránh xa; không tự ngắt điện nếu phải đi tới khu vực nguy hiểm. Nếu có khói hoặc lửa, gọi 114; nếu có người bị điện giật hoặc bị thương, gọi 115. Nếu nguy cơ khẩn cấp chưa rõ, gọi 112. | Kael đã tìm trong các bảng giá đã kiểm chứng tại TP.HCM cho vấn đề này. Kael chưa thể đưa ra giá có căn cứ từ kết quả này. Các bảng giá đã",
+      "reply_source": [
+        "template",
+        "template"
+      ]
+    },
+    {
+      "case": "plumbing-vi",
+      "flags": "on",
+      "open_status": 201,
+      "status": 200,
+      "numbers": [
+        "114",
+        "115",
+        "112"
+      ],
+      "text": "Không chạm vào dây điện, ổ điện, thiết bị hoặc nước gần nguồn điện. Tránh xa và giữ người khác tránh xa; không tự ngắt điện nếu phải đi tới khu vực nguy hiểm. Nếu có khói hoặc lửa, gọi 114; nếu có người bị điện giật hoặc bị thương, gọi 115. Nếu nguy cơ khẩn cấp chưa rõ, gọi 112. | Giữ mọi người tránh xa khu vực đang có nước và chờ thợ cấp thoát nước đủ chuyên môn kiểm tra. Kael đã tìm trong các bảng giá đã kiểm chứng",
+      "reply_source": [
+        "template",
+        "template"
+      ]
+    },
+    {
+      "case": "plumbing-en",
+      "flags": "off",
+      "open_status": 201,
+      "status": 200,
+      "numbers": [
+        "114",
+        "115",
+        "112"
+      ],
+      "text": "Do not touch wiring, outlets, equipment, or water near electricity. Stay back and keep others away; do not approach a breaker if that is unsafe. Call 114 for smoke or fire, 115 for electric shock or injury, and 112 if the immediate emergency response is unclear. | Kael searched verified Ho Chi Minh City price tables for this problem. Kael cannot give a grounded price from this result. The verified price tables do not",
+      "reply_source": [
+        "template",
+        "template"
+      ]
+    },
+    {
+      "case": "plumbing-en",
+      "flags": "on",
+      "open_status": 201,
+      "status": 200,
+      "numbers": [
+        "114",
+        "115",
+        "112"
+      ],
+      "text": "Do not touch wiring, outlets, equipment, or water near electricity. Stay back and keep others away; do not approach a breaker if that is unsafe. Call 114 for smoke or fire, 115 for electric shock or injury, and 112 if the immediate emergency response is unclear. | Kael searched verified Ho Chi Minh City price tables for this problem. Kael cannot give a grounded price from this result. The verified price tables do not",
+      "reply_source": [
+        "template",
+        "template"
+      ]
+    }
+  ]
+}

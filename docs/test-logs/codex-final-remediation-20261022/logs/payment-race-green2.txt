@@ -1,0 +1,90 @@
+psql:/tmp/reference-race-green2.sql:12: NOTICE:  extension "dblink" already exists, skipping
+CREATE EXTENSION
+INSERT 0 4
+UPDATE 1
+UPDATE 2
+INSERT 0 1
+INSERT 0 1
+DO
+ dblink_connect 
+----------------
+ OK
+(1 row)
+
+ dblink_connect 
+----------------
+ OK
+(1 row)
+
+CREATE TABLE
+CREATE FUNCTION
+ run_race 
+----------
+ 
+(1 row)
+
+ count 
+-------
+     5
+(1 row)
+
+ count 
+-------
+     4
+(1 row)
+
+ count 
+-------
+     4
+(1 row)
+
+ run_race 
+----------
+ 
+(1 row)
+
+ run_race 
+----------
+ 
+(1 row)
+
+ run_race 
+----------
+ 
+(1 row)
+
+ run_race 
+----------
+ 
+(1 row)
+
+ dblink_disconnect 
+-------------------
+ OK
+(1 row)
+
+ dblink_disconnect 
+-------------------
+ OK
+(1 row)
+
+           race           |  side  |  ok   |     error_code      | outcome | already_applied | notification_required | failure 
+--------------------------+--------+-------+---------------------+---------+-----------------+-----------------------+---------
+ completion               | first  |       |                     |         | false           |                       | 
+ completion               | second |       |                     |         | true            |                       | 
+ customer_claim           | first  |       |                     |         |                 | true                  | 
+ customer_claim           | second |       |                     |         |                 | false                 | 
+ decision_same_reconciler | first  | true  |                     | paid    |                 |                       | 
+ decision_same_reconciler | second | false | VERSION_CONFLICT    |         |                 |                       | 
+ decision_two_reconcilers | first  | true  |                     | paid    |                 |                       | 
+ decision_two_reconcilers | second | false | VERSION_CONFLICT    |         |                 |                       | 
+ reference_two_orders     | first  | true  |                     | paid    |                 |                       | 
+ reference_two_orders     | second | false | BANK_REFERENCE_USED |         |                 |                       | 
+(10 rows)
+
+DO
+                   result                   
+--------------------------------------------
+ payment concurrency: all assertions passed
+(1 row)
+

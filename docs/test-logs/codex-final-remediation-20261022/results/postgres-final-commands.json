@@ -1,0 +1,98 @@
+[
+  {
+    "name": "sql-suite",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "status-writers",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "confirm-accept-concurrency",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-electrical-bank",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-electrical-accept",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-plumbing-bank",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-plumbing-accept",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-cleaning-bank",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-cleaning-accept",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-hvac-bank",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-hvac-accept",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-upholstery-bank",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-upholstery-accept",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-handyman-bank",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "service-handyman-accept",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "payment-mutations",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "edge-rpc-catalog-query",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "edge-rpc-catalog-parity",
+    "exit": 1,
+    "target": "ns-codex-final-verify-pg"
+  },
+  {
+    "name": "edge-rpc-catalog-parity-format-corrected",
+    "exit": 0,
+    "target": "ns-codex-final-verify-pg",
+    "note": "Original database catalog rows serialized to the JSON array expected by --functions. Original error log retained."
+  }
+]

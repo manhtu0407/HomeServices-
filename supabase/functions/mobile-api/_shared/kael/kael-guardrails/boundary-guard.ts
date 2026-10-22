@@ -12,7 +12,6 @@
 import type { ServiceType } from "../../../../_shared/domain.ts";
 import {
   applyHardRoutingPolicy,
-  hasElectricalInfrastructureContext,
   prependDeterministicSafetyGuidance,
   scanIntakeSafetySignals,
   type HardRoutingPolicyDecision,
@@ -383,11 +382,8 @@ export function detectOutOfScope(
   selectedService?: ServiceType,
 ): { detected: boolean; signals: string[] } {
   const normalized = normalize(text);
-  if (selectedService === "electrical" && hasElectricalInfrastructureContext(text)) {
-    return { detected: false, signals: [] };
-  }
   const signals: string[] = [];
-  const requestedAppliances = detectRequestedApplianceWork(text);
+  const requestedAppliances = detectRequestedApplianceWork(text, selectedService);
   for (const keyword of OUT_OF_SCOPE_KEYWORDS) {
     if (keyword === "may bom" && isSupportedWaterPumpMention(normalized)) {
       continue;
@@ -398,7 +394,7 @@ export function detectOutOfScope(
     if (APPLIANCE_REQUEST_KEYWORDS.includes(keyword) && !requestedAppliances.has(keyword)) {
       continue;
     }
-    if (containsKeyword(normalized, keyword)) {
+    if (APPLIANCE_REQUEST_KEYWORDS.includes(keyword) ? requestedAppliances.has(keyword) : containsKeyword(normalized, keyword)) {
       signals.push(`oos:${keyword}`);
       if (signals.length >= 3) break;
     }

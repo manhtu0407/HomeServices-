@@ -1,0 +1,26 @@
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+C:\ns-fix\b4\supabase\functions\mobile-api\_shared\platform\api-failure.ts:4
+  constructor(
+    public readonly code: string,
+                    ^^^^^^^^^^^^
+    message: string,
+
+
+SyntaxError [ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX]: TypeScript parameter property is not supported in strip-only mode
+    at parseTypeScript (node:internal/modules/typescript:68:40)
+    at processTypeScriptCode (node:internal/modules/typescript:146:42)
+    at stripTypeScriptModuleTypes (node:internal/modules/typescript:215:22)
+    at Object.getFileProtocolModuleFormat [as file:] (node:internal/modules/esm/get_format:206:26)
+    at defaultGetFormat (node:internal/modules/esm/get_format:283:36)
+    at defaultLoadSync (node:internal/modules/esm/load:161:16)
+    at #loadAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:802:12)
+    at #loadSync (node:internal/modules/esm/loader:834:53)
+    at ModuleLoader.load (node:internal/modules/esm/loader:783:26)
+    at ModuleLoader.loadAndTranslate (node:internal/modules/esm/loader:494:31) {
+  code: 'ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX'
+}
+
+Node.js v24.19.0

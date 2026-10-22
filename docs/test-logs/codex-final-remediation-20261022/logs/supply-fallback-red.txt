@@ -1,0 +1,98 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (34 tests | 4 failed) 275ms
+     × keeps supported work open: Bếp từ mất nguồn, cần kiểm tra nguồn cấp. 10ms
+     × keeps supported work open: Bình nóng lạnh không lên nguồn, nhờ kiểm tra đường điện. 1ms
+     × the fallback refuses a mixed unsupported request without masking a fixed-appliance supply fault, flags=false 2ms
+     × the fallback refuses a mixed unsupported request without masking a fixed-appliance supply fault, flags=true 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps supported work open: Bếp từ mất nguồn, cần kiểm tra nguồn cấp.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Bếp từ mất nguồn, cần kiểm tra nguồn cấp.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:61:111
+     59|   it.each(supported)('keeps supported work open: %s', (text) => {
+     60|     const service: Service = text === 'Đường ống nước nóng nối với bìn…
+     61|     for (const enabled of [false, true]) expect(boundary(text, service…
+       |                                                                                                               ^
+     62|   })
+     63|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps supported work open: Bình nóng lạnh không lên nguồn, nhờ kiểm tra đường điện.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Bình nóng lạnh không lên nguồn, nhờ kiểm tra đường điện.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:61:111
+     59|   it.each(supported)('keeps supported work open: %s', (text) => {
+     60|     const service: Service = text === 'Đường ống nước nóng nối với bìn…
+     61|     for (const enabled of [false, true]) expect(boundary(text, service…
+       |                                                                                                               ^
+     62|   })
+     63|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > the fallback refuses a mixed unsupported request without masking a fixed-appliance supply fault, flags=false
+AssertionError: expected 'unsupported' to be 'electrical' // Object.is equality
+
+Expected: "electrical"
+Received: "unsupported"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:68:118
+     66|   it.each([false, true])('the fallback refuses a mixed unsupported req…
+     67|     expect(buildFallbackIntent('electrical', [], 'Please repair the ou…
+     68|     expect(buildFallbackIntent('electrical', [], 'Bếp từ mất nguồn, cầ…
+       |                                                                                                                      ^
+     69|   })
+     70|   it.each([false, true])('delivers visible emergency guidance and meta…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > the fallback refuses a mixed unsupported request without masking a fixed-appliance supply fault, flags=true
+AssertionError: expected 'electrical' to be 'unsupported' // Object.is equality
+
+Expected: "unsupported"
+Received: "electrical"
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:67:129
+     65|   })
+     66|   it.each([false, true])('the fallback refuses a mixed unsupported req…
+     67|     expect(buildFallbackIntent('electrical', [], 'Please repair the ou…
+       |                                                                                                                                 ^
+     68|     expect(buildFallbackIntent('electrical', [], 'Bếp từ mất nguồn, cầ…
+     69|   })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 30 passed (34)
+   Start at  21:33:38
+   Duration  7.62s (transform 5.64s, setup 0ms, import 7.05s, tests 275ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts

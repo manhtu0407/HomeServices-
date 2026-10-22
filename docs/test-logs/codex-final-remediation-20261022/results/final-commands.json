@@ -1,0 +1,266 @@
+[
+  {
+    "name": "h5-previously-scored",
+    "command": "corepack pnpm --filter @nestscout/api exec vitest run src/__tests__/kael-edge-runtime/domains/zz-h5-standard-eval-pillar.test.ts",
+    "started": "2026-10-22T14:39:47.226Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "h5-previously-scored-analysis",
+    "command": "node \"C:\\ns-fix\\b4\\docs\\test-logs\\kawa-four-blocker-20261022\\scripts\\h5\\analyse.mjs\" \"C:\\ns-fix\\b4\\docs\\test-logs\\codex-final-remediation-20261022\\results\\h5-previously-scored-final.json\" \"C:\\ns-fix\\b4\\docs\\test-logs\\codex-final-remediation-20261022\\results\\h5-previously-scored-summary.json\"",
+    "started": "2026-10-22T14:39:58.167Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "h5-newly-authored",
+    "command": "corepack pnpm --filter @nestscout/api exec vitest run src/__tests__/kael-edge-runtime/domains/zz-h5-standard-eval-pillar.test.ts",
+    "started": "2026-10-22T14:39:58.324Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "h5-newly-authored-analysis",
+    "command": "node \"C:\\ns-fix\\b4\\docs\\test-logs\\kawa-four-blocker-20261022\\scripts\\h5\\analyse.mjs\" \"C:\\ns-fix\\b4\\docs\\test-logs\\codex-final-remediation-20261022\\results\\h5-newly-authored-final.json\" \"C:\\ns-fix\\b4\\docs\\test-logs\\codex-final-remediation-20261022\\results\\h5-newly-authored-summary.json\"",
+    "started": "2026-10-22T14:40:08.449Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "frozen-matrix-and-drivers",
+    "command": "node \"C:\\ns-fix\\b4\\docs\\test-logs\\codex-final-remediation-20261022\\scripts\\reproduce.mjs\" post",
+    "started": "2026-10-22T14:40:08.552Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "test-api",
+    "command": "node scripts/run.mjs run-package-script @nestscout/api test",
+    "started": "2026-10-22T14:41:20.557Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "types-api",
+    "command": "node scripts/run.mjs run-package-script @nestscout/api type-check",
+    "started": "2026-10-22T14:42:28.622Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "test-mobile",
+    "command": "node scripts/run.mjs run-package-script @nestscout/mobile test",
+    "started": "2026-10-22T14:42:42.140Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "types-mobile",
+    "command": "node scripts/run.mjs run-package-script @nestscout/mobile type-check",
+    "started": "2026-10-22T14:47:16.163Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "test-shared",
+    "command": "node scripts/run.mjs run-package-script @nestscout/shared test",
+    "started": "2026-10-22T14:47:44.992Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "types-shared",
+    "command": "node scripts/run.mjs run-package-script @nestscout/shared type-check",
+    "started": "2026-10-22T14:47:50.010Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "comments-working",
+    "command": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs --working",
+    "started": "2026-10-22T14:47:55.039Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "comments-full",
+    "command": "node scripts/run.mjs run-node scripts/check-comment-discipline.mjs",
+    "started": "2026-10-22T14:47:56.110Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "test-integrity",
+    "command": "node scripts/run.mjs run-node scripts/check-test-integrity.mjs --working",
+    "started": "2026-10-22T14:47:58.840Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "added-hygiene",
+    "command": "node scripts/run.mjs run-node scripts/check-added-source-hygiene.mjs --working",
+    "started": "2026-10-22T14:47:59.673Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "reuse",
+    "command": "node scripts/run.mjs run-node scripts/check-reuse-ladder.mjs --working",
+    "started": "2026-10-22T14:48:00.471Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "structure",
+    "command": "node scripts/run.mjs run-node scripts/lint-structure.mjs",
+    "started": "2026-10-22T14:48:01.173Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "baseline",
+    "command": "node scripts/run.mjs run-node scripts/check-structure-baseline.mjs",
+    "started": "2026-10-22T14:48:02.143Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "edge-db",
+    "command": "node scripts/run.mjs run-node scripts/check-edge-db-contract.mjs",
+    "started": "2026-10-22T14:48:02.975Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "authority",
+    "command": "node scripts/run.mjs run-node scripts/check-authority-citations.mjs",
+    "started": "2026-10-22T14:48:04.581Z",
+    "exit": 1,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "residue",
+    "command": "node scripts/run.mjs run-node scripts/check-source-residue.mjs",
+    "started": "2026-10-22T14:48:06.176Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "protocol-routes",
+    "command": "node scripts/run.mjs run-node scripts/check-protocol-routes.mjs",
+    "started": "2026-10-22T14:48:07.475Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "workplan-coverage",
+    "command": "node scripts/run.mjs run-node scripts/check-work-plan.mjs --coverage",
+    "started": "2026-10-22T14:48:08.093Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "workflow-cost",
+    "command": "node scripts/run.mjs run-node scripts/check-workflow-cost.mjs",
+    "started": "2026-10-22T14:48:08.692Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "test-collection",
+    "command": "node scripts/run.mjs run-node scripts/check-test-collection.mjs",
+    "started": "2026-10-22T14:48:09.285Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "runner-parity",
+    "command": "node scripts/run.mjs run-node scripts/check-runner-parity.mjs",
+    "started": "2026-10-22T14:48:09.980Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "skills-sync",
+    "command": "node scripts/run.mjs run-node scripts/check-skills-sync.mjs",
+    "started": "2026-10-22T14:48:10.588Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "skill-contracts",
+    "command": "node scripts/run.mjs run-node scripts/check-skill-contracts.mjs",
+    "started": "2026-10-22T14:48:11.259Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "artifact-assertions",
+    "command": "node scripts/run.mjs run-node scripts/find-artifact-text-assertions.mjs",
+    "started": "2026-10-22T14:48:11.884Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "harness",
+    "command": "node scripts/run.mjs run-node scripts/harness/verify.mjs",
+    "started": "2026-10-22T14:48:13.183Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "manifest",
+    "command": "node scripts/run.mjs run-node scripts/harness/check-manifest.mjs",
+    "started": "2026-10-22T14:49:39.243Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "pillars",
+    "command": "node scripts/run.mjs run-node scripts/harness/pillar-registry.mjs",
+    "started": "2026-10-22T14:49:44.029Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  },
+  {
+    "name": "edge-types",
+    "command": "node scripts/run.mjs docker/scripts/edge-check",
+    "started": "2026-10-22T14:49:44.771Z",
+    "exit": 0,
+    "signal": null,
+    "error": null
+  }
+]
