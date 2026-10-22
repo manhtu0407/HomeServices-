@@ -1,0 +1,663 @@
+{
+  "schema": "nestscout.audit.h5_e2e.v1",
+  "snapshot": "after",
+  "sealed_sha256_lf": "80e3e90701e4acc9418ed30209e251b613c84520c70f3f49ba73e2638052d81d",
+  "records": [
+    {
+      "id": "H5-001",
+      "kind": "clear",
+      "expected": "fire",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-002",
+      "kind": "clear",
+      "expected": "fire",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-003",
+      "kind": "clear",
+      "expected": "fire",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "emergency_route": "fire",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-004",
+      "kind": "clear",
+      "expected": "fire",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "emergency_route": "fire",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-005",
+      "kind": "clear",
+      "expected": "fire",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-006",
+      "kind": "clear",
+      "expected": "fire",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "emergency_route": "fire",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-007",
+      "kind": "clear",
+      "expected": "medical",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "115"
+      ],
+      "emergency_route": "medical",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-008",
+      "kind": "clear",
+      "expected": "medical",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "115"
+      ],
+      "emergency_route": "medical",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-009",
+      "kind": "clear",
+      "expected": "medical",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-010",
+      "kind": "clear",
+      "expected": "medical",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "115"
+      ],
+      "emergency_route": "medical",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-011",
+      "kind": "clear",
+      "expected": "medical",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-012",
+      "kind": "clear",
+      "expected": "medical",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "115"
+      ],
+      "emergency_route": "medical",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-013",
+      "kind": "clear",
+      "expected": "police",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-014",
+      "kind": "clear",
+      "expected": "police",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-015",
+      "kind": "clear",
+      "expected": "police",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-016",
+      "kind": "clear",
+      "expected": "police",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-017",
+      "kind": "clear",
+      "expected": "police",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-018",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-019",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-020",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-021",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "112",
+        "114",
+        "115"
+      ],
+      "emergency_route": "electrical_water",
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-022",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-023",
+      "kind": "clear",
+      "expected": "gas",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "emergency_route": "gas",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-024",
+      "kind": "clear",
+      "expected": "gas",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-025",
+      "kind": "clear",
+      "expected": "gas",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "emergency_route": "gas",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-026",
+      "kind": "clear",
+      "expected": "gas",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-027",
+      "kind": "clear",
+      "expected": "gas",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "emergency_route": "gas",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-028",
+      "kind": "clear",
+      "expected": "uncertain",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-029",
+      "kind": "clear",
+      "expected": "uncertain",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-030",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-031",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-032",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-033",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-034",
+      "kind": "clear",
+      "expected": null,
+      "service": "hvac",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-035",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-036",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-037",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-038",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-039",
+      "kind": "clear",
+      "expected": null,
+      "service": "hvac",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-040",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [
+        "114"
+      ],
+      "emergency_route": "gas",
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-041",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-042",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-043",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-044",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-045",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-046",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-047",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-048",
+      "kind": "clear",
+      "expected": null,
+      "service": "hvac",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-049",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-050",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-051",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-052",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-053",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-054",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-055",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-056",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-057",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-058",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-059",
+      "kind": "clear",
+      "expected": null,
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-060",
+      "kind": "judgement",
+      "expected": "electrical_water",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-061",
+      "kind": "judgement",
+      "expected": "electrical_water",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 0
+    },
+    {
+      "id": "H5-062",
+      "kind": "judgement",
+      "expected": "gas",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    },
+    {
+      "id": "H5-063",
+      "kind": "judgement",
+      "expected": "electrical_water",
+      "service": "plumbing",
+      "status": 200,
+      "numbers": [],
+      "emergency_route": null,
+      "provider_calls": 3
+    }
+  ]
+}

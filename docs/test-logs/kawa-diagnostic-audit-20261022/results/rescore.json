@@ -1,0 +1,1892 @@
+{
+  "schema": "nestscout.audit.rescore.v1",
+  "matrix_sha256": "dd8392cbcc2fec7ad4f0b1611a52abea0cb7ed86fc681972fec9707c74a51dd7",
+  "reproducibility": {
+    "matrix_before": [],
+    "matrix_after": [],
+    "journey": []
+  },
+  "independent_vs_harness_disagreements": [],
+  "scorecard": [
+    {
+      "id": "ELEC-S1",
+      "service": "electrical",
+      "class": "S1",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "ELEC-S2",
+      "service": "electrical",
+      "class": "S2",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "asks_clarifying_question"
+            ],
+            "harness_failing": [
+              "asks_clarifying_question"
+            ],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "unsupported"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "asks_clarifying_question"
+            ],
+            "harness_failing": [
+              "asks_clarifying_question"
+            ],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "unsupported"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "ELEC-S3",
+      "service": "electrical",
+      "class": "S3",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "ELEC-S4",
+      "service": "electrical",
+      "class": "S4",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "PLMB-S1",
+      "service": "plumbing",
+      "class": "S1",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "PLMB-S2",
+      "service": "plumbing",
+      "class": "S2",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "asks_clarifying_question"
+            ],
+            "harness_failing": [
+              "asks_clarifying_question"
+            ],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "unsupported"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "asks_clarifying_question"
+            ],
+            "harness_failing": [
+              "asks_clarifying_question"
+            ],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "unsupported"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "PLMB-S3",
+      "service": "plumbing",
+      "class": "S3",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "112",
+                  "114",
+                  "115"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "PLMB-S4",
+      "service": "plumbing",
+      "class": "S4",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "http_ok",
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "http_ok",
+              "evidence_handled",
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [
+              "evidence_handled"
+            ],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              409
+            ],
+            "final_status": "unsupported"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "http_ok"
+            ],
+            "harness_failing": [
+              "http_ok",
+              "evidence_handled"
+            ],
+            "harness_only_failing": [
+              "evidence_handled"
+            ],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "115"
+                ]
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              409
+            ],
+            "final_status": "unsupported"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "CLEN-S1",
+      "service": "cleaning",
+      "class": "S1",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "CLEN-S2",
+      "service": "cleaning",
+      "class": "S2",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "CLEN-S3",
+      "service": "cleaning",
+      "class": "S3",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "115"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "CLEN-S4",
+      "service": "cleaning",
+      "class": "S4",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "HVAC-S1",
+      "service": "hvac",
+      "class": "S1",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "HVAC-S2",
+      "service": "hvac",
+      "class": "S2",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "HVAC-S3",
+      "service": "hvac",
+      "class": "S3",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "HVAC-S4",
+      "service": "hvac",
+      "class": "S4",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "UPHO-S1",
+      "service": "upholstery",
+      "class": "S1",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "UPHO-S2",
+      "service": "upholstery",
+      "class": "S2",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "UPHO-S3",
+      "service": "upholstery",
+      "class": "S3",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "113"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "UPHO-S4",
+      "service": "upholstery",
+      "class": "S4",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "HAND-S1",
+      "service": "handyman",
+      "class": "S1",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "HAND-S2",
+      "service": "handyman",
+      "class": "S2",
+      "before": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "HAND-S3",
+      "service": "handyman",
+      "class": "S3",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "115"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "HAND-S4",
+      "service": "handyman",
+      "class": "S4",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "4",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "115"
+                ]
+              }
+            ],
+            "statuses": [
+              201,
+              200,
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "C1",
+      "service": "plumbing",
+      "class": "C",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "115"
+                ]
+              }
+            ],
+            "statuses": [
+              201
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "C2",
+      "service": "electrical",
+      "class": "C",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "C3",
+      "service": "plumbing",
+      "class": "C",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "http_ok",
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "http_ok",
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              400
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "C4",
+      "service": "plumbing",
+      "class": "C",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "confirmed": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              409
+            ],
+            "final_status": "confirmed"
+          },
+          "abandoned": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              409
+            ],
+            "final_status": "abandoned"
+          },
+          "unsupported": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              409
+            ],
+            "final_status": "unsupported"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "confirmed": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              409
+            ],
+            "final_status": "confirmed"
+          },
+          "abandoned": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              409
+            ],
+            "final_status": "abandoned"
+          },
+          "unsupported": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              409
+            ],
+            "final_status": "unsupported"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "C5",
+      "service": "plumbing",
+      "class": "C",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_failing": [
+              "emergency_escalated_acceptable"
+            ],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "112"
+                ]
+              }
+            ],
+            "statuses": [
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    },
+    {
+      "id": "C6",
+      "service": "electrical",
+      "class": "C",
+      "before": {
+        "verdict": "FAIL",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [
+              "failure_observable",
+              "recovery_delivers"
+            ],
+            "harness_only_failing": [
+              "failure_observable",
+              "recovery_delivers"
+            ],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              },
+              {
+                "id": "2",
+                "acceptable": false,
+                "exact": false,
+                "numbers": []
+              }
+            ],
+            "statuses": [
+              500,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      },
+      "after": {
+        "verdict": "PASS",
+        "variants": {
+          "main": {
+            "independent_failing": [],
+            "harness_failing": [],
+            "harness_only_failing": [],
+            "hazard": [
+              {
+                "id": "1",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              },
+              {
+                "id": "2",
+                "acceptable": true,
+                "exact": true,
+                "numbers": [
+                  "114"
+                ]
+              }
+            ],
+            "statuses": [
+              200,
+              200
+            ],
+            "final_status": "active"
+          }
+        },
+        "deterministic": true
+      }
+    }
+  ],
+  "journeys": [
+    {
+      "id": "ELEC-S5",
+      "service": "electrical",
+      "before": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "FAIL",
+        "J05": "FAIL",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "FAIL",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "before_verdict": "FAIL",
+      "after": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "PASS",
+        "J05": "PASS",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "PASS",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "after_verdict": "BLOCKED"
+    },
+    {
+      "id": "PLMB-S5",
+      "service": "plumbing",
+      "before": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "FAIL",
+        "J05": "FAIL",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "FAIL",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "before_verdict": "FAIL",
+      "after": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "PASS",
+        "J05": "PASS",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "PASS",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "after_verdict": "BLOCKED"
+    },
+    {
+      "id": "CLEN-S5",
+      "service": "cleaning",
+      "before": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "FAIL",
+        "J05": "FAIL",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "FAIL",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "before_verdict": "FAIL",
+      "after": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "PASS",
+        "J05": "PASS",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "PASS",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "after_verdict": "BLOCKED"
+    },
+    {
+      "id": "HVAC-S5",
+      "service": "hvac",
+      "before": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "FAIL",
+        "J05": "FAIL",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "FAIL",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "before_verdict": "FAIL",
+      "after": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "PASS",
+        "J05": "PASS",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "PASS",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "after_verdict": "BLOCKED"
+    },
+    {
+      "id": "UPHO-S5",
+      "service": "upholstery",
+      "before": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "FAIL",
+        "J05": "FAIL",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "FAIL",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "before_verdict": "FAIL",
+      "after": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "PASS",
+        "J05": "PASS",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "PASS",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "after_verdict": "BLOCKED"
+    },
+    {
+      "id": "HAND-S5",
+      "service": "handyman",
+      "before": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "FAIL",
+        "J05": "FAIL",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "FAIL",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "before_verdict": "FAIL",
+      "after": {
+        "J01": "PASS",
+        "J02": "PASS",
+        "J03": "BLOCKED",
+        "J04": "PASS",
+        "J05": "PASS",
+        "J06": "PASS",
+        "J07": "PASS",
+        "J08": "PASS",
+        "J09": "PASS",
+        "J10": "PASS",
+        "J11": "PASS",
+        "J12": "PASS",
+        "J13": "INVENTORY",
+        "J14": "BLOCKED",
+        "J15": "BLOCKED"
+      },
+      "after_verdict": "BLOCKED"
+    }
+  ]
+}

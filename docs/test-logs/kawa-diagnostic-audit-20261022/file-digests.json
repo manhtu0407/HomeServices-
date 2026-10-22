@@ -1,0 +1,251 @@
+{
+  "schema": "nestscout.audit_digests.v1",
+  "note": "sha256 of bytes on disk; computed after the report was final",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 8,
+      "sha256": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
+    },
+    {
+      "path": "AUDIT_REPORT.md",
+      "bytes": 28025,
+      "sha256": "0f821314c40e63a3f9566c52350a881e070c0d12fd674966e563e32f8496258d"
+    },
+    {
+      "path": "logs/after-admin-surface.log.txt",
+      "bytes": 228,
+      "sha256": "1b41227fa5824ff7f346c886cb2a2f736c4f3b223483e45e344fe53780182f43"
+    },
+    {
+      "path": "logs/after-dx03-language.log.txt",
+      "bytes": 229,
+      "sha256": "d5745604d76d2c774b0262cc93f1f58a934694876003347e4041c1ba2075607c"
+    },
+    {
+      "path": "logs/after-dx03-persisted.log.txt",
+      "bytes": 229,
+      "sha256": "596731b90e06709d83ea13aeb1ae1f161666be9ae1b25343de67b8aec6550378"
+    },
+    {
+      "path": "logs/after-h5-e2e.log.txt",
+      "bytes": 231,
+      "sha256": "6d85b6f282dc06759997bbc8feec2b22fc4140949a37be4ee50042c73f67c2e7"
+    },
+    {
+      "path": "logs/after-handler-driver.log.txt",
+      "bytes": 231,
+      "sha256": "52913a07369308f219495bc9fefebd0e4c4c3ed8606f76b0c8aa6da37ae8c43e"
+    },
+    {
+      "path": "logs/after-repro-journey.log.txt",
+      "bytes": 231,
+      "sha256": "1b58e93b50cda2a21ffd19147fb5c88c5092bd4f389dc8bce862157121999775"
+    },
+    {
+      "path": "logs/after-repro-matrix.log.txt",
+      "bytes": 231,
+      "sha256": "9dd197b53cd8e5f159645cdc56431c90564862a81c11451d15f9797de07d5e6e"
+    },
+    {
+      "path": "logs/before-admin-surface.log.txt",
+      "bytes": 229,
+      "sha256": "c3965b728dbafc4a228763b5fb6d93f66b5c3a04bf6920d9d0ab92a5641e99f4"
+    },
+    {
+      "path": "logs/before-h5-e2e.log.txt",
+      "bytes": 232,
+      "sha256": "90026549666673ab4d9bfff5e675289ec25c883fa60c219825ebb9dbc7b72bb2"
+    },
+    {
+      "path": "logs/before-handler-driver.log.txt",
+      "bytes": 232,
+      "sha256": "4fa1c8ffb319462b8a828c582564b8e6049a781b92f8f929c9fcda7cfb2b9434"
+    },
+    {
+      "path": "logs/before-repro-journey.log.txt",
+      "bytes": 232,
+      "sha256": "de5c80c911690ea0e58829035e2025fa343e10f948675d6a75111ff374ba29e7"
+    },
+    {
+      "path": "logs/before-repro-matrix.log.txt",
+      "bytes": 232,
+      "sha256": "074993bebb782b933e98d8f4b68d0abc875124d710b1fc5ed36f0cdb35f1933a"
+    },
+    {
+      "path": "logs/commands.jsonl",
+      "bytes": 5245,
+      "sha256": "58f1a65c32a15fe9a510fa96e96e5b09d999b56c5688a5a69b7e0224aaa6e759"
+    },
+    {
+      "path": "README.txt",
+      "bytes": 2331,
+      "sha256": "087a44366a1caeb39dfdf92614e29c8453befa37e73c05351d614e4f024f089f"
+    },
+    {
+      "path": "results/admin-surface-after.json",
+      "bytes": 1576,
+      "sha256": "16ccef92acfb4ca302ec3226b4ac71bd1650cd3afac7d5d942fdd97463458e37"
+    },
+    {
+      "path": "results/admin-surface-before.json",
+      "bytes": 1577,
+      "sha256": "820c30eae3cd1fd3981694d6ae2e2501d038efd95b439c7a8243f20e551806a6"
+    },
+    {
+      "path": "results/dev-set-check.json",
+      "bytes": 940,
+      "sha256": "e082093dc818223fa11c375edf2a35b7ccc14de198529d2c290dbff6d0a31c36"
+    },
+    {
+      "path": "results/dx01-boundary-probes.json",
+      "bytes": 14179,
+      "sha256": "bceab0e0c573faa27412139691348f96f46d35f31df6aa1dd01af22283b35562"
+    },
+    {
+      "path": "results/dx02-classifier-probes.json",
+      "bytes": 5854,
+      "sha256": "69a4fd9b6be6187c0242fae8d58bbe48ca3f8f7cf84772c5096d47cdf96a1fc4"
+    },
+    {
+      "path": "results/dx02-trace.json",
+      "bytes": 536,
+      "sha256": "860c6e0aa90ac8b4dc8540c08e3a4a8f83aeaf577886bf53b8d7027843dcce2f"
+    },
+    {
+      "path": "results/dx03-gate-deferral-probes.json",
+      "bytes": 8277,
+      "sha256": "29f93a32e6f0e13b7408f93087de21857497dcb8043cf8f337e3bf40cd321e4a"
+    },
+    {
+      "path": "results/dx03-language-after.json",
+      "bytes": 5334,
+      "sha256": "4b5b0a756217f6b52ab0b090b38ecb9ab975f1d4be613ae273b8a5c00f2b6525"
+    },
+    {
+      "path": "results/dx03-persisted-after.json",
+      "bytes": 14886,
+      "sha256": "1f470aaa0b2e0f13aa9839a04059cad6babb6e2724b35fa545feb3518ccaf2f5"
+    },
+    {
+      "path": "results/h5-e2e-after.json",
+      "bytes": 13930,
+      "sha256": "a51413dfbe8aeb9db07eb1057d71fd8737f81399c2b0e3e1584e618a7e891b06"
+    },
+    {
+      "path": "results/h5-e2e-before.json",
+      "bytes": 13605,
+      "sha256": "2f37be6ddd026a063dcacb029dc2d69e70a73fbddb1917264ac7336f6edfc279"
+    },
+    {
+      "path": "results/h5-verify.json",
+      "bytes": 16243,
+      "sha256": "d8d0ba97a68588760047d3ca0ffb792226c5ed44b8fad7829b5340bb6fba6959"
+    },
+    {
+      "path": "results/handler-after.json",
+      "bytes": 229118,
+      "sha256": "a08a96574a4f0f1e31f271f1e793aed6a7dcc3e580166da9a9eedc39f7024536"
+    },
+    {
+      "path": "results/handler-before.json",
+      "bytes": 210493,
+      "sha256": "6e6bfad9acab6d11170df2f9d6d82adf8cdc17f5d72c160a6d3da8dd8722ff57"
+    },
+    {
+      "path": "results/repro/after-journey.json",
+      "bytes": 56105,
+      "sha256": "e24c8221f5f90afbd37c18c3bc7ea3b7ef75d81327cb476a7f90ff173efec09b"
+    },
+    {
+      "path": "results/repro/after-matrix.json",
+      "bytes": 562928,
+      "sha256": "83b6cf56b6b30d5d1d27d7a36378950a32aa8b8674ce4b8597f1161a7ea4b66a"
+    },
+    {
+      "path": "results/repro/before-journey.json",
+      "bytes": 56718,
+      "sha256": "8d6e19330e6508e50d964b3d74acad6cc063f3aacaf2d2956159655c1bc98150"
+    },
+    {
+      "path": "results/repro/before-matrix.json",
+      "bytes": 550385,
+      "sha256": "5a8c30f5cff5c3c080193ccacc3afdb3055a7d5f7a23b2aa05950134a191c234"
+    },
+    {
+      "path": "results/rescore.json",
+      "bytes": 44500,
+      "sha256": "16c0c25b51eec00c439a954dd35699ece186c7ef8b4fd5eb70c4e9fc48d03ed4"
+    },
+    {
+      "path": "scripts/dev-set-check.mjs",
+      "bytes": 2676,
+      "sha256": "1140816ad9a7e6f66a403d5a93d367604c12f498a32773dc32c6daf632dc92e4"
+    },
+    {
+      "path": "scripts/dx01-boundary-probes.mjs",
+      "bytes": 7202,
+      "sha256": "2acd21c9f85eb11de0aec0328727d8c9eba784e74f60cefde1dbc7dafa69f1aa"
+    },
+    {
+      "path": "scripts/dx02-classifier-probes.mjs",
+      "bytes": 3498,
+      "sha256": "b3d86684ef09085da8909bf863167b27e8bf004d7e626b1755f9b5917556f6b8"
+    },
+    {
+      "path": "scripts/dx02-trace.mjs",
+      "bytes": 1615,
+      "sha256": "f55be803a42827a63681769020f99c0531099f286c0dbdb471d9306f7bda0a49"
+    },
+    {
+      "path": "scripts/dx03-gate-deferral-probes.mjs",
+      "bytes": 3337,
+      "sha256": "61f599db64a93855311c1991da9dd4beedad70883a001838d7a83b05ad1b287a"
+    },
+    {
+      "path": "scripts/h5-verify.mjs",
+      "bytes": 7907,
+      "sha256": "1838d40a30daf035e91c4c74eea34c27f4e1641490da9493013eafe64a33ccd9"
+    },
+    {
+      "path": "scripts/lib.mjs",
+      "bytes": 1912,
+      "sha256": "254f4df1b7131dee5be545815912f8e237882e95f13e3a374445ede0da7fe74a"
+    },
+    {
+      "path": "scripts/rescore.mjs",
+      "bytes": 9556,
+      "sha256": "63eca2444329bd6919c2d01e325618e9fba7e69a3cd5c625b597c21408dbd165"
+    },
+    {
+      "path": "scripts/run-vitest.mjs",
+      "bytes": 1585,
+      "sha256": "bb525f36653c27b4b54a0c184368ebdeaf635707f275ad63a2344eaff16d6820"
+    },
+    {
+      "path": "scripts/worktree/kawa-audit-admin-surface-pillar.test.ts",
+      "bytes": 2521,
+      "sha256": "d8bf037d095665838a52e063bfa222527655e4ca17a30487f4708c9afc65adca"
+    },
+    {
+      "path": "scripts/worktree/kawa-audit-dx03-language-pillar.test.ts",
+      "bytes": 3285,
+      "sha256": "efa1ed15bebe941a8cdcdfc5ebb30e49e065c285205d524fd13693676c289b06"
+    },
+    {
+      "path": "scripts/worktree/kawa-audit-dx03-persisted-pillar.test.ts",
+      "bytes": 4046,
+      "sha256": "27200c08707ccc33668dcdf90e0783a6b2cd1928b269f228bceba20f5c5bc89f"
+    },
+    {
+      "path": "scripts/worktree/kawa-audit-h5-e2e-pillar.test.ts",
+      "bytes": 2646,
+      "sha256": "dced600967ec1ecd605e68a3b145fac8465e818fd98233b168847abf37f9f701"
+    },
+    {
+      "path": "scripts/worktree/kawa-audit-handler-pillar.test.ts",
+      "bytes": 6929,
+      "sha256": "9ede3254464047f93248961277a0732602b7f79b49c6070fdf39e654ae216df8"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "frozen": {
+    "route": null,
+    "raw_cue_matches": []
+  },
+  "E1_from_tu_dien": {
+    "route": "electrical_water",
+    "raw_cue_matches": [
+      {
+        "cue": "\\btia lua(?: [a-z]+){0,2} (?:tu|o|ngay|tai|phat ra tu|bat ra tu) (?:hop cau dao|",
+        "text": "tia lua xet tu tu dien"
+      }
+    ]
+  },
+  "E3_lua_only": {
+    "route": "fire",
+    "raw_cue_matches": [
+      {
+        "cue": "(?<!\\b(?:bep|gas|lo|noi|ga|than) )\\b(?:co|thay) lua(?! (?:yeu|xanh|nho|deu|vang|",
+        "text": "thay lua"
+      }
+    ]
+  }
+}

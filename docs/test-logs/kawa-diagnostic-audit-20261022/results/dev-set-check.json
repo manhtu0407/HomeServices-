@@ -1,0 +1,36 @@
+{
+  "schema": "nestscout.audit.dev_set_check.v1",
+  "development_clear_rows": 267,
+  "development_clear_rows_routed_as_labelled": 267,
+  "development_clear_positives": 154,
+  "development_positives_routed_as_labelled": 154,
+  "judgement_rows_excluded": 29,
+  "disputed_rows_excluded": 2,
+  "perturbations": {
+    "original": {
+      "rows": 154,
+      "kept": 154,
+      "different_route": 0,
+      "lost": 0
+    },
+    "uppercase": {
+      "rows": 154,
+      "kept": 154,
+      "different_route": 0,
+      "lost": 0
+    },
+    "no_diacritics": {
+      "rows": 154,
+      "kept": 142,
+      "different_route": 0,
+      "lost": 12
+    },
+    "wrong_tone_marks": {
+      "rows": 154,
+      "kept": 91,
+      "different_route": 1,
+      "lost": 62
+    }
+  },
+  "note": "wrong_tone_marks uses the same fixed mark rotation as the committed probe so the numbers are comparable; the three seeded single-letter perturbations were not re-derived"
+}

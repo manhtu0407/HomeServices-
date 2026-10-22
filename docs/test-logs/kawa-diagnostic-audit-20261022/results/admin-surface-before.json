@@ -1,0 +1,46 @@
+{
+  "schema": "nestscout.audit.admin_surface.v1",
+  "snapshot": "before",
+  "records": [
+    {
+      "call": "turn",
+      "status": 403,
+      "code": "KAEL_PATH_CONTROL_DENIED",
+      "turn_rows_written": 0,
+      "rpc_calls": [],
+      "detail": "{\"code\":\"KAEL_PATH_CONTROL_DENIED\",\"error\":\"Kael chưa thể thực hiện hành động này ở bước hiện tại.\",\"mobile_action\":\"customer.open_case_chat\",\"workflow_phase\":\""
+    },
+    {
+      "call": "intake-confirmation",
+      "status": 400,
+      "code": "VALIDATION",
+      "turn_rows_written": 0,
+      "rpc_calls": [],
+      "detail": "{\"code\":\"VALIDATION\",\"error\":\"Dữ liệu xác nhận không hợp lệ\"}"
+    },
+    {
+      "call": "evidence",
+      "status": 400,
+      "code": "VALIDATION",
+      "turn_rows_written": 0,
+      "rpc_calls": [],
+      "detail": "{\"code\":\"VALIDATION\",\"error\":\"Dữ liệu không hợp lệ\"}"
+    },
+    {
+      "call": "confirm",
+      "status": 403,
+      "code": "KAEL_PATH_CONTROL_DENIED",
+      "turn_rows_written": 0,
+      "rpc_calls": [],
+      "detail": "{\"code\":\"KAEL_PATH_CONTROL_DENIED\",\"error\":\"Kael chưa thể thực hiện hành động này ở bước hiện tại.\",\"mobile_action\":\"customer.confirm_offer\",\"workflow_phase\":\"o"
+    },
+    {
+      "call": "recover-confirmation",
+      "status": 400,
+      "code": "VALIDATION",
+      "turn_rows_written": 0,
+      "rpc_calls": [],
+      "detail": "{\"code\":\"VALIDATION\",\"error\":\"Dữ liệu khôi phục xác nhận không hợp lệ.\"}"
+    }
+  ]
+}

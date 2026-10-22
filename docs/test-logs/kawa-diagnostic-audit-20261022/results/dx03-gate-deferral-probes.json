@@ -1,0 +1,257 @@
+{
+  "schema": "nestscout.audit.dx03_probes.v1",
+  "classifier_and_gate_snapshot": "after",
+  "rows": [
+    {
+      "scenario": "PLMB-S3",
+      "step": "1",
+      "service": "plumbing",
+      "language": "vi",
+      "note": "lost with flags on",
+      "flags_off": {
+        "gate_result": {
+          "route": "electrical_water",
+          "stops_turn": false
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      },
+      "flags_on": {
+        "gate_result": null,
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": true,
+        "flagged_signals": [
+          "flooding",
+          "concealed_pipe"
+        ],
+        "flagged_advice_vi_numbers": [],
+        "flagged_advice_en_numbers": [],
+        "flagged_advice_vi_head": "Giữ mọi người tránh xa khu vực đang có nước và chờ thợ cấp thoát nước đủ chuyên môn kiểm tra."
+      }
+    },
+    {
+      "scenario": "HVAC-S3",
+      "step": "1",
+      "service": "hvac",
+      "language": "en",
+      "note": "lost with flags on (English text)",
+      "flags_off": {
+        "gate_result": {
+          "route": "fire",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      },
+      "flags_on": {
+        "gate_result": null,
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": true,
+        "flagged_signals": [
+          "burning_smell"
+        ],
+        "flagged_advice_vi_numbers": [],
+        "flagged_advice_en_numbers": [],
+        "flagged_advice_vi_head": "Không chạm, mở máy, tự trèo lên hoặc tiếp tục vận hành điều hòa bị ảnh hưởng. Giữ mọi người tránh xa và chờ thợ HVAC đủ chuyên môn kiểm tra."
+      }
+    },
+    {
+      "scenario": "UPHO-S4",
+      "step": "4",
+      "service": "upholstery",
+      "language": "vi",
+      "note": "lost with flags on",
+      "flags_off": {
+        "gate_result": {
+          "route": "fire",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      },
+      "flags_on": {
+        "gate_result": {
+          "route": "fire",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      }
+    },
+    {
+      "scenario": "C6",
+      "step": "1",
+      "service": "electrical",
+      "language": "vi",
+      "note": "text number lost with flags on; structured field present",
+      "flags_off": {
+        "gate_result": {
+          "route": "fire",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      },
+      "flags_on": {
+        "gate_result": null,
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": true,
+        "flagged_signals": [
+          "smoke_or_burning"
+        ],
+        "flagged_advice_vi_numbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "flagged_advice_en_numbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "flagged_advice_vi_head": "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần kh"
+      }
+    },
+    {
+      "scenario": "ELEC-S3",
+      "step": "1",
+      "service": "electrical",
+      "language": "vi",
+      "note": "control: kept with flags on",
+      "flags_off": {
+        "gate_result": {
+          "route": "fire",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      },
+      "flags_on": {
+        "gate_result": null,
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": true,
+        "flagged_signals": [
+          "smoke_or_burning"
+        ],
+        "flagged_advice_vi_numbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "flagged_advice_en_numbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "flagged_advice_vi_head": "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần kh"
+      }
+    },
+    {
+      "scenario": "CLEN-S3",
+      "step": "1",
+      "service": "cleaning",
+      "language": "vi",
+      "note": "control: medical route, kept with flags on",
+      "flags_off": {
+        "gate_result": {
+          "route": "medical",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      },
+      "flags_on": {
+        "gate_result": {
+          "route": "medical",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      }
+    },
+    {
+      "scenario": "HAND-S4",
+      "step": "4",
+      "service": "handyman",
+      "language": "vi",
+      "note": "control: medical route, kept with flags on",
+      "flags_off": {
+        "gate_result": {
+          "route": "medical",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      },
+      "flags_on": {
+        "gate_result": {
+          "route": "medical",
+          "stops_turn": true
+        },
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      }
+    },
+    {
+      "scenario": "ELEC-S4",
+      "step": "4",
+      "service": "electrical",
+      "language": "vi",
+      "note": "DX-02 text: gained with flags on",
+      "flags_off": {
+        "gate_result": null,
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": false,
+        "flagged_signals": [],
+        "flagged_advice_vi_numbers": null,
+        "flagged_advice_en_numbers": null,
+        "flagged_advice_vi_head": null
+      },
+      "flags_on": {
+        "gate_result": null,
+        "deferral_predicate_requiresImmediateKaelSafetyPathForTexts": true,
+        "flagged_signals": [
+          "smoke_or_burning",
+          "sparking",
+          "distribution_board"
+        ],
+        "flagged_advice_vi_numbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "flagged_advice_en_numbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "flagged_advice_vi_head": "Anh/chị chỉ ngắt aptomat tổng nếu bảng điện khô ráo và dễ tiếp cận. Không làm vậy nếu phải lại gần chỗ nguy hiểm. Không chạm, rút phích, lau dọn hoặc lại gần kh"
+      }
+    }
+  ]
+}

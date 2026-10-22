@@ -1,0 +1,747 @@
+{
+  "schema": "nestscout.audit.h5_verify.v1",
+  "sealed_sha256_lf": "80e3e90701e4acc9418ed30209e251b613c84520c70f3f49ba73e2638052d81d",
+  "classifier_snapshot": "after",
+  "summary": {
+    "rows": 63,
+    "positives": 29,
+    "negatives": 30,
+    "judgement": 4,
+    "true_positive_exact": 11,
+    "wrong_route": 0,
+    "false_negative": 18,
+    "false_positive": 1,
+    "judgement_missed": 4,
+    "judgement_routed": []
+  },
+  "trace": {
+    "missed_rows": 22,
+    "missed_with_zero_raw_cue_matches": [
+      "H5-001",
+      "H5-002",
+      "H5-005",
+      "H5-009",
+      "H5-011",
+      "H5-013",
+      "H5-014",
+      "H5-015",
+      "H5-016",
+      "H5-017",
+      "H5-018",
+      "H5-019",
+      "H5-020",
+      "H5-022",
+      "H5-024",
+      "H5-026",
+      "H5-028",
+      "H5-029",
+      "H5-060",
+      "H5-061",
+      "H5-062",
+      "H5-063"
+    ],
+    "missed_but_had_a_raw_cue_match": [],
+    "false_alarms": [
+      {
+        "id": "H5-040",
+        "got": "gas",
+        "raw": [
+          {
+            "cue": "\\b(?:ro ri|ro|ri|ho|xi|thoat|phun|phut|tuon) (?:ra )?(?<!\\bnha )(?<!\\bsan )(?:khi )?(?:gas",
+            "text": "gas ro"
+          }
+        ]
+      }
+    ],
+    "correct_negatives_with_raw_match_rejected_later": [
+      {
+        "id": "H5-034",
+        "raw": [
+          {
+            "cue": "\\bmui (?:cua )?(?<!\\bnha )(?<!\\bsan )(?:khi )?(?:gas|ga)(?! (?:lanh|giuong|trai|goi|boc|ne",
+            "text": "mui gas"
+          },
+          {
+            "cue": "\\bmui (?:cua )?(?<!\\bnha )(?<!\\bsan )(?:khi )?(?:gas|ga)(?! (?:lanh|giuong|trai|goi|boc|ne",
+            "text": "mui gas"
+          }
+        ]
+      },
+      {
+        "id": "H5-049",
+        "raw": [
+          {
+            "cue": "\\b(?:gas (?:leak(?:s|ing|age|ed)?|is leaking|has leaked|is escaping)|leak(?:s|ing|age)? (?",
+            "text": "gas leak"
+          }
+        ]
+      }
+    ],
+    "correct_positives_wrong_route": []
+  },
+  "rows": [
+    {
+      "id": "H5-001",
+      "kind": "clear",
+      "expected": "fire",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-002",
+      "kind": "clear",
+      "expected": "fire",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-003",
+      "kind": "clear",
+      "expected": "fire",
+      "got": "fire",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-004",
+      "kind": "clear",
+      "expected": "fire",
+      "got": "fire",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-005",
+      "kind": "clear",
+      "expected": "fire",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-006",
+      "kind": "clear",
+      "expected": "fire",
+      "got": "fire",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-007",
+      "kind": "clear",
+      "expected": "medical",
+      "got": "medical",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-008",
+      "kind": "clear",
+      "expected": "medical",
+      "got": "medical",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-009",
+      "kind": "clear",
+      "expected": "medical",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-010",
+      "kind": "clear",
+      "expected": "medical",
+      "got": "medical",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-011",
+      "kind": "clear",
+      "expected": "medical",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-012",
+      "kind": "clear",
+      "expected": "medical",
+      "got": "medical",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-013",
+      "kind": "clear",
+      "expected": "police",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-014",
+      "kind": "clear",
+      "expected": "police",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-015",
+      "kind": "clear",
+      "expected": "police",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-016",
+      "kind": "clear",
+      "expected": "police",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-017",
+      "kind": "clear",
+      "expected": "police",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-018",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-019",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-020",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-021",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "got": "electrical_water",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-022",
+      "kind": "clear",
+      "expected": "electrical_water",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-023",
+      "kind": "clear",
+      "expected": "gas",
+      "got": "gas",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-024",
+      "kind": "clear",
+      "expected": "gas",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-025",
+      "kind": "clear",
+      "expected": "gas",
+      "got": "gas",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-026",
+      "kind": "clear",
+      "expected": "gas",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-027",
+      "kind": "clear",
+      "expected": "gas",
+      "got": "gas",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-028",
+      "kind": "clear",
+      "expected": "uncertain",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-029",
+      "kind": "clear",
+      "expected": "uncertain",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-030",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-031",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-032",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-033",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-034",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 2
+    },
+    {
+      "id": "H5-035",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-036",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-037",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-038",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-039",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-040",
+      "kind": "clear",
+      "expected": null,
+      "got": "gas",
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-041",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-042",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-043",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-044",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-045",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-046",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-047",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-048",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-049",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 1
+    },
+    {
+      "id": "H5-050",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-051",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-052",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-053",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-054",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-055",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-056",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-057",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-058",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-059",
+      "kind": "clear",
+      "expected": null,
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-060",
+      "kind": "judgement",
+      "expected": "electrical_water",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-061",
+      "kind": "judgement",
+      "expected": "electrical_water",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-062",
+      "kind": "judgement",
+      "expected": "gas",
+      "got": null,
+      "raw_cue_match_count": 0
+    },
+    {
+      "id": "H5-063",
+      "kind": "judgement",
+      "expected": "electrical_water",
+      "got": null,
+      "raw_cue_match_count": 0
+    }
+  ],
+  "counterfactuals": [
+    {
+      "id": "H5-001",
+      "label": "remove the colour adjective only",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": null,
+      "edited_route": "fire",
+      "predicted": "fire",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-001",
+      "label": "remove only the trailing smoke clause (adjective kept)",
+      "edits": 1,
+      "changed_tokens": 5,
+      "original_route": null,
+      "edited_route": null,
+      "predicted": null,
+      "matches_prediction": true,
+      "flipped": false
+    },
+    {
+      "id": "H5-002",
+      "label": "\"cháy dữ dội\" -> \"cháy lớn\"",
+      "edits": 1,
+      "changed_tokens": 3,
+      "original_route": null,
+      "edited_route": "fire",
+      "predicted": "fire",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-002",
+      "label": "only \"khói đang vào\" -> \"khói bay vào\" (cháy dữ dội kept)",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": null,
+      "edited_route": "fire",
+      "predicted": null,
+      "matches_prediction": false,
+      "flipped": true
+    },
+    {
+      "id": "H5-005",
+      "label": "pure reorder \"bốc lửa\" -> \"lửa bốc\"",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": null,
+      "edited_route": "fire",
+      "predicted": "fire",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-011",
+      "label": "\"nuốt phải\" -> \"nuốt nhầm\"",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": null,
+      "edited_route": "medical",
+      "predicted": "medical",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-013",
+      "label": "verb only \"cố mở\" -> \"cạy\"",
+      "edits": 1,
+      "changed_tokens": 3,
+      "original_route": null,
+      "edited_route": null,
+      "predicted": null,
+      "matches_prediction": true,
+      "flipped": false
+    },
+    {
+      "id": "H5-013",
+      "label": "clause only: remove \"mặc áo mưa\"",
+      "edits": 1,
+      "changed_tokens": 3,
+      "original_route": null,
+      "edited_route": null,
+      "predicted": null,
+      "matches_prediction": true,
+      "flipped": false
+    },
+    {
+      "id": "H5-013",
+      "label": "both edits",
+      "edits": 2,
+      "changed_tokens": 6,
+      "original_route": null,
+      "edited_route": "police",
+      "predicted": "police",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-014",
+      "label": "threat verb only \"đánh\" -> \"giết\"",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": null,
+      "edited_route": "police",
+      "predicted": "police",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-014",
+      "label": "weapon clause only: remove \"cầm gậy và \"",
+      "edits": 1,
+      "changed_tokens": 3,
+      "original_route": null,
+      "edited_route": null,
+      "predicted": null,
+      "matches_prediction": true,
+      "flipped": false
+    },
+    {
+      "id": "H5-015",
+      "label": "\"is trying to climb\" -> \"climbed\"",
+      "edits": 1,
+      "changed_tokens": 5,
+      "original_route": null,
+      "edited_route": "police",
+      "predicted": "police",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-018",
+      "label": "remove \"ròng ròng\"",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": null,
+      "edited_route": "electrical_water",
+      "predicted": "electrical_water",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-019",
+      "label": "span only: remove \"trong\"",
+      "edits": 1,
+      "changed_tokens": 1,
+      "original_route": null,
+      "edited_route": null,
+      "predicted": null,
+      "matches_prediction": true,
+      "flipped": false
+    },
+    {
+      "id": "H5-019",
+      "label": "synonym only: \"ướt sũng\" -> \"ngâm nước\"",
+      "edits": 1,
+      "changed_tokens": 4,
+      "original_route": null,
+      "edited_route": null,
+      "predicted": null,
+      "matches_prediction": true,
+      "flipped": false
+    },
+    {
+      "id": "H5-019",
+      "label": "both: remove \"trong\" and \"ướt sũng\" -> \"ngâm nước\"",
+      "edits": 2,
+      "changed_tokens": 5,
+      "original_route": null,
+      "edited_route": "electrical_water",
+      "predicted": "electrical_water",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-024",
+      "label": "digit token: \"12kg\" -> \"lon\"",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": null,
+      "edited_route": "gas",
+      "predicted": "gas",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-024",
+      "label": "digit token removed: delete \"12kg \"",
+      "edits": 1,
+      "changed_tokens": 1,
+      "original_route": null,
+      "edited_route": "gas",
+      "predicted": "gas",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-028",
+      "label": "\"báo ai\" -> \"gọi ai\"",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": null,
+      "edited_route": "uncertain",
+      "predicted": "uncertain",
+      "matches_prediction": true,
+      "flipped": true
+    },
+    {
+      "id": "H5-040",
+      "label": "reorder \"báo gas rò\" -> \"báo rò gas\"",
+      "edits": 1,
+      "changed_tokens": 2,
+      "original_route": "gas",
+      "edited_route": null,
+      "predicted": null,
+      "matches_prediction": true,
+      "flipped": true
+    }
+  ]
+}

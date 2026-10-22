@@ -1,0 +1,228 @@
+{
+  "schema": "nestscout.audit.dx02_probes.v1",
+  "classifier_snapshot": "42daced1a52ca5b8e5ee2e0b982c28e697f184c9",
+  "texts_as_the_handler_passes_them": [
+    "Mình gửi thêm giọng nói.",
+    "Tủ điện bây giờ nóng rát tay, có mùi khét và thấy tia lửa xẹt sau cánh tủ."
+  ],
+  "handler_style_combined_route": null,
+  "rows": [
+    {
+      "id": "P0-frozen-transcript",
+      "text": "Tủ điện bây giờ nóng rát tay, có mùi khét và thấy tia lửa xẹt sau cánh tủ.",
+      "note": "exact frozen input",
+      "gate_route": null,
+      "gate_numbers": [],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "smoke_or_burning",
+          "sparking",
+          "distribution_board"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    },
+    {
+      "id": "P0-frozen-message-only",
+      "text": "Mình gửi thêm giọng nói.",
+      "note": "typed part of the same step",
+      "gate_route": null,
+      "gate_numbers": [],
+      "flagged_electrical_scanner": {
+        "signals": [],
+        "adviceNumbers": null,
+        "hasAdvice": false
+      }
+    },
+    {
+      "id": "P1-clause-hot-panel",
+      "text": "Tủ điện bây giờ nóng rát tay.",
+      "note": "first clause alone",
+      "gate_route": null,
+      "gate_numbers": [],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "distribution_board"
+        ],
+        "adviceNumbers": null,
+        "hasAdvice": false
+      }
+    },
+    {
+      "id": "P1-clause-burning-smell",
+      "text": "Có mùi khét.",
+      "note": "second clause alone",
+      "gate_route": null,
+      "gate_numbers": [],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "smoke_or_burning"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    },
+    {
+      "id": "P1-clause-sparks",
+      "text": "Thấy tia lửa xẹt sau cánh tủ.",
+      "note": "third clause alone",
+      "gate_route": null,
+      "gate_numbers": [],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "sparking"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    },
+    {
+      "id": "E1-prep-and-fixture",
+      "text": "Tủ điện bây giờ nóng rát tay, có mùi khét và thấy tia lửa xẹt từ tủ điện.",
+      "note": "only \"sau cánh tủ\" -> \"từ tủ điện\"",
+      "gate_route": "electrical_water",
+      "gate_numbers": [
+        "112",
+        "114",
+        "115"
+      ],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "smoke_or_burning",
+          "sparking",
+          "distribution_board"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    },
+    {
+      "id": "E2-spark-noun",
+      "text": "Tủ điện bây giờ nóng rát tay, có mùi khét và thấy tia lửa điện xẹt sau cánh tủ.",
+      "note": "only \"điện\" inserted after \"tia lửa\"",
+      "gate_route": "electrical_water",
+      "gate_numbers": [
+        "112",
+        "114",
+        "115"
+      ],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "smoke_or_burning",
+          "sparking",
+          "distribution_board"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    },
+    {
+      "id": "E3-fire-word",
+      "text": "Tủ điện bây giờ nóng rát tay, có mùi khét và thấy lửa sau cánh tủ.",
+      "note": "only \"tia ... xẹt\" removed",
+      "gate_route": "fire",
+      "gate_numbers": [
+        "114"
+      ],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "smoke_or_burning",
+          "distribution_board"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    },
+    {
+      "id": "E4-smoke-added",
+      "text": "Tủ điện bây giờ nóng rát tay, có mùi khét, bốc khói và thấy tia lửa xẹt sau cánh tủ.",
+      "note": "only a smoke phrase added",
+      "gate_route": "fire",
+      "gate_numbers": [
+        "114"
+      ],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "smoke_or_burning",
+          "sparking",
+          "distribution_board"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    },
+    {
+      "id": "E5-sparks-from-cabinet",
+      "text": "Tủ điện bây giờ nóng rát tay, có mùi khét và thấy tia lửa xẹt ra từ tủ điện.",
+      "note": "sparks \"ra từ tủ điện\"",
+      "gate_route": "electrical_water",
+      "gate_numbers": [
+        "112",
+        "114",
+        "115"
+      ],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "smoke_or_burning",
+          "sparking",
+          "distribution_board"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    },
+    {
+      "id": "E6-english",
+      "text": "The electrical panel is hot to touch, smells burnt and I can see sparks behind the door.",
+      "note": "English equivalent (not an edit of the frozen text)",
+      "gate_route": null,
+      "gate_numbers": [],
+      "flagged_electrical_scanner": {
+        "signals": [
+          "smoke_or_burning",
+          "sparking",
+          "distribution_board"
+        ],
+        "adviceNumbers": [
+          "112",
+          "114",
+          "115"
+        ],
+        "hasAdvice": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,527 @@
+{
+  "schema": "nestscout.audit.dx01_probes.v1",
+  "matrix_sha256": "dd8392cbcc2fec7ad4f0b1611a52abea0cb7ed86fc681972fec9707c74a51dd7",
+  "note": "flags_on = all six KAEL_PLAYBOOK_<SERVICE>_ENABLED set to true; decision made exactly as guard.ts builds the options",
+  "frozen_texts_declined_by_boundary": [
+    {
+      "scenario": "ELEC-S2",
+      "step": "1",
+      "channel": "typed_message",
+      "hazard": false,
+      "flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "flags_on": {
+        "declined": false
+      },
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "text": "Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối."
+    },
+    {
+      "scenario": "PLMB-S2",
+      "step": "1",
+      "channel": "typed_message",
+      "hazard": false,
+      "flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may bom"
+        ]
+      },
+      "flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may bom"
+        ]
+      },
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may bom"
+        ]
+      },
+      "text": "Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa."
+    },
+    {
+      "scenario": "PLMB-S4",
+      "step": "2",
+      "channel": "voice_or_note_if_it_were_typed",
+      "hazard": false,
+      "flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "text": "Nước nóng ở vòi sen trong nhà tắm lúc nóng lúc lạnh, đã bị khoảng một tháng, bình nóng lạnh đặt ở trên trần nhà tắm."
+    },
+    {
+      "scenario": "PLMB-S4",
+      "step": "3",
+      "channel": "typed_message",
+      "hazard": false,
+      "flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "text": "Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm."
+    }
+  ],
+  "frozen_texts_checked": 63,
+  "derived": [
+    {
+      "id": "D1-frozen-ELEC-S2",
+      "service": "electrical",
+      "text": "Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối.",
+      "note": "frozen input",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "after_flags_on": {
+        "declined": false
+      }
+    },
+    {
+      "id": "D1-ELEC-S2-without-appliance",
+      "service": "electrical",
+      "text": "Điện nhà mình lúc có lúc không, không biết do tủ điện hay không, thợ trước nói một đằng giờ mình cũng rối.",
+      "note": "only \"do máy giặt\" removed",
+      "before_flags_off": {
+        "declined": false
+      },
+      "after_flags_off": {
+        "declined": false
+      },
+      "after_flags_on": {
+        "declined": false
+      }
+    },
+    {
+      "id": "D1-ELEC-S2-fridge",
+      "service": "electrical",
+      "text": "Điện nhà mình lúc có lúc không, không biết do tủ điện hay do tủ lạnh, thợ trước nói một đằng giờ mình cũng rối.",
+      "note": "only the appliance noun swapped (tủ lạnh)",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:tu lanh"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:tu lanh"
+        ]
+      },
+      "after_flags_on": {
+        "declined": false
+      }
+    },
+    {
+      "id": "D2-frozen-PLMB-S2",
+      "service": "plumbing",
+      "text": "Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm của tòa nhà, mình cũng không chắc nữa.",
+      "note": "frozen input",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may bom"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may bom"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may bom"
+        ]
+      }
+    },
+    {
+      "id": "D2-PLMB-S2-pump-water",
+      "service": "plumbing",
+      "text": "Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do máy bơm nước của tòa nhà, mình cũng không chắc nữa.",
+      "note": "only \"máy bơm\" -> \"máy bơm nước\" (the in-scope escape)",
+      "before_flags_off": {
+        "declined": false
+      },
+      "after_flags_off": {
+        "declined": false
+      },
+      "after_flags_on": {
+        "declined": false
+      }
+    },
+    {
+      "id": "D2-PLMB-S2-without-pump",
+      "service": "plumbing",
+      "text": "Nước ở nhà mình chảy yếu, có lúc do ống, có lúc do tòa nhà, mình cũng không chắc nữa.",
+      "note": "only \"máy bơm của\" removed",
+      "before_flags_off": {
+        "declined": false
+      },
+      "after_flags_off": {
+        "declined": false
+      },
+      "after_flags_on": {
+        "declined": false
+      }
+    },
+    {
+      "id": "D3-frozen-PLMB-S4-step3",
+      "service": "plumbing",
+      "text": "Mình nhầm, bình nóng lạnh đặt ở ban công chứ không phải trên trần nhà tắm.",
+      "note": "frozen input (typed)",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      }
+    },
+    {
+      "id": "D3-PLMB-S4-step3-water-heater-leak",
+      "service": "plumbing",
+      "text": "Bình nóng lạnh nhà mình bị rò nước ở chân bình, nhờ thợ nước qua xem.",
+      "note": "plumbing request whose object IS a water heater",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:binh nong lanh"
+        ]
+      }
+    },
+    {
+      "id": "C1-control-true-oos-washer",
+      "service": "plumbing",
+      "text": "Mình muốn nhờ thợ sửa máy giặt bị kẹt cửa.",
+      "note": "control: appliance is the object of the work",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      }
+    },
+    {
+      "id": "C2-control-true-oos-fridge",
+      "service": "handyman",
+      "text": "Tủ lạnh nhà mình không lạnh, nhờ thợ sửa.",
+      "note": "control",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:tu lanh"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:tu lanh"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:tu lanh"
+        ]
+      }
+    },
+    {
+      "id": "C3-control-true-oos-wifi",
+      "service": "handyman",
+      "text": "Wifi nhà mình chập chờn, nhờ thợ xem.",
+      "note": "control",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:wifi"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:wifi"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:wifi"
+        ]
+      }
+    },
+    {
+      "id": "F1-cleaning-fridge-oven",
+      "service": "cleaning",
+      "text": "Mình cần dọn dẹp tổng quát căn hộ, lau luôn tủ lạnh và bếp từ bên trong.",
+      "note": "in-scope cleaning request that lists appliances to wipe",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:tu lanh",
+          "oos:bep tu"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:tu lanh",
+          "oos:bep tu"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:tu lanh",
+          "oos:bep tu"
+        ]
+      }
+    },
+    {
+      "id": "F2-cleaning-washer-area",
+      "service": "cleaning",
+      "text": "Nhờ dọn nhà và vệ sinh khu vực để máy giặt, có vết nấm mốc ở góc tường.",
+      "note": "cleaning request near an appliance",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      }
+    },
+    {
+      "id": "F3-upholstery-near-tv",
+      "service": "upholstery",
+      "text": "Giặt giúp mình bộ sofa đặt cạnh tivi, có vết cà phê cũ.",
+      "note": "upholstery with a TV as a location word (no fault word)",
+      "before_flags_off": {
+        "declined": false
+      },
+      "after_flags_off": {
+        "declined": false
+      },
+      "after_flags_on": {
+        "declined": false
+      }
+    },
+    {
+      "id": "F4-handyman-shelf-near-wifi-router",
+      "service": "handyman",
+      "text": "Nhờ thợ lắp kệ gỗ để cái modem wifi lên tường phòng khách.",
+      "note": "handyman shelf for a wifi modem",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:wifi"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:wifi"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:wifi"
+        ]
+      }
+    },
+    {
+      "id": "F5-hvac-with-washer",
+      "service": "hvac",
+      "text": "Máy lạnh phòng ngủ chạy ồn, phòng này cũng có máy giặt để gần đó.",
+      "note": "in-scope hvac, appliance only as a neighbour",
+      "before_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "after_flags_off": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      },
+      "after_flags_on": {
+        "declined": true,
+        "reason": "out_of_scope",
+        "signals": [
+          "oos:may giat"
+        ]
+      }
+    },
+    {
+      "id": "F6-electrical-excluded-scope",
+      "service": "electrical",
+      "text": "Nhờ thợ điện kiểm tra ổ cắm trong bếp, không bao gồm máy giặt.",
+      "note": "explicit exclusion marker, electrical",
+      "before_flags_off": {
+        "declined": false
+      },
+      "after_flags_off": {
+        "declined": false
+      },
+      "after_flags_on": {
+        "declined": false
+      }
+    },
+    {
+      "id": "F7-plumbing-excluded-scope",
+      "service": "plumbing",
+      "text": "Nhờ thợ nước kiểm tra vòi bồn rửa, không bao gồm máy giặt.",
+      "note": "explicit exclusion marker, plumbing (exclusion exemption applies for non-electrical)",
+      "before_flags_off": {
+        "declined": false
+      },
+      "after_flags_off": {
+        "declined": false
+      },
+      "after_flags_on": {
+        "declined": false
+      }
+    }
+  ]
+}
