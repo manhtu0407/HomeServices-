@@ -1,10 +1,10 @@
 -- @pillar id: P423-manual-bank-reconciliation-sql
--- @pillar invariant: A Customer-confirmed completion opens one manual-bank order at the final price for each of the six services, a QR display or a Customer transfer claim never marks a Job paid, only a finance reconciler's exact-amount decision with an unused bank reference does so once and with a held Worker credit, and wrong amounts, repeated references, unclaimed orders, invalid inputs and every other actor leave the Job in payment_pending.
+-- @pillar invariant: A Customer-confirmed completion opens one manual-bank order at the final price for each of the six services, a QR display or a Customer transfer claim never marks a Job paid, only a finance reconciler's exact-amount decision with an unused bank reference does so once and with a held Worker credit, including for an order that a wrong amount first sent to reconciliation (its reversed Worker credit is reopened, but never for an order that was not in reconciliation), and wrong amounts, repeated references, unclaimed orders, invalid inputs and every other actor leave the Job in payment_pending.
 -- @pillar authority: governance/RULES.md #7 | governance/RULES.md #8 | owner four-blocker update (personal bank QR payment rail)
 -- @pillar target: supabase/migrations/20260811213000_manual_bank_payment_finance_v1.sql
 -- @pillar layer: sql
 -- @pillar siblings: P371-customer-completion-atomic-sql, P68-completion-payment-authority
--- @pillar mutation: Let decide_manual_bank_payment_reconciliation accept an order that is still manual_qr_ready, skip the amount comparison, or drop the bank-reference reuse check; the unclaimed, wrong-amount and repeated-reference assertions fail.
+-- @pillar mutation: Let decide_manual_bank_payment_reconciliation accept an order that is still manual_qr_ready, skip the amount comparison, or drop the bank-reference reuse check; the unclaimed, wrong-amount and repeated-reference assertions fail. Require a pending Worker ledger again, or reopen a reversed ledger under any order status; the recovery and guarded-reopen assertions fail.
 -- Rollback-only behavioural proof for the platform_bank_manual payment rail.
 
 begin;
@@ -362,7 +362,7 @@ begin
 end;
 $invalid_decisions$;
 
--- 8. An incorrect amount goes to reconciliation and never becomes paid; the observed dead end after it is pinned.
+-- 8. An incorrect amount goes to reconciliation and never becomes paid.
 do $wrong_amount$
 declare
   v_job constant uuid := 'd6910000-0000-4000-8000-000000000103';
@@ -411,19 +411,6 @@ begin
     raise exception 'an incorrect amount left a Worker credit that is not reversed: %', (select row_to_json(l) from public.worker_payment_ledger l where job_id = v_job);
   end if;
 
-  -- Pinned finding, not an endorsement: once an order is manual_reconcile_required the exact payment can no longer be confirmed,
-  -- because the settlement trigger reversed the Worker ledger and the decision function only accepts a pending one.
-  select * into strict v_result from public.admin_decide_payment_reconciliation_v2(
-    'd6910000-0000-4000-8000-000000000004', v_order, 5, gen_random_uuid(),
-    'confirm', 480000, repeat('c', 64), 'REF-0003', now() - interval '1 minute', null);
-  if v_result.ok or v_result.error_code <> 'WORKER_LEDGER_INVALID' then
-    raise exception 'the recorded dead end after reconcile_required changed: %', row_to_json(v_result);
-  end if;
-  if (select status from public.jobs where id = v_job) <> 'payment_pending'::public.job_status
-    or (select payment_state from public.worker_payment_ledger where job_id = v_job) <> 'reversed'
-  then
-    raise exception 'the refused confirmation after reconcile_required changed state';
-  end if;
 end;
 $wrong_amount$;
 
@@ -496,6 +483,157 @@ begin
   end if;
 end;
 $verified$;
+
+-- 9b. An order sent to reconciliation by a wrong amount is confirmed on the exact amount: the reversed Worker credit is reopened, then held.
+do $recovery$
+declare
+  v_job constant uuid := 'd6910000-0000-4000-8000-000000000104';
+  v_order uuid;
+  v_result record;
+  v_replay record;
+  v_ledger record;
+begin
+  perform * from public.claim_manual_bank_payment(v_job, 'd6910000-0000-4000-8000-000000000001', now() - interval '7 minutes', 'VCB');
+  select id into strict v_order from public.job_payment_orders where job_id = v_job;
+  perform * from public.admin_claim_payment_reconciliation_atomic('d6910000-0000-4000-8000-000000000004', v_order, 1, gen_random_uuid(), null);
+  select * into strict v_result from public.admin_decide_payment_reconciliation_v2(
+    'd6910000-0000-4000-8000-000000000004', v_order, 2, gen_random_uuid(),
+    'confirm', 489999, repeat('7', 64), 'REF-0004', now() - interval '1 minute', null);
+  if not v_result.ok or v_result.outcome <> 'reconcile_required' then
+    raise exception 'a short payment was not routed to reconciliation: %', row_to_json(v_result);
+  end if;
+  if (select payment_state from public.worker_payment_ledger where job_id = v_job) <> 'reversed'
+    or (select status from public.jobs where id = v_job) <> 'payment_pending'::public.job_status
+    or exists (select 1 from public.job_events where job_id = v_job and event_type = 'payment_confirmed')
+  then
+    raise exception 'the reconciliation state is not the expected starting point';
+  end if;
+
+  select * into strict v_result from public.admin_decide_payment_reconciliation_v2(
+    'd6910000-0000-4000-8000-000000000004', v_order, 3, 'd6910000-0000-4000-8000-0000000b0007',
+    'confirm', 490000, repeat('7', 64), 'REF-0004', now() - interval '1 minute', null);
+  if not v_result.ok or v_result.outcome <> 'paid' or v_result.status <> 'paid' or v_result.payment_status <> 'manual_verified'
+    or v_result.hold_until < now() + interval '23 hours 59 minutes' or v_result.hold_until > now() + interval '24 hours 1 minute'
+  then
+    raise exception 'the exact payment after reconciliation was not verified: %', row_to_json(v_result);
+  end if;
+  select * into strict v_ledger from public.worker_payment_ledger where job_id = v_job;
+  if v_ledger.payment_state <> 'on_hold' or v_ledger.settlement_state <> 'admin_verified'
+    or v_ledger.platform_fee <> 49000 or v_ledger.worker_net <> 441000 or v_ledger.available_at is distinct from v_result.hold_until
+  then
+    raise exception 'the reopened Worker credit is wrong: %', row_to_json(v_ledger);
+  end if;
+  if exists (select 1 from public.jobs where id = v_job
+        and (status <> 'paid'::public.job_status or paid_at is null or payment_status <> 'manual_verified' or payment_amount_received <> 490000 or payment_failure_reason is not null))
+    or exists (select 1 from public.job_payment_orders where id = v_order
+        and (status <> 'manual_verified' or amount_received <> 490000 or verified_by <> 'd6910000-0000-4000-8000-000000000004' or bank_reference_hash <> repeat('7', 64)))
+    or (select count(*) from public.job_events where job_id = v_job and event_type = 'payment_confirmed') <> 1
+    or (select count(*) from public.job_payment_reconciliation_events where payment_order_id = v_order and event_type = 'customer_transfer_claimed') <> 1
+    or (select count(*) from public.job_payment_reconciliation_events where payment_order_id = v_order and event_type = 'manual_reconcile_required') <> 1
+    or (select count(*) from public.job_payment_reconciliation_events where payment_order_id = v_order and event_type = 'manual_payment_verified' and safe_metadata ->> 'ledger_reopened' = 'true') <> 1
+  then
+    raise exception 'the recovered payment left an incomplete or duplicated record';
+  end if;
+
+  select * into strict v_replay from public.admin_decide_payment_reconciliation_v2(
+    'd6910000-0000-4000-8000-000000000004', v_order, 3, 'd6910000-0000-4000-8000-0000000b0007',
+    'confirm', 490000, repeat('7', 64), 'REF-0004', now() - interval '1 minute', null);
+  if not v_replay.ok or v_replay.outcome <> 'paid' or v_replay.event_id_out is distinct from v_result.event_id_out then
+    raise exception 'a replay of the recovering decision was not idempotent: %', row_to_json(v_replay);
+  end if;
+  select * into strict v_replay from public.admin_decide_payment_reconciliation_v2(
+    'd6910000-0000-4000-8000-000000000004', v_order, 4, gen_random_uuid(),
+    'confirm', 490000, repeat('7', 64), 'REF-0004', now() - interval '1 minute', null);
+  if not v_replay.ok or v_replay.outcome <> 'paid' then
+    raise exception 'an equivalent confirmation of the recovered order was not idempotent: %', row_to_json(v_replay);
+  end if;
+  select * into strict v_replay from public.admin_decide_payment_reconciliation_v2(
+    'd6910000-0000-4000-8000-000000000004', v_order, 5, gen_random_uuid(),
+    'confirm', 489999, repeat('7', 64), 'REF-0004', now() - interval '1 minute', null);
+  if v_replay.ok or v_replay.error_code <> 'INVALID_INPUT' then
+    raise exception 'a different amount was accepted for the recovered order: %', row_to_json(v_replay);
+  end if;
+  if (select count(*) from public.job_events where job_id = v_job and event_type = 'payment_confirmed') <> 1
+    or (select count(*) from public.worker_payment_ledger where job_id = v_job) <> 1
+    or (select payment_state from public.worker_payment_ledger where job_id = v_job) <> 'on_hold'
+  then
+    raise exception 'replays duplicated or moved the recovered payment';
+  end if;
+end;
+$recovery$;
+
+-- 9c. A reversed Worker credit under an order that never went to reconciliation is not reopened.
+do $guarded_reopen_setup$
+begin
+  perform * from public.claim_manual_bank_payment('d6910000-0000-4000-8000-000000000105', 'd6910000-0000-4000-8000-000000000001', now() - interval '8 minutes', 'VCB');
+  perform * from public.admin_claim_payment_reconciliation_atomic('d6910000-0000-4000-8000-000000000004',
+    (select id from public.job_payment_orders where job_id = 'd6910000-0000-4000-8000-000000000105'), 1, gen_random_uuid(), null);
+end;
+$guarded_reopen_setup$;
+reset role;
+update public.worker_payment_ledger set payment_state = 'reversed', settlement_state = 'admin_rejected', available_at = null
+where job_id = 'd6910000-0000-4000-8000-000000000105';
+set local role service_role;
+do $guarded_reopen$
+declare
+  v_job constant uuid := 'd6910000-0000-4000-8000-000000000105';
+  v_result record;
+begin
+  select * into strict v_result from public.admin_decide_payment_reconciliation_v2(
+    'd6910000-0000-4000-8000-000000000004', (select id from public.job_payment_orders where job_id = v_job), 2, gen_random_uuid(),
+    'confirm', 500000, repeat('8', 64), 'REF-0005', now() - interval '1 minute', null);
+  if v_result.ok or v_result.error_code <> 'WORKER_LEDGER_INVALID' then
+    raise exception 'a reversed credit under a claimed order was reopened: %', row_to_json(v_result);
+  end if;
+  if (select status from public.jobs where id = v_job) <> 'payment_pending'::public.job_status
+    or (select payment_state from public.worker_payment_ledger where job_id = v_job) <> 'reversed'
+    or (select status from public.job_payment_orders where job_id = v_job) <> 'manual_customer_claimed'
+  then
+    raise exception 'the refused reopen changed state';
+  end if;
+end;
+$guarded_reopen$;
+
+-- 9d. A credit reversed for another reason than the reconciliation decision is not reopened either, even under an order in reconciliation.
+do $guarded_reopen_reason_setup$
+declare
+  v_job constant uuid := 'd6910000-0000-4000-8000-000000000106';
+  v_order uuid;
+  v_result record;
+begin
+  perform * from public.claim_manual_bank_payment(v_job, 'd6910000-0000-4000-8000-000000000001', now() - interval '9 minutes', 'VCB');
+  select id into strict v_order from public.job_payment_orders where job_id = v_job;
+  perform * from public.admin_claim_payment_reconciliation_atomic('d6910000-0000-4000-8000-000000000004', v_order, 1, gen_random_uuid(), null);
+  select * into strict v_result from public.admin_decide_payment_reconciliation_v2(
+    'd6910000-0000-4000-8000-000000000004', v_order, 2, gen_random_uuid(),
+    'confirm', 509999, repeat('6', 64), 'REF-0006', now() - interval '1 minute', null);
+  if not v_result.ok or v_result.outcome <> 'reconcile_required' then
+    raise exception 'a short payment was not routed to reconciliation: %', row_to_json(v_result);
+  end if;
+end;
+$guarded_reopen_reason_setup$;
+reset role;
+update public.worker_payment_ledger set settlement_state = 'customer_claimed' where job_id = 'd6910000-0000-4000-8000-000000000106';
+set local role service_role;
+do $guarded_reopen_reason$
+declare
+  v_job constant uuid := 'd6910000-0000-4000-8000-000000000106';
+  v_result record;
+begin
+  select * into strict v_result from public.admin_decide_payment_reconciliation_v2(
+    'd6910000-0000-4000-8000-000000000004', (select id from public.job_payment_orders where job_id = v_job), 3, gen_random_uuid(),
+    'confirm', 510000, repeat('6', 64), 'REF-0006', now() - interval '1 minute', null);
+  if v_result.ok or v_result.error_code <> 'WORKER_LEDGER_INVALID' then
+    raise exception 'a credit reversed for another reason was reopened: %', row_to_json(v_result);
+  end if;
+  if (select status from public.jobs where id = v_job) <> 'payment_pending'::public.job_status
+    or (select payment_state from public.worker_payment_ledger where job_id = v_job) <> 'reversed'
+    or (select status from public.job_payment_orders where job_id = v_job) <> 'manual_reconcile_required'
+  then
+    raise exception 'the refused reopen changed state';
+  end if;
+end;
+$guarded_reopen_reason$;
 
 -- 10. A bank reference that already paid one order cannot pay another, in the function and in the index.
 do $reference_reuse$
@@ -591,13 +729,13 @@ begin
 end;
 $hold_release_after$;
 
--- 13. Nothing but job 1 is paid.
+-- 13. Nothing but jobs 1 and 4 is paid.
 do $only_one_paid$
 begin
-  if (select count(*) from public.jobs where customer_id = 'd6910000-0000-4000-8000-000000000001' and status = 'paid'::public.job_status) <> 1
-    or exists (select 1 from public.jobs where customer_id = 'd6910000-0000-4000-8000-000000000001' and id <> 'd6910000-0000-4000-8000-000000000101' and paid_at is not null)
+  if (select count(*) from public.jobs where customer_id = 'd6910000-0000-4000-8000-000000000001' and status = 'paid'::public.job_status) <> 2
+    or exists (select 1 from public.jobs where customer_id = 'd6910000-0000-4000-8000-000000000001' and id not in ('d6910000-0000-4000-8000-000000000101', 'd6910000-0000-4000-8000-000000000104') and paid_at is not null)
   then
-    raise exception 'a Job other than the verified one is paid';
+    raise exception 'a Job other than the two verified ones is paid';
   end if;
 end;
 $only_one_paid$;
@@ -709,13 +847,13 @@ begin
 end;
 $bypass$;
 
--- 15. Final global assertion: only the verified order is manual_verified.
+-- 15. Final global assertion: only the two verified orders are manual_verified and credited.
 do $final$
 begin
-  if (select count(*) from public.job_payment_orders where status = 'manual_verified' and customer_id = 'd6910000-0000-4000-8000-000000000001') <> 1
-    or (select count(*) from public.worker_payment_ledger where job_id in (select id from public.jobs where customer_id = 'd6910000-0000-4000-8000-000000000001') and payment_state in ('available', 'on_hold')) <> 1
+  if (select count(*) from public.job_payment_orders where status = 'manual_verified' and customer_id = 'd6910000-0000-4000-8000-000000000001') <> 2
+    or (select count(*) from public.worker_payment_ledger where job_id in (select id from public.jobs where customer_id = 'd6910000-0000-4000-8000-000000000001') and payment_state in ('available', 'on_hold')) <> 2
   then
-    raise exception 'more than one order was verified or credited';
+    raise exception 'an order other than the two verified ones was verified or credited';
   end if;
 end;
 $final$;

@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 463,
+  "migrationCount": 464,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "6d8bd736479115c6b85f8b6e40ee61070c6988c9d1544cfbcc21a5a69fcdcfe7",
+  "migrationsSha256": "3fbfba07ef751af01869e34287977bc36f75d553887d93ec0a9f0a10341cb2c5",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "e91abb2c693df49897a6652798f230ed94e32cad54732be7471069a5f1bb857f"
@@ -3348,6 +3348,13 @@
       "file": "supabase/migrations/20261015120000_backend_promotion_monitor_evidence.sql",
       "sha256": "c6316352f3e4c21310062822d563044536137b34ce94f65fbe098013c2bfd262",
       "bytes": 19984
+    },
+    {
+      "version": "20261022100000",
+      "name": "reopen_reconciled_manual_bank_ledger",
+      "file": "supabase/migrations/20261022100000_reopen_reconciled_manual_bank_ledger.sql",
+      "sha256": "d20eeda943ca6b7800335f2571073454bf1183cbd9391c82285c9d27cd5baaaf",
+      "bytes": 12224
     }
   ]
 }
