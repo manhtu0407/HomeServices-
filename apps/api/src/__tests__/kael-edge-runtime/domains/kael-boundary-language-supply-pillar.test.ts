@@ -111,6 +111,8 @@ describe(PILLAR.id, () => {
     for (const text of [
       'Tủ lạnh đặt cạnh cái ổ cắm điện đã bị hỏng, nhờ sửa ổ cắm.',
       'Máy giặt đặt cạnh ổ cắm đang bị hỏng, nhờ sửa ổ cắm.',
+      'Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm.',
+      'Máy giặt đặt cạnh cái công tắc không bật được, nhờ sửa công tắc.',
     ]) expect(boundary(text, 'electrical', enabled).ok, pillarWhy(PILLAR, text)).toBe(true)
     const requested = boundary('May giat dat canh o cam khong vat.', 'electrical', enabled)
     expect(requested.ok).toBe(false)

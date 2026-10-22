@@ -1,0 +1,95 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts (45 tests | 2 failed) 60ms
+     × Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm. asks for no unsupported work (the adjacent outlet supply fault is not a washer function) 38ms
+     × Máy giặt đặt cạnh cái công tắc không bật được, nhờ sửa công tắc. asks for no unsupported work (the adjacent switch control fault is not a washer function) 5ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (50 tests | 2 failed) 273ms
+     × placement does not assign another fixture fault to an appliance, flags=false 7ms
+     × placement does not assign another fixture fault to an appliance, flags=true 2ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm. asks for no unsupported work (the adjacent outlet supply fault is not a washer function)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    the adjacent outlet supply fault is not a washer function: "Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm.": expected [ 'may giat' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "may giat",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:77:85
+     75| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     76|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     77|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     78|   })
+     79| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > Máy giặt đặt cạnh cái công tắc không bật được, nhờ sửa công tắc. asks for no unsupported work (the adjacent switch control fault is not a washer function)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    the adjacent switch control fault is not a washer function: "Máy giặt đặt cạnh cái công tắc không bật được, nhờ sửa công tắc.": expected [ 'may giat' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "may giat",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:77:85
+     75| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     76|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     77|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     78|   })
+     79| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > placement does not assign another fixture fault to an appliance, flags=false
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > placement does not assign another fixture fault to an appliance, flags=true
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:116:82
+    114|       'Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm.',
+    115|       'Máy giặt đặt cạnh cái công tắc không bật được, nhờ sửa công tắc…
+    116|     ]) expect(boundary(text, 'electrical', enabled).ok, pillarWhy(PILL…
+       |                                                                                  ^
+    117|     const requested = boundary('May giat dat canh o cam khong vat.', '…
+    118|     expect(requested.ok).toBe(false)
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 91 passed (95)
+   Start at  05:25:39
+   Duration  5.99s (transform 4.60s, setup 0ms, import 5.55s, tests 333ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts

@@ -22,6 +22,9 @@ export const PILLAR = {
 const requested = (text: string) => [...detectRequestedApplianceWork(text, 'electrical')].sort()
 
 const REFUSED: ReadonlyArray<readonly [string, string]> = [
+  ['Máy giặt đặt cạnh cái ổ cắm điện không có điện, nhờ sửa ổ cắm.', 'the adjacent outlet supply fault is not a washer function'],
+  ['Máy giặt đặt cạnh cái công tắc không bật được, nhờ sửa công tắc.', 'the adjacent switch control fault is not a washer function'],
+  ['May giat canh voi nuoc khong ra nuoc, nho sua voi nuoc.', 'the adjacent faucet supply remains fixture work'],
   ['We already repaired the fridge and it was broken. Please fix the outlet.', 'the same historical subject remains completed'],
   ['Tủ lạnh đặt cạnh cái ổ cắm điện đã bị hỏng, nhờ sửa ổ cắm.', 'a different fixture after placement'],
   ['Máy giặt đặt cạnh ổ cắm đang bị hỏng, nhờ sửa ổ cắm.', 'a placed appliance is incidental to outlet work'],

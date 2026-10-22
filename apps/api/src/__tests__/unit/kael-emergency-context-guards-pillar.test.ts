@@ -38,6 +38,11 @@ const PULLED_OBJECT = [
 ]
 
 const BENIGN_REPORTS = [
+  'Dien nha toi bi ngat roi',
+  'Nuoc nha toi bi ngat luon',
+  'May lanh cua toi bi ngat roi',
+  'Dien nha toi bi ngắt rồi',
+  'Nuoc nha toi bi ngắt luôn',
   'Dien nha toi bi ngat, nho kiem tra.',
   'Nuoc nha toi bi ngat, nho kiem tra duong ong.',
   'May lanh bi ngat lien tuc, nho kiem tra.',
