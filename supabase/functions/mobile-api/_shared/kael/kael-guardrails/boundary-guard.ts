@@ -552,16 +552,7 @@ export function evaluateMessageBoundary(
     };
   }
 
-  // detectOutOfScope carries an escape for electrical infrastructure, but this call erased the
-  // argument that reaches it, so the one guard written to stop a live fault being declined could
-  // never run on the electrical path. The argument stays erased for the keyword gate itself, which
-  // is deliberately byte-for-byte legacy; only the escape is restored.
-  const electricalHazard = selectedService === "electrical" &&
-    hasElectricalInfrastructureContext(trimmed);
-  const outOfScope = electricalHazard ? { detected: false, signals: [] } : detectOutOfScope(
-    trimmed,
-    selectedService === "electrical" ? undefined : selectedService ?? undefined,
-  );
+  const outOfScope = detectOutOfScope(trimmed, selectedService ?? undefined);
   if (outOfScope.detected) {
     return {
       ok: false,

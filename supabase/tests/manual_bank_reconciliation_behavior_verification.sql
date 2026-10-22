@@ -112,13 +112,13 @@ begin
     perform * from public.confirm_completion_manual_bank_atomic(v_job, v_other, 'completion-payment:' || v_job || ':' || v_other, 520000, v_code, v_code, v_url, now());
     raise exception 'another Customer confirmed completion';
   exception when sqlstate 'P0001' then
-    null;
+    if sqlerrm <> 'JOB_NOT_FOUND' then raise; end if;
   end;
   begin
     perform * from public.confirm_completion_manual_bank_atomic(v_job, v_customer, 'completion-payment:' || v_job || ':' || v_customer, 519999, v_code, v_code, v_url, now());
     raise exception 'completion was accepted at a price that is not the final price';
   exception when sqlstate 'P0001' then
-    null;
+    if sqlerrm <> 'INVALID_STATUS' then raise; end if;
   end;
   if exists (select 1 from public.job_payment_orders where job_id = v_job)
     or exists (select 1 from public.worker_payment_ledger where job_id = v_job)

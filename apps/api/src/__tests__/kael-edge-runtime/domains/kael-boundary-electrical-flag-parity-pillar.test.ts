@@ -9,7 +9,7 @@ import { activeWorld, type Service } from '../harness/emergency-fixtures'
 export const PILLAR = {
   id: 'P422-kael-boundary-electrical-flag-parity',
   invariant:
-    'turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set',
+    'turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set',
   authority: [
     'governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services)',
     'governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state)',
@@ -19,7 +19,7 @@ export const PILLAR = {
   layer: 'integration',
   siblings: ['P421-kael-boundary-requested-work', 'P420-kael-case-emergency-playbook-precedence', 'P406-kael-case-emergency-intake'],
   mutation:
-    'return ok from evaluateMessageBoundary as soon as the electrical playbook is enabled and the routing policy found nothing: every unsupported and mixed electrical row turns red with the flag on while the same rows stay green with it off, and the handler rows that expect the Case to close turn red with it on',
+    'return ok from evaluateMessageBoundary as soon as the electrical playbook is enabled and the routing policy found nothing: every unsupported and mixed electrical row turns red with the flag on while the same rows stay green with it off, and the handler rows that expect the Case to close turn red with it on; pass undefined instead of the selected service to the keyword gate on the electrical path: the exclusion rows turn red with the flag off and on',
 } as const satisfies PillarManifest
 
 installEdgeRuntimeTestHooks()
@@ -242,6 +242,37 @@ describe(`${PILLAR.id}: the electrical Case closes on an unsupported request thr
     const why = pillarWhy(PILLAR, `flag=${flags} status=${got.result.status} session=${String(got.world.session().status)}`)
     expect(got.world.session().status, why).toBe('unsupported')
     expect(got.reasons, why).toEqual(['out_of_scope'])
+  })
+})
+
+const EXCLUDED_TOPIC: ReadonlyArray<string> = [
+  'Đèn trong nhà không sáng, nhờ kiểm tra, không bao gồm wifi.',
+  'Nhờ thợ thay công tắc đèn, loại trừ máy giặt.',
+  'Cần kiểm tra cầu dao, không yêu cầu sửa tủ lạnh.',
+  'Ổ cắm phòng ngủ bị lỏng, nhờ sửa, không bao gồm bếp từ.',
+]
+
+const EXCLUSION_THAT_DOES_NOT_COVER_THE_REQUEST: ReadonlyArray<string> = [
+  'Nhờ sửa tủ lạnh giúp mình, không bao gồm vật tư.',
+  'Nhờ sửa tủ lạnh và wifi, không bao gồm wifi.',
+  'Nhờ thợ sửa máy giặt, loại trừ chi phí đi lại.',
+]
+
+describe(`${PILLAR.id}: an explicit exclusion keeps a supported request open on the electrical Case`, () => {
+  it.each(EXCLUDED_TOPIC.flatMap((text) => WRITTEN_FORMS.map((write) => write(text))))('%s is accepted with the flag off and on', (text) => {
+    expect([verdict(text, 'off'), verdict(text, 'on')], pillarWhy(PILLAR, JSON.stringify(text))).toEqual(['ok', 'ok'])
+  })
+
+  it.each(EXCLUSION_THAT_DOES_NOT_COVER_THE_REQUEST.flatMap((text) => WRITTEN_FORMS.map((write) => write(text))))('%s is still refused with the flag off and on', (text) => {
+    expect([verdict(text, 'off'), verdict(text, 'on')], pillarWhy(PILLAR, JSON.stringify(text))).toEqual(['out_of_scope', 'out_of_scope'])
+  })
+
+  it.each(FLAG_STATES)('the exclusion message keeps the electrical Case active through the real handler (flag %s)', async (flags) => {
+    const got = await turn('electrical', flags, EXCLUDED_TOPIC[0] as string)
+    const why = pillarWhy(PILLAR, `flag=${flags} status=${got.result.status} session=${String(got.world.session().status)} reasons=${got.reasons.join(',')}`)
+    expect(got.result.status, why).toBe(200)
+    expect(got.world.session().status, why).toBe('active')
+    expect(got.reasons, why).toEqual([])
   })
 })
 
