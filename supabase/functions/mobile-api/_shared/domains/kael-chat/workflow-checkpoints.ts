@@ -15,7 +15,7 @@ const createRequest = scope.extend({
 }).strict()
 const transitionRequest = scope.extend({
   expectedVersion: z.number().int().min(0).max(63), idempotencyKey: z.string().uuid(),
-  action: z.enum(['advance', 'retry', 'timeout']), nextNode: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/).optional(),
+  action: z.enum(['advance', 'failure', 'retry', 'timeout']), nextNode: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/).optional(),
   event: z.object({
     id: z.string().uuid(), instanceId: z.string().uuid(), sequence: z.number().int().min(1).max(64),
     kind: z.enum(['worker_accepted', 'worker_declined', 'no_worker', 'deadline_elapsed', 'approval_received']),

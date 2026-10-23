@@ -1,0 +1,13 @@
+{"result":"PASS","target":"nestscout-kawa06-20261023","instanceId":"6fa6d17b-74e1-41f8-a5fa-94a3258da000","createVersion":0,"terminalVersion":1,"idempotentReplay":true,"freshStoreRecovery":true,"checkpointCount":2}
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase%2fsupabase-js
+[0m[32mDownload[0m https://registry.npmjs.org/zod
+[0m[32mDownload[0m https://registry.npmjs.org/zod/-/zod-4.4.3.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/supabase-js/-/supabase-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/postgrest-js/-/postgrest-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/auth-js/-/auth-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/storage-js/-/storage-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/functions-js/-/functions-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/realtime-js/-/realtime-js-2.105.4.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/tslib/-/tslib-2.8.1.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/iceberg-js/-/iceberg-js-0.8.1.tgz
+[0m[32mDownload[0m https://registry.npmjs.org/@supabase/phoenix/-/phoenix-0.4.2.tgz

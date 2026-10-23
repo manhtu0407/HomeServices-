@@ -102,7 +102,7 @@
       }
     ]
   },
-  "migrationsSha256": "94feb6944db823723bb2c508bc1f92d5dbb0c58f4ef200cc01c5b072eda7fb31",
+  "migrationsSha256": "fdeb17b06d204751451825d025fc52c80bb1ddae349c2d06afecc63102e5a383",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
     "sha256": "62d0e00c86475d03bd359fe71ab55f5481dcd144bc342929aa7eca79ac7e521f"
@@ -3367,8 +3367,8 @@
       "version": "20261023020137",
       "name": "kael_workflow_durable_checkpoints",
       "file": "supabase/migrations/20261023020137_kael_workflow_durable_checkpoints.sql",
-      "sha256": "664853317207d27e5cb649672225a6d6b7e2cac79fd987943443af4920d30350",
-      "bytes": 21801
+      "sha256": "9e0a745c0f0444b8eccce08f9b841a5735541709327e6d62c150b52b8821ba30",
+      "bytes": 22565
     }
   ]
 }

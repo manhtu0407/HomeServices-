@@ -47,6 +47,18 @@ const create = { ...identity, workflowId: 'durable_case', definitionVersion: 1, 
 const transition = { ...identity, expectedVersion: 0, idempotencyKey: ID, action: 'advance', nextNode: 'done' }
 
 describe(PILLAR.id, () => {
+  it('persists the explicit failure outcome of a registered W04 failure branch', async () => {
+    const failed = { ...receipt(), instance_version: 1, checkpoint: 'declined', status: 'declined', terminal_reason: 'node_finished' }
+    const { store, rpc, registry } = setup(failed)
+    registry.register({
+      ...definition(), version: 2, terminalStates: ['succeeded', 'declined'],
+      nodes: [...definition().nodes, { id: 'declined', kind: 'finish', timeoutMs: 100, maxVisits: 1, terminalState: 'declined' }],
+      edges: [...definition().edges, { from: 'validate', to: 'declined', kind: 'failure' }],
+    })
+    const request = { ...transition, action: 'failure', nextNode: 'declined' }
+    expect(await store.transition(request)).toEqual(failed)
+    expect(rpc).toHaveBeenCalledExactlyOnceWith('kael_workflow_checkpoint_v1', { p_request: { operation: 'transition', ...request } })
+  })
   it('rejects raw prompts before reaching the server persistence operation', async () => {
     const { store, rpc } = setup()
     await expect(store.load({ ...identity, rawPrompt: 'private text' }), pillarWhy(PILLAR)).rejects.toThrow()
@@ -76,6 +88,8 @@ describe(PILLAR.id, () => {
   it.each([
     { ...transition, rawPrompt: 'private text' }, { ...transition, sql: 'select 1' },
     { ...transition, expectedVersion: -1 }, { ...transition, expectedVersion: 64 },
+    { ...transition, action: 'failure', nextNode: undefined },
+    { ...transition, action: 'failure', event: { id: ID, instanceId: ID, sequence: 1, kind: 'worker_accepted' } },
     { ...transition, action: 'http' }, { ...transition, action: 'timeout' },
     { ...transition, nextNode: undefined },
     { ...transition, event: { id: ID, instanceId: OTHER, sequence: 1, kind: 'worker_accepted' } },

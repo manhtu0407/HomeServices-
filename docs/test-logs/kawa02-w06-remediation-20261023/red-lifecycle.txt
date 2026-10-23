@@ -1,0 +1,16 @@
+BEGIN
+SET
+SET
+DO
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+CREATE FUNCTION
+CREATE TRIGGER
+CREATE FUNCTION
+DO
+SET
+DO
+ERROR:  WORKFLOW_CASE_SCOPE
+CONTEXT:  PL/pgSQL function public.kael_workflow_checkpoint_v1(jsonb) line 60 at RAISE
+PL/pgSQL function inline_code_block line 30 at assignment

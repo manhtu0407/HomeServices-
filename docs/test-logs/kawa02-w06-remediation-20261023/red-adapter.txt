@@ -1,0 +1,52 @@
+
+> nestscout@0.1.0 test:api C:\ns-fix\kawa02
+> node scripts/run.mjs run-package-script @nestscout/api test "--" "workflow-durable-checkpoints-pillar"
+
+
+> @nestscout/api@0.1.0 test C:\ns-fix\kawa02\apps\api
+> node scripts/test-runner.mjs "workflow-durable-checkpoints-pillar"
+
+
+ RUN  v4.1.6 C:/ns-fix/kawa02/apps/api
+
+ ❯ src/__tests__/unit/workflow-durable-checkpoints-pillar.test.ts (37 tests | 1 failed) 49ms
+     × persists the explicit failure outcome of a registered W04 failure branch 13ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/workflow-durable-checkpoints-pillar.test.ts > P434-workflow-durable-checkpoints > persists the explicit failure outcome of a registered W04 failure branch
+ZodError: [
+  {
+    "code": "invalid_value",
+    "values": [
+      "advance",
+      "retry",
+      "timeout"
+    ],
+    "path": [
+      "action"
+    ],
+    "message": "Invalid option: expected one of \"advance\"|\"retry\"|\"timeout\""
+  }
+]
+ ❯ Object.transition ../../supabase/functions/mobile-api/_shared/domains/kael-chat/workflow-checkpoints.ts:94:41
+     92|     },
+     93|     async transition(input: unknown) {
+     94|       const request = transitionRequest.parse(input)
+       |                                         ^
+     95|       authorize(request)
+     96|       const transitioned = scopedResult(await call({ operation: 'trans…
+ ❯ src/__tests__/unit/workflow-durable-checkpoints-pillar.test.ts:59:24
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 36 passed (37)
+   Start at  11:13:50
+   Duration  918ms (transform 176ms, setup 0ms, import 437ms, tests 49ms, environment 0ms)
+
+C:\ns-fix\kawa02\apps\api:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @nestscout/api@0.1.0 test: `node scripts/test-runner.mjs "workflow-durable-checkpoints-pillar"`
+Exit status 1
+ ELIFECYCLE  Command failed with exit code 1.

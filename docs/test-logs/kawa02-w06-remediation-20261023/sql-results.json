@@ -1,0 +1,47 @@
+[
+  {
+    "file": "workflow_durable_checkpoints_verification.sql",
+    "exitCode": 0,
+    "seconds": 2.36
+  },
+  {
+    "file": "workflow_checkpoint_concurrency_verification.sql",
+    "exitCode": 0,
+    "seconds": 3.3
+  },
+  {
+    "file": "workflow_recovery_capacity_reconciliation_verification.sql",
+    "exitCode": 0,
+    "seconds": 3.09
+  },
+  {
+    "file": "durable_confirmation_matching_verification.sql",
+    "exitCode": 0,
+    "seconds": 2.06
+  },
+  {
+    "file": "six_service_confirmation_gate_verification.sql",
+    "exitCode": 0,
+    "seconds": 1.1
+  },
+  {
+    "file": "manual_bank_reconciliation_behavior_verification.sql",
+    "exitCode": 0,
+    "seconds": 1.22
+  },
+  {
+    "file": "manual_bank_reference_concurrency_verification.sql",
+    "exitCode": 0,
+    "seconds": 10.24
+  },
+  {
+    "file": "account_deletion_verification.sql",
+    "exitCode": 0,
+    "seconds": 0.93
+  },
+  {
+    "file": "staging_security_verification.sql",
+    "exitCode": 0,
+    "seconds": 0.94
+  }
+]

@@ -96,6 +96,7 @@ declare
   v_event_kind text;
   v_sequence integer;
   v_service text;
+  v_case_job uuid;
 begin
   if coalesce(auth.role(), '') <> 'service_role' then
     raise exception using errcode = '42501', message = 'WORKFLOW_SERVER_ONLY';
@@ -121,15 +122,23 @@ begin
   end if;
   if v_case is not null then
     if v_role = 'customer' then
-      select service_type::text into v_service from public.kael_chat_sessions
-        where id = v_case and customer_id = v_actor and job_id is not distinct from v_job for share;
+      select service_type::text, job_id into v_service, v_case_job from public.kael_chat_sessions
+        where id = v_case and customer_id = v_actor for share;
     elsif v_role = 'worker' then
-      perform 1 from public.kael_worker_chat_sessions
-        where id = v_case and worker_id = v_actor and job_id is not distinct from v_job for share;
+      select job_id into v_case_job from public.kael_worker_chat_sessions
+        where id = v_case and worker_id = v_actor for share;
     else
       raise exception using errcode = '42501', message = 'WORKFLOW_CASE_SCOPE';
     end if;
     if not found then raise exception using errcode = '42501', message = 'WORKFLOW_CASE_SCOPE'; end if;
+    if v_case_job is distinct from v_job then
+      if v_job is not null or v_case_job is null then
+        raise exception using errcode = '42501', message = 'WORKFLOW_CASE_SCOPE';
+      end if;
+      perform 1 from public.jobs where id = v_case_job
+        and ((v_role = 'customer' and customer_id = v_actor) or (v_role = 'worker' and worker_id = v_actor)) for share;
+      if not found then raise exception using errcode = '42501', message = 'WORKFLOW_JOB_SCOPE'; end if;
+    end if;
   end if;
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_id::text, 434));
   v_now := clock_timestamp();
@@ -152,6 +161,8 @@ begin
       return v_prior.result;
     end if;
     if v_operation = 'create' then raise exception using errcode = '23505', message = 'WORKFLOW_INSTANCE_EXISTS'; end if;
+  elsif v_case is not null and v_case_job is distinct from v_job then
+    raise exception using errcode = '42501', message = 'WORKFLOW_CASE_SCOPE';
   elsif v_operation <> 'create' then
     raise exception using errcode = 'P0002', message = 'WORKFLOW_NOT_FOUND';
   end if;
@@ -201,8 +212,9 @@ begin
       end if;
       select n into v_next from jsonb_array_elements(v_definition->'nodes') n where n->>'id'=p_request->>'nextNode';
       select e into v_edge from jsonb_array_elements(v_definition->'edges') e where e->>'from'=v_instance.checkpoint
-        and e->>'to'=p_request->>'nextNode' and e->>'kind'=case when p_request->>'action'='retry' then 'retry' when p_request ? 'event' then 'event' else 'success' end;
-      if v_next is null or v_edge is null or p_request->>'action' not in ('advance','retry') then
+        and e->>'to'=p_request->>'nextNode' and e->>'kind'=case when p_request->>'action'='retry' then 'retry' when p_request->>'action'='failure' then 'failure' when p_request ? 'event' then 'event' else 'success' end;
+      if v_next is null or v_edge is null or coalesce(p_request->>'action','') not in ('advance','failure','retry')
+        or (p_request ? 'event' and p_request->>'action' <> 'advance') then
         raise exception using errcode = '22023', message = 'WORKFLOW_INVALID_TRANSITION';
       end if;
       if p_request ? 'event' then

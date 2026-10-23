@@ -1,0 +1,55 @@
+[
+  {
+    "log": ".scratch\\w06-remediation\\full-api.txt",
+    "sha256": "10d70a088fc5d1313929b55f8361d3f9782ff4618a4031c16e7e8b99ff11191f",
+    "exitCode": 0,
+    "summary": [
+      "Test Files  209 passed | 3 skipped (212)",
+      "Tests  5794 passed | 7 skipped (5801)",
+      "\u2139 tests 116",
+      "\u2139 pass 115",
+      "\u2139 fail 0",
+      "\u2139 skipped 1"
+    ]
+  },
+  {
+    "log": ".scratch\\w06-remediation\\shared.txt",
+    "sha256": "e71f73980b37f877c6f4b9cce7a3ec25ff6a7242c15d847857141a6b75469766",
+    "exitCode": 0,
+    "summary": [
+      "Test Files  10 passed (10)",
+      "Tests  189 passed (189)"
+    ]
+  },
+  {
+    "log": ".scratch\\w06-remediation\\types-api.txt",
+    "sha256": "38b0e5cfdc650ce4abd14fcbea5d9407ddbb91571097b9d2293e34a95a594ff4",
+    "exitCode": 0,
+    "summary": []
+  },
+  {
+    "log": ".scratch\\w06-remediation\\types-shared.txt",
+    "sha256": "35be0057a23bd8f92ba80129f590fba39b50786deb6452d685a34162a86cd9f3",
+    "exitCode": 0,
+    "summary": []
+  },
+  {
+    "log": ".scratch\\w06-remediation\\green-focused.txt",
+    "sha256": "17cdd8bf437a5d594b9b2d9a852dae337611044a975928382693885e843b2188",
+    "exitCode": 0,
+    "summary": [
+      "Test Files  3 passed (3)",
+      "Tests  101 passed (101)",
+      "\u2139 tests 116",
+      "\u2139 pass 115",
+      "\u2139 fail 0",
+      "\u2139 skipped 1"
+    ]
+  },
+  {
+    "log": ".scratch\\w06-remediation\\final-fresh-reset.txt",
+    "sha256": "ab314d412ad442ac170e38aeb6a22b1f08b62b11d1653de82279f0fb1e6d5415",
+    "exitCode": 0,
+    "summary": []
+  }
+]
