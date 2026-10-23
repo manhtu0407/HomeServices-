@@ -1,0 +1,782 @@
+diff --git a/docs/test-logs/kawa02-release-entry-audit-20261023/source-comparison.json b/docs/test-logs/kawa02-release-entry-audit-20261023/source-comparison.json
+new file mode 100644
+index 00000000..3c004222
+--- /dev/null
++++ b/docs/test-logs/kawa02-release-entry-audit-20261023/source-comparison.json
+@@ -0,0 +1,697 @@
++{
++  "normalization": "CRLF to LF; no other normalization",
++  "changed_paths": 49,
++  "matches": {
++    "e8b95d2122a8ce802c5504630a778f6e51daa72f": 36,
++    "7e59b91085825a11168b2b2e1c68225a2dcc17f0": 1,
++    "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": 0
++  },
++  "files": [
++    {
++      "path": "supabase/functions/_shared/contracts/emergency-guidance.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "10176f134a9026b6a2eddd51402db0cff5decd12f42faca40863bea2abc91061",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "10176f134a9026b6a2eddd51402db0cff5decd12f42faca40863bea2abc91061"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/customer/assistant.ts",
++      "deployed_sha256": "d488db88cc9fb5c7b8c887d942f2c76672addd3fb0c53b50543d6c59fcb98816",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "d488db88cc9fb5c7b8c887d942f2c76672addd3fb0c53b50543d6c59fcb98816",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "ebbdb17450ee076d42f0ac5ed99aacd407e6d56c0a549d032fa6825be6a95b7b",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "ebbdb17450ee076d42f0ac5ed99aacd407e6d56c0a549d032fa6825be6a95b7b"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts",
++      "deployed_sha256": "433e6bc8daed4db67f4514b01ac9091fec9f3c8bf7efab691175c90d468ae347",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "433e6bc8daed4db67f4514b01ac9091fec9f3c8bf7efab691175c90d468ae347",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "c830ccc20ff8d773473c83d371c23826ad7069a940f4c86f4209f2e6e6c45941",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "c830ccc20ff8d773473c83d371c23826ad7069a940f4c86f4209f2e6e6c45941"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/branches-pre-pipeline.ts",
++      "deployed_sha256": "c3607d536ed7b490a5a4e0da9d31c82d014f980bb04320b71e72235ff9715281",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "c3607d536ed7b490a5a4e0da9d31c82d014f980bb04320b71e72235ff9715281",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "86873e745fe11b4e81247bc71e71bb4c07ca3af9ece75db4b2d7e366765ccdf5",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "86873e745fe11b4e81247bc71e71bb4c07ca3af9ece75db4b2d7e366765ccdf5"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/case-context.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "4fcbfcedd9c2865bcfc80e9412b823d4ffcf07e3a5cd8082e24f45ea795b8e92",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "4fcbfcedd9c2865bcfc80e9412b823d4ffcf07e3a5cd8082e24f45ea795b8e92"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/case-question.service.ts",
++      "deployed_sha256": "be8b635f1e209fd266526df4289de1a5c5cb783c3a0d24325d74a0730aeaea72",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "be8b635f1e209fd266526df4289de1a5c5cb783c3a0d24325d74a0730aeaea72",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "8ee8ba516c97ff09389a838198a0732f9eddf7fe82c3cdf17a7dc885cc8220e6",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "8ee8ba516c97ff09389a838198a0732f9eddf7fe82c3cdf17a7dc885cc8220e6"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-artifact.ts",
++      "deployed_sha256": "766bfc81bcc291f605f995760402e3f0acfa02e905f35144b59062fe02da5757",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "766bfc81bcc291f605f995760402e3f0acfa02e905f35144b59062fe02da5757",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "ab6c3311333d7182adf787396a19231970e0445ace7c3dbcca513e5912775d8c",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "ab6c3311333d7182adf787396a19231970e0445ace7c3dbcca513e5912775d8c"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts",
++      "deployed_sha256": "40cf84aad58a4a1a936cb7cc565c41135cc750238dabba8a21d7e8fe041ae6fd",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "40cf84aad58a4a1a936cb7cc565c41135cc750238dabba8a21d7e8fe041ae6fd",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "5a0492b8af9cb33e37fc04fb4829a62e45053955ff31a9284133a16458b80227",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "5a0492b8af9cb33e37fc04fb4829a62e45053955ff31a9284133a16458b80227"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/emergency-turn.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "fe065c35881ed9964fb41409876182b35ae10906596805f8fad232bad9a57fcc",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "fe065c35881ed9964fb41409876182b35ae10906596805f8fad232bad9a57fcc"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts",
++      "deployed_sha256": "9966bffcef491b1413c0439ce23e25e57c41944b6d19d1f3e9236a2cdd5feb1e",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "9966bffcef491b1413c0439ce23e25e57c41944b6d19d1f3e9236a2cdd5feb1e",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "c3a52fff7ae0465b5aafb9271231a5931134d914600c492a55c706743fe4f1a3",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "c3a52fff7ae0465b5aafb9271231a5931134d914600c492a55c706743fe4f1a3"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts",
++      "deployed_sha256": "c9fd00d9606bea7b051a218258c0a57ce4d01c4c558e700170299b17e7fb5349",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "c9fd00d9606bea7b051a218258c0a57ce4d01c4c558e700170299b17e7fb5349",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "3c7d4d2828501f2f49896f649cd43a423060168145cc19c5d046cbac68848cfd",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "3c7d4d2828501f2f49896f649cd43a423060168145cc19c5d046cbac68848cfd"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts",
++      "deployed_sha256": "f9f53c22c563345c6a710692294daae6604adbea2581c7e9daacf0881a5c8ec1",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "f9f53c22c563345c6a710692294daae6604adbea2581c7e9daacf0881a5c8ec1",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "a2a1eeddb7b1370046bbd265bd09a0f765a57a12adbca89207bb4052412cab9c",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "a2a1eeddb7b1370046bbd265bd09a0f765a57a12adbca89207bb4052412cab9c"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/media-vision.ts",
++      "deployed_sha256": "5837ff0193219799512d6cee5c7f9bb2de65c84975b4d0b005a479924632e259",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "5837ff0193219799512d6cee5c7f9bb2de65c84975b4d0b005a479924632e259",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "787d18a5e41bbeff2674aedc00117f6bad44cb4d8a548176e66112f857ff8e71",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "787d18a5e41bbeff2674aedc00117f6bad44cb4d8a548176e66112f857ff8e71"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/session-store.ts",
++      "deployed_sha256": "67fb74f0316b15a8190f005bea83af9c97665fbc1c4a05b0babffe2515e76621",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "67fb74f0316b15a8190f005bea83af9c97665fbc1c4a05b0babffe2515e76621",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "984a23a02b893798604d6fb59a110f32c3226b181a6d7c352165e5001941582e",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "984a23a02b893798604d6fb59a110f32c3226b181a6d7c352165e5001941582e"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts",
++      "deployed_sha256": "899014cb9b9386f54030f90c1d7abc44cd59fabfe2581106790fe091b168a174",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "899014cb9b9386f54030f90c1d7abc44cd59fabfe2581106790fe091b168a174",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "06ca5531ee66d9e544db0d0d74b947dcca48d86f2c23eb27ddbcae7741851161",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "06ca5531ee66d9e544db0d0d74b947dcca48d86f2c23eb27ddbcae7741851161"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/turn-intent-router.ts",
++      "deployed_sha256": "0a38a405681bbc3a308b3dd5ee9141653f988fa35c4a2f310d5c50d21f284f7b",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "0a38a405681bbc3a308b3dd5ee9141653f988fa35c4a2f310d5c50d21f284f7b",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "248522bc4f32c31efc668d20755265679a7921091e261c3fa136d03ddf9496f1",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "248522bc4f32c31efc668d20755265679a7921091e261c3fa136d03ddf9496f1"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts",
++      "deployed_sha256": "3d29346d725ec7d97a0a3089c4a5e78bdeeabf8631d5bc16d622f3e0f6b66663",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "3d29346d725ec7d97a0a3089c4a5e78bdeeabf8631d5bc16d622f3e0f6b66663",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "895059329bdd4a201116643079893adc9c06c5ce102827bb39c694f039976a22",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "895059329bdd4a201116643079893adc9c06c5ce102827bb39c694f039976a22"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/matching/accept.ts",
++      "deployed_sha256": "2cb46fc5c55facbea34900677f1a4021824ba1af75d1f86aa1ed0eb327a9a9d0",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "2cb46fc5c55facbea34900677f1a4021824ba1af75d1f86aa1ed0eb327a9a9d0",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "5c0f4a9d570d001b33f6273b852815968774956ecf1c8447064704a65bd3d7f4",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "5c0f4a9d570d001b33f6273b852815968774956ecf1c8447064704a65bd3d7f4"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/matching/decline.ts",
++      "deployed_sha256": "522763020338c1577e19af650928102d9f5248e12c42fc3c64dfad3807628564",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "522763020338c1577e19af650928102d9f5248e12c42fc3c64dfad3807628564",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "52c2f2104df3b8e4fa2afe3b7fe9594a4e34d7b8419aab89ab112891a86cf9d7",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "52c2f2104df3b8e4fa2afe3b7fe9594a4e34d7b8419aab89ab112891a86cf9d7"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/domains/worker/kael-chat-turn.ts",
++      "deployed_sha256": "aea8bb4d55fa6a5d366257687e4d50f686f9cf48f199a380a73c956ed15708b5",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "aea8bb4d55fa6a5d366257687e4d50f686f9cf48f199a380a73c956ed15708b5",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "ae4224b9a38949da5ff2f7983844852d5c1c8c81e4ba2c47033faf3e4c14a157",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "ae4224b9a38949da5ff2f7983844852d5c1c8c81e4ba2c47033faf3e4c14a157"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/http.ts",
++      "deployed_sha256": "cc78269e7fe01d02be1224e627e948f9c3dd750eb8b41ca680de8a7881c7279a",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "cc78269e7fe01d02be1224e627e948f9c3dd750eb8b41ca680de8a7881c7279a",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "91b650b66cbd45ffb95652eebf3e2c6dde89f10fc1f10a28605a1c4601b7edde",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "91b650b66cbd45ffb95652eebf3e2c6dde89f10fc1f10a28605a1c4601b7edde"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/http/dispatch/kael.ts",
++      "deployed_sha256": "9a26faf008ec36f68009dc54858fbda560fdec6d2e3d71665efd251a93db5eb6",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "9a26faf008ec36f68009dc54858fbda560fdec6d2e3d71665efd251a93db5eb6",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "9b7ab772e4d1a88a26534ed799ee4da88fc0a9034042f193289613279c8ab1f6",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "9b7ab772e4d1a88a26534ed799ee4da88fc0a9034042f193289613279c8ab1f6"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts",
++      "deployed_sha256": "2002859cc7118b55d7d9c9436912daf4553ebc42029b618924bfa682c80ea8f1",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "2002859cc7118b55d7d9c9436912daf4553ebc42029b618924bfa682c80ea8f1",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "f2b3d28d9817d0b4a28c9b08301ad1a1ab5d8cce6177f94c7a1efee8c1c1abf7",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "f2b3d28d9817d0b4a28c9b08301ad1a1ab5d8cce6177f94c7a1efee8c1c1abf7"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-policy.ts",
++      "deployed_sha256": "316ae9bdd9cc63e5e0bc4e8d394f9df7f28cf6ddcd4db6c34b3dfa62b87be7dd",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "316ae9bdd9cc63e5e0bc4e8d394f9df7f28cf6ddcd4db6c34b3dfa62b87be7dd",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "b9545e9719014806fb3b80a2ce13ead40749014088b2da5a022a9cd36bc895d9",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "b9545e9719014806fb3b80a2ce13ead40749014088b2da5a022a9cd36bc895d9"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-support.ts",
++      "deployed_sha256": "0c04add90f1b77144d584f9c16b8ad3b9008ba5f36d5fe01f3b6dfa2c18f0855",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "0c04add90f1b77144d584f9c16b8ad3b9008ba5f36d5fe01f3b6dfa2c18f0855",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "dc75765eccb879201fd66fc5d65a20ae4fbcb73967666b8746dcfc7e57e7f5b2",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "dc75765eccb879201fd66fc5d65a20ae4fbcb73967666b8746dcfc7e57e7f5b2"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-trace.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "8f34d1756d784992cd1e1be9ce40544a8ce03cc99b7d28f42cbe3c5a2bf9baca",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "8f34d1756d784992cd1e1be9ce40544a8ce03cc99b7d28f42cbe3c5a2bf9baca"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-turn-context.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "00af5c182d689a2b88c5a25c66e0a75d082adcd8b083d9e187d1fc08f9bdeba4",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "00af5c182d689a2b88c5a25c66e0a75d082adcd8b083d9e187d1fc08f9bdeba4"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant.ts",
++      "deployed_sha256": "74a1f30484b3a13885e13f7b117f84b2d74dc9071db70beac360384296388fd2",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "74a1f30484b3a13885e13f7b117f84b2d74dc9071db70beac360384296388fd2",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "18e079266a7c62d44965f1987c8d5f10e1054ba7ae6e5104c5c0b35234eaf913",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "18e079266a7c62d44965f1987c8d5f10e1054ba7ae6e5104c5c0b35234eaf913"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts",
++      "deployed_sha256": "d3f8cf18625efbb0ff5027a4b96fe9f2d1b4758594a97b361689c913147e3895",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "d3f8cf18625efbb0ff5027a4b96fe9f2d1b4758594a97b361689c913147e3895",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "da5e62b8e7f0e1d4ecbc224573a6e679249b4cdc23fe4469eb0f3e9ca75ba27e",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "778af696a810c441b2357df19288040399498e84d67ed244e65c0977832a8109"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/electrical-intake-policy.ts",
++      "deployed_sha256": "0c19c30c27f810d51630a9a67360b5eed0b70e9f305e9c130a7882205481cc09",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "0c19c30c27f810d51630a9a67360b5eed0b70e9f305e9c130a7882205481cc09",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "0206ffefeea6f478d6e8b67f6c6127fc5e2d5e2997e72e7b3c710b962dea4103",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "9bb6d76d93738e644eae8037494a235d0bad9280fdd3421844f668f6bcaa91a4"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "fe802a6eaac1f079d5241bba2fbf7b8a3f45c1134a0f74e3b6d6e0ca16ebb1a1",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "8db237968a75f9ac035201e61e32d7a1a78237724e2ca52efe7daf84aedc170b"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-signal-text.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "48e878c9933e40e8a5c6b2d2f0b082c4ba68a91622798bf2fdf1de0079a94f01",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "48e878c9933e40e8a5c6b2d2f0b082c4ba68a91622798bf2fdf1de0079a94f01"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/permission-gate.ts",
++      "deployed_sha256": "c0cb8a01ee92c2803f647cce40819e3edf7a468ad0c81537be5a5eaa8caa7634",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "c0cb8a01ee92c2803f647cce40819e3edf7a468ad0c81537be5a5eaa8caa7634",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "4fce2f07b89109cd1c9253f3c657bd9e3de601d6a380c430dbae9149e23db55f",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "4fce2f07b89109cd1c9253f3c657bd9e3de601d6a380c430dbae9149e23db55f"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "e945391711e8753f4ff11463f4acc4e53c2bdf7af247a17c72c45e7f0f182c04",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "ee3eebbc9c546848fed65d8af87fea94e022574c061775d3e00362139918578f"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/scope-exclusions.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": null,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "85a88c5c5ba9e17accd18907a6edeb0b077c293bc1101511349d64007e852e75"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/kael-usage/cost-tracking.ts",
++      "deployed_sha256": "4eef4135b70db02a283c335daac0c1690322b9637b7c871430bf43d377598dfd",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "4eef4135b70db02a283c335daac0c1690322b9637b7c871430bf43d377598dfd",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "58792b27dd5742034620ab16f926607f23c28675eab98768a2af5d58f57af203",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "58792b27dd5742034620ab16f926607f23c28675eab98768a2af5d58f57af203"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/language/clarification-reply.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "09a4b634e77a30fc22aae59dcb8396e923287d5ad0cf7d6c211c57b940a89509",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "09a4b634e77a30fc22aae59dcb8396e923287d5ad0cf7d6c211c57b940a89509"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts",
++      "deployed_sha256": "3a5203c884143e6fb123bdee5388d7cf60a0c89e1bdf7de5b1602b3b40a5c1ba",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "3a5203c884143e6fb123bdee5388d7cf60a0c89e1bdf7de5b1602b3b40a5c1ba",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "4b5b226d9dbcf5fc973854c94f9610e24faafe7f7a4498baee995c8085516f90",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "4b5b226d9dbcf5fc973854c94f9610e24faafe7f7a4498baee995c8085516f90"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/intake-runtime.ts",
++      "deployed_sha256": "38da0dbe2b9c2be58b2971f5a395d186db0a6832866a812a4c7a7c95736ceb44",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "38da0dbe2b9c2be58b2971f5a395d186db0a6832866a812a4c7a7c95736ceb44",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "1b3da65d007e50813d73aa412127c96ada604c95130b2c9ecdb4be7fa8f68f34",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "1b3da65d007e50813d73aa412127c96ada604c95130b2c9ecdb4be7fa8f68f34"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/streaming.ts",
++      "deployed_sha256": "e0a89dae068fdfc3090f5639ef42932341d313d1c9eb86a910506106cdaf2033",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "e0a89dae068fdfc3090f5639ef42932341d313d1c9eb86a910506106cdaf2033",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "45b645de5e1b1a2fb21fa4cb12d14eaa23038961a8e521fe75f93cf3ceebf55d",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "45b645de5e1b1a2fb21fa4cb12d14eaa23038961a8e521fe75f93cf3ceebf55d"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/utils.ts",
++      "deployed_sha256": "fc61b8e396defaa33de276b5caeb097adce4281364bac6be51ebec9a0ac081b3",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "fc61b8e396defaa33de276b5caeb097adce4281364bac6be51ebec9a0ac081b3",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "8f59a6a20ecded7873897e982dfd4f06da457a11cc2f7c34738fa722683d90ad",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "a382fe67b5fea9c3da4a8c9c3068ff512f30fd886a2bc98820675025e59cf2e0"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/prompts/prompts.ts",
++      "deployed_sha256": "2372f83246d8d9cb91416320ad1cc170c9d4380d9bb5d62981ed89f8dd0c072e",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "2372f83246d8d9cb91416320ad1cc170c9d4380d9bb5d62981ed89f8dd0c072e",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "d724bf04b5f97100c721b42c6f262a01c380d9aa70e515bcb37bcf005504685b",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "d724bf04b5f97100c721b42c6f262a01c380d9aa70e515bcb37bcf005504685b"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/tools/case-turn-intent.ts",
++      "deployed_sha256": "66c1d54f737940731c125af6134da6aec6f02c4116da861b63f8d58cbabf8700",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "66c1d54f737940731c125af6134da6aec6f02c4116da861b63f8d58cbabf8700",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "a6545b4d02bb568f3242920999f688c82a914001aeb1e57a3d4458665c96c374",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "a6545b4d02bb568f3242920999f688c82a914001aeb1e57a3d4458665c96c374"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/kael/tools/intent.ts",
++      "deployed_sha256": "eda2ec28c1c4012155acd78667c11356b70197f86be68ac567cb17b774ac638d",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "eda2ec28c1c4012155acd78667c11356b70197f86be68ac567cb17b774ac638d",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "eda2ec28c1c4012155acd78667c11356b70197f86be68ac567cb17b774ac638d",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "c9ab534426243fb11a0a4fac0fbb07fa6be3080d58d749e34efdf8ad0ad3b4fb"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": true,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/platform/access.ts",
++      "deployed_sha256": "ffc6f8221f1e0327e6d75cdd65a03b1a566d507a1cec6e7d2e35ea50356b6542",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "ffc6f8221f1e0327e6d75cdd65a03b1a566d507a1cec6e7d2e35ea50356b6542",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "ce3db11350fb73a700d9a7c37463836fe6d47ea067c61671efc69cb3b65c7237",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "ce3db11350fb73a700d9a7c37463836fe6d47ea067c61671efc69cb3b65c7237"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/platform/emergency-guidance.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "4f6b7f579df853f2b273a75d118c5e69287407b7a912a0adc6887a9402def5a9",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "4f6b7f579df853f2b273a75d118c5e69287407b7a912a0adc6887a9402def5a9"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/platform/job-state.ts",
++      "deployed_sha256": "a7ba6f493091a91cf11675d98380811bbe5c9777e166ec57c3f7d3681b0133fa",
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": "a7ba6f493091a91cf11675d98380811bbe5c9777e166ec57c3f7d3681b0133fa",
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "f3fa3740a97fdc1539fab2b7789c8fc08a7244d493d75f6a8eb42bc828a5dcf0",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "f3fa3740a97fdc1539fab2b7789c8fc08a7244d493d75f6a8eb42bc828a5dcf0"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": true,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/platform/kael-progress-safety.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "c08bcd6e84dd1921b1aa557fcdae2669f945748981b25af970d57cabb8a7d20a",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "c08bcd6e84dd1921b1aa557fcdae2669f945748981b25af970d57cabb8a7d20a"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    },
++    {
++      "path": "supabase/functions/mobile-api/_shared/platform/turn-trace.ts",
++      "deployed_sha256": null,
++      "source_sha256": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": null,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": "99801440172b78728f4a6285350f59e28986e0494c0a473ad48156bfb45eeb7c",
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": "99801440172b78728f4a6285350f59e28986e0494c0a473ad48156bfb45eeb7c"
++      },
++      "matches": {
++        "e8b95d2122a8ce802c5504630a778f6e51daa72f": false,
++        "7e59b91085825a11168b2b2e1c68225a2dcc17f0": false,
++        "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce": false
++      }
++    }
++  ]
++}
+\ No newline at end of file
+diff --git a/docs/test-logs/kawa02-release-entry-audit-20261023/work-plan.json b/docs/test-logs/kawa02-release-entry-audit-20261023/work-plan.json
+new file mode 100644
+index 00000000..cbe65611
+--- /dev/null
++++ b/docs/test-logs/kawa02-release-entry-audit-20261023/work-plan.json
+@@ -0,0 +1,71 @@
++{
++  "mission": "KAWA02 read-only release audit and mandatory entry checkpoint; evidence only, no competing live plan",
++  "slices": [
++    {
++      "id": "release-audit",
++      "domain": "review",
++      "reach": "E",
++      "status": "closed",
++      "scope": [
++        "docs/audit/KAWA02_BACKEND_RELEASE_AUDIT.md"
++      ],
++      "read": [
++        "AGENTS.md",
++        "CLAUDE.md",
++        "governance",
++        "docs",
++        "supabase",
++        "packages",
++        "apps",
++        ".github",
++        "config",
++        "scripts",
++        ".claude/MEMORY.md"
++      ],
++      "skills": [
++        "kael-work-router",
++        "kael-subagent-orchestration",
++        "kael-backend-parity",
++        "kael-backend-structure",
++        "kael-security-sweep",
++        "kael-codebase-memory",
++        "kael-docker"
++      ],
++      "gate": "Live named Production SELECT-only catalogs/receipts plus actual bundle-file comparison and GitHub logs",
++      "dropped": []
++    },
++    {
++      "id": "entry-evidence",
++      "domain": "docs",
++      "reach": "E",
++      "status": "closed",
++      "scope": [
++        "docs/test-logs/kawa02-release-entry-audit-20261023",
++        "docs/test-logs/kawa-execution-ledger.md",
++        "docs/test-logs/INDEX.md"
++      ],
++      "read": [
++        "docs",
++        "governance",
++        "supabase",
++        "packages",
++        "apps",
++        ".agents/skills",
++        ".claude/MEMORY.md",
++        "docker"
++      ],
++      "skills": [
++        "kael-core-hygiene",
++        "karpathy-guidelines"
++      ],
++      "gate": "2497 Safety/Approval plus27 payment T0 passes; entry gate accurately BLOCKED; no implementation claim",
++      "dropped": []
++    }
++  ],
++  "deviations": [
++    "Authority and baseline reads spanned the audit/entry windows because the user requires checking both before implementation.",
++    "No feature build/TDD slice activated: proposed paths and formal entry acceptance pending.",
++    "No paid/native/local DB lane activated; no Docker availability assumption.",
++    "No kael-ship full publication gate: no source changes, Git publication forbidden."
++  ]
++}
+\ No newline at end of file

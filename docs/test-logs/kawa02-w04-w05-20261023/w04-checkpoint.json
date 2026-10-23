@@ -1,0 +1,48 @@
+{
+  "package": "W04",
+  "evidence_tier": "T0",
+  "baseline_sha": "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce",
+  "candidate_commit": "NONE - uncommitted source snapshot",
+  "owner_approval": "Human reply approves limited W04/W05 and exact proposed paths; no W06/Production authority",
+  "focused": 31,
+  "mutants": [
+    {
+      "name": "version-overwrite",
+      "exit_code": 1,
+      "failed": 1,
+      "killed": true
+    },
+    {
+      "name": "approval-path",
+      "exit_code": 1,
+      "failed": 1,
+      "killed": true
+    },
+    {
+      "name": "role-check",
+      "exit_code": 1,
+      "failed": 2,
+      "killed": true
+    }
+  ],
+  "files": [
+    {
+      "path": "packages/shared/src/contracts/workflow-definition.ts",
+      "sha256": "64dbdd11b2ba15daff95bae79f6fdf10a2778e5842c470522a34532159226074"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/workflow-definition.ts",
+      "sha256": "64dbdd11b2ba15daff95bae79f6fdf10a2778e5842c470522a34532159226074"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+      "sha256": "48f5dfc3654af927231b0a0bf16502b41ea40d7158948b97d3c510535943e3df"
+    },
+    {
+      "path": "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+      "sha256": "c89fe971988e34ce053d818a7903813b57918a00f8d0c634dbaa995b6c140d09"
+    }
+  ],
+  "rollback": "disableRegistration() proved retaining pinned version; no route import, database or hosted change",
+  "time": "2026-10-23T01:03:54.935825+00:00"
+}

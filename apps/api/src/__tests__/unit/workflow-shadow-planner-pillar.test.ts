@@ -1,0 +1,202 @@
+import { describe, expect, it, vi } from 'vitest'
+import { SupabaseClient } from '@supabase/supabase-js'
+import * as providers from '../../../../../supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client'
+import { runKaelPurposeStage } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator'
+import { pillarWhy, type PillarManifest } from '../pillar-manifest'
+import { runWorkflowShadow } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner'
+import { createWorkflowRegistry } from '../../../../../supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry'
+import { CAPABILITY_REGISTRY_SOURCE_SHA256 } from '../../../../../supabase/functions/mobile-api/_shared/platform/authz/capability-registry'
+
+export const PILLAR = {
+  id: 'P433-workflow-shadow-planner',
+  invariant: 'bounded offline shadow proposals preserve the v1 result without database writes, tools or provider spend',
+  authority: ['governance/RULES.md #0', 'governance/RULES.md #7', 'governance/RULES.md #8'],
+  target: 'supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts',
+  layer: 'security-negative',
+  siblings: ['P432-workflow-definition-registry', 'P413-kael-approval-boundary'],
+  mutation: 'change the preserved control or bypass proposal graph validation: v1 identity or malicious proposal assertions fail',
+} as const satisfies PillarManifest
+
+const POLICY = { service: 'electrical', policyId: '00000000-0000-4000-8000-000000000433', version: 1 } as const
+function definition() {
+  return {
+    schemaVersion: 'workflow-definition/v1', workflowId: 'shadow_case', version: 1, owner: 'kael.pipeline',
+    roles: ['customer'], services: ['electrical'], rollout: 'shadow_read_only', deadlineMs: 10000,
+    trigger: 'case_turn', input: { fields: [{ name: 'case_id', type: 'identifier', required: true }] },
+    policyPins: [POLICY], capabilityRegistry: { version: '1.0.0', sourceSha256: CAPABILITY_REGISTRY_SOURCE_SHA256 }, capabilityPins: [],
+    budget: { maxSteps: 8, maxCalls: 0, maxCostMicrousd: 0, maxDurationMs: 10000 },
+    approval: { required: false, actorRoles: ['customer'], expiresInMs: 1000, payloadBinding: 'sha256', jobBinding: 'required' },
+    entry: 'validate', terminalStates: ['succeeded'],
+    nodes: [
+      { id: 'validate', kind: 'validate', timeoutMs: 100, maxVisits: 1 },
+      { id: 'done', kind: 'finish', timeoutMs: 100, maxVisits: 1, terminalState: 'succeeded' },
+    ], edges: [{ from: 'validate', to: 'done', kind: 'success' }],
+  }
+}
+
+function request() {
+  return { workflowId: 'shadow_case', definitionVersion: 1, actorRole: 'customer', service: 'electrical', facts: { case_id: 'synthetic_case' }, nowMs: 1000, deadlineAtMs: 11000 }
+}
+
+function registry(value: unknown = definition()) {
+  const result = createWorkflowRegistry({ owner: 'kael.pipeline', policyPins: [POLICY] })
+  result.register(value)
+  return result
+}
+
+describe(PILLAR.id, () => {
+  it('preserves the exact v1 result and emits deterministic proposal-only steps', () => {
+    const control = Object.freeze({ status: 'ok', value: { result: 'v1' } })
+    const registered = registry()
+    const first = runWorkflowShadow(control, registered, request())
+    expect(first.control, pillarWhy(PILLAR, 'v1 result identity')).toBe(control)
+    expect(first.shadow).toEqual(runWorkflowShadow(control, registered, request()).shadow)
+    expect(first.shadow.status).toBe('proposed_terminal')
+    expect(first.shadow.steps.map(s => s.nodeId)).toEqual(['validate', 'done'])
+    expect(first.shadow.usage).toEqual({ steps: 2, calls: 0, costMicrousd: 0, effects: 0 })
+  })
+
+  it('leaves real orchestrator output and its single v1 execution unchanged', async () => {
+    const run = vi.fn(async () => ({ label: 'existing_v1_result' }))
+    const control = await runKaelPurposeStage({ label: 'control', purpose: 'intent_classification', run })
+    const before = JSON.stringify(control)
+    const result = runWorkflowShadow(control, registry(), request())
+    expect(result.control).toBe(control)
+    expect(JSON.stringify(control)).toBe(before)
+    expect(run).toHaveBeenCalledTimes(1)
+    expect(result.control.status).toBe('ok')
+  })
+
+  it('makes zero network, database, RPC, or model calls on valid and malicious inputs', () => {
+    const network = vi.spyOn(globalThis, 'fetch').mockImplementation(() => { throw new Error('NETWORK_FORBIDDEN') })
+    const db = vi.spyOn(SupabaseClient.prototype, 'from').mockImplementation(() => { throw new Error('DB_FORBIDDEN') })
+    const rpc = vi.spyOn(SupabaseClient.prototype, 'rpc').mockImplementation(() => { throw new Error('RPC_FORBIDDEN') })
+    const model = vi.spyOn(providers, 'callAI').mockImplementation(() => { throw new Error('MODEL_FORBIDDEN') })
+    try {
+      const registered = registry()
+      for (const proposalJson of [undefined, '{"sql":"delete from jobs"}', '{"url":"https://evil.test"}', '{"javascript":"process.exit()"}', '{"rpc":"create_job"}']) {
+        const result = runWorkflowShadow({ status: 'v1' }, registered, { ...request(), ...(proposalJson ? { proposalJson } : {}) })
+        expect(result.shadow.usage.calls).toBe(0)
+        expect(result.shadow.usage.effects).toBe(0)
+      }
+      const d = definition()
+      const readable = registry({ ...d, capabilityPins: [{ id: 'mobile.route.kael.chat.get', version: '1.0.0' }], nodes: [{ ...d.nodes[0], kind: 'execute_capability', capabilityId: 'mobile.route.kael.chat.get' }, d.nodes[1]] })
+      const readProposal = runWorkflowShadow('v1', readable, request())
+      expect(readProposal.shadow.steps[0]).toEqual({ nodeId: 'validate', kind: 'execute_capability', capabilityId: 'mobile.route.kael.chat.get', effect: 'proposal_only' })
+      expect(readProposal.shadow.status).toBe('proposed_terminal')
+      expect(network).not.toHaveBeenCalled()
+      expect(db).not.toHaveBeenCalled()
+      expect(rpc).not.toHaveBeenCalled()
+      expect(model).not.toHaveBeenCalled()
+    } finally { network.mockRestore(); db.mockRestore(); rpc.mockRestore(); model.mockRestore() }
+  })
+
+  it.each([
+    ['wrong actor', { actorRole: 'worker' }, 'ACTOR_SERVICE_FORBIDDEN'],
+    ['wrong service', { service: 'plumbing' }, 'ACTOR_SERVICE_FORBIDDEN'],
+    ['missing definition', { definitionVersion: 2 }, 'DEFINITION_NOT_REGISTERED'],
+    ['expired deadline', { deadlineAtMs: 1000 }, 'DEADLINE_EXPIRED'],
+    ['extended deadline', { deadlineAtMs: 11001 }, 'DEADLINE_BOUND'],
+    ['missing fact', { facts: {} }, 'INVALID_INPUT'],
+    ['unknown fact', { facts: { case_id: 'synthetic', sql: 'select_all' } }, 'INVALID_INPUT'],
+    ['SQL input', { facts: { case_id: 'select * from jobs' } }, 'INVALID_INPUT'],
+    ['HTTP input', { facts: { case_id: 'https://evil.test' } }, 'INVALID_INPUT'],
+    ['script input', { facts: { case_id: '(()=>evil())()' } }, 'INVALID_INPUT'],
+    ['wrong fact type', { facts: { case_id: true } }, 'INVALID_INPUT'],
+    ['extra tool', { tool: 'arbitrary_rpc' }, 'INVALID_REQUEST'],
+    ['unsupported request role', { actorRole: 'root' }, 'INVALID_REQUEST'],
+    ['nonfinite clock', { nowMs: NaN }, 'INVALID_REQUEST'],
+  ])('refuses %s while retaining control', (_label, change, reason) => {
+    const control = { stable: true }
+    const result = runWorkflowShadow(control, registry(), { ...request(), ...change })
+    expect(result.control).toBe(control)
+    expect(result.shadow.reason, pillarWhy(PILLAR, String(_label))).toBe(reason)
+    expect(result.shadow.steps).toHaveLength(0)
+  })
+
+  it.each([
+    ['bad JSON', '{', 'INVALID_PROPOSAL'],
+    ['SQL instruction', '{"sql":"delete from jobs"}', 'INVALID_PROPOSAL'],
+    ['unknown node', JSON.stringify({ schemaVersion: 'workflow-proposal/v1', workflowId: 'shadow_case', definitionVersion: 1, nodeIds: ['validate', 'evil'] }), 'UNKNOWN_NODE'],
+    ['skip entry', JSON.stringify({ schemaVersion: 'workflow-proposal/v1', workflowId: 'shadow_case', definitionVersion: 1, nodeIds: ['done'] }), 'PROPOSAL_VERSION_OR_ENTRY'],
+    ['stale version', JSON.stringify({ schemaVersion: 'workflow-proposal/v1', workflowId: 'shadow_case', definitionVersion: 2, nodeIds: ['validate', 'done'] }), 'PROPOSAL_VERSION_OR_ENTRY'],
+    ['partial path', JSON.stringify({ schemaVersion: 'workflow-proposal/v1', workflowId: 'shadow_case', definitionVersion: 1, nodeIds: ['validate'] }), 'INCOMPLETE_PROPOSAL'],
+    ['repeated node', JSON.stringify({ schemaVersion: 'workflow-proposal/v1', workflowId: 'shadow_case', definitionVersion: 1, nodeIds: ['validate', 'validate', 'done'] }), 'INVALID_TRANSITION'],
+    ['oversized payload', 'x'.repeat(8193), 'INVALID_REQUEST'],
+  ])('rejects malicious or invalid proposal: %s', (_label, proposalJson, reason) => {
+    const result = runWorkflowShadow(null, registry(), { ...request(), proposalJson })
+    expect(result.shadow.reason, pillarWhy(PILLAR, String(_label))).toBe(reason)
+    expect(result.shadow.usage).toEqual({ steps: 0, calls: 0, costMicrousd: 0, effects: 0 })
+  })
+
+  it('accepts only graph-valid structured proposals and enforces declared retry/step bounds', () => {
+    const d = definition()
+    const value = { ...d, nodes: [{ ...d.nodes[0], maxVisits: 3 }, d.nodes[1]], edges: [...d.edges, { from: 'validate', to: 'validate', kind: 'retry', maxAttempts: 2 }] }
+    const registered = registry(value)
+    const propose = (nodeIds: string[]) => ({ ...request(), proposalJson: JSON.stringify({ schemaVersion: 'workflow-proposal/v1', workflowId: 'shadow_case', definitionVersion: 1, nodeIds }) })
+    const good = runWorkflowShadow('v1', registered, propose(['validate', 'validate', 'done']))
+    expect(good.shadow.status).toBe('proposed_terminal')
+    expect(good.shadow.usage.steps).toBe(3)
+    expect(runWorkflowShadow('v1', registered, propose(['validate', 'validate', 'validate', 'validate', 'done'])).shadow.reason).toBe('RETRY_LIMIT')
+    expect(runWorkflowShadow('v1', registered, propose([...Array(8).fill('validate'), 'done'])).shadow.reason).toBe('STEP_LIMIT')
+  })
+
+  it('stops at human approval and refuses a proposed approval bypass', () => {
+    const d = definition()
+    const value = { ...d, approval: { ...d.approval, required: true }, entry: 'approve', nodes: [{ id: 'approve', kind: 'request_approval', timeoutMs: 100, maxVisits: 1 }, ...d.nodes], edges: [{ from: 'approve', to: 'validate', kind: 'approved' }, ...d.edges] }
+    const registered = registry(value)
+    expect(runWorkflowShadow(null, registered, request()).shadow.status).toBe('approval_required')
+    expect(runWorkflowShadow(null, registered, request()).shadow.steps.map(s => s.nodeId)).toEqual(['approve'])
+    const proposalJson = JSON.stringify({ schemaVersion: 'workflow-proposal/v1', workflowId: 'shadow_case', definitionVersion: 1, nodeIds: ['approve', 'validate', 'done'] })
+    expect(runWorkflowShadow(null, registered, { ...request(), proposalJson }).shadow.reason).toBe('BOUNDARY_BYPASS')
+    const commitment = registry({ ...value, capabilityPins: [{ id: 'mobile.route.kael.chat.confirm', version: '1.0.0' }], nodes: [value.nodes[0], { ...d.nodes[0], kind: 'execute_capability', capabilityId: 'mobile.route.kael.chat.confirm' }, d.nodes[1]] })
+    expect(runWorkflowShadow('v1', commitment, request()).shadow.steps.map(s => s.kind)).toEqual(['request_approval'])
+    expect(runWorkflowShadow('v1', commitment, { ...request(), proposalJson }).shadow.reason).toBe('BOUNDARY_BYPASS')
+  })
+
+  it('proposes an event without emitting it and refuses to resume an unreceived event', () => {
+    const d = definition()
+    const eventNode = { id: 'event', kind: 'wait_event', event: 'worker_accepted', timeoutMs: 100, maxVisits: 1 }
+    const waiting = registry({ ...d, entry: 'event', nodes: [eventNode, ...d.nodes], edges: [{ from: 'event', to: 'validate', kind: 'event' }, ...d.edges] })
+    expect(runWorkflowShadow('v1', waiting, request()).shadow.status).toBe('event_required')
+    const proposalJson = JSON.stringify({ schemaVersion: 'workflow-proposal/v1', workflowId: 'shadow_case', definitionVersion: 1, nodeIds: ['event', 'validate', 'done'] })
+    expect(runWorkflowShadow('v1', waiting, { ...request(), proposalJson }).shadow.reason).toBe('BOUNDARY_BYPASS')
+    const emitting = registry({ ...d, entry: 'event', nodes: [{ ...eventNode, kind: 'emit_event' }, ...d.nodes], edges: [{ from: 'event', to: 'validate', kind: 'success' }, ...d.edges] })
+    const result = runWorkflowShadow('v1', emitting, request())
+    expect(result.shadow.steps[0]).toEqual({ nodeId: 'event', kind: 'emit_event', event: 'worker_accepted', effect: 'proposal_only' })
+    expect(result.shadow.usage.effects).toBe(0)
+  })
+
+  it('enforces elapsed time even when the supplied deadline is still valid', () => {
+    const clock = vi.spyOn(performance, 'now').mockReturnValueOnce(0).mockReturnValue(10001)
+    try { expect(runWorkflowShadow('v1', registry(), request()).shadow.reason).toBe('TIME_LIMIT') }
+    finally { clock.mockRestore() }
+  })
+
+  it('keeps old instance pins available after a new definition and registration rollback', () => {
+    const registered = registry()
+    registered.register({ ...definition(), version: 2 })
+    registered.disableRegistration()
+    expect(runWorkflowShadow('v1', registered, request()).shadow.definitionVersion).toBe(1)
+    expect(runWorkflowShadow('v1', registered, { ...request(), definitionVersion: 2 }).shadow.definitionVersion).toBe(2)
+    expect(runWorkflowShadow('v1', registered, request()).control).toBe('v1')
+  })
+
+  it('validates typed facts without retaining their values in proposals', () => {
+    const value = { ...definition(), input: { fields: [
+      { name: 'case_id', type: 'identifier', required: true },
+      { name: 'confirmed', type: 'boolean', required: true },
+      { name: 'attempt', type: 'integer', required: true, min: 0, max: 2 },
+      { name: 'state', type: 'choice', required: false, values: ['pending', 'ready'] },
+    ] } }
+    const registered = registry(value)
+    const facts = { case_id: '11111111-1111-4111-8111-111111111111', confirmed: true, attempt: 2, state: 'pending' }
+    const planned = runWorkflowShadow('v1', registered, { ...request(), facts })
+    expect(planned.shadow.status).toBe('proposed_terminal')
+    expect(JSON.stringify(planned.shadow)).not.toContain(facts.case_id)
+    expect(Object.isFrozen(planned.shadow.steps[0])).toBe(true)
+    for (const invalid of [{ ...facts, confirmed: 'yes' }, { ...facts, attempt: 3 }, { ...facts, attempt: 0.5 }, { ...facts, state: 'unknown' }]) {
+      expect(runWorkflowShadow('v1', registered, { ...request(), facts: invalid }).shadow.reason).toBe('INVALID_INPUT')
+    }
+  })
+})

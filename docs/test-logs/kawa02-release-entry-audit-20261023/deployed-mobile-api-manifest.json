@@ -1,0 +1,1892 @@
+{
+  "function": "mobile-api",
+  "version": 361,
+  "bundleSha256": "15d383676fa3106c04b2cebfcd62ef2eaa42ebe93aed8da5b2e6e8b6f30a958f",
+  "normalization": "CRLF to LF; no other normalization",
+  "files": [
+    {
+      "path": "supabase/functions/mobile-api/index.ts",
+      "sha256": "6ec0c197eaced83dd36bd64091f82cf6f01ce5ae03463124072e85b38bb16732"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/auth.ts",
+      "sha256": "cc482bfa905b973f3df78bca486ff2c7913b626a26372ecada93fb6093362bb6"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/privileged/service-client.ts",
+      "sha256": "28d311b6c2986dcb486dfa6b715e4d74629147e80c31956e6d01c2abf99e2a25"
+    },
+    {
+      "path": "supabase/functions/_shared/network.ts",
+      "sha256": "10ca3fc6bfb85149c116b4a1d7f9ba7fd1bd28dcadf512f51d3ac61161412223"
+    },
+    {
+      "path": "supabase/functions/_shared/job-media-contract.ts",
+      "sha256": "2a7e1e96b19cb210fcaca01e3164d8b72ebce33db5bc9a8d3239841a17f1ce29"
+    },
+    {
+      "path": "supabase/functions/_shared/harness/trace.ts",
+      "sha256": "ece10e771a0a0f0e0c364a66f75d267917b84fa7c5a503a0e6abdf7749d69c93"
+    },
+    {
+      "path": "supabase/functions/_shared/domain.ts",
+      "sha256": "666282127c793fa5596cc13eaf0b9dd8cacccad70316a055eb90f8467c5353f4"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/index.ts",
+      "sha256": "f71516e77695237b0048e10f7456ecc80d1242829d46da887911b513b5b96307"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/common.ts",
+      "sha256": "0feea1b84768f10e922d230b5200fb0e828268c0c0b1f0f0ad32612304868410"
+    },
+    {
+      "path": "supabase/functions/_shared/service-taxonomy.ts",
+      "sha256": "3a0018e128a724a385682333f1aff2fc5327e4b5410f1388365db6215e92bfb3"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/job.ts",
+      "sha256": "0bc0f43743559fd4450dca2d1bab72d08fe37bb331d836e87d71389fd8ee8634"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/kael-chat.ts",
+      "sha256": "201fb935c0ffa8dd79b6ce1fc9913f24ac039b7d93cf3b1879805f9900f1ecb8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/performance-profiles.ts",
+      "sha256": "460b580245dde4299e36dfbda143c7ded76aef2d082628778fae64d851dac1ac"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/kael-contracts.ts",
+      "sha256": "2ba5d33aace3fba3efc06e426659485f16f800321c6d616de4554101cbeb9f0a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/contracts/artifact-contract.ts",
+      "sha256": "d48e81e0805b350a778b57563d597cad983c8e90ef35ece47f4c0f16bab80b89"
+    },
+    {
+      "path": "supabase/functions/_shared/kael-chat-create-refinement.ts",
+      "sha256": "6d0a3e3cc9924c5af1664276c5d6f5331ab316b51af40517e116e4deb1f7a97e"
+    },
+    {
+      "path": "supabase/functions/_shared/kael-chat-media-contract.ts",
+      "sha256": "80f399d336dc5428ffb16e8420b0be40abe6f25bbd860c39a00bda8714f9d088"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/stage1-reliability.ts",
+      "sha256": "d851718e774d854a4d7255eb45ef6a3312f04fc48e11f5620301f7073c70843c"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/worker.ts",
+      "sha256": "cf19e4235e7f150721e45fab4bee3de11f0cbc172e2d15de713a31cf8b8aa904"
+    },
+    {
+      "path": "packages/shared/src/worker-capability-data.ts",
+      "sha256": "66221160c93c9419dc6dad2501d7468fd53ec745b0743df0a25cec192cff86b7"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/customer.ts",
+      "sha256": "b5c9c80fad1de71a8b73dd9145777afe2883891eda08a76ff806b51445ee551e"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/payment.ts",
+      "sha256": "0dcfa86b096c9475667d81937dee4a7e987465204b241eda55f9e41c75db08d3"
+    },
+    {
+      "path": "supabase/functions/_shared/domain-evidence.ts",
+      "sha256": "1bcc0dad14216eed15a189f4f2770077d4946aa492df56425d4e667379ad1f36"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/admin-operator.ts",
+      "sha256": "0ab1235d992e661fe4dd33c1f5f2ed130e5bed631d4b85d341ad67ae575f0c52"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/ambassador.ts",
+      "sha256": "7efcfa140c44a0305c2501b062097149687fc511bb513d2c0fd21bea1eb75ae6"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/discipline.ts",
+      "sha256": "0e88d7f451dd24faf78d8a7bcf4c25dfed78517dd01dbaedd76a061ea63fbac6"
+    },
+    {
+      "path": "supabase/functions/_shared/display-codes.ts",
+      "sha256": "af678d4c7e5032883ef10a197c75250f059f331e4465c6478817090fa4e8687c"
+    },
+    {
+      "path": "supabase/functions/_shared/customer-account-contract.ts",
+      "sha256": "8ee524f1a992725204bd28b7e5caf3e3408675d45f6344a2c7a6c424e52a78e7"
+    },
+    {
+      "path": "supabase/functions/_shared/customer-kael-conversation-contract.ts",
+      "sha256": "74272ca6024657b142e4e2e1db1cfad8d896a841b74cbfe72c6945f3ea0f70fc"
+    },
+    {
+      "path": "supabase/functions/_shared/platform/env.ts",
+      "sha256": "a9d6942e3c38840278df0d728680dea4031c52577300558445ec5e7bab79f86b"
+    },
+    {
+      "path": "supabase/functions/_shared/harness/environment.ts",
+      "sha256": "7a31de7876b6706465d74d7be63479d2ff42a50ac4ae63e7340756f4015befd9"
+    },
+    {
+      "path": "supabase/functions/_shared/harness/release.ts",
+      "sha256": "8547190c252978b1de495546102b576b56e7618beb83de87b2527d8031fbaf02"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http.ts",
+      "sha256": "cc78269e7fe01d02be1224e627e948f9c3dd750eb8b41ca680de8a7881c7279a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/router-kael-path-control.ts",
+      "sha256": "d9c6f875a00d8216095cb49c561d609e1491711a7d16891ea1e6372ee2feb5b0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/path-control.ts",
+      "sha256": "d34902b21a50c9d9ed2783d90050d6426bb659bb6e6dfbdcad418ba395491564"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/authz/actor-context.ts",
+      "sha256": "ede3dee6f69d74579b4e8dff15c527b438ced9ef764dc1e15b2c4cf290b80f06"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/authz/capability-policy.ts",
+      "sha256": "890d05954e308dce95b4dc2133060707a83419ccfa934a7fbc84a6c634ff0fdf"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/authz/capability-registry.ts",
+      "sha256": "805b584c84b684e6edca2a19faf84f3073781b6307e3550ee092cc390a17f9e9"
+    },
+    {
+      "path": "supabase/functions/_shared/harness/reliability.ts",
+      "sha256": "51442508445daecad4b6f6d3e00ffa7e91dc66244452467126f2b0e963f08225"
+    },
+    {
+      "path": "supabase/functions/_shared/harness/reliability-registry.ts",
+      "sha256": "57b0095c116172c37559967fabbcf07669c5cbc1c96102926f3edda04a97ffc0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/api-failure.ts",
+      "sha256": "5601be6c3397bc894657f7e23e2e90ccccdc3033c9e0688ed135b8527040bddc"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/index.ts",
+      "sha256": "60dbdec74fc2d89f80893a0254b801ba6887591e13e03ab948b3bac2342f7428"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/admin.ts",
+      "sha256": "ca9d6265c5725da98d2dba81b9822e719803164b5ba2889c7c63131456d291d7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/read-json.ts",
+      "sha256": "414fe431b5a09832d53205d70e5eafba01dc8011b63481ce053f7fc7639490b3"
+    },
+    {
+      "path": "supabase/functions/_shared/request-json.ts",
+      "sha256": "3d6d3705218a43276bee0de4f2e5521030bb0bb0b4175841e5bf86de07679108"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/admin-control-contract.ts",
+      "sha256": "a0a1ad8783c9f217d32bdf2e63803f852e878e97fd866eb34f127df01fe7c062"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/contracts/admin-control.ts",
+      "sha256": "997d8c3402594066510d45f1ebfe5e887502d613554c48d2975df32c3ddffa80"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/admin-system-contract.ts",
+      "sha256": "2ee0f638d078396c8b8e5856eb4067d47cd3a63564297f9ee882b7f1cd1c7ed8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/admin-payout-contract.ts",
+      "sha256": "3fec84a6324cc71b0f48154a71ce91e0ca86c03a7c7dc6866c9f5c39ff09b4d2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/admin-finance-contract.ts",
+      "sha256": "f8487d0528668df777dcf9c2a46157c156b32e4cabd836d1f7eb495dfc76fcfe"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/finance.ts",
+      "sha256": "c2b99094ceac2aa38b8eba2fdd4a27f409fe215ecdd71758411d7623f42b2320"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/coercions.ts",
+      "sha256": "a780891c0e88579d1a3a59370291ba63b31992182ac225735a53248651084d11"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/db.ts",
+      "sha256": "813807c6a1bc0148997fa42b0d540464e2f32fa4e16ef75b42982dde2aa26e03"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/control.ts",
+      "sha256": "1fc07818d3613184d041ae04ee2803148482458ea333430ae474633bb2a3ba5f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/control-formatters.ts",
+      "sha256": "923628a8c906f142a6dad97dcdab056d64235f8241aaca393703deceb857e988"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/actor.ts",
+      "sha256": "b8bcba92da65e492074186e03c5adf87122362afbd140372d6798f13513a56dd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/identity-gate.ts",
+      "sha256": "217847254914114a1cc6195fd1764e554b182af63bb2afdf2413330d93a25f59"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/operator-provisioning.ts",
+      "sha256": "98be8435fa2f4a17c7c30455a6682720ff5400daffd0572bd47bc751d30aa2bf"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/synthetic-cohort.ts",
+      "sha256": "0c786fe35b03168da78a6fb8a9bbdfc65cf4b759a74aa9fcbe7d1128537238a5"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/control-pagination.ts",
+      "sha256": "e6947f7b20e445a7ce5ad4d336ea145b1bc8dc4d5a9a34de1b7cb0ebaf7f2664"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/control-validation.ts",
+      "sha256": "b621881fe0dc6f3af381926656b52aaa46090a9780b7caf257e3381a723d39cd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/iso-timestamp.ts",
+      "sha256": "39aa6a80494f9cd90b5bcb4287e1954cace9a0d4529ed9efeba1535614af8969"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/payment/refund-obligations.ts",
+      "sha256": "e678fff23378ecec2d4d1aee7df19b87d6834716bd0a904fe896e123b1a415b0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/finance-reconciliation.ts",
+      "sha256": "88fa1f75f9ccbf34a5be23deb2626c029ce391f4af0151141b7fb6e0562c66f1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/finance-reporting.ts",
+      "sha256": "dc3f78d4c72b93d5e0c5667df917f94ca3fe8b0ff9de0e65071228ff716f3552"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dto/admin.ts",
+      "sha256": "8576dcff9f27012b2127c34ee765883635463bd8d34627e3b70e64fde29f81d7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/queue.ts",
+      "sha256": "63477b68b494ede3f1326895c2fccceb6677fd5200cef1ac7a2be3ff59576b34"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/index.ts",
+      "sha256": "770b4aff8524624f68e9d767179aaaaf885221c116d79a8b054bb3ae0cc04a9e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/contracts/types.ts",
+      "sha256": "f5010857546993c9a380a042160ce7392d1de1f7f66d0531ca22bedf231bfcf7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/pipeline.ts",
+      "sha256": "c199a5776dcd51aca3bd36a75c2625a9af00cad05521aae2f07c74d58aa2cb63"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/assemble.ts",
+      "sha256": "bc5b296cf84a24004af6e8b62ca92898ccc042d8311ad40fad8b357a44b3c336"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/electrical-intake-policy.ts",
+      "sha256": "0c19c30c27f810d51630a9a67360b5eed0b70e9f305e9c130a7882205481cc09"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/service-intake-safety-policy.ts",
+      "sha256": "36ff960701d6c292929170d582fb01fae75190b5aa79a720f0959e6b5d5c243e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/advisory.ts",
+      "sha256": "97e1919e63eb4fcec5d7075efd97cd9bc539c5c33f7cd737c1637cd3209ef8e7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/utils.ts",
+      "sha256": "fc61b8e396defaa33de276b5caeb097adce4281364bac6be51ebec9a0ac081b3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/market-verdict.ts",
+      "sha256": "2c7101878133027c5f52fefa9d7dc3d84f3f5b97f86635f7ffbd268b9c82f676"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/prepare.ts",
+      "sha256": "247abbd3061460f5b218fee53e58b55b122fcdd450fd64383b97081c351c4588"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/intake-runtime.ts",
+      "sha256": "38da0dbe2b9c2be58b2971f5a395d186db0a6832866a812a4c7a7c95736ceb44"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/case-work-controls.ts",
+      "sha256": "0cf5cf63cd40e1514849eeb67b1e92f95939eef5a58437ea251f242eef0a5e58"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/handyman-intake-policy.ts",
+      "sha256": "9b4e82f7e400708420a6a7bd18d147374185d4189a7d2b203467819c39324a16"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/registry.ts",
+      "sha256": "3b8e3f5d7e820e8c6f946d43173c0089ebc34de0331d9780450105da4bd5e623"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/cleaning.ts",
+      "sha256": "910c63b13d52c4f1cc05542150eb5308eca6d39a04b479ee931b84a45aaf1bff"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/electrical.ts",
+      "sha256": "3a5203c884143e6fb123bdee5388d7cf60a0c89e1bdf7de5b1602b3b40a5c1ba"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/flags.ts",
+      "sha256": "d330c6c28575a04fd264ae4e1b2d4a483f39a4e6d6fd3df342b6f7e2ead41e0c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/handyman.ts",
+      "sha256": "fad61233323baf2a7a5aba3a121c6c407a3751fbe2118da950b72a0457c0795d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/hvac.ts",
+      "sha256": "ba9002839a23696eb1aa433e9c94f655aec5ee1b2d647beef4e585157414b857"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/plumbing.ts",
+      "sha256": "516383608074c7ae8e0152817f73c66782b611187a94fea463d50fcc38f2d28e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/playbooks/upholstery.ts",
+      "sha256": "dc48695f06b752888690e53553e30e035751b1f97dc9074de9339d89754800ec"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/prompts/prompts.ts",
+      "sha256": "2372f83246d8d9cb91416320ad1cc170c9d4380d9bb5d62981ed89f8dd0c072e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/language/intake-slot-questions.ts",
+      "sha256": "3be758a76987322cf2eb4ebe8948195af119abf7e66076416100edd87853c785"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/streaming.ts",
+      "sha256": "e0a89dae068fdfc3090f5639ef42932341d313d1c9eb86a910506106cdaf2033"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/spend-gate.ts",
+      "sha256": "6ff600fdd59d582e00ecfc0888409155640755015bb9db094c989e230df44991"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/evidence/untrusted-evidence.ts",
+      "sha256": "da494c0bd30f3fb2dce2b9746e553be3c1c48288feb6d760215439640d2f51c8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/pipeline-spend-gate.ts",
+      "sha256": "25ecae92f8a97879b0063858ff1ec702e584ef36ef9c9a84f9c280d28f2461ab"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/provider-budget.ts",
+      "sha256": "daa4d253a4320e0c598cc7dbce087765dd605855787b54707b241db908dd7cc3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/pipeline-safety-guidance.ts",
+      "sha256": "b50c12ae799e74c18dfd4555fefc3943f9652d68addc0bd974ba3673d09c1262"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/stage-intent.ts",
+      "sha256": "6536966894465412884ff89418bab480e81c8ad1e139ce33c6a91304b3157de3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/intent.ts",
+      "sha256": "eda2ec28c1c4012155acd78667c11356b70197f86be68ac567cb17b774ac638d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/structured-call.ts",
+      "sha256": "bbbe10ee3903e1b12296e78353e27595e2fb1467a14470746530e58b9a816e8a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/circuit-breaker.ts",
+      "sha256": "350c8b76330e386ec47636f886ff6d589bc70a5b06fe2645b191811ae447e6b3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/durable-guards.ts",
+      "sha256": "c01f0ff965e23833ab36a920ae054b5e43adfb188d86ce211ac610d6ee717ff6"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/provider-client.ts",
+      "sha256": "9d44239ebc0fe866ccf47c5be07941546d0a6f4dd9019197949274ac5e755523"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/provider-adapter.ts",
+      "sha256": "989856b69b2ee08fcc9231a73aadd0d4669fb003e1b97d28ef51df023a3fcc0c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-usage/cost-tracking.ts",
+      "sha256": "4eef4135b70db02a283c335daac0c1690322b9637b7c871430bf43d377598dfd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-usage/model-pricing.ts",
+      "sha256": "73a426b5b0361a59b9190b4300153d01d96785bf1c123d91be1cddccaffeedc0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/provider-stream.ts",
+      "sha256": "5fc69b1f53c7141425e145e40092dfddbc7cd6fcdc307b9f1497417d34b9779c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/provider-cancellation.ts",
+      "sha256": "79974f60a4d0b7350b36efafb1c990aa13bea9b038dec7ac14c2971aea3fb011"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/provider-preflight.ts",
+      "sha256": "ae63303b37bdc69df1f73987875de45df2d02e51e2cef058577649a275fc1641"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/routing.config.ts",
+      "sha256": "f5881e8d3eb93ec21d353c8062ce6ab000849849e2a83fedf68691d6a5381500"
+    },
+    {
+      "path": "supabase/functions/_shared/harness/promotion.ts",
+      "sha256": "4d18a659b33c5db617e2591f3b7401e0319cfd1eccccb6c222c4cfd9882501dd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/ops/alerts.ts",
+      "sha256": "dc1909b5c756ce61ec4fcba9f3ce55fe1a6938c0e8fd02a58eb35a2aa8e0ecb1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/trace.ts",
+      "sha256": "8461910fcfe8e2d6d6d7d4d873ff08a1d1165773391ae0dd3786d840962d935c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/prompts/prompt-fingerprint.ts",
+      "sha256": "92c935dc04687848ba944e70aebb017cdc3ddb0c0c74d945daf7fa91c06450a8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/prompts/system-prompt.ts",
+      "sha256": "83a0284340ebcbd3d4d156bbf8b50eeb8152276aa4443d608a8408eb6f32cd43"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/routing.ts",
+      "sha256": "09ed3b3a5c9e15fb7c84b473403c6ddc2b0d5effe98c9ca133ef7dea54126283"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/synthesis.ts",
+      "sha256": "acd21cd131f0114248d76a368da65fda65024b069dc71463ed8cca9f360ae44e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/evidence/baseline-price-evidence.ts",
+      "sha256": "567b147bf961608754ebdf9a8c27317172473cbc57532801668bf182ebb86d86"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/evidence/source-trust.ts",
+      "sha256": "c4122addb921a9f98cff40aed6fc0605b8f2761ff4451b133c0d0558a3128c17"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/evidence/source-tier-rulebook.ts",
+      "sha256": "eb5a32fac19858124939e46dec3367a9e93caef9c2fe888f172355cf4c57d68f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator.ts",
+      "sha256": "89f65d15543092bd6d6ef6159532bfaf401272e1e72fca1717474565d4771549"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-gateway.ts",
+      "sha256": "7cd6db4f76996d2df302512a79c33b8dd5c2caf2880bc273a5f78fd1a9d08fe1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-pipeline.ts",
+      "sha256": "dcd6311d8b842845c2ddb7c07e24299647e6c68026bd1888cafd62006d1c5ba1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/output-support.ts",
+      "sha256": "a0505d61a0f95a31c905478dfecfd27f203162dfc82120702cf4e47c7609847a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/scope-change-output.ts",
+      "sha256": "c0247f1fcf1ef9f91a01374f08cc8bd7db7ad4db7a3501ab0b49048f76ba01fe"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/scope-risk.ts",
+      "sha256": "61d4f72817f8f14d2e07b6d7c3b537335ce5a0312ae5d1c19c9c8d938c31e179"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/language/user-facing-copy.ts",
+      "sha256": "5d855ddab93cf2ab4cce9ec87167a541c1fa2804125cd893c519795d04d6e82c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/language/service-receipt-copy.ts",
+      "sha256": "e6c36639bd655803bb22799e38b14628f2ab27896310280416bea9ef7ec80a0d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/price-reasoning-components.ts",
+      "sha256": "f4ce41c9c98d2030e12d636f253f27c11d36e0e5a28f5dce53305324be0ad144"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/price-reasoning-text.ts",
+      "sha256": "243d76de3380aa9c2145499e7a4b8f70cb64f5336f2973e13f0e0532f345533b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/self-check.ts",
+      "sha256": "f9a39104524c06d9253be09502be18cec8720ceb886a8968e0273d7b19b6269c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/language/canonicalize-vn.ts",
+      "sha256": "f6eeb57eea6d86a7d53967d1fd326f3d9a0d38f2a2b2c1407fbc3d90f295339c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts",
+      "sha256": "d3f8cf18625efbb0ff5027a4b96fe9f2d1b4758594a97b361689c913147e3895"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/stage-baseline.ts",
+      "sha256": "f9f4ff4228093a3684ceccedfe65a2595ddf1bec8d88311a80e6e31d4ca14ae4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/evidence/live-price-knowledge.ts",
+      "sha256": "d4a5d394da207be74e39ab9de2e5d7cfef11387f523281d912876694d47a42eb"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/stage-knowledge.ts",
+      "sha256": "1f118f55172c43f93b4fed4071bc69a53c14a11b25a1e45b7e0be6d2d65bb3e6"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/knowledge.ts",
+      "sha256": "ff742f471dfb5e2d6120ec2994b3a2d54d61522434b5dbd104b6b162cb02f749"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/stage-parallel.ts",
+      "sha256": "5df0c4f54e838ec628d63c7afe70a4f70e930971aeacfad7dd2deeb03e2a68cd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/learning.ts",
+      "sha256": "c2b15aa2b45606ab3e6ee36f531242f50bdbab9292c45d268b828367fdfb5859"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/vision.ts",
+      "sha256": "4c06336da11cebf02270a1f5924eaccf2df16cebde4ee9baf2eb1e8bc25c11ee"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/escalation.ts",
+      "sha256": "1d0f54785745c9b98be300be704067ecea4eb8f47a7a4d90c3ce5d9a1b3f8741"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/stage-market-research.ts",
+      "sha256": "e4ee197e31808f06de01fdf4724dec0deb4d054aee1ee714146ce3459fb90e0a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/market.ts",
+      "sha256": "9be731ef1056cfddd0aefbcbb14034e6bde8d6c56e111dbabcafad6e10fe8dfb"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/market-provider.ts",
+      "sha256": "7f83744744cdd612380d0b1e773fb824d9ab5508c49a15e5b6a4f6348211cb98"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/evidence/source-trust-aggregation.ts",
+      "sha256": "032683ef663a921e065f7f3803092c1e3d1319ec1578827b7d3c815f4acc56e4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/stage-synthesis.ts",
+      "sha256": "3d5c4f7bbf809fa77204d79ecc27acbf26b4eeb76d37d24141ed00bcaf22a6b5"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/scope-change.ts",
+      "sha256": "e6d629562f1698b3ecdbdb443e7fdeee7f93fe685c232cb6a2941c46edac6af3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/scope-change-grounding.ts",
+      "sha256": "a884e59845f2d964af319c6467413d19ec9c37c385dd1175f9cfef660e34c739"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/orchestrator-facade.ts",
+      "sha256": "36ac296bc8ea5c403d02e6f79784a0ccd11082f0bcde137413e8201c3da41828"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/autonomy-gate.ts",
+      "sha256": "77d5d13364b027bd11442aa920965b06eca757244e1f16e10bb736f4db7c8105"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/permission-gate.ts",
+      "sha256": "c0cb8a01ee92c2803f647cce40819e3edf7a468ad0c81537be5a5eaa8caa7634"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/workflow-orchestrator.ts",
+      "sha256": "068e96a856752f2e8c3994063936832e44c69dda45935751c27d03e32782e1f5"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/lifecycle.ts",
+      "sha256": "7bf73e76b65d16270caaf40383cacbc90b21dd25c2cf16c2682bb24d7020a38e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/agentic-harness.ts",
+      "sha256": "a2605868bcdded908246f40cbf2b9917cba57eebcef0f21cf085322ff85825c1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-memory/memory-sanitizer.ts",
+      "sha256": "ce9e0ccbcba49f3147122303607673a46659e96cb8a18e2cc6ddf5598c4b2cc3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-memory/memory.ts",
+      "sha256": "4141b918cabc70f8874ee59b8b3a86227b47912d436c2f4629c7e858f0925965"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-memory/normal-chat-session.ts",
+      "sha256": "a7f7f7cba99087282023b46f47c2c13cd0ef1b0e178f80cc6f3a9e0b8cc855ca"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/registry.ts",
+      "sha256": "f4530a43147ff2efdac16dc7e13b05f421f8c81505e8feb38d498c04e1bfa975"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/learning-constants.ts",
+      "sha256": "cc8c54993b349ca418ed51beaad4cb356a2e747574276d7c217a73ebf8e1a850"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/LS1-market-memory.ts",
+      "sha256": "ea3cddba5d094851b0da4505860ad0f70fed9360304430b140e0069a12a1f7b3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/LS1-aggregation.ts",
+      "sha256": "630412bd676d6c0c77abad5287b3cf439b64ccbb6740410f2c2fcf518c19f3a7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/LS2-case-review.ts",
+      "sha256": "1c2391674f910b48c05e0fdc8be5ceb9d25ea8dd1e33cb680f6e316b26957514"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/LS3-worker-pattern.ts",
+      "sha256": "68972b3d0cbb30f432d4592cbddad512ceed6ac69d11057fa39894300340eb55"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/LS4-customer-preference.ts",
+      "sha256": "90b6eff55e0120de200bba14d58f6a738d8c60dcf08ed0226b003f2bdead0481"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/LS5-service-knowledge.ts",
+      "sha256": "f345fb2d67a1db9b9bd5978f29b25ceb7d788d77dc80145fca255ed72c0c0c65"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/LS6-safety-pattern.ts",
+      "sha256": "9434961dba0d57acb6d96b044153608a169f1cb8b0f5bdffd7cf41f46bdad53f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/skills/LS7-decline-reason.ts",
+      "sha256": "0fcc5f509fe7f291bfd37281d86fe385cda481d0377ac5f11d4f8313a0b7de35"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-providers/provider-batch.ts",
+      "sha256": "8694c355347ffdb798aa9dd8736c26275423fe6b2e4f9496986f56c005fc8b95"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/cron/process-learning-queue.ts",
+      "sha256": "7d09192c4654a9ef4c3a19bcdf8abdf0c5da102cc57e702c6014df1bf8f83d2d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/queue-read.ts",
+      "sha256": "030043f8e0c467c302b71107c894db38944786faaa3f93c13351fa56817637b8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/queue-write.ts",
+      "sha256": "f326040e612b5dd37006e54ed60face01e06a5d442815309445f97200d7dee38"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/provider-deepseek.ts",
+      "sha256": "ffa751eb22c111dd8870063d55db32f79b7c851f8270349799b0dd7286f4c728"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/cron/learning-effect-store.ts",
+      "sha256": "a35af51fd87859cc6048c830c12a1f31ac809e99e0972cb3f28c58015e02b07e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/cron/process-batch-results.ts",
+      "sha256": "6a429d7fea0bfe3bbcc74caa2a0da82af7f225c3cf49dcacccc721e5c6abf6e3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/cron/batch-learning-candidate.ts",
+      "sha256": "a1859da97a760b9a4f97906830f5de4cc077a2bc2e84789a3379aee7e0ce065f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/batch/run-batch.ts",
+      "sha256": "2fbd369fea5eb9a019b12446c919a49bd500b54bf30e5a8127a857f8ed9350b7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/cron/batch-result-guards.ts",
+      "sha256": "d6eedd429c9727fda853b264e6ddd8792420c13a51baf02eef13f0c2c7a7de99"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/cron/batch-result-store.ts",
+      "sha256": "b0cf6d5d8e6f2871cfccedba698b1fdfe36f93d0a8815f599122c584250963e3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/cron/batch-learning-lifecycle.ts",
+      "sha256": "e0e9e54cb312eb8ee4a2f79695169191f3fe97af112da1557f79be9c69a94fb4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/batch/effect-plan.ts",
+      "sha256": "8d40b9b4c21bb67666c3e246978b433faf17e9df4ea6504d2720a05efd3ee1aa"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/batch/evidence-stats.ts",
+      "sha256": "7fbe4c1cf977ae5236479673d31a9b8f45bb1df08d8db7afada6d36192e81a2f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/provider-anthropic-batch.ts",
+      "sha256": "bb03c3d278b0aae51cd350b3c1960dac21522abf1f9944ded91977df8acfb521"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/cron/monitor-learning-rules.ts",
+      "sha256": "f8744ce62fc7e1567d59ebc430deec76924c682e4adf0838b28cc01294b2fa2f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/language/decline-templates.ts",
+      "sha256": "bba26425fe489a821e9e71b106a49b760897b95d2a32ee0221ddba4fe4984628"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/contracts/ai-boundary-contract.ts",
+      "sha256": "742659f02761fb0880b81118ce84b2c12ce412404d838f96a33192a9df7e77e5"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/worker-assist.ts",
+      "sha256": "5b8c864d04e3b62519a5452344fc8f2e85ba018f231eb0a74a78cf18a09693d9"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/normal-chat-search.ts",
+      "sha256": "ee610ca355cad359811fe89b9aec7483b20d10b0c78924f6eaefa2e8c4c04876"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/worker-assist-guard.ts",
+      "sha256": "5eb2d7e717766f2ff85e5c1b4b06b4b33606c2a7513a333d41479061e22ada28"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/worker-assist-title.ts",
+      "sha256": "af4a09acd63fa803811e346b96d35b3bdc1aabff525834ea9f720553634f5f40"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/reasoning-receipt.ts",
+      "sha256": "62bdbac63c64297805897958f0896c8fa575a8c1d80ce3a87ceab1ef78d3e78f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/response-stream.ts",
+      "sha256": "04557a54b1a7e74a7d6056995129af629ea3e2be9f0ab1a3d82a866e531b84a0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/job-incident.ts",
+      "sha256": "05bff9e78776467dbb1bd4817c234b4a4bf8f8c67cd26cceab9a56b5b2a5ef63"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant.ts",
+      "sha256": "74a1f30484b3a13885e13f7b117f84b2d74dc9071db70beac360384296388fd2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-provider-output.ts",
+      "sha256": "39f28b86e1c62ab2340283b4182ac859c81d1d527c03480dd93fedf0c03f51e8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-guard.ts",
+      "sha256": "e6b1462128ee397879657d9f8fa84f882bf414f9771f95c3139ca0b63b181bdf"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/guided-regeneration.ts",
+      "sha256": "9311a30f5a888564a2daa9e2792f2237f506603f267fc6700a2dc6764e68de3f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-copy.ts",
+      "sha256": "48d4f580115e495342ec3eca4f0fe94939d17934de554654674635cd52179a5e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-support.ts",
+      "sha256": "0c04add90f1b77144d584f9c16b8ad3b9008ba5f36d5fe01f3b6dfa2c18f0855"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-workflow.ts",
+      "sha256": "5fc2cb59f8aa7835162b23ec3d59d91440c11fe3f480365d9554523cff075932"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-policy.ts",
+      "sha256": "316ae9bdd9cc63e5e0bc4e8d394f9df7f28cf6ddcd4db6c34b3dfa62b87be7dd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/language/regional-register.ts",
+      "sha256": "4b81e89784fc6433a566403d0157b1bbc95bd545ce8109a80f1bc56a2309f13f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/language/regional-lexicon.ts",
+      "sha256": "c484406b64c4313750197addb0d427b8a6d3034df273bd0f158f598d9bc1548e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-answer.ts",
+      "sha256": "2002859cc7118b55d7d9c9436912daf4553ebc42029b618924bfa682c80ea8f1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/customer-assistant-context-copy.ts",
+      "sha256": "16fa0def2193f20252397506b2ce9d0c446e28366c39739e39e2b1c93b986e19"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/price-synthesis-ab.ts",
+      "sha256": "1e2fc5047045557a91a6e2d670d017e74eeac9a1cfabf12d5227ea71a2241cc4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/agentic/case-1-normal.ts",
+      "sha256": "d97bf6a0f72607f7444e00b6b8b24c681574b9914b8670dc9f913cb673990737"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/agentic/demanding-customer-detect.ts",
+      "sha256": "efa4d73e2850ebb538446138a9eb5bf52f1e20dd372e66bf02d2b97d79698182"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/agentic/case-2-demanding.ts",
+      "sha256": "44afed352515c8a855344c5156fec6ce095be6ce5918ebb7ec7d3cef249d0a01"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/agentic/case-3-worker-cancel.ts",
+      "sha256": "cc41e051695cd1183d3d93f06e96333838cd31a580fbbef0ef206da34ca06bcd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/agentic/case-4-customer-cancel.ts",
+      "sha256": "433dd6867c687cb284e4fe2db1fc0e60d561827154a7360a3b50b776f81b5d1a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/agentic/case-5-dispute.ts",
+      "sha256": "51b91cc5446dcde20bdd98bcf2cc0991fc2088604c5c8fdec4b11b7771284bc2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/model-health.ts",
+      "sha256": "cc0f75bad2719d5ce935c1ed0affac5a68a4e75a15316e5ab2e2d1f88515dd4a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/estimate-accuracy.ts",
+      "sha256": "d08c64c45751692eefa684289de6b39d6d64078223b3659c5d4f27a4f5b727db"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/policy-governance.ts",
+      "sha256": "9986daafdf1eaf8b451498b4bb97ecd6c8bdcd8517c38f0260ab7a60abcc05bf"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/kinds.ts",
+      "sha256": "de78178ce0b7bd8a9b97efbe4b7ce5b428a81f0750a1bf4b89640d78709b04fd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/customer.ts",
+      "sha256": "247f4f1913f1a2cc374c597fb64299fabb0662c681e4d1a6963261339d3cb60e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dto/kael-chat.ts",
+      "sha256": "ce10a429c16c20f94c6a8ed69a53b2c608e6e3d2be4f554f5db9b859298c0279"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/job.ts",
+      "sha256": "8f8dac5a3355385891a89ff4e61c81e000c26cdaaadf574c076732a7194273f5"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/rfq-price.ts",
+      "sha256": "93d782c028f921d246ec8521864902ed4669ce276ac9cd143954cf1562ebf4b2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/payment-contract.ts",
+      "sha256": "439d62e50854869654383a4508bc8c5aa6cf9fe5354435d70375753d0c974b6d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dto/worker.ts",
+      "sha256": "b42e2e40ee0edd9ee762e62f745b8994ab5f8ffe9322aa20cf99bc07f2a5e62a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/kael.ts",
+      "sha256": "9a26faf008ec36f68009dc54858fbda560fdec6d2e3d71665efd251a93db5eb6"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/legacy-confirmation-recovery.ts",
+      "sha256": "ee05fa92f7a089a86d4277557399cb1b3cd76891593d34606a5b1f914748101c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/me.ts",
+      "sha256": "fa9c6cbd869893a159d7ef791a82c2a3cd2de593f284d2b353bc61374971ea6a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/misc.ts",
+      "sha256": "3b0e18b54954ee478083471124b6b63c006bfc198ed1b5eafa23c63041e96ca9"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/system-health.ts",
+      "sha256": "6f178a6766f25bde33d3115fea10868e8d6b658143c57285d454458eb2dcbdaf"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/dispatch/worker.ts",
+      "sha256": "cec1763f71c4688066d1b29a6f0ad8052b35c40f224458e83f3994247d55746e"
+    },
+    {
+      "path": "supabase/functions/_shared/worker-payout-contract.ts",
+      "sha256": "b079b64617877e87bfe450033a002a13ee2b8755d08262b831e3474c86170b9e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/domain-idempotency.ts",
+      "sha256": "992063d9978cba78f9b903c726d86ecd7accd9c6e604fd7449c348b4760684d0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/harness-stream.ts",
+      "sha256": "ae8e40807f52cfc35a6b90baf19abf190e3a43b147fed71169ce40df99836706"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/index.ts",
+      "sha256": "3935e19d4e7ae38db5b0a8bab0aefcd48525e0002671156a68b9ddadb2419a7a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/admin.ts",
+      "sha256": "4a4c7c8ce38dc62cd33d1f2730a402ee8d6d0fc7e120d30d1afade655fb89455"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/admin-control-routes.ts",
+      "sha256": "42e495915a6fd0118c16a182668bbee630a5ed04b79a8751fd57eb72e894f2ea"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/system-health-routes.ts",
+      "sha256": "d72c057793918764674cbddfb98919b7dac10f0989589e62e40ad76aa15347f9"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/case-work-resource-routes.ts",
+      "sha256": "3d5c127b7d11982d2ea90d5cf77013ff77ac7bf1c756a90a317bb163b2a6569d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/worker-kael-chat-routes.ts",
+      "sha256": "9e28846de84a7ae758e10aae3d4a8bd6515db575d0f4185788ba9fa7791b640d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/customer-kael-conversation-routes.ts",
+      "sha256": "7dd72aa8f3af063daf5271abd9fb7c849f51eefc8a6c7651373ef225f94b3d4a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/kael-chat-session-routes.ts",
+      "sha256": "bbeceb57ec22b245e878ba1528dacd8a80bf4100573bcde66aee1c631035799b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/job.ts",
+      "sha256": "3441a05805dc64bc475e7c8b0d61bd6d623432c6a88f030b033ffa2e4dddcdbb"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/kael.ts",
+      "sha256": "07ea472b7911877618ca04febb75a0eca54260ab242dab52bb4ab3387accccdb"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/me.ts",
+      "sha256": "50cc2f31c057fa3cccc4d3a7b4ab58c960edbca9c95b17e017774c0b62f5e73e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/misc.ts",
+      "sha256": "d2d8badf50bba1dc438fce7b53574bc4c313c4f2703543c4b5100e642cd8f4ac"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/notifications.ts",
+      "sha256": "283727b5168be66b3372026a81759d3076ff97008c85af971d15d328456d6e99"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/routes/worker.ts",
+      "sha256": "0cf4651aba29a6166586c2d2a789897c005516fa9c53586fe3b42c0a3e9337d7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/request-runtime.ts",
+      "sha256": "8341fbd4d1f090018805761b0158b4a70dcb0c363aa5a93234d9283aa6002d77"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/http/authorized-request-lifecycle.ts",
+      "sha256": "5acda8f367412ba09f61afb73435491dd574d8edf766c64a2e49d0896e01edf0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains.ts",
+      "sha256": "170c2cd4edc0c7ce489b475b3f1743c1ebf9ad5742fc6adf1dd36cb49854ba05"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/notification/notifications.ts",
+      "sha256": "14573c3ae7ac1ab1aa000f69d29388ed02be357618cc389b7f7b86bacfa853fb"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/notification/notifications-inbox.ts",
+      "sha256": "271341697f09078361e81e5a1940419272d1779f1281f416b09245bed3b6a854"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/notification/notifications-job.ts",
+      "sha256": "2f6292d0260a26e7c4ec2bb0a5f3d96b899e9aef48308c41cd830cbb10133449"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/labels.ts",
+      "sha256": "50401396d5fb490854e732c7ee9b87b33bf613e568158e4c4b8d65c483011d12"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/push.ts",
+      "sha256": "395a33dea0d8ce682243577cd24043a9e5d9c696c6ee5e5473006cf31b536538"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/rate-limit.ts",
+      "sha256": "ef201058a531764033c79656460d1ace952cc1fb310df1475d22e37cf274cc18"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/push-http.ts",
+      "sha256": "c575015986a8c1659167ebb02de50bc69ea159ebd67cbba019b0e60ddda7cde8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/provider-boundary.ts",
+      "sha256": "225f0db5d2062ae02bb1206857785dfa6a5eb210bcff39c600669b261a0e1735"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/notification/notifications-events.ts",
+      "sha256": "3a1b0716a0a3a7ec7439fb0156efd79c573c8843bb860e9f68d32ed446ee44ca"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/catalog/catalog.ts",
+      "sha256": "4b309f0af9d0a770dd9c0219a558757d55017ff1a8f82c78da5e463a0b8e68b5"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/catalog/coverage.ts",
+      "sha256": "ec26c4904a2b00dab4fdcf5918feb00c60206d989fe827940ed0cc40b5b836ae"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/places/geo.ts",
+      "sha256": "46a82fb6c327af68c2c14f74c531eb628f1c593085d6b66309bf15e48bf4c83d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/places/geo-public.ts",
+      "sha256": "c8b4574f4aa5f740e2747d781b5c2bc7c9eacbb5c5994197c31dcc408c9b70de"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/domain-utils.ts",
+      "sha256": "9c271b4c50ca496cb05e91dbdc3828f16ee526b63bf5db54c0ed45bbbad39afb"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/edge-env.ts",
+      "sha256": "c9a9a10ee51912d14e0298d855afd9a7e3ed5db844e7c4e49b601567bc903233"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/apartment-access.ts",
+      "sha256": "3f96a966c58e556174c86848068c41f9dbffd718eb8e673c362380835f145d56"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/chat-guard.ts",
+      "sha256": "0da685bb6e683a7df1706ff76528011744bd24e5925c065340145aecbf1cd535"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/access.ts",
+      "sha256": "ffc6f8221f1e0327e6d75cdd65a03b1a566d507a1cec6e7d2e35ea50356b6542"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/places/geo-providers.ts",
+      "sha256": "2f6a0c89c6f0c6d6d90a3a71bd2c547c24851c9b1a959c45178ff1a751f1e46e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/places/autocomplete-support.ts",
+      "sha256": "24969f77111394dfaba42eea75d2c1432084825263ef3a271c26a9baf0d24e90"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/memory.ts",
+      "sha256": "c5cb7871c932da45e529166a7ba035374414d5ff30bf113b0b00b8f4fea9bf9a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/audit.ts",
+      "sha256": "a45329077ddfe2a99870f92f8878d8c6a906f10bbe1f50ec11eaf57065950660"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/workers.ts",
+      "sha256": "1b4052d1b224ebf9950ef8de0adced079cca6e0cbf777c8757dd8ec062b56af5"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/broadcasts.ts",
+      "sha256": "1eb14b6733fb9e9e053600b98395f512c2eaf42a6962a0d3be426f28102bc97f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/domain-error-mappers.ts",
+      "sha256": "fdc3065c2123a8010ad929ff58b5c1f5bac5bc77fb33a29f40d70a7ff5494719"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/payment/commission.ts",
+      "sha256": "ec12b8a6f6af11ed28e917f61d21a0e60c19cf6c22ab1f5a82666ca62b5ef93f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/original-scope-price-quote.ts",
+      "sha256": "aadb04c737d6578d87b0a6a98f4ac51e1a1144224f1c40c341f5627e96c46a6d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/delivery.ts",
+      "sha256": "ade55c42e5ce1f4c0fd24108b8d79d1c6079f28b944a3cb281aa2d489f1fa403"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/service-preferences.ts",
+      "sha256": "199b654c19742dd84e9c1359d3239908c95653dd2d2fb4518baf57cdd5aa6a9f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/earnings.ts",
+      "sha256": "b3a218618f238535df1ed03ab3e7ab446d7da6c33cdc8bb5f8910d917754975e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/profile.ts",
+      "sha256": "1fe24b92c3154428d90a6e5dc617b7475c87d25f3570d7369da342beac5b9b4f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/avatar.ts",
+      "sha256": "36e09c39ff2b5dd49b2a34d348eba2ff0e69df5d49bf41e2a7d89e0e3efad403"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/media-content.ts",
+      "sha256": "c6e135172bd8a0e3f95e5ce701183c998c5078ca62673a4eeff249432b8ca52b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/readiness.ts",
+      "sha256": "a537ebbeef36463ef4325a588a1065530a3e3d2d160e0007f927ee2d51b104c0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/registration.ts",
+      "sha256": "907970b3e31051d24630a7c89a3e09734036e394e23ee095047bb235753190b0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/registration-draft.ts",
+      "sha256": "80a00829e6018a5228b3aeedab31b138ce2e4b16ad2c95f23dc1ad888bfa9468"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/service-settings.ts",
+      "sha256": "d2831704fdd7b4f5802f0510fa5cc2d7f7a2f08d78d96400e056dea52f2de49b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/jobs.ts",
+      "sha256": "23272217c191bde3ce038d805a31c0acca60b5c01057703907ef211e16ed0784"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/job-brief.ts",
+      "sha256": "e44b07555d9293603274ecbda624b40b92c8928317c08861e123123d1d8bfe49"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/evidence-refs.ts",
+      "sha256": "2a7e5900465690f7bbbb2b4e41ae23da7ec2b9ee0b675c749e29c182517497a5"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/job-media.ts",
+      "sha256": "979298658ae1c6c0da83f591437e1a23ae5b11358420e18943eb8a2e2123085b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/media-vision.ts",
+      "sha256": "5837ff0193219799512d6cee5c7f9bb2de65c84975b4d0b005a479924632e259"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/media-upload.ts",
+      "sha256": "7ebc2f57cababfd00b3a505243b0a17dbdebd4e520f33fd1bf5c94e3b557ad9a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/vision-image-metadata.ts",
+      "sha256": "9ff52e918e0bb92cedbf999bcf58cdc7d20c54c160a6664c7d2a24b19f8e9a0f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/registration-command.ts",
+      "sha256": "500a86a9a81550204e8ed517b850a48d39298e21b6048b208e426249f99986d3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/route.ts",
+      "sha256": "d5bb5579b0146cd38cce746e383720dba0b70b98b648f3d1bccbdbbcc40ed8a8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/travel-position.ts",
+      "sha256": "0f2d9d643c2647f4724de43aa1704e94d8ae4f82b2d2a99f5601e041d6d03450"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/polyline.ts",
+      "sha256": "fa74b811050533b63ace0d1a978b6f366d5066f19b81107cd4475b2bfc683707"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/dispute/dispute.ts",
+      "sha256": "e88557556825c17b434d37ecfda8b7c2fce89e48a6b47abbcaf88df82f00856e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/authz/workflow-role.ts",
+      "sha256": "e979aa52848c0f789c3010fda027e303218d48ce6b69ecf6f9181590f8c93c0a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/request.ts",
+      "sha256": "049b67a5630f77ffc861c8b55c049a84b7fdaebc3e68c0e25e5ac46f26ad7245"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/effects.ts",
+      "sha256": "d103274a0daba5c9e41fbdd1536573a4c20c67b391f715ae4def8d41067bd013"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/effects-incident.ts",
+      "sha256": "e3140f9ec7a315c8a14cfbd7f21dd06af3e59e0f07b0d0edcff560acbfab76f4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/audit.ts",
+      "sha256": "065837cbce7edbcad72fe08ae8c21a9d21d0a8c7a177397ea9e3ea6ef5f8a6d7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/decision.ts",
+      "sha256": "270006053610834e6b525733f36635a452b4de21eed17dea34622a923dd36f50"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/decision-receipt.ts",
+      "sha256": "7ea5f85a0bc4c85a45946f564c9a09643b44dafe996caa7842717b033564e87c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/effects-payloads.ts",
+      "sha256": "e37bdd1d1ed59c08d47df080caed97bc06c72d21ed16b8e3935d96635f0af8c8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/effects-drain.ts",
+      "sha256": "5d79712f5fa55ddfc61469972262fa73ca005eaaeb9fd3184a33d1bf32e2a1e7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/support.ts",
+      "sha256": "247e64369a696011d0ecad572b2207495866e720e4d5ce2167890588a1491ac0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/claim-support.ts",
+      "sha256": "c50712d93ba301afc99cdcf2f55b5438fe0b716ac60b425bec78cb5c7c638508"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/verified-estimate.ts",
+      "sha256": "bb38b313d7a0bc89d4a0b7861f08cf1f3d682d6a693337c85f2101d7b8cf15ea"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/worker-quote.ts",
+      "sha256": "9defa7efa5267f8504c5ba51a7660fa69066912a617ce8ce9c5279c1355797e1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/scope-change/persist.ts",
+      "sha256": "fc2d42f04a13cf1892c3a6800e052d38b0b8be53600c8e64e67b67f1c037958e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/incident.ts",
+      "sha256": "0694380c26f052079f7d3e32a9f77bbfa2af344ded56d19ae87806e3dbf9233b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/incident-mutations.ts",
+      "sha256": "95f3d96e1b258c360edf022e7293d1f66d16164cf573554aecbba5acf54e1702"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/incident-contracts.ts",
+      "sha256": "d1c844a842210eaadd241b046a04a71e3ead96ab855ba8807aeb34e2f4574c5f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/incident-data.ts",
+      "sha256": "14b62d010c9c40038448bdaa5e7f5159c75d29b3246b7b568034a7c52d0c02df"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/incident-assistant.ts",
+      "sha256": "45c20ab3a07532653df32a64d471fd5c823fbe283f286663463a8d876068b80f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/incident-price-preview.ts",
+      "sha256": "5156ff4990bbba6c5ac9601d5c35fc5b68f669a02e6a641ab3773362555a9664"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/payment/completion-review.ts",
+      "sha256": "994a3d1364736c017e207d2bf22dd91467bf0f7b48d1738320664f5449195e4f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/learning/learning-hook.ts",
+      "sha256": "ba4fd7665562c28f16d634d65f8346ffa87934a7f5420015ee819a167cdbddad"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/payment/manual-bank.ts",
+      "sha256": "da3361bf008fb1dcc7b1c1c539d6e1865a4abc0a71a5e7e38b63532562149a22"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/chat.ts",
+      "sha256": "046c3f4d40c399a83d9925fe4b74bd495bfbde21840d46194e267183ea0f5756"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/job-state.ts",
+      "sha256": "a7ba6f493091a91cf11675d98380811bbe5c9777e166ec57c3f7d3681b0133fa"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/serialize.ts",
+      "sha256": "a16c62b56c0a908d789215e93a92a468b3eb3a6f00539d75497ec4c9fdf92ecc"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/chat-support.ts",
+      "sha256": "76defbfc9d1d7f4bab7a651fc84bc3222482cb4938f244bf54572f264b052fb9"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/completion-nudge.ts",
+      "sha256": "5d37cee49ef52c6f79724755c14e9e3b254644ca8e7cb6ab450d06d405576627"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/create.ts",
+      "sha256": "40cf84aad58a4a1a936cb7cc565c41135cc750238dabba8a21d7e8fe041ae6fd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/kael-conversation.ts",
+      "sha256": "e5a31ff1106ab686f26a17ce8ee07ab05601b67fffc7c886b051fa78809f3864"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-projection.ts",
+      "sha256": "26588c39b79691871865cbd4a71232c26866ff84cb6afe1df86a1f9d9995347e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-turn.ts",
+      "sha256": "433e6bc8daed4db67f4514b01ac9091fec9f3c8bf7efab691175c90d468ae347"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/assistant.ts",
+      "sha256": "d488db88cc9fb5c7b8c887d942f2c76672addd3fb0c53b50543d6c59fcb98816"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/turn-telemetry.ts",
+      "sha256": "4398c510ccf9d09fe920273f3278e641afa757c2bc879a80a346401b22284bd4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/kael-conversation-next-actions.ts",
+      "sha256": "517fe149779285d1038b95979a1eddcf0bcd9ad106d319f934f73bad8d8866ac"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/kael-next-actions.ts",
+      "sha256": "53ec2ec75648896c9ebabafa5a129a4a5df305b03d3dec5e433ee07b7de790cd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/cancellation.ts",
+      "sha256": "2c023f2e639d9e11b06812ab836899edc38dfae206abce06511d0573a829a917"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/agents/autonomy-gate.ts",
+      "sha256": "2e91926142d8406b305e1fa7b0b3a76891d8043779d68dfc25bb82e8bc0f6e1f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/advance.ts",
+      "sha256": "ce077c93573b232ecb2f3ce93ca86fd6dceeec115dd31cb9c2eaff3d1f95e66d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake-safety.ts",
+      "sha256": "f9f53c22c563345c6a710692294daae6604adbea2581c7e9daacf0881a5c8ec1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/branches-post-pipeline.ts",
+      "sha256": "2383b36a12e390ac214a5f001aed4c1d91614db3bb74f31697cc9df3e6973e28"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-artifact.ts",
+      "sha256": "766bfc81bcc291f605f995760402e3f0acfa02e905f35144b59062fe02da5757"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/clarification.service.ts",
+      "sha256": "2c74b8c51dd29c903af299a4c649376f02c09ad650a0ed8210c5e05b1053b115"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/session-store.ts",
+      "sha256": "67fb74f0316b15a8190f005bea83af9c97665fbc1c4a05b0babffe2515e76621"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/intake-confirmation.ts",
+      "sha256": "3d192032d261784016e885d64e803f3ed0a3254ef6dba741bbd320dd3f95006d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/scheduling.ts",
+      "sha256": "d9f58a65fe9effa6023ac8086cb3c179bee0273b88e9036ab73a491ed5e555b7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/reply-channel.ts",
+      "sha256": "e82a96f0b03138f5fa5400e31c95ffbe6ac73f5918a33c7f26ea5d73727aba87"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/clarification-next-actions.ts",
+      "sha256": "81b6b1e27eaa9935c823629369bbf52439cec349641ed1600d0e351b94c94d23"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/emit-step.ts",
+      "sha256": "856766ad3551601aef93e0f530fd520a4d1b67d5474d2c9a69de3bce79b66f96"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-support.ts",
+      "sha256": "919766b6b7cb44cabf408ecd87c8cfa08b05be9603d218257b831829fb2c02fd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/kael-price-source.ts",
+      "sha256": "6a76948c863274eae96438e97e853cd5b1e34bec6cf1d9e0fb5116059e1d9f6d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-copy.ts",
+      "sha256": "0375b7e640cf65670d2a77e5ba95246bbd731a2b49e287c1dcc5cf3f4e2335b0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-request-evidence.ts",
+      "sha256": "b0749c3ed9607ad345073faa4b1e179a9da0518ce90ff0f3e1c3c89256164b04"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/unpriced-request-review.ts",
+      "sha256": "0dfec74383b7f568f634206a341bf903c24a40e8e4eac6813203096b15b0557b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-evidence.ts",
+      "sha256": "a6218a01830749ea5aa38b73254422deb0eeb0e32ce4a84b04e8e53f1c5c8b6b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/estimate-intake-policy.ts",
+      "sha256": "b5e5eee721e0f5ca3fe11777ead5e67b4da90eb0722b8997329ba16731d0b0df"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence-gap-response.ts",
+      "sha256": "e62f165dd24ab85872fe3a3da4cef5cadbd2b4f80c1895a5e5378abcef4680bf"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence-gap-policy.ts",
+      "sha256": "4280527531ea61e2bab7ba62a38a4053585d63862c6d8525fcd105bdf43fa63e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/price-gap-reply.ts",
+      "sha256": "8ccf36f026447a9593538e6b7b1373e13248117b422dcd727c3359c4b0b2dea2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/release/stage1-release-lane.ts",
+      "sha256": "0c5ca340444dfed6c953766c7f588c9255a497cd643f9b8bc7def575130c7da2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/branches-pre-pipeline.ts",
+      "sha256": "c3607d536ed7b490a5a4e0da9d31c82d014f980bb04320b71e72235ff9715281"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/kael-guardrails/cost-cap.ts",
+      "sha256": "ffc66bb79858cbd7406f67ca46ba65960fd82c9a333baf0ba8921071f5c5aafb"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/case-work-context.ts",
+      "sha256": "c7d912a693c516dd588f25dae897835decd443598530fdc28bd9c44138817e8a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake.ts",
+      "sha256": "30f070e3f13949ed57a1221a99208d9b0b78208c5393b5f4cdf5afbf86d13472"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/guard.ts",
+      "sha256": "af91a7e4761350246cf395d96519a59b385871ea6c8e9c9ac19b3bec31bdc022"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/reply-composer.ts",
+      "sha256": "e31bde20b4d56adb2af8ab03b9b742b87f9ce4792b234a65d201d234ed204a6c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/read.service.ts",
+      "sha256": "f7bd073e8719aa4fac26145892774b7e31ed17cfb08794f3b3ad74c196e779c2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/serialize.ts",
+      "sha256": "b236529bdd751b6d7dbe78f5c786a1a203bdd0f01d8d030255fdbab3d421bc37"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/serialize-next-actions.ts",
+      "sha256": "94b4d3daf5c2ab86d6c9267a56d6309d9b377333ef9055c2fa9dfe29a2a376b6"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/confirmation-operation.ts",
+      "sha256": "0df745fdbd1e511f32940cfc2b3937c6c8ab0a4d52c0137b1152a408077de258"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/persistence.service.ts",
+      "sha256": "d18c0fb8fa5e02ade0adafeb69f03d410cfe504ec86ebeac70fde7ea35dabc1f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/voice-transcript.ts",
+      "sha256": "30ba92b421cb8d2a136eb5de8d8fabe8f15a82e547eb466a89b94cf9d5cba637"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/turn.ts",
+      "sha256": "3d29346d725ec7d97a0a3089c4a5e78bdeeabf8631d5bc16d622f3e0f6b66663"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/turn-intent-router.ts",
+      "sha256": "0a38a405681bbc3a308b3dd5ee9141653f988fa35c4a2f310d5c50d21f284f7b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/case-turn-intent.ts",
+      "sha256": "66c1d54f737940731c125af6134da6aec6f02c4116da861b63f8d58cbabf8700"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/case-question.service.ts",
+      "sha256": "be8b635f1e209fd266526df4289de1a5c5cb783c3a0d24325d74a0730aeaea72"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence-gap-fallback.ts",
+      "sha256": "ddfe0e69e8adbd3748200f71e27517f8e282601c2ed19ab4c9334faa0e62d800"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/evidence.ts",
+      "sha256": "9966bffcef491b1413c0439ce23e25e57c41944b6d19d1f3e9236a2cdd5feb1e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/intake-confirmation.service.ts",
+      "sha256": "c9fd00d9606bea7b051a218258c0a57ce4d01c4c558e700170299b17e7fb5349"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/normal-chat-suggestions.ts",
+      "sha256": "63e96da4077b9775416ab060bbefc3fc13d0b5e0ea40b6eb07325dd1eaa4faf4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/tools/normal-chat-suggestions.ts",
+      "sha256": "cad5e4fcffc3ea47b9156a20afd6dd43665e62ca2f0d4f5bac19144f6735d896"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/kael-chat.ts",
+      "sha256": "af223544f6ab9b6153c4fd04d29a05f0c448cf2cd44fa0d38167ec78e66e8ba4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/kael-chat-turn.ts",
+      "sha256": "aea8bb4d55fa6a5d366257687e4d50f686f9cf48f199a380a73c956ed15708b5"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/kael-media.ts",
+      "sha256": "f7f3df79df4495b1b07ece69afa5a03c82803f4d259cb0919a0ecf4d7f39ce5c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/kael-chat-claims.ts",
+      "sha256": "8d9a54f2bdf0765a0fb13dc441801535bfd595903b97f9be856e67b0613e5bd9"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/kael-chat-scope.ts",
+      "sha256": "75e26f110b88f36fbb433752eeae9514c29de4b98a178132e56cc7f08798a402"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/kael-chat-next-actions.ts",
+      "sha256": "cd2a30130eee8ec804255f9d3e80daede5c35942becc4b01d1ad75d513ab83b3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/stream.ts",
+      "sha256": "899014cb9b9386f54030f90c1d7abc44cd59fabfe2581106790fe091b168a174"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/platform/sse.ts",
+      "sha256": "24df337e1444ddfad3a9ea99b68f56455387420db0715a871de38ccc3d22bf65"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/stream-delay.ts",
+      "sha256": "bbc4a3f096c1be41d8c16c38eb5171a0e851bbbbee3efd8ff22c16555f704b54"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/customer-conversation-stream.ts",
+      "sha256": "b1d5043b4dfd34b6ece7e8fdf0cb31b34768d0d70a84fcaab82f5d6f008fff5f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/worker-stream.ts",
+      "sha256": "65ecf9c7c5e56b10f6a1fcae1cc30e88aaa78a3c0d8e28deb922d414c8762e6e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/learning.ts",
+      "sha256": "0bbe7e31a9ed16a593760150f99086fa46c2246c37843da1ac9624281acdbe59"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/overview-details.ts",
+      "sha256": "5539aa5d53d11d2a73a05f221450f55149c6635688af4baacb87abd24f7d7d52"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/operations-support.ts",
+      "sha256": "46b0e1cc639663961ce50876d45fc2b0427686a59a2d8c11aa931cf25014b97d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/operations-support-helpers.ts",
+      "sha256": "813f78b4c2b02724688d08103c30906967ee9cfb90d68664c4fb9f17e624d929"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/workflow-recovery.ts",
+      "sha256": "f87a1ae4fbf1515bb1ff1841960f3e79b4fa41d78d2f2a53bbcc5ba48c70e36d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/worker-review.ts",
+      "sha256": "c142b858f2dabc81d70fe704acdb63bb5fbec3a45d0c666caccf7896f198021b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/admin-activation.ts",
+      "sha256": "0292aa5f80b171307b321e7c77afd68b4fbdfb42514107b4f97df8b17c4871d1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/governance.ts",
+      "sha256": "5e58e4a7a8c178876f520eeb613264469f7abc26a26502c4a211eeb0f02ebab9"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/system.ts",
+      "sha256": "7186eb073fa2fccd0af91d22fdbb669a2d27f32e6b5204710108eca039eff8a3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/system-price.ts",
+      "sha256": "97afb963a94a0e0eb0834e0a8309ac45809786e44f3eb1f43cf1104d0f7db730"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/system-pagination.ts",
+      "sha256": "906618cd0ed3ae17c830d97e3b9220bc18829d5922f3d8fab70464ab3a35234b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/system-shared.ts",
+      "sha256": "cbd733770d2c76c006a17f3f5435e33443b8445dfe380a0e305111af8dda15cd"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/system-taxonomy.ts",
+      "sha256": "9b4fbf2ad85ced01301ee2c4a2a2800f615ff3d9a4d3c288d1940159f42b2523"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/system-learning.ts",
+      "sha256": "d65f9678142753c76e211665af4382cccc23fddcc1fb470a110cc038e42200d0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/system-model-health.ts",
+      "sha256": "5d8e5214c4dee96ea002b03c58289d63570a975995cb554c0c7e82011898cfe2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/system-health.ts",
+      "sha256": "3930764e443ed7490619cfda1fb6109686f89be5679dd4e5afb02a160efd2aa1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/transactions.ts",
+      "sha256": "e9436b585809de7c827615763e0b07bbfa57d32bace6f96f08246e56c855b447"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/admin/payout.ts",
+      "sha256": "0f668a4b444e28c70b2631d18a134ec7d60b2eeecab0b759a79588118019751d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/payout.ts",
+      "sha256": "5da769eb86ab06b3d5bb3a64d0111bc3f3b5b09682ae6291fef9722ebf4cecac"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/feedback.ts",
+      "sha256": "177d4d4634d1f682b6550cd7a0d5c22e93151423773e76e271f45814afd16e2b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/media.ts",
+      "sha256": "ddf2e079481e3c4df4a5e6d92c1b46fcdff380c1d6114b218fae390f777a4fd0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/media-support.ts",
+      "sha256": "1fb29a80d4b91830de4e955c8aa8a29ef324a30ef2f9dbf0805c28adb8bd05ec"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/media-attach.ts",
+      "sha256": "7f305d39622e044199195517dd478bbdca5f36bc078dc63b3cebd79e04447261"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/read.ts",
+      "sha256": "fc9f07aa1181feeb82412bddf14368b1f2f877f4a8e167013dbe47f37c73f878"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/candidate-profile.ts",
+      "sha256": "632f8d3162f833da2fa69044f18e7f5e80abadfe766a3a7471a51077d4cce1b8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/broadcasts.ts",
+      "sha256": "8b13c10ee3359005e15393f6c18e7223bf9e20b594eb42e6f2b6059ef998cea8"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/broadcast-workers.ts",
+      "sha256": "3e43a486c0e68729dcb3ce9b8a272b237f4ecb7cbaaadbfbc369c624c7785743"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/query-batches.ts",
+      "sha256": "997623039b65c0a4c23e12d9d47d96eee5ad6b0bae665d79ae40e3a494831fce"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/geo.ts",
+      "sha256": "80ab2577c428fac1c54a6eed26f5605f19b7ea866868f65b9089727d54f352bf"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/broadcast-ranking.ts",
+      "sha256": "962a7b8cc2e43652fee25a87e1a23cfd04bcb8b698b154bef3fb61ae55732f1a"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/broadcast-support.ts",
+      "sha256": "30efbe000b59df45a368cf4d1f9a00991e5667075ad8c8a60c51410dae724545"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/reachability.ts",
+      "sha256": "59400c4af18add5a2135d89c9d2480ad9328f860f97dfd156884c14a43fcb4de"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference.ts",
+      "sha256": "71d1f1f405128cf96c4f4cd61fd61c9db220b2e81cd8ac32de443e8abd042f04"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference-read.ts",
+      "sha256": "d1d57f5d85da762edc9fb3ea0398b598b943c9d8040f55903e7a113fc591824e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/matching-receipt.ts",
+      "sha256": "8889a483a12c677a3320efb33fff13514cc1a3d6a4eaa039b46d061e452893ab"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference-shared.ts",
+      "sha256": "eb0d3079d2ac205b08ac4aa106231483ed2437237fe7a3bc94a6db63ec1be6ff"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference-selection.ts",
+      "sha256": "a04178bd287bb6553603618a5e1e652d14d05f8eb633990af7edf8974121a054"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference-fallback.ts",
+      "sha256": "1da3e2f15b1e5a87c88c001c8389fc552ab125de9cef8d66c7974c00e6d22583"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/matching-preference-command.ts",
+      "sha256": "85ae91af279a47fe8c412530ea22c0b34ea22d6f47829298d42fab179702ba19"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/pending-decisions.ts",
+      "sha256": "4081c618c1ce996b940da8285e51882a204883be3b2bf13e0a153aaaed1dd9a4"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/payment-receipt.ts",
+      "sha256": "9cd2fd228de9a03db8663d4470177187217a3a2451b9b8aed3e872242e71664f"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/payment/direct-payment-availability.ts",
+      "sha256": "ef12dcb2e1198772f0d2352916665afc87ca6361f5e0834b81af52909a3b004d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/customer-history.ts",
+      "sha256": "3ab0ee5983b0a011ee90a92e86fa04114f9aa5341c4715b9fa74c93b43eb8106"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/cancellation.ts",
+      "sha256": "676828db843d52bdbb1e0b8c509050d80692c1ccd413d07be30dbb5476057715"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/customer-retry.ts",
+      "sha256": "13fd4f4dcaec844edadb252e1275d5e70e39c434fffbfb0d8b4ac9b701a083dc"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/flow.ts",
+      "sha256": "fead22c9c42136925fbb3a8e89e9ff9ff267b6909b6aebd0d7236c85358082be"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/flow-rollback.ts",
+      "sha256": "737645ec306f97ae7e177ee96239cb6dfaf228ee78715cf449a630796b59cbb2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/accept.ts",
+      "sha256": "2cb46fc5c55facbea34900677f1a4021824ba1af75d1f86aa1ed0eb327a9a9d0"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/candidate.ts",
+      "sha256": "065b36acc72eca1d6ea7bdc25d6bd43c32d84d9dae4d55d8c2855de6d601de17"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/candidate-support.ts",
+      "sha256": "904478070ff6ffa12af40fa2baec866d2cc20907ea2aff3e24e36ea8df5c5c08"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/matching/decline.ts",
+      "sha256": "522763020338c1577e19af650928102d9f5248e12c42fc3c64dfad3807628564"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/favorite-worker.ts",
+      "sha256": "841fd83c94e895ef58bbdb0f4c21e306a600894f4f9d4e15f76e68d7f5ad38ca"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/create/create.ts",
+      "sha256": "087781cfdd753dd980b3c8471f93ffbe662c57c32f5d92ef6ef7ca7f3f3d64b7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/create/analyze.ts",
+      "sha256": "a86e8af5094a7b4ddbd75b340c5a63b0be0946b958011d798c10228a7ccf53c9"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/create/compensation.ts",
+      "sha256": "132e7b9e312408f4c5f8d87d0120b8922167300f48ee3f0d228dbcfaa4db954b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/create/autonomy.ts",
+      "sha256": "1d3e9548924dd4c04b96da7f065abe14fa6f999c5ecf2a3887dbbb4a2540fbec"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/create/broadcast-start.ts",
+      "sha256": "0ee7199a4529380e8a8bc991ad63cc94b9b732d8d425548137bbd6d8b6f41d4d"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/create/idempotency.ts",
+      "sha256": "fe2029612780c2376ae63633f28f24651a2eca79043129ffdb87f4e345a63d18"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/create/insert.ts",
+      "sha256": "ae7cc6023602685d7f0e955f1426b67d152f6f1cbd8ea9bf3c370959af505f9c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/status.ts",
+      "sha256": "261631dce9b0dc114d72cc0091cf19db1621b78e6ad9668cde74a7da537316b2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/status-check-in.ts",
+      "sha256": "d4674296362c53b9e9878f3bcf3d13e4cbbe770db7a926b69deb4da87421ed91"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/confirm.service.ts",
+      "sha256": "3e49f5710deed84643df562915971b96a083e71684923df65956b9e4ed801af3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/kael-chat/legacy-confirmation-recovery.ts",
+      "sha256": "7b745764a5ad9b4aa86486838eb00ef3f5c6971bd1a42a980b55869b33e74066"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/profile-insights.ts",
+      "sha256": "0ee1f2891a37ed511bbc64f310c29b1174135577069b62a8d1bd9770ec296403"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/profile-insights.ts",
+      "sha256": "e21fde606771398fe306bae17d532ed73b37e04be660d8c5119c0631a9097b29"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/worker/performance-policy.ts",
+      "sha256": "6b4402af966d1d049741b538c24a55b81b5d662a1944bee1825edb84bed33fb7"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/refund-account.ts",
+      "sha256": "294e52cc30178769cec1b8ff85131ece8a3f031d5946e91455e911b696db14b2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/customer/address.ts",
+      "sha256": "4209e52eaddd5633b8815d102f6e1aeb6d0d646fbc5fca4e879c27b4345b683e"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/account/account-deletion.ts",
+      "sha256": "1cd735077f937f93dead53059bd720afb63bf15cf8d8e2761d4a1c1c0d551109"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/runtime.ts",
+      "sha256": "832b24c258ad673f21f520d0e2cabd19dac7abe0ab14b1ff1c0c31df3380dbc1"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/services.ts",
+      "sha256": "a08f1362804646bc2a92ce53a20186823a2f43e542b11c012d05c034e5c3d79c"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/admin-program.ts",
+      "sha256": "d4d0bc17d6fff6473e718fbf443015fe03d5ac6f87baebac9172863c3664ced2"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/parse.ts",
+      "sha256": "5e83ba6d67ee3ba4710516a01931bf0a97ac234a893ceeb9d80a4c94142ff948"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/admin-discipline.ts",
+      "sha256": "580ec4bb3ea9f8d43bb2cc36d8130b518d56abb4a18a79c152635be36ea5679b"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/discipline.ts",
+      "sha256": "b62e8baebc1426a7baa0b6e7c4fa308769e36ddd7122c913c45753abf9208082"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/discipline-parse.ts",
+      "sha256": "a557cc97ce51b6d1717a842bd1a8e411aa11e60ab10c0ca7891791927f01a559"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/identity-hmac.ts",
+      "sha256": "5936e57266c3201e273e1ca6d053a59cf359a252e6e08c4929e36101bf83a7a3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/compensation.ts",
+      "sha256": "1ec7ffd0f271cb6a5301f4a2b4438834ee246b9082790de7f4b426430c551950"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/customer-membership.ts",
+      "sha256": "63456c4e3a80b0b4f828a52f4e7dc3d792f0c2d4f4fc35e6e8725b94a43e6c02"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/program/worker-ambassador.ts",
+      "sha256": "bbdb270e01c001b9bbccf32fe7be9947cf7a6543ce76118abffe61d3bc827daf"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/system-health-services.ts",
+      "sha256": "0ce9046e21ab287ed90454a23d6e09499036e2f05b67afbc34af9b59a75166b3"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/monitoring/mobile-health.ts",
+      "sha256": "f67588a2ebebd0feaf767aa2332284f3590f691ac4c516e403c4713e90d96c54"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/domains/job/rfq-price.ts",
+      "sha256": "810b88a6634d4b8ced352e3eb00d8213251df90e1398e2e7dda75b33f4247e98"
+    },
+    {
+      "path": "supabase/functions/mobile-api/deno.json",
+      "sha256": "4dda907dfabfe7279c52aed30562f20f8daf9028ea146e576e669f87f878f2b9"
+    }
+  ]
+}

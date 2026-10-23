@@ -1,0 +1,1 @@
+{"variables":[{"name":"KAEL_AI_KILL_SWITCH","value":"false","created_at":"2026-08-24T09:07:48Z","updated_at":"2026-08-24T09:07:48Z"},{"name":"KAEL_DURABLE_GUARDS_ENABLED","value":"true","created_at":"2026-08-24T09:07:47Z","updated_at":"2026-08-24T09:07:47Z"}],"total_count":2}

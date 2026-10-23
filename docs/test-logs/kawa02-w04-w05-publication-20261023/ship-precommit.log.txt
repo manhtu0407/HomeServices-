@@ -1,0 +1,41 @@
+
+> nestscout@0.1.0 ship:check C:\ns-fix\kawa02
+> node scripts/run.mjs run-node scripts/check-ship-ready.mjs
+
+ship readiness on codex/kawa02-audit-execution-20261023
+
+git state
+  FAIL  12 path(s) not committed — a push carries only what is committed
+          unstaged   docs/test-logs/INDEX.md
+          unstaged   docs/test-logs/kawa-execution-ledger.md
+          unstaged   governance/protocols/test-pillars.md
+          untracked  apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts
+          untracked  apps/api/src/__tests__/unit/workflow-shadow-planner-pillar.test.ts
+          untracked  docs/audit/KAWA02_BACKEND_RELEASE_AUDIT.md
+          untracked  docs/test-logs/kawa02-release-entry-audit-20261023/
+          untracked  docs/test-logs/kawa02-w04-w05-20261023/
+          untracked  packages/shared/src/contracts/workflow-definition.ts
+          untracked  supabase/functions/_shared/contracts/workflow-definition.ts
+          untracked  supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts
+          untracked  supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts
+
+gates
+  ok    comment discipline         3.5s
+  ok    source residue             1.0s
+  ok    structure and ratchets     0.5s
+  ok    skills mirror              0.3s
+  ok    skill contracts            0.2s
+  ok    protocol routes            0.1s
+  ok    work-router coverage       0.1s
+  ok    runner parity              0.1s
+  ok    harness assurance          188.5s
+  ok    script fixture suites      153.0s
+
+not run by this command
+  pnpm type-check, test, build, lint         pnpm is on PATH; run it yourself
+  deno check on the Edge functions           deno is not on PATH here
+  migration replay and the SQL actor matrix  supabase is not on PATH here
+  CI runs all of these on the pull request. This command does not stand in for them.
+
+NOT READY — git state
+ ELIFECYCLE  Command failed with exit code 1.

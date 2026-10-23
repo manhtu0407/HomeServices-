@@ -1,0 +1,4 @@
+
+> @nestscout/api@0.1.0 type-check C:\ns-fix\kawa02\apps\api
+> tsc --noEmit
+

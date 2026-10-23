@@ -1,0 +1,2085 @@
+{
+  "observedAtUtc": {
+    "current_time": "2026-10-23 00:38:06 UTC"
+  },
+  "edge": {
+    "functions": [
+      {
+        "id": "7d0946b9-aa63-42d3-b4d6-f1615a2c4d05",
+        "slug": "mobile-api",
+        "name": "mobile-api",
+        "status": "ACTIVE",
+        "version": 361,
+        "created_at": 1779090693504,
+        "updated_at": 1792513528625,
+        "verify_jwt": false,
+        "import_map": true,
+        "entrypoint_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_7d0946b9-aa63-42d3-b4d6-f1615a2c4d05_361/source/supabase/functions/mobile-api/index.ts",
+        "import_map_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_7d0946b9-aa63-42d3-b4d6-f1615a2c4d05_361/source/supabase/functions/mobile-api/deno.json",
+        "ezbr_sha256": "15d383676fa3106c04b2cebfcd62ef2eaa42ebe93aed8da5b2e6e8b6f30a958f"
+      },
+      {
+        "id": "b282ae9e-c35e-4426-b099-e615481a83c4",
+        "slug": "kael-learning-monitor",
+        "name": "kael-learning-monitor",
+        "status": "ACTIVE",
+        "version": 83,
+        "created_at": 1785084573928,
+        "updated_at": 1785084573928,
+        "verify_jwt": false,
+        "import_map": true,
+        "entrypoint_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_b282ae9e-c35e-4426-b099-e615481a83c4_1/source/supabase/functions/kael-learning-monitor/index.ts",
+        "import_map_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_b282ae9e-c35e-4426-b099-e615481a83c4_1/source/supabase/functions/kael-learning-monitor/deno.json",
+        "ezbr_sha256": "288a6ed42368509b0cdf31e49fc385b60c0217dc5f1bf74bef8dd349b9aa7ed6"
+      },
+      {
+        "id": "61743a72-6908-42fe-bb5c-211c11ad64c8",
+        "slug": "sepay-webhook",
+        "name": "sepay-webhook",
+        "status": "ACTIVE",
+        "version": 83,
+        "created_at": 1785128758096,
+        "updated_at": 1785128758096,
+        "verify_jwt": false,
+        "import_map": true,
+        "entrypoint_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_61743a72-6908-42fe-bb5c-211c11ad64c8_1/source/supabase/functions/sepay-webhook/index.ts",
+        "import_map_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_61743a72-6908-42fe-bb5c-211c11ad64c8_1/source/supabase/functions/sepay-webhook/deno.json",
+        "ezbr_sha256": "415c24857ac7b3eb2c0d3532599dae8154da80c15c4e79be90df9c19121e24fb"
+      },
+      {
+        "id": "ae740bc4-41f4-4050-be75-775e25cd66cf",
+        "slug": "kael-media-retention",
+        "name": "kael-media-retention",
+        "status": "ACTIVE",
+        "version": 81,
+        "created_at": 1786329932032,
+        "updated_at": 1786329932032,
+        "verify_jwt": false,
+        "entrypoint_path": "file:///Users/Phan%20Manh%20Tu/Desktop/home-services/.claude/worktrees/production-release-audit-20260810/supabase/functions/kael-media-retention/index.ts",
+        "import_map_path": "file:///Users/Phan%20Manh%20Tu/Desktop/home-services/.claude/worktrees/production-release-audit-20260810/supabase/functions/kael-media-retention/deno.json",
+        "ezbr_sha256": "3b0f39dac8d4811172f93df1fa02ebc19adc09c49e8a926d45bd1aa53b174b7e"
+      },
+      {
+        "id": "f762b8fd-821c-4607-ac7f-8c46bb5a8c9a",
+        "slug": "kael-matching-maintainer",
+        "name": "kael-matching-maintainer",
+        "status": "ACTIVE",
+        "version": 145,
+        "created_at": 1786442855101,
+        "updated_at": 1792513534327,
+        "verify_jwt": false,
+        "import_map": true,
+        "entrypoint_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_f762b8fd-821c-4607-ac7f-8c46bb5a8c9a_145/source/supabase/functions/kael-matching-maintainer/index.ts",
+        "import_map_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_f762b8fd-821c-4607-ac7f-8c46bb5a8c9a_145/source/supabase/functions/kael-matching-maintainer/deno.json",
+        "ezbr_sha256": "b9b4a83ec91b0a13b93ad9847c841c2e56705e192c9fd6450d84cc989b02a5ce"
+      },
+      {
+        "id": "e2ef59c6-6657-4bf3-88c2-bb6ab773331a",
+        "slug": "payment-maintainer",
+        "name": "payment-maintainer",
+        "status": "ACTIVE",
+        "version": 78,
+        "created_at": 1786496075625,
+        "updated_at": 1786496075625,
+        "verify_jwt": false,
+        "entrypoint_path": "file:///Users/Phan%20Manh%20Tu/Desktop/home-services/supabase/functions/payment-maintainer/index.ts",
+        "import_map_path": "file:///Users/Phan%20Manh%20Tu/Desktop/home-services/supabase/functions/payment-maintainer/deno.json",
+        "ezbr_sha256": "0cc260bf864c6259018805c82c70b10700fdff97fc9a157621e3676a669388d7"
+      },
+      {
+        "id": "99e2774f-c4d5-40e4-b877-2ed40b913c18",
+        "slug": "map-proxy-spike",
+        "name": "map-proxy-spike",
+        "status": "ACTIVE",
+        "version": 78,
+        "created_at": 1787216968185,
+        "updated_at": 1787217079731,
+        "verify_jwt": false,
+        "import_map": false,
+        "entrypoint_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_99e2774f-c4d5-40e4-b877-2ed40b913c18_2/source/supabase/functions/map-proxy-spike/index.ts",
+        "ezbr_sha256": "94a73fd1af79fe24e50d3f3d94859bc3ee6ed314b8ac4f143f8fee899f672712"
+      },
+      {
+        "id": "7e2d91c0-48ab-483c-8967-fa0c0f1beca0",
+        "slug": "system-monitor",
+        "name": "system-monitor",
+        "status": "ACTIVE",
+        "version": 7,
+        "created_at": 1792070898163,
+        "updated_at": 1792513515463,
+        "verify_jwt": false,
+        "import_map": true,
+        "entrypoint_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_7e2d91c0-48ab-483c-8967-fa0c0f1beca0_6/source/supabase/functions/system-monitor/index.ts",
+        "import_map_path": "file:///tmp/user_fn_iwevizmsedyqozxlawwl_7e2d91c0-48ab-483c-8967-fa0c0f1beca0_6/source/supabase/functions/system-monitor/deno.json",
+        "ezbr_sha256": "c42185aa2103d44c35f83466f1fd806bb004b4499a73efe9b3b95349a58a797d"
+      }
+    ]
+  },
+  "releaseRegistry": [
+    {
+      "audit": {
+        "active_release": [
+          {
+            "status": null,
+            "git_sha": "e8b95d2122a8ce802c5504630a778f6e51daa72f",
+            "created_at": "2026-10-15T13:27:58.355925+00:00",
+            "release_id": "harness-e8b95d2122a8-53817ce22f48",
+            "artifact_keys": [
+              "gitSha",
+              "releaseId",
+              "environment",
+              "releaseLane",
+              "bundleSha256",
+              "edgeFunctions",
+              "schemaVersion",
+              "manifestSha256",
+              "rollbackPolicy",
+              "edgeBundleSha256",
+              "providerReadiness",
+              "accessMatrixSha256",
+              "edgeFunctionInputs",
+              "environmentBinding",
+              "migrationInventory",
+              "migrationWatermark",
+              "policyBundleSha256",
+              "promptBundleSha256",
+              "sourceBundleSha256",
+              "databaseTypesSha256",
+              "transactionCoverage",
+              "systemHealthObserver",
+              "backendHostedBaseline",
+              "evaluationSuiteSha256",
+              "promotionPolicySha256",
+              "evaluationSuiteVersion",
+              "reliabilityPolicySha256",
+              "backendHostedStateSha256",
+              "capabilityRegistrySha256",
+              "migrationInventorySha256",
+              "productionUiSourceSha256",
+              "verificationRequirements",
+              "activeClientCompatibility",
+              "edgeRuntimeConfigurations",
+              "priceEvidenceBundleSha256",
+              "runtimeConfigurationSha256",
+              "mobileBuildFingerprintSha256",
+              "serviceIntakePolicyBundleSha256",
+              "providerReadinessFingerprintSha256"
+            ]
+          }
+        ],
+        "latest_releases": [
+          {
+            "git_sha": "111988b0ad6ec276082f6a4706866401fc887e4b",
+            "created_at": "2026-10-20T16:22:16.038189+00:00",
+            "release_id": "harness-111988b0ad6e-dd735271c78f"
+          },
+          {
+            "git_sha": "e8b95d2122a8ce802c5504630a778f6e51daa72f",
+            "created_at": "2026-10-15T13:27:58.355925+00:00",
+            "release_id": "harness-e8b95d2122a8-53817ce22f48"
+          },
+          {
+            "git_sha": "e8b95d2122a8ce802c5504630a778f6e51daa72f",
+            "created_at": "2026-10-15T13:13:13.981126+00:00",
+            "release_id": "harness-e8b95d2122a8-e1a4feab2fff"
+          },
+          {
+            "git_sha": "b6da88df22b1d105c6d8fc5624b452f861706b17",
+            "created_at": "2026-10-15T11:55:04.751272+00:00",
+            "release_id": "harness-b6da88df22b1-3896431c1e07"
+          },
+          {
+            "git_sha": "b0b2dcd7851ab0329651b4117a22827b8eda7673",
+            "created_at": "2026-10-15T10:46:27.441302+00:00",
+            "release_id": "harness-b0b2dcd7851a-c66abe532ed9"
+          }
+        ],
+        "missing_payment_migrations": [
+          "20261022100000",
+          "20261022141232"
+        ]
+      }
+    }
+  ],
+  "controls": [
+    {
+      "revision": 51,
+      "updated_at": "2026-10-15T13:31:09.31389+00:00",
+      "environment": "production",
+      "active_release_id": "harness-e8b95d2122a8-53817ce22f48",
+      "candidate_cohort_id": null,
+      "candidate_release_id": null,
+      "candidate_started_at": null,
+      "candidate_packet_sha256": null,
+      "previous_active_release_id": "harness-6b31e0491374-d473fa5ec184"
+    }
+  ],
+  "latestAttestations": [
+    {
+      "created_at": "2026-10-15T13:30:33.700935+00:00",
+      "release_id": "harness-e8b95d2122a8-53817ce22f48",
+      "environment": "production",
+      "edge_version": 139,
+      "proof_sha256": "727c528207a62a48e86a8d4f29b0f39bca5e7dfdb717e411b5c13f2fa0284699",
+      "deployment_id": "iwevizmsedyqozxlawwl_f762b8fd-821c-4607-ac7f-8c46bb5a8c9a_139",
+      "function_name": "kael-matching-maintainer",
+      "source_sha256": "644d37cff78c16e50567d46ebb6bcdf84a52122d5c0fb501bb975031003b3a26",
+      "hosted_bundle_sha256": "b9b4a83ec91b0a13b93ad9847c841c2e56705e192c9fd6450d84cc989b02a5ce"
+    },
+    {
+      "created_at": "2026-10-15T13:30:33.262703+00:00",
+      "release_id": "harness-e8b95d2122a8-53817ce22f48",
+      "environment": "production",
+      "edge_version": 355,
+      "proof_sha256": "b8e8d0f90e8d7ba13f4c3b17b60d2c2d2ed7542a0a67b2d87d07cb143dfa6986",
+      "deployment_id": "iwevizmsedyqozxlawwl_7d0946b9-aa63-42d3-b4d6-f1615a2c4d05_355",
+      "function_name": "mobile-api",
+      "source_sha256": "ab78e291f6e85562aa5cedef6f6ba80ed98cf4b684abf869cecde3e023637ab9",
+      "hosted_bundle_sha256": "15d383676fa3106c04b2cebfcd62ef2eaa42ebe93aed8da5b2e6e8b6f30a958f"
+    }
+  ],
+  "schema": {
+    "rpc_presence": [
+      {
+        "args": "p_session_id uuid, p_customer_id uuid, p_idempotency_key text, p_confirmation_kind text, p_price_reasoning_receipt_id text, p_matching_mode text",
+        "name": "confirm_kael_chat_durable_atomic_v4",
+        "security_definer": false,
+        "bank_race_handler": false,
+        "ledger_reopen_fix": false
+      },
+      {
+        "args": "p_session_id uuid, p_customer_id uuid, p_idempotency_key text, p_confirmation_kind text, p_price_reasoning_receipt_id text, p_matching_mode text, p_run_id uuid, p_trace_id uuid, p_actor_id_hash text, p_actor_role text, p_route_kind text, p_capability text, p_environment text, p_release_id text, p_privileged boolean, p_resource_type text, p_resource_id_hash text, p_duration_ms integer",
+        "name": "confirm_kael_chat_durable_authorized_v6",
+        "security_definer": false,
+        "bank_race_handler": false,
+        "ledger_reopen_fix": false
+      },
+      {
+        "args": "p_payment_order_id uuid, p_actor_id uuid, p_decision text, p_amount_received integer, p_credited_at timestamp with time zone, p_bank_reference_hash text, p_bank_reference_suffix text, p_reason_code text",
+        "name": "decide_manual_bank_payment_reconciliation",
+        "security_definer": true,
+        "bank_race_handler": false,
+        "ledger_reopen_fix": false
+      }
+    ],
+    "applied_migrations": [
+      {
+        "name": "init_schema",
+        "version": "20260511000000"
+      },
+      {
+        "name": "security_hardening",
+        "version": "20260512000000"
+      },
+      {
+        "name": "align_structures_workflow",
+        "version": "20260513114845"
+      },
+      {
+        "name": "harden_function_execution",
+        "version": "20260513125704"
+      },
+      {
+        "name": "revoke_rls_auto_enable_rpc",
+        "version": "20260513131949"
+      },
+      {
+        "name": "expand_service_taxonomy",
+        "version": "20260516075310"
+      },
+      {
+        "name": "worker_registration_fields",
+        "version": "20260516075331"
+      },
+      {
+        "name": "add_fk_indexes",
+        "version": "20260516085408"
+      },
+      {
+        "name": "expand_service_taxonomy",
+        "version": "20260516141918"
+      },
+      {
+        "name": "worker_registration_fields",
+        "version": "20260516141919"
+      },
+      {
+        "name": "add_fk_indexes",
+        "version": "20260516141920"
+      },
+      {
+        "name": "atomic_rpc_functions",
+        "version": "20260516143403"
+      },
+      {
+        "name": "atomic_rpc_functions_v2",
+        "version": "20260516143540"
+      },
+      {
+        "name": "atomic_rpc_functions_v3",
+        "version": "20260516143856"
+      },
+      {
+        "name": "atomic_rpc_functions",
+        "version": "20260516144400"
+      },
+      {
+        "name": "submit_review_atomic_rpc",
+        "version": "20260517154846"
+      },
+      {
+        "name": "mobile_rpc_security_invoker",
+        "version": "20260517155954"
+      },
+      {
+        "name": "harden_scope_change_rpc_races",
+        "version": "20260517163541"
+      },
+      {
+        "name": "harden_auth_signup_trigger",
+        "version": "20260517192455"
+      },
+      {
+        "name": "scope_change_decision_check",
+        "version": "20260517225000"
+      },
+      {
+        "name": "cancel_job_before_accept_atomic",
+        "version": "20260517233000"
+      },
+      {
+        "name": "accept_broadcast_worker_eligibility",
+        "version": "20260517234500"
+      },
+      {
+        "name": "lock_direct_client_writes_for_edge_runtime",
+        "version": "20260518001200"
+      },
+      {
+        "name": "accept_broadcast_lock_worker_profile",
+        "version": "20260518002000"
+      },
+      {
+        "name": "set_worker_availability_atomic",
+        "version": "20260518003500"
+      },
+      {
+        "name": "accept_broadcast_lock_job_first",
+        "version": "20260518005000"
+      },
+      {
+        "name": "availability_offline_expires_sent_broadcasts",
+        "version": "20260518010500"
+      },
+      {
+        "name": "reassign_all_sent_broadcasts_on_accept",
+        "version": "20260518011500"
+      },
+      {
+        "name": "accept_broadcast_service_district_guard",
+        "version": "20260518013000"
+      },
+      {
+        "name": "revoke_authenticated_workflow_dml",
+        "version": "20260518032000"
+      },
+      {
+        "name": "qualify_accept_broadcast_columns",
+        "version": "20260518040500"
+      },
+      {
+        "name": "remove_accept_broadcast_created_at_order",
+        "version": "20260518041500"
+      },
+      {
+        "name": "harden_private_rls_helper_execution",
+        "version": "20260518043000"
+      },
+      {
+        "name": "consolidate_admin_rls_select_policies",
+        "version": "20260518044500"
+      },
+      {
+        "name": "accept_broadcast_privacy_guard",
+        "version": "20260518070000"
+      },
+      {
+        "name": "accept_broadcast_privacy_guard_v2",
+        "version": "20260518071000"
+      },
+      {
+        "name": "scope_change_reject_cancels_job",
+        "version": "20260518181500"
+      },
+      {
+        "name": "add_cleaning_service_type",
+        "version": "20260519090000"
+      },
+      {
+        "name": "add_cleaning_service_box",
+        "version": "20260519090100"
+      },
+      {
+        "name": "supabase_boxes_notifications_media_cancellation",
+        "version": "20260519090200"
+      },
+      {
+        "name": "fix_worker_cancellation_race_and_media_stage_rls",
+        "version": "20260519120720"
+      },
+      {
+        "name": "consolidate_box_admin_rls_policies",
+        "version": "20260519122000"
+      },
+      {
+        "name": "fix_vietnamese_catalog_labels",
+        "version": "20260519145538"
+      },
+      {
+        "name": "kael_chat_sessions",
+        "version": "20260520130514"
+      },
+      {
+        "name": "worker_cancellation_auto_reassign",
+        "version": "20260520141200"
+      },
+      {
+        "name": "geo_matching_and_worker_auto_suspend",
+        "version": "20260521120000"
+      },
+      {
+        "name": "kael_final_price_authority",
+        "version": "20260524000000"
+      },
+      {
+        "name": "worker_approved_notification_trigger",
+        "version": "20260524010000"
+      },
+      {
+        "name": "pr29_workflow_risk_fixes",
+        "version": "20260524105341"
+      },
+      {
+        "name": "customer_kael_memory",
+        "version": "20260525091142"
+      },
+      {
+        "name": "worker_kael_memory",
+        "version": "20260525091145"
+      },
+      {
+        "name": "kael_audit_tables",
+        "version": "20260525091146"
+      },
+      {
+        "name": "ai_provider_routing",
+        "version": "20260525101441"
+      },
+      {
+        "name": "jobs_kael_progress",
+        "version": "20260525101442"
+      },
+      {
+        "name": "kael_vision_latency_buffer",
+        "version": "20260525104648"
+      },
+      {
+        "name": "kael_output_format_p4",
+        "version": "20260525111707"
+      },
+      {
+        "name": "kael_permission_policy_p5",
+        "version": "20260525113639"
+      },
+      {
+        "name": "kael_memory_governance_p6",
+        "version": "20260525114839"
+      },
+      {
+        "name": "kael_learning_skills_p7",
+        "version": "20260525121445"
+      },
+      {
+        "name": "consolidate_kael_memory_read_policies",
+        "version": "20260525122335"
+      },
+      {
+        "name": "kael_charter_audit_p8",
+        "version": "20260525124010"
+      },
+      {
+        "name": "kael_demanding_customer_case_p10",
+        "version": "20260525132115"
+      },
+      {
+        "name": "kael_worker_cancel_case_p11",
+        "version": "20260525140826"
+      },
+      {
+        "name": "fix_worker_no_show_reason_code_ambiguity",
+        "version": "20260525230054"
+      },
+      {
+        "name": "kael_customer_cancel_case_p12",
+        "version": "20260525231655"
+      },
+      {
+        "name": "fix_customer_cancel_scope_change_table_p12",
+        "version": "20260525233112"
+      },
+      {
+        "name": "fix_customer_cancel_records_rls_p12",
+        "version": "20260525233322"
+      },
+      {
+        "name": "kael_dispute_case_p13",
+        "version": "20260525234746"
+      },
+      {
+        "name": "backend_gaps_cleanup_p14",
+        "version": "20260526002253"
+      },
+      {
+        "name": "fix_worker_cancellation_reason_category_ambiguity_p14",
+        "version": "20260526003315"
+      },
+      {
+        "name": "kael_p17_monitoring_ab_setup",
+        "version": "20260526012712"
+      },
+      {
+        "name": "kael_cost_optimization_q1",
+        "version": "20260526090000"
+      },
+      {
+        "name": "kael_market_cache_q3",
+        "version": "20260526131000"
+      },
+      {
+        "name": "kael_q4_background_optimization",
+        "version": "20260526142000"
+      },
+      {
+        "name": "source_trust_registry_f26",
+        "version": "20260526195300"
+      },
+      {
+        "name": "f26_fk_performance_indexes",
+        "version": "20260526203000"
+      },
+      {
+        "name": "f26_drop_unused_indexes",
+        "version": "20260526203100"
+      },
+      {
+        "name": "allow_vietmap_geo_source",
+        "version": "20260527090118"
+      },
+      {
+        "name": "kael_chat_unsupported_status",
+        "version": "20260529090000"
+      },
+      {
+        "name": "add_idempotency_keys",
+        "version": "20260529100000"
+      },
+      {
+        "name": "kael_chat_rate_limit_log",
+        "version": "20260529110000"
+      },
+      {
+        "name": "normalize_worker_districts",
+        "version": "20260529120000"
+      },
+      {
+        "name": "scrub_chat_turns_pii",
+        "version": "20260529130000"
+      },
+      {
+        "name": "fix_recent_pr_audit_gaps",
+        "version": "20260530100110"
+      },
+      {
+        "name": "customer_kael_feedback",
+        "version": "20260602090000"
+      },
+      {
+        "name": "revoke_anon_public_grants",
+        "version": "20260604090000"
+      },
+      {
+        "name": "revoke_residual_authenticated_dml",
+        "version": "20260604090100"
+      },
+      {
+        "name": "harden_default_privileges_public",
+        "version": "20260604090200"
+      },
+      {
+        "name": "harden_public_grants_followup",
+        "version": "20260604091224"
+      },
+      {
+        "name": "harden_global_function_default_privileges",
+        "version": "20260604093025"
+      },
+      {
+        "name": "combine_customer_kael_feedback_select_policy",
+        "version": "20260604095731"
+      },
+      {
+        "name": "revoke_authenticated_table_ddl_privileges",
+        "version": "20260604100550"
+      },
+      {
+        "name": "promote_learning_candidate_rpc",
+        "version": "20260604160000"
+      },
+      {
+        "name": "rollback_learning_rule_rpc",
+        "version": "20260604170000"
+      },
+      {
+        "name": "learning_candidate_manual_review_status",
+        "version": "20260604180000"
+      },
+      {
+        "name": "learning_candidate_admin_review_rpc",
+        "version": "20260604181000"
+      },
+      {
+        "name": "kael_b3_knowledge_corpus",
+        "version": "20260604203000"
+      },
+      {
+        "name": "kael_b4_knowledge_governance",
+        "version": "20260604210000"
+      },
+      {
+        "name": "kael_b5_pgvector_rag",
+        "version": "20260604213000"
+      },
+      {
+        "name": "kael_b5_embedding_backfill",
+        "version": "20260604214000"
+      },
+      {
+        "name": "kael_c_autonomy_audit_apply",
+        "version": "20260604220000"
+      },
+      {
+        "name": "kael_d_guardrail_trip_audit",
+        "version": "20260604221500"
+      },
+      {
+        "name": "kael_chat_session_progress",
+        "version": "20260604223000"
+      },
+      {
+        "name": "kael_worker_chat_sessions",
+        "version": "20260604224500"
+      },
+      {
+        "name": "worker_kael_feedback_consent",
+        "version": "20260604225500"
+      },
+      {
+        "name": "scope_change_kael_progress",
+        "version": "20260604230500"
+      },
+      {
+        "name": "disintermediation_admin_queue",
+        "version": "20260604231500"
+      },
+      {
+        "name": "apartment_access_release",
+        "version": "20260604232500"
+      },
+      {
+        "name": "fix_kael_rollback_learning_rule_ambiguity",
+        "version": "20260605001000"
+      },
+      {
+        "name": "fix_plan31_post_advisor_warnings",
+        "version": "20260605003000"
+      },
+      {
+        "name": "fix_plan31_rpc_lint_warnings",
+        "version": "20260605004000"
+      },
+      {
+        "name": "scope_worker_kael_chat_idempotency_by_job",
+        "version": "20260605005000"
+      },
+      {
+        "name": "drop_worker_profiles_districts_backup_x3",
+        "version": "20260605006000"
+      },
+      {
+        "name": "apartment_access_checkin_media_stage",
+        "version": "20260610075217"
+      },
+      {
+        "name": "worker_application_admin_queue",
+        "version": "20260612120000"
+      },
+      {
+        "name": "kael_provider_spend_cap",
+        "version": "20260613120000"
+      },
+      {
+        "name": "sepay_vietqr_payment_gate",
+        "version": "20260614093000"
+      },
+      {
+        "name": "kael_rate_limit_log_deny_all_policy",
+        "version": "20260614120000"
+      },
+      {
+        "name": "kael_ai_spend_gate",
+        "version": "20260614120500"
+      },
+      {
+        "name": "kael_ai_spend_reserve",
+        "version": "20260615120000"
+      },
+      {
+        "name": "worker_customer_stats",
+        "version": "20260619151536"
+      },
+      {
+        "name": "worker_matching_indexes",
+        "version": "20260619160017"
+      },
+      {
+        "name": "kael_chat_media_bucket",
+        "version": "20260620123000"
+      },
+      {
+        "name": "worker_kael_turn_idempotency",
+        "version": "20260627090000"
+      },
+      {
+        "name": "customer_payment_methods",
+        "version": "20260627143000"
+      },
+      {
+        "name": "kael_chat_collecting_evidence_status",
+        "version": "20260628120000"
+      },
+      {
+        "name": "extend_kael_chat_media_bucket",
+        "version": "20260629114000"
+      },
+      {
+        "name": "jobs_display_code_sequence",
+        "version": "20260630120000"
+      },
+      {
+        "name": "worker_application_idempotency",
+        "version": "20260701120000"
+      },
+      {
+        "name": "harden_source_trust_registry_grant",
+        "version": "20260703000000"
+      },
+      {
+        "name": "kael_voice_transcript",
+        "version": "20260706120000"
+      },
+      {
+        "name": "kael_durable_guards",
+        "version": "20260710082120"
+      },
+      {
+        "name": "kael_source_trust_tiering",
+        "version": "20260710082345"
+      },
+      {
+        "name": "preserve_provider_global_circuit",
+        "version": "20260710123000"
+      },
+      {
+        "name": "six_service_casework_foundation",
+        "version": "20260711030833"
+      },
+      {
+        "name": "kael_case_work_artifact",
+        "version": "20260711033644"
+      },
+      {
+        "name": "customer_worker_candidate_gate",
+        "version": "20260711050000"
+      },
+      {
+        "name": "candidate_cancel_release",
+        "version": "20260711053000"
+      },
+      {
+        "name": "six_service_taxonomy_verified_prices",
+        "version": "20260711060000"
+      },
+      {
+        "name": "kael_chat_media_privacy",
+        "version": "20260711061000"
+      },
+      {
+        "name": "unified_scope_change_timing",
+        "version": "20260711062000"
+      },
+      {
+        "name": "kael_chat_media_upload_intents",
+        "version": "20260711063000"
+      },
+      {
+        "name": "scope_change_private_media_refs",
+        "version": "20260711064000"
+      },
+      {
+        "name": "job_media_analysis_audio_guard",
+        "version": "20260711065000"
+      },
+      {
+        "name": "kael_chat_media_retention_worker",
+        "version": "20260711066000"
+      },
+      {
+        "name": "review_requires_paid",
+        "version": "20260711067000"
+      },
+      {
+        "name": "harden_display_code_and_candidate_broadcast_index",
+        "version": "20260712031420"
+      },
+      {
+        "name": "worker_availability_preference",
+        "version": "20260712042000"
+      },
+      {
+        "name": "kael_job_incident_case",
+        "version": "20260712124241"
+      },
+      {
+        "name": "archive_worker_kael_chat_sessions",
+        "version": "20260713042558"
+      },
+      {
+        "name": "title_worker_kael_chat_sessions",
+        "version": "20260713051818"
+      },
+      {
+        "name": "partition_worker_kael_sessions_by_chat_mode",
+        "version": "20260713124007"
+      },
+      {
+        "name": "pin_worker_kael_chat_sessions",
+        "version": "20260713132500"
+      },
+      {
+        "name": "worker_avatar_and_app_activity",
+        "version": "20260713143000"
+      },
+      {
+        "name": "customer_kael_conversations",
+        "version": "20260713163851"
+      },
+      {
+        "name": "index_customer_kael_conversation_turn_owners",
+        "version": "20260714024500"
+      },
+      {
+        "name": "accept_broadcast_candidate_privacy_guard",
+        "version": "20260714074000"
+      },
+      {
+        "name": "worker_kael_reference_media",
+        "version": "20260714080000"
+      },
+      {
+        "name": "device_push_token_single_owner",
+        "version": "20260714084815"
+      },
+      {
+        "name": "job_media_upload_intents",
+        "version": "20260714092842"
+      },
+      {
+        "name": "atomic_learning_autopromotion",
+        "version": "20260714101000"
+      },
+      {
+        "name": "atomic_learning_observations",
+        "version": "20260714102000"
+      },
+      {
+        "name": "exact_profile_and_earnings_aggregates",
+        "version": "20260714103000"
+      },
+      {
+        "name": "qualify_kael_media_intent_columns",
+        "version": "20260714104000"
+      },
+      {
+        "name": "atomic_worker_registration",
+        "version": "20260714105000"
+      },
+      {
+        "name": "atomic_kael_memory_updates",
+        "version": "20260714106000"
+      },
+      {
+        "name": "atomic_job_incident_transitions",
+        "version": "20260714107000"
+      },
+      {
+        "name": "atomic_worker_kael_turns",
+        "version": "20260714108000"
+      },
+      {
+        "name": "atomic_learning_queue_claims",
+        "version": "20260714109000"
+      },
+      {
+        "name": "atomic_learning_batch_results",
+        "version": "20260714110000"
+      },
+      {
+        "name": "atomic_scope_change_idempotency",
+        "version": "20260714111000"
+      },
+      {
+        "name": "atomic_learning_effect_commits",
+        "version": "20260715011209"
+      },
+      {
+        "name": "worker_earnings_daily_aggregate",
+        "version": "20260715105143"
+      },
+      {
+        "name": "broadcast_retry_claims",
+        "version": "20260715113000"
+      },
+      {
+        "name": "atomic_learning_admin_approval",
+        "version": "20260715114000"
+      },
+      {
+        "name": "align_ai_provider_routing_catalog",
+        "version": "20260715115000"
+      },
+      {
+        "name": "worker_verification_draft_cleanup",
+        "version": "20260716121927"
+      },
+      {
+        "name": "learning_observation_rolling_window",
+        "version": "20260721100000"
+      },
+      {
+        "name": "learning_effect_candidate_conflict_guard",
+        "version": "20260721101000"
+      },
+      {
+        "name": "jobs_kael_reference_price",
+        "version": "20260721102000"
+      },
+      {
+        "name": "kael_chat_confirm_reference_price",
+        "version": "20260721103000"
+      },
+      {
+        "name": "learning_observation_reference_baseline",
+        "version": "20260721104000"
+      },
+      {
+        "name": "kael_learning_monitor_cron",
+        "version": "20260721105000"
+      },
+      {
+        "name": "align_kael_confirm_quote_ready_gate",
+        "version": "20260722032655"
+      },
+      {
+        "name": "align_kael_confirm_quote_ready_gate",
+        "version": "20260722033000"
+      },
+      {
+        "name": "activate_job_broadcast_batch_atomic",
+        "version": "20260722044500"
+      },
+      {
+        "name": "activate_job_broadcast_batch_atomic",
+        "version": "20260722044558"
+      },
+      {
+        "name": "fix_activate_job_broadcast_batch_qualification",
+        "version": "20260722050000"
+      },
+      {
+        "name": "fix_activate_job_broadcast_batch_qualification",
+        "version": "20260722050419"
+      },
+      {
+        "name": "fix_activate_job_broadcast_batch_conflict_target",
+        "version": "20260722050837"
+      },
+      {
+        "name": "fix_activate_job_broadcast_batch_conflict_target",
+        "version": "20260722051500"
+      },
+      {
+        "name": "fix_accept_broadcast_district_normalization",
+        "version": "20260722053000"
+      },
+      {
+        "name": "reactivate_accepted_broadcast_after_candidate_expiry",
+        "version": "20260722054500"
+      },
+      {
+        "name": "fix_confirm_worker_candidate_district_normalization",
+        "version": "20260722060000"
+      },
+      {
+        "name": "fix_accept_broadcast_district_normalization",
+        "version": "20260722060958"
+      },
+      {
+        "name": "enable_worker_kael_normal_chat",
+        "version": "20260723092515"
+      },
+      {
+        "name": "worker_active_service_preferences",
+        "version": "20260723113000"
+      },
+      {
+        "name": "worker_service_selection_quality_gate",
+        "version": "20260723143000"
+      },
+      {
+        "name": "restore_accept_broadcast_district_normalization",
+        "version": "20260726120000"
+      },
+      {
+        "name": "fix_scope_change_customer_authority",
+        "version": "20260726123000"
+      },
+      {
+        "name": "sepay_vietqr_webhook_atomic",
+        "version": "20260727153000"
+      },
+      {
+        "name": "worker_payment_ledger_commission",
+        "version": "20260727160000"
+      },
+      {
+        "name": "customer_refund_account_atomic",
+        "version": "20260728110000"
+      },
+      {
+        "name": "worker_cash_commission_settlement",
+        "version": "20260729153000"
+      },
+      {
+        "name": "fix_cash_payment_rpc_column_ambiguity",
+        "version": "20260729184500"
+      },
+      {
+        "name": "customer_account_deletion",
+        "version": "20260729210000"
+      },
+      {
+        "name": "customer_profile_avatar",
+        "version": "20260729223000"
+      },
+      {
+        "name": "worker_kael_memory_preferences",
+        "version": "20260801090000"
+      },
+      {
+        "name": "drop_orphan_worker_cancellation_decision_rpc",
+        "version": "20260805090000"
+      },
+      {
+        "name": "harness_access_boundary_hardening",
+        "version": "20260806120000"
+      },
+      {
+        "name": "harness_release_ledger",
+        "version": "20260806121000"
+      },
+      {
+        "name": "harness_trace_lineage",
+        "version": "20260806122000"
+      },
+      {
+        "name": "harness_evaluation_evidence",
+        "version": "20260806123000"
+      },
+      {
+        "name": "harness_learning_provenance",
+        "version": "20260806124000"
+      },
+      {
+        "name": "harness_reliability_control",
+        "version": "20260806125000"
+      },
+      {
+        "name": "harness_promotion_control",
+        "version": "20260806130000"
+      },
+      {
+        "name": "kael_structured_feedback",
+        "version": "20260807090000"
+      },
+      {
+        "name": "kael_estimate_accuracy",
+        "version": "20260807091000"
+      },
+      {
+        "name": "kael_admin_queue_resolution",
+        "version": "20260807092000"
+      },
+      {
+        "name": "api_logs_retention",
+        "version": "20260807093000"
+      },
+      {
+        "name": "admin_sections_control_plane",
+        "version": "20260808045522"
+      },
+      {
+        "name": "admin_operator_role",
+        "version": "20260808112000"
+      },
+      {
+        "name": "admin_operations_sub_admin",
+        "version": "20260808113000"
+      },
+      {
+        "name": "admin_operations_foreign_key_indexes",
+        "version": "20260808115000"
+      },
+      {
+        "name": "harness_sql_lint_and_aggregate_fixes",
+        "version": "20260808130000"
+      },
+      {
+        "name": "harden_kael_estimate_accuracy_view",
+        "version": "20260808131000"
+      },
+      {
+        "name": "correct_normalize_hcmc_district_code_volatility",
+        "version": "20260808140000"
+      },
+      {
+        "name": "worker_manual_payouts",
+        "version": "20260808205000"
+      },
+      {
+        "name": "worker_manual_payouts_foreign_key_indexes",
+        "version": "20260808213000"
+      },
+      {
+        "name": "worker_manual_payout_method_alias_fix",
+        "version": "20260809090000"
+      },
+      {
+        "name": "worker_manual_payout_audit_decision_fix",
+        "version": "20260809091500"
+      },
+      {
+        "name": "harden_harness_idempotency_input_validation",
+        "version": "20260809100000"
+      },
+      {
+        "name": "admin_manager_nominations",
+        "version": "20260809121000"
+      },
+      {
+        "name": "admin_operator_payout_capabilities",
+        "version": "20260809122000"
+      },
+      {
+        "name": "resolve_worker_earnings_rpc_overload",
+        "version": "20260809123000"
+      },
+      {
+        "name": "harden_public_signup_trigger_execution",
+        "version": "20260809124500"
+      },
+      {
+        "name": "fix_plpgsql_reference_ambiguities",
+        "version": "20260810120000"
+      },
+      {
+        "name": "require_kael_price_reasoning_receipt",
+        "version": "20260811093000"
+      },
+      {
+        "name": "bind_kael_price_reasoning_receipt",
+        "version": "20260811114500"
+      },
+      {
+        "name": "finding_workers_matching_preferences",
+        "version": "20260811153000"
+      },
+      {
+        "name": "manual_bank_payment_finance_v1",
+        "version": "20260811213000"
+      },
+      {
+        "name": "schedule_payment_maintainer",
+        "version": "20260811213100"
+      },
+      {
+        "name": "allow_finance_reconcile_capability",
+        "version": "20260811213200"
+      },
+      {
+        "name": "worker_payment_safety_balance",
+        "version": "20260811213300"
+      },
+      {
+        "name": "retire_unilateral_cash_payment_confirmation",
+        "version": "20260811213400"
+      },
+      {
+        "name": "fix_direct_payment_collateral_guard",
+        "version": "20260812093000"
+      },
+      {
+        "name": "direct_worker_payment_availability",
+        "version": "20260812100000"
+      },
+      {
+        "name": "extend_direct_payment_availability_to_candidate",
+        "version": "20260812103000"
+      },
+      {
+        "name": "admin_finance_overview_v1",
+        "version": "20260813100000"
+      },
+      {
+        "name": "allow_edge_incident_projection",
+        "version": "20260813104751"
+      },
+      {
+        "name": "allow_edge_incident_history_projection",
+        "version": "20260813110757"
+      },
+      {
+        "name": "worker_review_admin_provisioning",
+        "version": "20260813113000"
+      },
+      {
+        "name": "fix_finance_rpc_conflict_ambiguities",
+        "version": "20260813114000"
+      },
+      {
+        "name": "seed_verified_hinge_repair_price",
+        "version": "20260813120000"
+      },
+      {
+        "name": "seed_verified_hinge_replacement_price",
+        "version": "20260813123719"
+      },
+      {
+        "name": "guard_verified_scope_change_final_price",
+        "version": "20260813123726"
+      },
+      {
+        "name": "scope_change_worker_price_confirmation",
+        "version": "20260813123736"
+      },
+      {
+        "name": "confirm_candidate_service_preference_parity",
+        "version": "20260813160000"
+      },
+      {
+        "name": "price_baseline_multi_source_evidence",
+        "version": "20260813170000"
+      },
+      {
+        "name": "defer_final_price_until_bilateral_approval",
+        "version": "20260813191457"
+      },
+      {
+        "name": "verified_pipe_leak_repair_price",
+        "version": "20260813195349"
+      },
+      {
+        "name": "weak_water_pressure_price_evidence",
+        "version": "20260814100000"
+      },
+      {
+        "name": "defer_final_price_until_bilateral_approval",
+        "version": "20260814103000"
+      },
+      {
+        "name": "verified_pipe_leak_repair_price",
+        "version": "20260814111500"
+      },
+      {
+        "name": "harden_price_evidence_shape_check",
+        "version": "20260814111600"
+      },
+      {
+        "name": "keep_scope_quote_current_during_claim",
+        "version": "20260814111700"
+      },
+      {
+        "name": "fail_closed_kael_receipt_identity",
+        "version": "20260814120000"
+      },
+      {
+        "name": "worker_earnings_realtime_and_recognition",
+        "version": "20260814130000"
+      },
+      {
+        "name": "admin_operator_activation_status_rpc",
+        "version": "20260814131500"
+      },
+      {
+        "name": "scope_admin_activation_status_to_actor",
+        "version": "20260814132000"
+      },
+      {
+        "name": "scope_admin_operator_activation_to_actor",
+        "version": "20260814133000"
+      },
+      {
+        "name": "fix_actor_scoped_admin_activation",
+        "version": "20260814133500"
+      },
+      {
+        "name": "restore_service_owned_admin_activation",
+        "version": "20260814134000"
+      },
+      {
+        "name": "original_scope_bilateral_price_agreement",
+        "version": "20260815115034"
+      },
+      {
+        "name": "customer_read_endpoint_parity",
+        "version": "20260815121242"
+      },
+      {
+        "name": "six_service_quote_ready_baselines",
+        "version": "20260815123000"
+      },
+      {
+        "name": "original_scope_price_confidence_contract",
+        "version": "20260815125000"
+      },
+      {
+        "name": "bilateral_payment_balance",
+        "version": "20260815203000"
+      },
+      {
+        "name": "preserve_broadcast_membership_privacy",
+        "version": "20260815213000"
+      },
+      {
+        "name": "restore_customer_aggregate_service_boundary",
+        "version": "20260815214500"
+      },
+      {
+        "name": "preserve_retired_cash_confirmation",
+        "version": "20260815215000"
+      },
+      {
+        "name": "enforce_customer_profile_invariant",
+        "version": "20260816120000"
+      },
+      {
+        "name": "worker_salary_settlement_v2",
+        "version": "20260818100000"
+      },
+      {
+        "name": "worker_account_deletion_request_prerequisite",
+        "version": "20260822150501"
+      },
+      {
+        "name": "account_deletion_job_media_cleanup",
+        "version": "20260822163107"
+      },
+      {
+        "name": "worker_account_deletion",
+        "version": "20260822193000"
+      },
+      {
+        "name": "fix_worker_account_deletion_blockers",
+        "version": "20260822194500"
+      },
+      {
+        "name": "fix_worker_deletion_profile_scrub",
+        "version": "20260822195500"
+      },
+      {
+        "name": "account_deletion_job_media_cleanup",
+        "version": "20260822211500"
+      },
+      {
+        "name": "durable_price_evidence_helper_boundary",
+        "version": "20260823032249"
+      },
+      {
+        "name": "service_intake_policy_governance",
+        "version": "20260823100000"
+      },
+      {
+        "name": "durable_confirmation_matching",
+        "version": "20260823110000"
+      },
+      {
+        "name": "synthetic_cohort_nonvisibility",
+        "version": "20260823120000"
+      },
+      {
+        "name": "stage1_release_canary_control",
+        "version": "20260823130000"
+      },
+      {
+        "name": "stage1_source_deployment_attestation",
+        "version": "20260823140000"
+      },
+      {
+        "name": "matching_push_provider_receipts",
+        "version": "20260823150000"
+      },
+      {
+        "name": "confirmation_outbox_dispatcher",
+        "version": "20260823160000"
+      },
+      {
+        "name": "plpgsql_ambiguity_fixes",
+        "version": "20260823170000"
+      },
+      {
+        "name": "plpgsql_lint_completion",
+        "version": "20260823171000"
+      },
+      {
+        "name": "plpgsql_matching_update_qualification",
+        "version": "20260823172000"
+      },
+      {
+        "name": "sql_volatility_contracts",
+        "version": "20260823173000"
+      },
+      {
+        "name": "synthetic_isolation_fresh_snapshot",
+        "version": "20260823174000"
+      },
+      {
+        "name": "synthetic_analytics_guard_separation",
+        "version": "20260823175000"
+      },
+      {
+        "name": "synthetic_actor_stats_isolation",
+        "version": "20260823176000"
+      },
+      {
+        "name": "kael_accuracy_security_invoker",
+        "version": "20260823177000"
+      },
+      {
+        "name": "stage1_security_definer_execute_lockdown",
+        "version": "20260823178000"
+      },
+      {
+        "name": "synthetic_cohort_binding_service_boundary",
+        "version": "20260823179000"
+      },
+      {
+        "name": "durable_price_evidence_helper_boundary",
+        "version": "20260823180000"
+      },
+      {
+        "name": "matching_maintainer_auth_bootstrap",
+        "version": "20260823181000"
+      },
+      {
+        "name": "synthetic_verified_final_price_boundary",
+        "version": "20260823182000"
+      },
+      {
+        "name": "official_match_operation_projection",
+        "version": "20260823183000"
+      },
+      {
+        "name": "service_intake_policy_evidence_requirements",
+        "version": "20260823184000"
+      },
+      {
+        "name": "confirmation_acceptance_receipt_v2",
+        "version": "20260823185000"
+      },
+      {
+        "name": "worker_salary_settlement_v2_rpc_compatibility",
+        "version": "20260823190000"
+      },
+      {
+        "name": "worker_salary_settlement_v2_admin_compatibility",
+        "version": "20260823190100"
+      },
+      {
+        "name": "stage1_production_acceptance_notes",
+        "version": "20260823191000"
+      },
+      {
+        "name": "stage1_production_acceptance_note_ambiguity_fix",
+        "version": "20260823191100"
+      },
+      {
+        "name": "confirmation_request_lifecycle",
+        "version": "20260823192000"
+      },
+      {
+        "name": "confirmation_schedule_guard_job_recovery",
+        "version": "20260823192100"
+      },
+      {
+        "name": "confirmation_acceptance_single_rpc",
+        "version": "20260824090000"
+      },
+      {
+        "name": "confirmation_acceptance_lifecycle_permission_fix",
+        "version": "20260824100000"
+      },
+      {
+        "name": "worker_earnings_v2_volatility_contract",
+        "version": "20260824101000"
+      },
+      {
+        "name": "admin_operations_support_preparation",
+        "version": "20260825123000"
+      },
+      {
+        "name": "worker_salary_settlement_v2_hardening",
+        "version": "20260825160000"
+      },
+      {
+        "name": "admin_finance_operations_hardening",
+        "version": "20260825190000"
+      },
+      {
+        "name": "admin_team_access_hardening",
+        "version": "20260826100000"
+      },
+      {
+        "name": "admin_system_governance",
+        "version": "20260826143000"
+      },
+      {
+        "name": "enable_worker_kael_opportunity_intake",
+        "version": "20260830152000"
+      },
+      {
+        "name": "stage1_price_governance_lifecycle_compatibility",
+        "version": "20260904113000"
+      },
+      {
+        "name": "public_coverage_capacity_reservation",
+        "version": "20260904230000"
+      },
+      {
+        "name": "canonical_completion_payment_authority",
+        "version": "20260904231000"
+      },
+      {
+        "name": "synthetic_terminal_transaction_proof",
+        "version": "20260904232000"
+      },
+      {
+        "name": "workflow_recovery_capacity_reconciliation",
+        "version": "20260904233000"
+      },
+      {
+        "name": "worker_application_readiness",
+        "version": "20260904234000"
+      },
+      {
+        "name": "retire_direct_payment_eligibility",
+        "version": "20260905100000"
+      },
+      {
+        "name": "completion_media_attachment_guard",
+        "version": "20260905101000"
+      },
+      {
+        "name": "worker_cancellation_matching_outbox",
+        "version": "20260905102000"
+      },
+      {
+        "name": "restore_worker_memory_preference_contract",
+        "version": "20260905103000"
+      },
+      {
+        "name": "refund_obligation_integrity",
+        "version": "20260905104000"
+      },
+      {
+        "name": "scope_decision_customer_authority",
+        "version": "20260905105000"
+      },
+      {
+        "name": "coverage_edge_read_authority",
+        "version": "20260905110000"
+      },
+      {
+        "name": "finance_transaction_visibility",
+        "version": "20260905113000"
+      },
+      {
+        "name": "finance_ledger_cohort_join",
+        "version": "20260905114000"
+      },
+      {
+        "name": "matching_candidate_capacity",
+        "version": "20260905115000"
+      },
+      {
+        "name": "matching_candidate_price_authority",
+        "version": "20260905120000"
+      },
+      {
+        "name": "candidate_expiry_customer_authority",
+        "version": "20260905123000"
+      },
+      {
+        "name": "confirmation_outbox_state_authority",
+        "version": "20260905130000"
+      },
+      {
+        "name": "confirmation_final_attempt_recovery",
+        "version": "20260905133000"
+      },
+      {
+        "name": "matching_expiry_maintenance",
+        "version": "20260905140000"
+      },
+      {
+        "name": "matching_expired_receipt_scan",
+        "version": "20260905143000"
+      },
+      {
+        "name": "replacement_outbox_lease_authority",
+        "version": "20260905150000"
+      },
+      {
+        "name": "customer_matching_retry_command",
+        "version": "20260905153000"
+      },
+      {
+        "name": "customer_matching_retry_dispatch",
+        "version": "20260905154000"
+      },
+      {
+        "name": "retry_matching_capacity_authority",
+        "version": "20260905155000"
+      },
+      {
+        "name": "confirmation_activation_lease_authority",
+        "version": "20260905160000"
+      },
+      {
+        "name": "confirmation_activation_capacity_release",
+        "version": "20260905161000"
+      },
+      {
+        "name": "confirmation_matching_intent",
+        "version": "20260905162000"
+      },
+      {
+        "name": "confirmation_intent_dispatch_recovery",
+        "version": "20260905162100"
+      },
+      {
+        "name": "durable_matching_preference_selection",
+        "version": "20260905163000"
+      },
+      {
+        "name": "durable_saved_worker_fallback",
+        "version": "20260905170000"
+      },
+      {
+        "name": "unavailable_saved_worker_continuation",
+        "version": "20260905171000"
+      },
+      {
+        "name": "customer_cancellation_durable_projection",
+        "version": "20260906010000"
+      },
+      {
+        "name": "customer_cancellation_durable_notification",
+        "version": "20260906011000"
+      },
+      {
+        "name": "customer_cancellation_actor_authority",
+        "version": "20260906012000"
+      },
+      {
+        "name": "customer_cancellation_proposal_retirement",
+        "version": "20260906013000"
+      },
+      {
+        "name": "worker_proposal_replay_authority",
+        "version": "20260906014000"
+      },
+      {
+        "name": "customer_candidate_rejection_durable",
+        "version": "20260906015000"
+      },
+      {
+        "name": "candidate_confirmation_identity",
+        "version": "20260906016000"
+      },
+      {
+        "name": "candidate_expiry_durable_continuation",
+        "version": "20260906017000"
+      },
+      {
+        "name": "candidate_confirmation_expiry_projection",
+        "version": "20260906018000"
+      },
+      {
+        "name": "unavailable_candidate_durable_projection",
+        "version": "20260906019000"
+      },
+      {
+        "name": "official_match_durable_projection",
+        "version": "20260908010000"
+      },
+      {
+        "name": "official_match_push_dispatch",
+        "version": "20260908011000"
+      },
+      {
+        "name": "apartment_access_atomic_authorization",
+        "version": "20260908012000"
+      },
+      {
+        "name": "candidate_decision_receipt",
+        "version": "20260908013000"
+      },
+      {
+        "name": "candidate_quote_slot_immutability",
+        "version": "20260908014000"
+      },
+      {
+        "name": "worker_application_revision_lineage",
+        "version": "20260909010000"
+      },
+      {
+        "name": "worker_kyc_submission_immutability",
+        "version": "20260909011000"
+      },
+      {
+        "name": "worker_service_area_review_authority",
+        "version": "20260909012000"
+      },
+      {
+        "name": "worker_service_area_radius_contract",
+        "version": "20260909013000"
+      },
+      {
+        "name": "worker_service_area_numeric_radius",
+        "version": "20260909014000"
+      },
+      {
+        "name": "worker_registration_commands",
+        "version": "20260909015000"
+      },
+      {
+        "name": "worker_registration_draft_revision",
+        "version": "20260909016000"
+      },
+      {
+        "name": "worker_profile_review_snapshot",
+        "version": "20260910164636"
+      },
+      {
+        "name": "paid_cancellation_receipt_reason",
+        "version": "20260912134000"
+      },
+      {
+        "name": "rfq_price_agreement",
+        "version": "20260913100000"
+      },
+      {
+        "name": "worker_stage5_work_session",
+        "version": "20260914090000"
+      },
+      {
+        "name": "customer_default_address_column",
+        "version": "20260916100000"
+      },
+      {
+        "name": "customer_default_address_backfill",
+        "version": "20260916100100"
+      },
+      {
+        "name": "harness_telemetry_retention",
+        "version": "20260921153130"
+      },
+      {
+        "name": "harness_retention_no_temp_table",
+        "version": "20260921224356"
+      },
+      {
+        "name": "stage1_worker_offer_visibility_cron_budget",
+        "version": "20260923140621"
+      },
+      {
+        "name": "stage1_smoke_receipts_worker_offer_visible_ms_bound",
+        "version": "20260923141106"
+      },
+      {
+        "name": "stage1_confirm_acceptance_ms_bound",
+        "version": "20260924044057"
+      },
+      {
+        "name": "stage1_acceptance_note_ui_receipt_v2",
+        "version": "20260924063250"
+      },
+      {
+        "name": "claim_due_matching_push_provider_tickets",
+        "version": "20260924121719"
+      },
+      {
+        "name": "notification_missing_job_no_fk_failure",
+        "version": "20260924140943"
+      },
+      {
+        "name": "rls_initplan_policy_consolidation",
+        "version": "20260924231604"
+      },
+      {
+        "name": "customer_kael_conversation_image_refs",
+        "version": "20260927182024"
+      },
+      {
+        "name": "worker_withdrawable_balance_unification",
+        "version": "20260928100000"
+      },
+      {
+        "name": "worker_suspension_effectiveness",
+        "version": "20260928101000"
+      },
+      {
+        "name": "chat_guard_evidence_retention",
+        "version": "20260928102000"
+      },
+      {
+        "name": "commission_tiers_service_only",
+        "version": "20260928103000"
+      },
+      {
+        "name": "ambassador_program_config",
+        "version": "20260928110000"
+      },
+      {
+        "name": "ambassador_referral_links",
+        "version": "20260928111000"
+      },
+      {
+        "name": "ambassador_points_and_redemptions",
+        "version": "20260928112000"
+      },
+      {
+        "name": "customer_membership_ledger",
+        "version": "20260928113000"
+      },
+      {
+        "name": "ambassador_accrual_sweep",
+        "version": "20260928114000"
+      },
+      {
+        "name": "worker_bonus_tax_rule_threshold",
+        "version": "20260928115000"
+      },
+      {
+        "name": "admin_capabilities_bonus_discipline",
+        "version": "20260928116000"
+      },
+      {
+        "name": "worker_discipline_foundation",
+        "version": "20260928120000"
+      },
+      {
+        "name": "identity_blocklist",
+        "version": "20260928121000"
+      },
+      {
+        "name": "worker_discipline_decisions",
+        "version": "20260928122000"
+      },
+      {
+        "name": "violation_detectors",
+        "version": "20260928123000"
+      },
+      {
+        "name": "discipline_evidence_bucket",
+        "version": "20260928124000"
+      },
+      {
+        "name": "worker_reply_nudges",
+        "version": "20260928125000"
+      },
+      {
+        "name": "compensation_mediation",
+        "version": "20260928126000"
+      },
+      {
+        "name": "program_push_receipts",
+        "version": "20260928127000"
+      },
+      {
+        "name": "worker_kael_general_chat_images",
+        "version": "20260929100000"
+      },
+      {
+        "name": "admin_operator_capability_parity",
+        "version": "20261001024256"
+      },
+      {
+        "name": "kael_normal_chat_image_foundation",
+        "version": "20261002160000"
+      },
+      {
+        "name": "kael_normal_chat_session_memory",
+        "version": "20261002170000"
+      },
+      {
+        "name": "kael_normal_chat_suggestions_routing",
+        "version": "20261003100000"
+      },
+      {
+        "name": "customer_membership_invite_claim_status",
+        "version": "20261005100000"
+      },
+      {
+        "name": "kael_live_price_knowledge",
+        "version": "20261008120000"
+      },
+      {
+        "name": "kael_live_market_evidence_policy",
+        "version": "20261008121000"
+      },
+      {
+        "name": "legacy_confirmation_recovery",
+        "version": "20261009040000"
+      },
+      {
+        "name": "worker_six_service_capability_limit",
+        "version": "20261009050000"
+      },
+      {
+        "name": "service_case_specific_worker_capabilities",
+        "version": "20261009060000"
+      },
+      {
+        "name": "worker_matching_terminal_capacity_release",
+        "version": "20261009192934"
+      },
+      {
+        "name": "allow_available_worker_for_confirmed_matching_retry",
+        "version": "20261009204030"
+      },
+      {
+        "name": "resolve_case_requirements_for_matching_retry",
+        "version": "20261010010053"
+      },
+      {
+        "name": "reuse_expired_worker_on_customer_retry",
+        "version": "20261010081826"
+      },
+      {
+        "name": "reuse_expired_candidate_on_customer_retry",
+        "version": "20261010090340"
+      },
+      {
+        "name": "kael_matching_recovery_capacity_alignment",
+        "version": "20261010100000"
+      },
+      {
+        "name": "worker_matching_terminal_capacity_release",
+        "version": "20261010110000"
+      },
+      {
+        "name": "resolve_case_requirements_for_matching_retry",
+        "version": "20261010130000"
+      },
+      {
+        "name": "reuse_expired_worker_on_customer_retry",
+        "version": "20261010140000"
+      },
+      {
+        "name": "system_health_monitor",
+        "version": "20261011100000"
+      },
+      {
+        "name": "admin_data_revision_signal",
+        "version": "20261011110000"
+      },
+      {
+        "name": "harness_events_parent_event_index",
+        "version": "20261012100000"
+      },
+      {
+        "name": "kael_case_turn_intent_routing",
+        "version": "20261012110000"
+      },
+      {
+        "name": "kael_evidence_gap_rfq_fallback",
+        "version": "20261012120000"
+      },
+      {
+        "name": "ambassador_no_points_on_own_orders",
+        "version": "20261013090000"
+      },
+      {
+        "name": "ambassador_program_draft_commission_12000",
+        "version": "20261013091000"
+      },
+      {
+        "name": "customer_completion_nudge",
+        "version": "20261013100000"
+      },
+      {
+        "name": "worker_travel_position",
+        "version": "20261013110000"
+      },
+      {
+        "name": "scope_change_quote_analysis_receipt",
+        "version": "20261013120000"
+      },
+      {
+        "name": "system_health_profile_v2",
+        "version": "20261013121000"
+      },
+      {
+        "name": "system_health_monitor_secret_bootstrap",
+        "version": "20261013122000"
+      },
+      {
+        "name": "system_health_availability_debounce",
+        "version": "20261014100000"
+      },
+      {
+        "name": "backend_system_health_release",
+        "version": "20261014120000"
+      },
+      {
+        "name": "system_health_monitor_vault_compatibility",
+        "version": "20261015100000"
+      },
+      {
+        "name": "backend_promotion_monitor_evidence",
+        "version": "20261015120000"
+      }
+    ],
+    "release_attestations_for_new_shas": 0
+  }
+}

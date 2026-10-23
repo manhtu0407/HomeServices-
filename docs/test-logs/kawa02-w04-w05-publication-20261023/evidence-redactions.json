@@ -1,0 +1,14 @@
+[
+  {
+    "path": "docs\\audit\\KAWA02_BACKEND_RELEASE_AUDIT.md",
+    "reason": "Known bundle checksum false positive; reword label, preserve checksum",
+    "before": "915dfd213b7e1e54215bb559405908fc8e4384e93ff3d65f79fb41ff99a0b035",
+    "after": "db9067a3273c78d5ac3fc5262e54253126b62cdde6b0a2f58d38bc9ddbb35cfd"
+  },
+  {
+    "path": "docs\\test-logs\\kawa02-w04-w05-20261023\\final-api-vitest.json",
+    "reason": "Synthetic test-name fixture only; counts/status unchanged",
+    "before": "57d31a965cfe6ad064e4e31c39af23b5554d685424754357beb8a3b585472914",
+    "after": "1807951dd6497a6a3753eca7b6bb21de846f58532727377810053d58f620097d"
+  }
+]

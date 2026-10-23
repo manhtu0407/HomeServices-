@@ -1,0 +1,71 @@
+{
+  "mission": "KAWA02 read-only release audit and mandatory entry checkpoint; evidence only, no competing live plan",
+  "slices": [
+    {
+      "id": "release-audit",
+      "domain": "review",
+      "reach": "E",
+      "status": "closed",
+      "scope": [
+        "docs/audit/KAWA02_BACKEND_RELEASE_AUDIT.md"
+      ],
+      "read": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "governance",
+        "docs",
+        "supabase",
+        "packages",
+        "apps",
+        ".github",
+        "config",
+        "scripts",
+        ".claude/MEMORY.md"
+      ],
+      "skills": [
+        "kael-work-router",
+        "kael-subagent-orchestration",
+        "kael-backend-parity",
+        "kael-backend-structure",
+        "kael-security-sweep",
+        "kael-codebase-memory",
+        "kael-docker"
+      ],
+      "gate": "Live named Production SELECT-only catalogs/receipts plus actual bundle-file comparison and GitHub logs",
+      "dropped": []
+    },
+    {
+      "id": "entry-evidence",
+      "domain": "docs",
+      "reach": "E",
+      "status": "closed",
+      "scope": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023",
+        "docs/test-logs/kawa-execution-ledger.md",
+        "docs/test-logs/INDEX.md"
+      ],
+      "read": [
+        "docs",
+        "governance",
+        "supabase",
+        "packages",
+        "apps",
+        ".agents/skills",
+        ".claude/MEMORY.md",
+        "docker"
+      ],
+      "skills": [
+        "kael-core-hygiene",
+        "karpathy-guidelines"
+      ],
+      "gate": "2497 Safety/Approval plus27 payment T0 passes; entry gate accurately BLOCKED; no implementation claim",
+      "dropped": []
+    }
+  ],
+  "deviations": [
+    "Authority and baseline reads spanned the audit/entry windows because the user requires checking both before implementation.",
+    "No feature build/TDD slice activated: proposed paths and formal entry acceptance pending.",
+    "No paid/native/local DB lane activated; no Docker availability assumption.",
+    "No kael-ship full publication gate: no source changes, Git publication forbidden."
+  ]
+}

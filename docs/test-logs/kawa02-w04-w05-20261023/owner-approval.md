@@ -1,0 +1,1 @@
+Human approval received in this chat: "Chấp thuận phạm vi W04/W05 và các path đã đề xuất". Limited W04/W05 local entry and named paths only; no W06 or hosted release approval. Later human message confirms Docker was reopened for verification. No memory/Git/publication authority.

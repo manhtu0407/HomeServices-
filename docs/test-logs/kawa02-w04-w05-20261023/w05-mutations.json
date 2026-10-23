@@ -1,0 +1,20 @@
+[
+  {
+    "name": "v1-control",
+    "exit_code": 1,
+    "failed": 17,
+    "killed": true
+  },
+  {
+    "name": "approval-stop",
+    "exit_code": 1,
+    "failed": 1,
+    "killed": true
+  },
+  {
+    "name": "actor-scope",
+    "exit_code": 1,
+    "failed": 2,
+    "killed": true
+  }
+]
