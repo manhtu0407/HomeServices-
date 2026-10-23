@@ -1,0 +1,27 @@
+FAIL  workflow_durable_checkpoints_verification.sql
+      BEGIN
+      SET
+      SET
+      DO
+      INSERT 0 1
+      INSERT 0 1
+      INSERT 0 1
+      CREATE FUNCTION
+      CREATE TRIGGER
+      CREATE FUNCTION
+      docker.exe : ERROR:  expected rejection: WORKFLOW_IDEMPOTENCY_CONFLICT
+      At C:\ns-fix\kawa02\docker\scripts\run-sql-tests.ps1:106 char:26
+      +         $output = $sql | & docker @dockerArgs 2>&1
+      +                          ~~~~~~~~~~~~~~~~~~~~~~~~~
+          + CategoryInfo          : NotSpecified: (ERROR:  expecte...OTENCY_CONFLICT:String) [], RemoteException
+          + FullyQualifiedErrorId : NativeCommandError
+
+      CONTEXT:  PL/pgSQL function pg_temp_88.workflow_assert_error(jsonb,text) line 9 at RAISE
+      SQL statement "SELECT pg_temp.workflow_assert_error(jsonb_set(c,'{deadlineAt}',to_jsonb(clock_timestamp()+interval '3
+      minutes')),'WORKFLOW_IDEMPOTENCY_CONFLICT')"
+      PL/pgSQL function inline_code_block line 18 at PERFORM
+
+sql verification: discovered=1 executed=1 passed=0 failed=1 stopped_early=false
+
+failed files:
+  - workflow_durable_checkpoints_verification.sql

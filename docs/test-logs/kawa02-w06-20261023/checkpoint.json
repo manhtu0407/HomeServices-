@@ -1,0 +1,29 @@
+{
+  "baselineSha": "e1e0cabbc7432240fc3d8a81f83bb08b8b5c7138",
+  "branch": "codex/kawa02-durable-checkpoints-20261023",
+  "tiers": [
+    "T0",
+    "isolated-local-T1"
+  ],
+  "focusedPass": 98,
+  "w06UnitPass": 36,
+  "apiVitestPass": 5791,
+  "apiVitestSkip": 7,
+  "apiNodePass": 115,
+  "apiNodeSkip": 1,
+  "sharedPass": 189,
+  "freshCanonicalMigrations": 456,
+  "newSqlPillars": [
+    "P435",
+    "P436"
+  ],
+  "existingSqlRegressionScriptsPassed": 7,
+  "mutationControlsKilled": 3,
+  "paidCalls": 0,
+  "hostedWrites": 0,
+  "liveWiring": false,
+  "w07": "NOT_RUN",
+  "w08": "NOT_RUN",
+  "shipGate": "required on clean committed tree before push",
+  "review": "human review requested at publication; not an approval"
+}

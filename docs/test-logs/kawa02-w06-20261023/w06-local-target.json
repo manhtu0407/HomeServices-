@@ -1,0 +1,9 @@
+{
+  "environment": "disposable-local",
+  "project": "nestscout-kawa06-20261023",
+  "host": "127.0.0.1",
+  "dbPort": 61322,
+  "apiPort": 61321,
+  "linked": false,
+  "otherSessionContainers": "preserved"
+}

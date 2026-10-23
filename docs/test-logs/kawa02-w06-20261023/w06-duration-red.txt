@@ -1,0 +1,33 @@
+
+> nestscout@0.1.0 db:local:test C:\ns-fix\kawa02
+> node scripts/run.mjs docker/scripts/run-sql-tests "--container" "supabase_db_nestscout-kawa06-20261023" "--filter" "workflow_durable_checkpoints_verification.sql"
+
+FAIL  workflow_durable_checkpoints_verification.sql
+      BEGIN
+      SET
+      SET
+      DO
+      INSERT 0 1
+      INSERT 0 1
+      INSERT 0 1
+      CREATE FUNCTION
+      CREATE TRIGGER
+      CREATE FUNCTION
+      docker.exe : ERROR:  expected rejection: INVALID_WORKFLOW_DEADLINE
+      At C:\ns-fix\kawa02\docker\scripts\run-sql-tests.ps1:106 char:26
+      +         $output = $sql | & docker @dockerArgs 2>&1
+      +                          ~~~~~~~~~~~~~~~~~~~~~~~~~
+          + CategoryInfo          : NotSpecified: (ERROR:  expecte...RKFLOW_DEADLINE:String) [], RemoteException
+          + FullyQualifiedErrorId : NativeCommandError
+
+      CONTEXT:  PL/pgSQL function pg_temp_85.workflow_assert_error(jsonb,text) line 9 at RAISE
+      SQL statement "SELECT pg_temp.workflow_assert_error(c || jsonb_build_object('instanceId',gen_random_uuid(),'definition'
+      ,jsonb_set(jsonb_set(d,'{workflowId}','"duration_probe"'),'{budget,maxDurationMs}','1000')),'INVALID_WORKFLOW_DEADLINE'
+      )"
+      PL/pgSQL function inline_code_block line 14 at PERFORM
+
+sql verification: discovered=1 executed=1 passed=0 failed=1 stopped_early=false
+
+failed files:
+  - workflow_durable_checkpoints_verification.sql
+ ELIFECYCLE  Command failed with exit code 1.

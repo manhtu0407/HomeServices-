@@ -1,0 +1,213 @@
+{
+  "mission": "Publish verified W04/W05, then owner-authorized additive W06 persistence on an isolated disposable database; stop before W07",
+  "slices": [
+    {
+      "id": "release-audit",
+      "domain": "review",
+      "reach": "E",
+      "status": "closed",
+      "scope": [
+        "docs/audit/KAWA02_BACKEND_RELEASE_AUDIT.md"
+      ],
+      "read": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "governance",
+        "docs",
+        "supabase",
+        "packages",
+        "apps",
+        ".github",
+        "config",
+        "scripts",
+        ".claude/MEMORY.md"
+      ],
+      "skills": [
+        "kael-work-router",
+        "kael-subagent-orchestration",
+        "kael-backend-parity",
+        "kael-backend-structure",
+        "kael-security-sweep",
+        "kael-codebase-memory",
+        "kael-docker"
+      ],
+      "gate": "Live named Production SELECT-only catalogs/receipts plus actual bundle-file comparison and GitHub logs",
+      "dropped": []
+    },
+    {
+      "id": "entry-evidence",
+      "domain": "docs",
+      "reach": "E",
+      "status": "closed",
+      "scope": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023",
+        "docs/test-logs/kawa-execution-ledger.md",
+        "docs/test-logs/INDEX.md"
+      ],
+      "read": [
+        "docs",
+        "governance",
+        "supabase",
+        "packages",
+        "apps",
+        ".agents/skills",
+        ".claude/MEMORY.md",
+        "docker"
+      ],
+      "skills": [
+        "kael-core-hygiene",
+        "karpathy-guidelines"
+      ],
+      "gate": "2497 Safety/Approval plus27 payment T0 passes; entry gate accurately BLOCKED; no implementation claim",
+      "dropped": []
+    },
+    {
+      "id": "w04",
+      "domain": "ai",
+      "reach": "X",
+      "status": "closed",
+      "scope": [
+        "packages/shared/src/contracts/workflow-definition.ts",
+        "supabase/functions/_shared/contracts/workflow-definition.ts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+        "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+        "governance/protocols/test-pillars.md"
+      ],
+      "read": [
+        "packages/shared/src/contracts",
+        "supabase/functions/_shared/contracts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline",
+        "supabase/functions/mobile-api/_shared/platform/authz",
+        "apps/api/src/__tests__",
+        "governance",
+        "docs"
+      ],
+      "skills": [
+        "kael-tdd",
+        "kael-ai-boundary",
+        "kael-security-sweep",
+        "kael-backend-structure",
+        "kael-backend-parity",
+        "kael-core-hygiene",
+        "karpathy-guidelines",
+        "kael-codebase-memory"
+      ],
+      "gate": "31 focused pass; 3 mutants killed; types/structure/full API pass with final snapshot caveat",
+      "dropped": []
+    },
+    {
+      "id": "w05",
+      "domain": "ai",
+      "reach": "X",
+      "status": "closed",
+      "scope": [
+        "packages/shared/src/contracts/workflow-definition.ts",
+        "supabase/functions/_shared/contracts/workflow-definition.ts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts",
+        "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+        "apps/api/src/__tests__/unit/workflow-shadow-planner-pillar.test.ts",
+        "docs/test-logs/kawa02-w04-w05-20261023",
+        "governance/protocols/test-pillars.md"
+      ],
+      "read": [
+        "apps/api/src/__tests__",
+        "supabase/functions/mobile-api/_shared/kael/pipeline",
+        "supabase/functions/_shared/contracts",
+        "packages/shared/src/contracts",
+        "governance",
+        "docs"
+      ],
+      "skills": [
+        "kael-tdd",
+        "kael-ai-boundary",
+        "kael-security-sweep",
+        "kael-backend-structure",
+        "kael-backend-parity",
+        "kael-core-hygiene",
+        "karpathy-guidelines"
+      ],
+      "gate": "62focused,6mutants,full API/shared/types,Deno3modules,mobile-api1/1+4compat,OCRsource reviewed; W06blocked",
+      "dropped": []
+    },
+    {
+      "id": "w06",
+      "domain": "database",
+      "reach": "X",
+      "status": "closed",
+      "scope": [
+        "supabase/migrations/20261023020137_kael_workflow_durable_checkpoints.sql",
+        "supabase/functions/mobile-api/_shared/domains/kael-chat/workflow-checkpoints.ts",
+        "apps/api/src/__tests__/unit/workflow-durable-checkpoints-pillar.test.ts",
+        "supabase/tests/workflow_durable_checkpoints_verification.sql",
+        "supabase/tests/workflow_checkpoint_concurrency_verification.sql",
+        "packages/shared/src/types/database",
+        "governance/protocols/test-pillars.md",
+        "docs/test-logs/kawa02-w06-20261023",
+        "docs/test-logs/kawa-execution-ledger.md",
+        "docs/test-logs/INDEX.md"
+      ],
+      "read": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "governance",
+        "docs",
+        "supabase",
+        "packages/shared",
+        "apps/api",
+        "scripts",
+        "docker",
+        ".agents/skills",
+        ".claude/MEMORY.md",
+        "compose.yaml",
+        "package.json",
+        "config/harness"
+      ],
+      "skills": [
+        "kael-work-router",
+        "kael-subagent-orchestration",
+        "kael-supabase",
+        "kael-docker",
+        "kael-tdd",
+        "kael-backend-structure",
+        "kael-backend-parity",
+        "kael-security-sweep",
+        "kael-core-hygiene",
+        "karpathy-guidelines",
+        "kael-solve-conflict-maximize",
+        "kael-ship"
+      ],
+      "gate": "real disposable PostgreSQL replay, CAS, idempotency, roles, restart and transaction interruption; T0 and final regression/types/Deno/governance",
+      "dropped": []
+    },
+    {
+      "id": "w06-generated-inventory",
+      "domain": "infra",
+      "reach": "C",
+      "status": "closed",
+      "scope": [
+        "config/harness/migration-inventory.json",
+        "config/harness/access-matrix.json"
+      ],
+      "read": [
+        "config/harness",
+        "scripts/harness",
+        "supabase/migrations",
+        "packages/shared/src/types/database"
+      ],
+      "skills": [
+        "kael-ship",
+        "kael-core-hygiene",
+        "karpathy-guidelines"
+      ],
+      "gate": "canonical migration/access generators; no checker changes",
+      "dropped": []
+    }
+  ],
+  "deviations": [
+    "Historical approval-pending evidence retained; new human approval unlocks only W04/W05.",
+    "Generated pillar index updated by canonical registry command; no checker or baseline changed.",
+    "Full API before strict-only correction and final verification are distinguished by source hashes.",
+    "Supabase up proved preflight but found the existing default project; no migration was sent there. A canonical copied workdir with a unique local project/ports owns W06. Generated inventory/access/pillar/type outputs only; no gate implementation or live Plan/memory changes."
+  ]
+}

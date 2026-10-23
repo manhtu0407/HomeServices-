@@ -1,0 +1,5 @@
+{
+  "command": "node scripts/check-added-source-hygiene.mjs --working",
+  "exitCode": 0,
+  "previousInvocation": "missing required selector returned 2; preserved in final-command-results.json"
+}

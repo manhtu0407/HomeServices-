@@ -1,0 +1,1 @@
+privileged Supabase client boundary ok

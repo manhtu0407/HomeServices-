@@ -1,0 +1,21 @@
+[
+  {
+    "mutation": "remove strict scope validation",
+    "exitCode": 1,
+    "killed": true
+  },
+  {
+    "mutation": "cas-mutant",
+    "exitCode": 1,
+    "killed": true
+  },
+  {
+    "mutation": "idempotency-mutant",
+    "exitCode": 1,
+    "killed": true
+  },
+  {
+    "restoredAdapterSha256": "4f9d2089f24ff260139a32ce36a0718eb1f93356b0e84f05931edf4f40ef232b",
+    "sourceRestored": true
+  }
+]

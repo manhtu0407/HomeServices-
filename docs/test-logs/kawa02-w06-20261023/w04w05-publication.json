@@ -1,0 +1,11 @@
+{
+  "sha": "e1e0cabbc7432240fc3d8a81f83bb08b8b5c7138",
+  "pr": "https://github.com/manhtu0407/HomeServices-/pull/407",
+  "reviewRequested": "kouuuuuuuuu",
+  "merged": false,
+  "ordinaryCiRun": 39887287799,
+  "ordinaryCi": "SUCCESS",
+  "releaseQualityRun": 39887287811,
+  "releaseQuality": "FAILURE: Verify immutable main identity; individual failing assertion unknown",
+  "mergeStateStatus": "UNSTABLE"
+}

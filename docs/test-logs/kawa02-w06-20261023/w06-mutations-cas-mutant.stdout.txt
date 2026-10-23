@@ -1,0 +1,71 @@
+FAIL  workflow_checkpoint_concurrency_verification.sql
+      CREATE EXTENSION
+      INSERT 0 1
+      SET
+      CREATE TABLE
+      INSERT 0 2
+                                                                                                                                                                                                                                                                               kael_workflow_checkpoint_v1
+      ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+       {"id": "3c2109ca-2fb7-4ec3-8a1e-3f7e19eaf099", "job_id": null, "status": "active", "actor_id": "d4360000-0000-4000-8000-000000000001", "retry_at": null, "actor_role": "customer", "checkpoint": "start", "created_at": "2026-10-23T03:02:12.296032+00:00", "updated_at": "2026-10-23T03:02:12.296032+00:00", "deadline_at": "2026-10-23T03:06:12.218872+00:00", "retry_count": 0, "workflow_id": "checkpoint_race_fixture", "event_sequence": 0, "worker_case_id": null, "terminal_reason": null, "customer_case_id": null, "instance_version": 0, "definition_version": 2}
+       {"id": "62c09aab-e054-40d2-b3a5-196b03835b1b", "job_id": null, "status": "active", "actor_id": "d4360000-0000-4000-8000-000000000001", "retry_at": null, "actor_role": "customer", "checkpoint": "start", "created_at": "2026-10-23T03:02:12.316202+00:00", "updated_at": "2026-10-23T03:02:12.316202+00:00", "deadline_at": "2026-10-23T03:06:12.219158+00:00", "retry_count": 0, "workflow_id": "checkpoint_race_fixture", "event_sequence": 0, "worker_case_id": null, "terminal_reason": null, "customer_case_id": null, "instance_version": 0, "definition_version": 2}
+      (2 rows)
+
+      UPDATE 2
+       dblink_connect
+      ----------------
+       OK
+      (1 row)
+
+       dblink_connect
+      ----------------
+       OK
+      (1 row)
+
+       dblink_exec
+      -------------
+       SET
+      (1 row)
+
+       dblink_exec
+      -------------
+       SET
+      (1 row)
+
+      CREATE TABLE
+      docker.exe : ERROR:  CAS did not produce exactly one winner: [{"name": "cas", "side": "a", "failure": null, "payload":
+      {"id": "3c2109ca-2fb7-4ec3-8a1e-3f7e19eaf099", "job_id": null, "status": "active", "actor_id":
+      "d4360000-0000-4000-8000-000000000001", "retry_at": null, "actor_role": "customer", "checkpoint": "middle",
+      "created_at": "2026-10-23T03:02:12.296032+00:00", "updated_at": "2026-10-23T03:02:12.399559+00:00", "deadline_at":
+      "2026-10-23T03:06:12.218872+00:00", "retry_count": 0, "workflow_id": "checkpoint_race_fixture", "event_sequence": 0,
+      "worker_case_id": null, "terminal_reason": null, "customer_case_id": null, "instance_version": 1,
+      "definition_version": 2}}, {"name": "cas", "side": "b", "failure": null, "payload": {"id":
+      "3c2109ca-2fb7-4ec3-8a1e-3f7e19eaf099", "job_id": null, "status": "succeeded", "actor_id":
+      "d4360000-0000-4000-8000-000000000001", "retry_at": null, "actor_role": "customer", "checkpoint": "done",
+      "created_at": "2026-10-23T03:02:12.296032+00:00", "updated_at": "2026-10-23T03:02:12.911088+00:00", "deadline_at":
+      "2026-10-23T03:06:12.218872+00:00", "retry_count": 0, "workflow_id": "checkpoint_race_fixture", "event_sequence": 0,
+      "worker_case_id": null, "terminal_reason": "node_finished", "customer_case_id": null, "instance_version": 2,
+      "definition_version": 2}}, {"name": "idempotent", "side": "a", "failure": null, "payload": {"id":
+      "62c09aab-e054-40d2-b3a5-196b03835b1b", "job_id": null, "status": "active", "actor_id":
+      "d4360000-0000-4000-8000-000000000001", "retry_at": null, "actor_role": "customer", "checkpoint": "middle",
+      "created_at": "2026-10-23T03:02:12.316202+00:00", "updated_at": "2026-10-23T03:02:12.919079+00:00", "deadline_at":
+      "2026-10-23T03:06:12.219158+00:00", "retry_count": 0, "workflow_id": "checkpoint_race_fixture", "event_sequence": 0,
+      "worker_case_id": null, "terminal_reason": null, "customer_case_id": null, "instance_version": 1,
+      "definition_version": 2}}, {"name": "idempotent", "side": "b", "failure": null, "payload": {"id":
+      "62c09aab-e054-40d2-b3a5-196b03835b1b", "job_id": null, "status": "active", "actor_id":
+      "d4360000-0000-4000-8000-000000000001", "retry_at": null, "actor_role": "customer", "checkpoint": "middle",
+      "created_at": "2026-10-23T03:02:12.316202+00:00", "updated_at": "2026-10-23T03:02:12.919079+00:00", "deadline_at":
+      "2026-10-23T03:06:12.219158+00:00", "retry_count": 0, "workflow_id": "checkpoint_race_fixture", "event_sequence": 0,
+      "worker_case_id": null, "terminal_reason": null, "customer_case_id": null, "instance_version": 1,
+      "definition_version": 2}}]
+      At C:\ns-fix\kawa02\docker\scripts\run-sql-tests.ps1:104 char:26
+      + ... ut = $sql | & docker exec -i $Container sh -lc $dblinkPsqlCommand 2>& ...
+      +                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          + CategoryInfo          : NotSpecified: (ERROR:  CAS did..._version": 2}}]:String) [], RemoteException
+          + FullyQualifiedErrorId : NativeCommandError
+
+      CONTEXT:  PL/pgSQL function inline_code_block line 22 at RAISE
+
+sql verification: discovered=1 executed=1 passed=0 failed=1 stopped_early=false
+
+failed files:
+  - workflow_checkpoint_concurrency_verification.sql

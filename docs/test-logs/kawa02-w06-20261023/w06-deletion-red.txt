@@ -1,0 +1,32 @@
+
+> nestscout@0.1.0 db:local:test C:\ns-fix\kawa02
+> node scripts/run.mjs docker/scripts/run-sql-tests "--container" "supabase_db_nestscout-kawa06-20261023" "--filter" "workflow_durable_checkpoints_verification.sql"
+
+FAIL  workflow_durable_checkpoints_verification.sql
+      BEGIN
+      SET
+      SET
+      DO
+      INSERT 0 1
+      INSERT 0 1
+      INSERT 0 1
+      CREATE FUNCTION
+      CREATE TRIGGER
+      CREATE FUNCTION
+      docker.exe : ERROR:  update or delete on table "kael_chat_sessions" violates foreign key constraint
+      "kael_workflow_instances_customer_case_id_fkey" on table "kael_workflow_instances"
+      At C:\ns-fix\kawa02\docker\scripts\run-sql-tests.ps1:106 char:26
+      +         $output = $sql | & docker @dockerArgs 2>&1
+      +                          ~~~~~~~~~~~~~~~~~~~~~~~~~
+          + CategoryInfo          : NotSpecified: (ERROR:  update ...flow_instances":String) [], RemoteException
+          + FullyQualifiedErrorId : NativeCommandError
+
+      DETAIL:  Key (id)=(d4350000-0000-4000-8000-000000000201) is still referenced from table "kael_workflow_instances".
+      CONTEXT:  SQL statement "delete from public.kael_chat_sessions where id='d4350000-0000-4000-8000-000000000201'"
+      PL/pgSQL function inline_code_block line 105 at SQL statement
+
+sql verification: discovered=1 executed=1 passed=0 failed=1 stopped_early=false
+
+failed files:
+  - workflow_durable_checkpoints_verification.sql
+ ELIFECYCLE  Command failed with exit code 1.
