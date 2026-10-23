@@ -1,0 +1,63 @@
+warn   [executed-sql] apps/api/src/__tests__/schema/customer-worker-candidate-gate-migration.test.ts:18  ships rollback-only ownership, race, and retry verification
+warn   [executed-sql] apps/api/src/__tests__/schema/kael-durable-guards-migration.test.ts:49  ships a rollback-only runtime harness for local/staging verification
+warn   [executed-sql] apps/api/src/__tests__/schema/six-service-casework-foundation-migration.test.ts:26  ships rollback-only positive and negative actor verification
+warn   [executed-sql] apps/api/src/__tests__/schema/tier7-staging-security-harness.test.ts:16  uses a rollback-only transaction for remote staging fixtures
+warn   [executed-sql] apps/api/src/__tests__/schema/worker-manual-payouts.test.ts:44  ships rollback-only database verification for RLS, service grants, immutability, and payout controls
+warn   [mobile-source] apps/mobile/app/__tests__/native-ios-liquid-tabs-pillar-test.tsx:124  renders Kael as a sibling of the tab plane in the same row, never inside or above it
+warn   [mobile-source] apps/mobile/app/__tests__/native-ios-liquid-tabs-pillar-test.tsx:152  keeps exactly four Worker routes on the left and Kael on the same row to the right
+warn   [mobile-source] apps/mobile/components/__tests__/apple-permission-behavior-pillar-test.tsx:79  routes both Camera actions through the shared permission state machine
+warn   [mobile-source] apps/mobile/components/admin/__tests__/admin-finance-focused-capabilities-pillar-test.tsx:576  keeps payout and reporting details inline, masked and file-based
+warn   [mobile-source] apps/mobile/components/admin/__tests__/admin-operations-support-workspaces-pillar-test.tsx:300  contains no polling, focus reload, dispute decision, or queue-resolution call site
+warn   [mobile-source] apps/mobile/components/admin/__tests__/admin-operations-support-workspaces-pillar-test.tsx:313  wires both capabilities as connected Production workspaces without reusing governance
+warn   [mobile-source] apps/mobile/components/admin/__tests__/admin-team-system-workspaces-pillar-test.tsx:265  uses dedicated capability workspaces without a nested Modal
+warn   [mobile-source] apps/mobile/components/admin/__tests__/admin-team-system-workspaces-pillar-test.tsx:274  keeps System mutations in dedicated review flows and Team confirmation explicit
+warn   [mobile-source] apps/mobile/components/admin/__tests__/admin-team-system-workspaces-pillar-test.tsx:293  uses contextual System search placeholders instead of generic Production copy
+warn   [mobile-source] apps/mobile/components/auth/__tests__/auth-surfaces-test.tsx:209  uses the ZIP logo motion and removes the legacy Lottie runtime
+warn   [mobile-source] apps/mobile/components/auth/__tests__/auth-surfaces-test.tsx:238  leaves login TextInputs as the native touch responder instead of wrapping them in a press handler
+warn   [mobile-source] apps/mobile/components/auth/__tests__/auth-surfaces-test.tsx:272  keeps auth form inputs outside native glass containers on iOS
+warn   [mobile-source] apps/mobile/components/auth/__tests__/auth-surfaces-test.tsx:628  renders the approved static brand gate with no pre-selected role
+warn   [mobile-source] apps/mobile/components/customer/__tests__/basic-intake-source-test.ts:13  keeps the booking route on Basic Intake instead of wiring the static performance questionnaire
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-history-surface-test.tsx:243  renders the empty state on the same card design as the unavailable state
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-home-surface-test.tsx:238  renders the accepted V4 home sections without prototype-only claims
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-home-surface-test.tsx:373  uses a distinct transparent service-start icon without a square tile for the home empty state
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-home-surface-test.tsx:391  uses a transparent nav-only icon for Activity without replacing Activity and History visuals
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-home-surface-test.tsx:401  uses distinct generated icon assets for each expanded service path
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:479  routes Customer Kael through the V21 surface instead of the deleted split stack
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:518  keeps full-screen mint washes soft on the active V21 Kael route
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:533  keeps the Case Work activity action on Activity after retiring the Profile command center
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:547  uses native-safe SVG stop opacity for TestFlight aura parity
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:698  uses the new Kael mascot motion contract in the empty state
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:705  uses reduced-motion-aware liquid spring feedback across the header and session controls
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:2676  keeps Customer Kael isolated from Worker session services
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:2690  keeps a blank Work handling route stable while unrelated workflow data changes
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:2709  wires a compact Customer-owned session menu with per-mode CRUD actions
+warn   [mobile-source] apps/mobile/components/customer/__tests__/customer-kael-chat-surface-test.tsx:2734  keeps the Kael chat surface visual while bounded domain hooks own orchestration
+warn   [mobile-source] apps/mobile/components/customer/__tests__/kael-chat-mascot-pillar-test.tsx:54  uses the shared mascot on empty, response, case-work, and process surfaces
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-home-opportunity-intake-pillar-test.tsx:285  keeps Home search, exact selection, and composer handoff free of direct workflow mutations
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-home-production-pillar-test.tsx:393  keeps Production independent from Prototype fixtures and removes the old visual shell
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-empty-copy-pillar-test.tsx:26  keeps the empty-state message short enough to fit without truncation
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-workart-alpha-pillar-test.tsx:32  ships a dedicated transparent asset for every supported Jobs service
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-workart-alpha-pillar-test.tsx:58  keeps opportunity Workart full-bleed and free of a repeated tile shell
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-zip-prototype-pillar-test.tsx:149  keeps prototype stage query construction in one route helper
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-zip-prototype-pillar-test.tsx:174  keeps Stage 4 on the approved V3 hierarchy and the real backend boundary
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-zip-prototype-pillar-test.tsx:283  removes Prototype add-photo pills without removing the upload slots
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-zip-prototype-pillar-test.tsx:290  uses one flat checklist frame instead of repeated Prototype cards
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-zip-prototype-pillar-test.tsx:298  separates primary work from contextual active status visually
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-zip-prototype-pillar-test.tsx:304  renders Stage 6 as the Timeline Card without the progress rail, which keeps its aura switch for other callers
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-zip-prototype-pillar-test.tsx:311  gives Stage 5 review controls and markers a clearer shared scale
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-jobs-zip-prototype-pillar-test.tsx:322  keeps Stage 10 Concept B aligned to the supplied completion surface
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-eight-production-pillar-test.tsx:29  routes Production Stage 8 to the fidelity body and excludes the supplied top strip
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-eight-production-pillar-test.tsx:42  opens Production Stage 8 on its evidence body without the shared worker header
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-eight-production-pillar-test.tsx:51  keeps the real B7 media and status boundary wired
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-eight-production-pillar-test.tsx:64  ships the extracted V3 visual asset set
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-eight-production-pillar-test.tsx:87  draws bare vector section icons and keeps the submit action text-only
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-nine-empty-pillar-test.tsx:202  hides the shared worker header only for the empty Stage 9 record
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-nine-empty-pillar-test.tsx:249  ships the approved scene unchanged
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-six-production-pillar-test.tsx:205  keeps Stage 6 on the existing workflow handlers and release gate in Production
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-six-production-pillar-test.tsx:276  scales the approved phone artboard with the device instead of fixed pixels
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-stage-six-production-pillar-test.tsx:314  ships the approved workart asset
+warn   [mobile-source] apps/mobile/components/worker/__tests__/worker-v5-icon-assets-test.ts:50  uses true-alpha Workart for every Jobs opportunity service
+
+0 banned, 59 warn, across 822 test files.
+
+----- stderr -----

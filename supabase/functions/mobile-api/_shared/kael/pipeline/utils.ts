@@ -1,5 +1,8 @@
 import { sanitizeForLLM } from "../../../../_shared/domain.ts";
 import { detectRequestedApplianceWork } from "../kael-guardrails/requested-work.ts";
+import { maskExplicitlyExcludedScopeForIntent } from "../kael-guardrails/scope-exclusions.ts";
+
+export { maskExplicitlyExcludedScopeForIntent };
 
 export function readBooleanEnvFlag(
   value: string | undefined,
@@ -42,13 +45,6 @@ export function looksLikePrivateUnitIdentifier(value: string, trailingContext = 
 
 function followsServiceMeasurementUnit(trailingContext: string) {
   return /^[^\S\r\n]*(?:HP|BTU|V|A|W|kW|KW|Hz)\b/u.test(trailingContext);
-}
-
-export function maskExplicitlyExcludedScopeForIntent(input: string): string {
-  return input.replace(
-    /(^|[^\p{L}\p{N}])(?:loại trừ|loai tru|không bao gồm|khong bao gom|không gồm|khong gom|excluding|excluded|not included)[^.;\n]*(?:[.;]|\n|$)/giu,
-    "$1[excluded scope].",
-  );
 }
 
 export function scrubSensitiveForLLM(input: string): string {
@@ -100,11 +96,12 @@ export function scrubCustomerCaseContextForLLM(input: string): string {
   return scrubbed;
 }
 
-export function hasUnsupportedRepairIntent(input: string): boolean {
-  const normalized = input.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+export function hasUnsupportedRepairIntent(input: string, selectedService?: string): boolean {
+  const includedScope = maskExplicitlyExcludedScopeForIntent(input);
+  const normalized = includedScope.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
-  const requested = detectRequestedApplianceWork(input);
-  return ["tu lanh", "may giat", "internet"].some((keyword) => requested.has(keyword)) ||
+  const requested = detectRequestedApplianceWork(includedScope, selectedService);
+  return [...requested].some((keyword) => keyword !== "may bom") ||
     ["sua khoa", "son nha"].some((keyword) => normalized.includes(keyword));
 }
 

@@ -185,13 +185,10 @@ const INCIDENTAL_FRAMES: ReadonlyArray<(appliance: Appliance, work: string) => s
   (appliance, work) => `Không biết là ${appliance.name} hay đường dây bị hỏng, nhờ ${work}.`,
 ]
 
-const handedToRoutingPolicy = (service: Service, flags: 'off' | 'on') => service === 'electrical' && flags === 'on'
-
 function misdecided(rows: ReadonlyArray<readonly [Service, string]>, expectOk: boolean) {
   const misses: string[] = []
   for (const flags of ['off', 'on'] as const) {
     for (const [service, text] of rows) {
-      if (!expectOk && handedToRoutingPolicy(service, flags)) continue
       const got = decide(service, text, flags)
       const reason = got.ok ? 'ok' : got.reason
       if (got.ok !== expectOk || (!expectOk && reason !== 'out_of_scope')) misses.push(`[${flags}] ${service}: ${JSON.stringify(text)} -> ${reason}`)
@@ -477,10 +474,10 @@ describe(`${PILLAR.id}: a third probe set, written after the second fix, run onc
   })
 })
 
-describe(`${PILLAR.id}: wording the detector does not recognise today (pinned: a known miss, not a fix)`, () => {
-  it.each([...KNOWN_MISSES])('"%s" (wanted: %s) is decided the other way today', (text, wanted) => {
-    const got = decide('handyman', text, 'off')
-    expect(got.ok, pillarWhy(PILLAR, `known miss: ${JSON.stringify(text)}`)).toBe(wanted === 'refuse')
+describe(`${PILLAR.id}: previously pinned incorrect decisions now meet the requested-work policy`, () => {
+  it.each([...KNOWN_MISSES])('"%s" (wanted: %s) is decided correctly', (text, wanted) => {
+    const got = decide(wanted === 'open' ? 'plumbing' : 'handyman', text, 'off')
+    expect(got.ok, pillarWhy(PILLAR, `known miss: ${JSON.stringify(text)}`)).toBe(wanted === 'open')
   })
 })
 

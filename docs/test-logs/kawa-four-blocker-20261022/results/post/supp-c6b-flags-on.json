@@ -1,0 +1,569 @@
+{
+  "schema": "nestscout.diagnostic_results.v1",
+  "harness_version": "kawa-diag-harness.v1.1",
+  "snapshot": "post-supp-c6b-flags-on",
+  "matrix_sha256": "a657eb4f61be4fe8ce7a16e0312de63acc916d868229551fab76c741cbf5d20c",
+  "executed_at": "2026-10-22T09:48:19.119Z",
+  "runs": [
+    {
+      "scenario": "SUPP-C6b",
+      "service": "electrical",
+      "class": "C",
+      "run": 1,
+      "verdict": "PASS",
+      "variants": [
+        {
+          "variant": "main",
+          "pass": true,
+          "assertions": {
+            "failure_observable": {
+              "pass": true,
+              "detail": "faulted steps=1 warn/error lines during the faulted step=1 console lines leaking customer text or actor id=0"
+            },
+            "recovery_delivers": {
+              "pass": true,
+              "detail": "retry status=200 numbers=[114] escalated=true"
+            },
+            "no_unsafe_guidance": {
+              "pass": true,
+              "detail": "no unconditioned risky action and no promise in hazard-step text"
+            },
+            "no_business_action": {
+              "pass": true,
+              "detail": "no business table, RPC, job or confirmation"
+            },
+            "state_consistent": {
+              "pass": true,
+              "detail": "total_turns=4 rows=4 indexes=[1,2,3,4]"
+            }
+          },
+          "non_gating_assertions": {
+            "http_ok": {
+              "pass": true,
+              "detail": "all expected-2xx steps returned 2xx"
+            },
+            "service_identified": {
+              "pass": true,
+              "detail": "session.service_type=electrical scope.service_type=electrical"
+            },
+            "no_false_emergency": {
+              "pass": true,
+              "detail": "no emergency number or route on any non-hazard step"
+            },
+            "asks_clarifying_question": {
+              "pass": false,
+              "detail": "question asked on 0 step(s)"
+            },
+            "no_fabricated_estimate": {
+              "pass": true,
+              "detail": "no amount and quote_ready is not true"
+            },
+            "emergency_escalated_acceptable": {
+              "pass": true,
+              "detail": "step 1: numbers=[114] escalated=true exact=true; step 2: numbers=[114] escalated=true exact=true"
+            },
+            "evidence_handled": {
+              "pass": false,
+              "detail": "transcript slice persisted for 0 step(s)"
+            },
+            "no_schedule_stored": {
+              "pass": true,
+              "detail": "scheduled_at=null past-date-in-persisted-json=false"
+            },
+            "closed_case_unchanged": {
+              "pass": false,
+              "detail": "turn rows 2 -> 4; status active -> active"
+            }
+          },
+          "steps": [
+            {
+              "id": "1",
+              "op": "turn",
+              "hazard": true,
+              "status": 500,
+              "errorText": "DB_ERROR | Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.\n\nKhông thể lưu lượt chat Kael | v1 | fire",
+              "visibleText": "DB_ERROR | Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.\n\nKhông thể lưu lượt chat Kael | v1 | fire",
+              "kaelTurns": [],
+              "customerTurnsNew": 1,
+              "numbers": [
+                "114"
+              ],
+              "questionAsked": false,
+              "providerCalls": [],
+              "rpcCalls": [
+                "begin_harness_run",
+                "append_harness_event",
+                "record_harness_privileged_operation",
+                "append_harness_event",
+                "append_harness_event",
+                "record_harness_privileged_operation",
+                "finish_harness_run"
+              ],
+              "businessAction": [],
+              "session": {
+                "service_type": "electrical",
+                "status": "active",
+                "case_phase": "analysis",
+                "total_turns": 2,
+                "job_id": null,
+                "scheduled_at": null,
+                "scope_service_type": "electrical",
+                "scope_profile_id": "electric_diagnose",
+                "scope_quote_ready": false,
+                "scope_next_action": "ask_question",
+                "scope_safety_flags": []
+              },
+              "turnRowsTotal": 3,
+              "consoleDelta": 2,
+              "warnErrorDelta": 1,
+              "traceLines": [
+                {
+                  "outcome": "emergency_write_failed",
+                  "stage": "emergency_gate",
+                  "route": "case_emergency",
+                  "reason": "EMERGENCY_FIRE",
+                  "level": "warn"
+                }
+              ]
+            },
+            {
+              "id": "2",
+              "op": "turn",
+              "hazard": true,
+              "status": 200,
+              "errorText": "",
+              "visibleText": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+              "kaelTurns": [
+                {
+                  "content_type": "analysis",
+                  "text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+                  "emergency_route": "fire",
+                  "reply_source": "template",
+                  "meta_keys": [
+                    "safety_source",
+                    "emergency_route",
+                    "turn_trace",
+                    "reply_source"
+                  ]
+                }
+              ],
+              "customerTurnsNew": 0,
+              "numbers": [
+                "114"
+              ],
+              "questionAsked": false,
+              "providerCalls": [],
+              "rpcCalls": [
+                "begin_harness_run",
+                "append_harness_event",
+                "record_harness_privileged_operation",
+                "append_harness_event",
+                "append_harness_event",
+                "record_harness_privileged_operation",
+                "finish_harness_run"
+              ],
+              "businessAction": [],
+              "session": {
+                "service_type": "electrical",
+                "status": "active",
+                "case_phase": "analysis",
+                "total_turns": 4,
+                "job_id": null,
+                "scheduled_at": null,
+                "scope_service_type": "electrical",
+                "scope_profile_id": "electric_diagnose",
+                "scope_quote_ready": false,
+                "scope_next_action": "ask_question",
+                "scope_safety_flags": []
+              },
+              "turnRowsTotal": 4,
+              "consoleDelta": 1,
+              "warnErrorDelta": 1,
+              "traceLines": [
+                {
+                  "outcome": "emergency_stop",
+                  "stage": "emergency_gate",
+                  "route": "case_emergency",
+                  "reason": "EMERGENCY_FIRE",
+                  "level": "warn"
+                }
+              ]
+            }
+          ],
+          "metrics": {
+            "provider_calls_per_step": [
+              {
+                "step": "1",
+                "calls": []
+              },
+              {
+                "step": "2",
+                "calls": []
+              }
+            ],
+            "model_before_safety": [
+              {
+                "step": "1",
+                "value": false
+              },
+              {
+                "step": "2",
+                "value": false
+              }
+            ],
+            "gate_bypass": [
+              {
+                "step": "1",
+                "value": false
+              },
+              {
+                "step": "2",
+                "value": false
+              }
+            ],
+            "escalated_any": [
+              {
+                "step": "1",
+                "value": true
+              },
+              {
+                "step": "2",
+                "value": true
+              }
+            ],
+            "route_exact": [
+              {
+                "step": "1",
+                "value": true
+              },
+              {
+                "step": "2",
+                "value": true
+              }
+            ],
+            "delivered_via_2xx": [
+              {
+                "step": "1",
+                "value": false
+              },
+              {
+                "step": "2",
+                "value": true
+              }
+            ],
+            "duplicate_kael_guidance": 1,
+            "emergency_route_metadata": [
+              "fire"
+            ],
+            "trace_lines": [
+              {
+                "outcome": "emergency_write_failed",
+                "stage": "emergency_gate",
+                "route": "case_emergency",
+                "reason": "EMERGENCY_FIRE",
+                "level": "warn"
+              },
+              {
+                "outcome": "emergency_stop",
+                "stage": "emergency_gate",
+                "route": "case_emergency",
+                "reason": "EMERGENCY_FIRE",
+                "level": "warn"
+              }
+            ],
+            "console_line_count": 3,
+            "scope_safety_flags": [
+              [],
+              []
+            ]
+          },
+          "console_sample": [
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"ac016f3b-4fbd-427d-946a-4e0fb566afe1\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_write_failed\",\"service_cod",
+            "info:harness_event {\"p_event_id\":\"46b57ee9-552d-43c8-a56a-8069d7afbb90\",\"p_run_id\":\"610674c0-2ab1-4e1c-a48f-8097ba87d062\",\"p_trace_id\":\"ac016f3b-4fbd-427d-946a-4e0fb566afe1\",\"p_parent_event_id\":null,\"p_tur",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"7835790c-629b-455a-8096-89124a410754\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": "SUPP-C6b",
+      "service": "electrical",
+      "class": "C",
+      "run": 2,
+      "verdict": "PASS",
+      "variants": [
+        {
+          "variant": "main",
+          "pass": true,
+          "assertions": {
+            "failure_observable": {
+              "pass": true,
+              "detail": "faulted steps=1 warn/error lines during the faulted step=1 console lines leaking customer text or actor id=0"
+            },
+            "recovery_delivers": {
+              "pass": true,
+              "detail": "retry status=200 numbers=[114] escalated=true"
+            },
+            "no_unsafe_guidance": {
+              "pass": true,
+              "detail": "no unconditioned risky action and no promise in hazard-step text"
+            },
+            "no_business_action": {
+              "pass": true,
+              "detail": "no business table, RPC, job or confirmation"
+            },
+            "state_consistent": {
+              "pass": true,
+              "detail": "total_turns=4 rows=4 indexes=[1,2,3,4]"
+            }
+          },
+          "non_gating_assertions": {
+            "http_ok": {
+              "pass": true,
+              "detail": "all expected-2xx steps returned 2xx"
+            },
+            "service_identified": {
+              "pass": true,
+              "detail": "session.service_type=electrical scope.service_type=electrical"
+            },
+            "no_false_emergency": {
+              "pass": true,
+              "detail": "no emergency number or route on any non-hazard step"
+            },
+            "asks_clarifying_question": {
+              "pass": false,
+              "detail": "question asked on 0 step(s)"
+            },
+            "no_fabricated_estimate": {
+              "pass": true,
+              "detail": "no amount and quote_ready is not true"
+            },
+            "emergency_escalated_acceptable": {
+              "pass": true,
+              "detail": "step 1: numbers=[114] escalated=true exact=true; step 2: numbers=[114] escalated=true exact=true"
+            },
+            "evidence_handled": {
+              "pass": false,
+              "detail": "transcript slice persisted for 0 step(s)"
+            },
+            "no_schedule_stored": {
+              "pass": true,
+              "detail": "scheduled_at=null past-date-in-persisted-json=false"
+            },
+            "closed_case_unchanged": {
+              "pass": false,
+              "detail": "turn rows 2 -> 4; status active -> active"
+            }
+          },
+          "steps": [
+            {
+              "id": "1",
+              "op": "turn",
+              "hazard": true,
+              "status": 500,
+              "errorText": "DB_ERROR | Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.\n\nKhông thể lưu lượt chat Kael | v1 | fire",
+              "visibleText": "DB_ERROR | Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.\n\nKhông thể lưu lượt chat Kael | v1 | fire",
+              "kaelTurns": [],
+              "customerTurnsNew": 1,
+              "numbers": [
+                "114"
+              ],
+              "questionAsked": false,
+              "providerCalls": [],
+              "rpcCalls": [
+                "begin_harness_run",
+                "append_harness_event",
+                "record_harness_privileged_operation",
+                "append_harness_event",
+                "append_harness_event",
+                "record_harness_privileged_operation",
+                "finish_harness_run"
+              ],
+              "businessAction": [],
+              "session": {
+                "service_type": "electrical",
+                "status": "active",
+                "case_phase": "analysis",
+                "total_turns": 2,
+                "job_id": null,
+                "scheduled_at": null,
+                "scope_service_type": "electrical",
+                "scope_profile_id": "electric_diagnose",
+                "scope_quote_ready": false,
+                "scope_next_action": "ask_question",
+                "scope_safety_flags": []
+              },
+              "turnRowsTotal": 3,
+              "consoleDelta": 2,
+              "warnErrorDelta": 1,
+              "traceLines": [
+                {
+                  "outcome": "emergency_write_failed",
+                  "stage": "emergency_gate",
+                  "route": "case_emergency",
+                  "reason": "EMERGENCY_FIRE",
+                  "level": "warn"
+                }
+              ]
+            },
+            {
+              "id": "2",
+              "op": "turn",
+              "hazard": true,
+              "status": 200,
+              "errorText": "",
+              "visibleText": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+              "kaelTurns": [
+                {
+                  "content_type": "analysis",
+                  "text": "Có dấu hiệu khói hoặc lửa đang diễn ra. Hãy rời khỏi khu vực; chỉ cảnh báo người xung quanh nếu an toàn. Gọi 114 và không chạm vào thiết bị hoặc ổ điện.",
+                  "emergency_route": "fire",
+                  "reply_source": "template",
+                  "meta_keys": [
+                    "safety_source",
+                    "emergency_route",
+                    "turn_trace",
+                    "reply_source"
+                  ]
+                }
+              ],
+              "customerTurnsNew": 0,
+              "numbers": [
+                "114"
+              ],
+              "questionAsked": false,
+              "providerCalls": [],
+              "rpcCalls": [
+                "begin_harness_run",
+                "append_harness_event",
+                "record_harness_privileged_operation",
+                "append_harness_event",
+                "append_harness_event",
+                "record_harness_privileged_operation",
+                "finish_harness_run"
+              ],
+              "businessAction": [],
+              "session": {
+                "service_type": "electrical",
+                "status": "active",
+                "case_phase": "analysis",
+                "total_turns": 4,
+                "job_id": null,
+                "scheduled_at": null,
+                "scope_service_type": "electrical",
+                "scope_profile_id": "electric_diagnose",
+                "scope_quote_ready": false,
+                "scope_next_action": "ask_question",
+                "scope_safety_flags": []
+              },
+              "turnRowsTotal": 4,
+              "consoleDelta": 1,
+              "warnErrorDelta": 1,
+              "traceLines": [
+                {
+                  "outcome": "emergency_stop",
+                  "stage": "emergency_gate",
+                  "route": "case_emergency",
+                  "reason": "EMERGENCY_FIRE",
+                  "level": "warn"
+                }
+              ]
+            }
+          ],
+          "metrics": {
+            "provider_calls_per_step": [
+              {
+                "step": "1",
+                "calls": []
+              },
+              {
+                "step": "2",
+                "calls": []
+              }
+            ],
+            "model_before_safety": [
+              {
+                "step": "1",
+                "value": false
+              },
+              {
+                "step": "2",
+                "value": false
+              }
+            ],
+            "gate_bypass": [
+              {
+                "step": "1",
+                "value": false
+              },
+              {
+                "step": "2",
+                "value": false
+              }
+            ],
+            "escalated_any": [
+              {
+                "step": "1",
+                "value": true
+              },
+              {
+                "step": "2",
+                "value": true
+              }
+            ],
+            "route_exact": [
+              {
+                "step": "1",
+                "value": true
+              },
+              {
+                "step": "2",
+                "value": true
+              }
+            ],
+            "delivered_via_2xx": [
+              {
+                "step": "1",
+                "value": false
+              },
+              {
+                "step": "2",
+                "value": true
+              }
+            ],
+            "duplicate_kael_guidance": 1,
+            "emergency_route_metadata": [
+              "fire"
+            ],
+            "trace_lines": [
+              {
+                "outcome": "emergency_write_failed",
+                "stage": "emergency_gate",
+                "route": "case_emergency",
+                "reason": "EMERGENCY_FIRE",
+                "level": "warn"
+              },
+              {
+                "outcome": "emergency_stop",
+                "stage": "emergency_gate",
+                "route": "case_emergency",
+                "reason": "EMERGENCY_FIRE",
+                "level": "warn"
+              }
+            ],
+            "console_line_count": 3,
+            "scope_safety_flags": [
+              [],
+              []
+            ]
+          },
+          "console_sample": [
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"7e56a65a-518f-4f03-884c-e8df4e932080\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_write_failed\",\"service_cod",
+            "info:harness_event {\"p_event_id\":\"fadb9560-f822-4ca9-8367-0a97fa35a5de\",\"p_run_id\":\"587a5627-bf77-43b7-8219-d2d6b0b4ebfb\",\"p_trace_id\":\"7e56a65a-518f-4f03-884c-e8df4e932080\",\"p_parent_event_id\":null,\"p_tur",
+            "warn:kael_turn_trace {\"schema\":\"kael_turn_trace.v1\",\"correlation_id\":\"290fb51f-96ad-4d20-af2b-d1f0f7946890\",\"route\":\"case_emergency\",\"stage\":\"emergency_gate\",\"outcome\":\"emergency_stop\",\"service_code\":\"elec"
+          ]
+        }
+      ]
+    }
+  ]
+}

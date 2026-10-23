@@ -1,0 +1,32 @@
+psql:/tmp/confirm-accept-concurrency.sql:4: NOTICE:  extension "dblink" already exists, skipping
+CREATE EXTENSION
+INSERT 0 1
+DO
+DO
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+2
+UPDATE 1
+UPDATE 2
+2
+OK
+OK
+CREATE TABLE
+CREATE FUNCTION
+
+
+UPDATE 0
+
+OK
+OK
+confirm_same_key|first|true||false|awaiting_customer_confirm|
+confirm_same_key|second|true||true|awaiting_customer_confirm|
+turn_index|first|||||
+turn_index|second|||||23505 duplicate key value violates unique constraint "kael_chat_turns_session_id_turn_index_key"
+worker_accept|first|true||false|worker_candidate_pending|
+worker_accept|second|false|NOT_FOUND|false||
+DO
+confirmation, accept and turn-index concurrency: all assertions passed

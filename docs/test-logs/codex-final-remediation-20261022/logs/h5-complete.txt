@@ -1,0 +1,42 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts (23 tests | 1 failed) 2054ms
+     × development-h3.json: every labelled row routes as labelled 32ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts > P410-kael-emergency-phrase-sets: the development sets > development-h3.json: every labelled row routes as labelled
+AssertionError: [P410-kael-emergency-phrase-sets] the emergency classifier answers four hand-written development phrase sets exactly as labelled, a fifth set stays sealed (its hash is fixed, nothing in the suite or the source copies a phrase from it, and it is evaluated only on an explicit request), no phrase of any length makes classification slow, and the contestable phrasings are pinned to their current behavior so a change of route is an explicit decision
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01_Foundation_Safety_Evaluation.pdf W01 (emergency routing false negatives and false positives)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P408-kael-case-emergency-all-fields
+detail:    H3 rows that no longer route as labelled: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "H3-044 \"Em bị giật mình khi nghe tiếng sét đánh\" expected null got medical",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts:94:90
+     92|       .map(({ row, got }) => `${row.id} "${row.text}" expected ${row.e…
+     93|     expect(set.status, pillarWhy(PILLAR, `${file} is a development set…
+     94|     expect(wrong, pillarWhy(PILLAR, `${set.set} rows that no longer ro…
+       |                                                                                          ^
+     95|   })
+     96|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 215 passed (216)
+   Start at  21:11:01
+   Duration  5.03s (transform 863ms, setup 0ms, import 1.06s, tests 5.87s, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts

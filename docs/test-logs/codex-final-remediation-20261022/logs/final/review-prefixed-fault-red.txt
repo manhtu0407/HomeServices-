@@ -1,0 +1,95 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts (47 tests | 2 failed) 76ms
+     × Nha toi bi hong may giat dat canh o cam, nho sua. asks for ["may giat"] (an explicit appliance fault precedes its incidental placement) 9ms
+     × Hong cai may giat canh o cam, nho kiem tra. asks for ["may giat"] (a fault before the appliance outranks later placement) 1ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (50 tests | 2 failed) 300ms
+     × retains functional faults and new subjects after completed work, flags=false 52ms
+     × retains functional faults and new subjects after completed work, flags=true 19ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > Nha toi bi hong may giat dat canh o cam, nho sua. asks for ["may giat"] (an explicit appliance fault precedes its incidental placement)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    an explicit appliance fault precedes its incidental placement: "Nha toi bi hong may giat dat canh o cam, nho sua.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:85:85
+     83| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     84|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     85|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     86|   })
+     87| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > Hong cai may giat canh o cam, nho kiem tra. asks for ["may giat"] (a fault before the appliance outranks later placement)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a fault before the appliance outranks later placement: "Hong cai may giat canh o cam, nho kiem tra.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:85:85
+     83| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     84|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     85|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     86|   })
+     87| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > retains functional faults and new subjects after completed work, flags=false
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > retains functional faults and new subjects after completed work, flags=true
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Nha toi bi hong may giat dat canh o cam, nho sua.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:66:50
+     64|     ]) {
+     65|       const result = boundary(text, 'electrical', enabled)
+     66|       expect(result.ok, pillarWhy(PILLAR, text)).toBe(false)
+       |                                                  ^
+     67|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     68|       expect(buildFallbackIntent('electrical', [], text, enabled).serv…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  4 failed | 93 passed (97)
+   Start at  05:49:08
+   Duration  6.48s (transform 4.80s, setup 0ms, import 5.79s, tests 375ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts

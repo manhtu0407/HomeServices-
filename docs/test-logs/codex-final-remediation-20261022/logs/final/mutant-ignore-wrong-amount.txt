@@ -1,0 +1,7 @@
+mutant_exit=3
+
+ERROR:  a short payment was not routed to reconciliation: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000103","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T14:45:35.808906+00:00","event_id_out":"802806b3-1bed-4efa-8c07-1939c3ee1965","version_out":3,"generated_at_out":"2026-10-22T14:45:35.808753+00:00"}
+CONTEXT:  PL/pgSQL function inline_code_block line 16 at RAISE
+
+restore_exit=0
+control_exit=0

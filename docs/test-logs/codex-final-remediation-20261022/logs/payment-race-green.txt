@@ -1,0 +1,4 @@
+psql:/tmp/reference-race-green.sql:12: NOTICE:  extension "dblink" already exists, skipping
+CREATE EXTENSION
+psql:/tmp/reference-race-green.sql:18: ERROR:  duplicate key value violates unique constraint "users_pkey"
+DETAIL:  Key (id)=(d6980000-0000-4000-8000-000000000001) already exists.

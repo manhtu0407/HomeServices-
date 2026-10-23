@@ -1,0 +1,392 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts (51 tests | 2 failed) 68ms
+     × My washing machine is next to an outlet that won't turn on. Please fix the outlet. asks for no unsupported work (English copular placement before a fixture control fault) 40ms
+     × My fridge is next to the outlet that is broken. Please fix the outlet. asks for no unsupported work (English copular placement before another subject fault) 5ms
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts (1473 tests | 72 failed) 347ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the handyman Case 7ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the electrical Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the cleaning Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the upholstery Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the plumbing Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the hvac Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the handyman Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the electrical Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the cleaning Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the upholstery Case 1ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the plumbing Case 0ms
+     × Nha toi bi ngat dien, nho kiem tra. stays quiet on the hvac Case 0ms
+     × NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the handyman Case 0ms
+     × NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the electrical Case 0ms
+     × NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the cleaning Case 0ms
+     × NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the upholstery Case 0ms
+     × NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the plumbing Case 0ms
+     × NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the hvac Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the handyman Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the electrical Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the cleaning Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the upholstery Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the plumbing Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the hvac Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the handyman Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the electrical Case 3ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the cleaning Case 1ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the upholstery Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the plumbing Case 0ms
+     × Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the hvac Case 0ms
+     × NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the handyman Case 0ms
+     × NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the electrical Case 1ms
+     × NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the cleaning Case 0ms
+     × NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the upholstery Case 0ms
+     × NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the plumbing Case 0ms
+     × NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the hvac Case 1ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the handyman Case 0ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the electrical Case 0ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the cleaning Case 0ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the upholstery Case 1ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the plumbing Case 0ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the hvac Case 0ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the handyman Case 0ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the electrical Case 0ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the cleaning Case 0ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the upholstery Case 1ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the plumbing Case 1ms
+     × Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the hvac Case 1ms
+     × NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the handyman Case 0ms
+     × NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the electrical Case 0ms
+     × NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the cleaning Case 0ms
+     × NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the upholstery Case 0ms
+     × NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the plumbing Case 0ms
+     × NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the hvac Case 1ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the handyman Case 1ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the electrical Case 1ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the cleaning Case 1ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the upholstery Case 0ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the plumbing Case 0ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the hvac Case 1ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the handyman Case 1ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the electrical Case 0ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the cleaning Case 0ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the upholstery Case 1ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the plumbing Case 1ms
+     × Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the hvac Case 1ms
+     × BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the handyman Case 0ms
+     × BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the electrical Case 0ms
+     × BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the cleaning Case 0ms
+     × BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the upholstery Case 0ms
+     × BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the plumbing Case 0ms
+     × BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the hvac Case 0ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (50 tests | 2 failed) 301ms
+     × placement does not assign another fixture fault to an appliance, flags=false 8ms
+     × placement does not assign another fixture fault to an appliance, flags=true 3ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 76 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat dien, nho kiem tra. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Nha toi bi ngat dien, nho kiem tra.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:116:77
+    114|     '%s stays quiet on the %s Case',
+    115|     (text, service) => {
+    116|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+    117|     },
+    118|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/76]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT DIEN, NHO KIEM TRA. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NHA TOI BI NGAT DIEN, NHO KIEM TRA.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:116:77
+    114|     '%s stays quiet on the %s Case',
+    115|     (text, service) => {
+    116|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+    117|     },
+    118|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/76]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nuoc, nho kiem tra. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Nha toi bi ngat nuoc, nho kiem tra.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:116:77
+    114|     '%s stays quiet on the %s Case',
+    115|     (text, service) => {
+    116|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+    117|     },
+    118|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/76]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NUOC, NHO KIEM TRA. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NHA TOI BI NGAT NUOC, NHO KIEM TRA.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:116:77
+    114|     '%s stays quiet on the %s Case',
+    115|     (text, service) => {
+    116|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+    117|     },
+    118|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/76]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Nha toi bi ngat nguon dien, nho kiem tra. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Nha toi bi ngat nguon dien, nho kiem tra.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:116:77
+    114|     '%s stays quiet on the %s Case',
+    115|     (text, service) => {
+    116|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+    117|     },
+    118|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/76]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "NHA TOI BI NGAT NGUON DIEN, NHO KIEM TRA.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:116:77
+    114|     '%s stays quiet on the %s Case',
+    115|     (text, service) => {
+    116|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+    117|     },
+    118|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/76]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the hvac Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > Ben minh bi ngat nuoc, nho kiem tra. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "Ben minh bi ngat nuoc, nho kiem tra.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:116:77
+    114|     '%s stays quiet on the %s Case',
+    115|     (text, service) => {
+    116|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+    117|     },
+    118|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/76]⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the handyman Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the electrical Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the cleaning Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the upholstery Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the plumbing Case
+ FAIL  src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts > P430-kael-emergency-context-guards: an ordinary event is not an emergency > BEN MINH BI NGAT NUOC, NHO KIEM TRA. stays quiet on the hvac Case
+AssertionError: [P430-kael-emergency-context-guards] shock cues require electrical or faucet context rather than furniture contact; ordinary pulling, soot, steady cooking flames, denied injury and gas-alarm installation/testing stay quiet, while active smoke, spreading flames, affirmed hazards and actively sounding fuel-gas leak alarms retain the appropriate emergency routes across written forms and service contexts
+authority: governance/RULES.md #6 (Kael answers the six active services and does not stop a supported request on a false alarm) | governance/RULES.md #8 (an emergency reply is explicit and never a silent drop) | PR 406 review (Codex P2 on the "bị giật" and dense-smoke cues)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P410-kael-emergency-phrase-sets, P427-kael-emergency-standard-remediation, P420-kael-case-emergency-playbook-precedence
+detail:    "BEN MINH BI NGAT NUOC, NHO KIEM TRA.": expected 'medical' to be 'none' // Object.is equality
+
+Expected: "none"
+Received: "medical"
+
+ ❯ src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts:116:77
+    114|     '%s stays quiet on the %s Case',
+    115|     (text, service) => {
+    116|       expect(route(text, service), pillarWhy(PILLAR, JSON.stringify(te…
+       |                                                                             ^
+    117|     },
+    118|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/76]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > My washing machine is next to an outlet that won't turn on. Please fix the outlet. asks for no unsupported work (English copular placement before a fixture control fault)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    English copular placement before a fixture control fault: "My washing machine is next to an outlet that won't turn on. Please fix the outlet.": expected [ 'may giat' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "may giat",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:83:85
+     81| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     82|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     83|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     84|   })
+     85| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/76]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > My fridge is next to the outlet that is broken. Please fix the outlet. asks for no unsupported work (English copular placement before another subject fault)
+AssertionError: [P431-kael-requested-work-english-negation] English refusals, explicit exclusions and completed work suppress only their appliance and described historical fault; negated fault adjectives stay quiet while genuine nonfunctioning, same-subject new faults and separately requested repairs remain unsupported work
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    English copular placement before another subject fault: "My fridge is next to the outlet that is broken. Please fix the outlet.": expected [ 'tu lanh' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "tu lanh",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:83:85
+     81| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     82|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     83|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     84|   })
+     85| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/76]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > placement does not assign another fixture fault to an appliance, flags=false
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > placement does not assign another fixture fault to an appliance, flags=true
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    My washing machine is next to an outlet that won't turn on. Please fix the outlet.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:121:81
+    119|       'My fridge is next to the outlet that is broken. Please fix the …
+    120|     ]) {
+    121|       expect(boundary(text, 'electrical', enabled).ok, pillarWhy(PILLA…
+       |                                                                                 ^
+    122|       expect(buildFallbackIntent('electrical', [], text, enabled).serv…
+    123|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/76]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  76 failed | 1498 passed (1574)
+   Start at  05:59:33
+   Duration  6.42s (transform 4.81s, setup 0ms, import 6.09s, tests 716ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-context-guards-pillar.test.ts src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts

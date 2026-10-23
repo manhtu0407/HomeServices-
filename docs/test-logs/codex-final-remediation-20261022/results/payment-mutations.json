@@ -1,0 +1,62 @@
+{
+  "target": "ns-codex-final-verify-pg",
+  "finalRestoreExit": 0,
+  "results": [
+    {
+      "name": "disable-reopen",
+      "killed": true,
+      "exit": 3,
+      "restored": true,
+      "greenControl": true
+    },
+    {
+      "name": "reopen-any-order-status",
+      "killed": true,
+      "exit": 3,
+      "restored": true,
+      "greenControl": true
+    },
+    {
+      "name": "reopen-any-reversal-reason",
+      "killed": true,
+      "exit": 3,
+      "restored": true,
+      "greenControl": true
+    },
+    {
+      "name": "ignore-wrong-amount",
+      "killed": true,
+      "exit": 3,
+      "restored": true,
+      "greenControl": true
+    },
+    {
+      "name": "allow-null-reference",
+      "killed": true,
+      "exit": 3,
+      "restored": true,
+      "greenControl": true
+    },
+    {
+      "name": "remove-24-hour-hold",
+      "killed": true,
+      "exit": 3,
+      "restored": true,
+      "greenControl": true
+    },
+    {
+      "name": "remove-base-finance-authority",
+      "killed": true,
+      "exit": 3,
+      "restored": true,
+      "greenControl": true
+    },
+    {
+      "name": "allow-unclaimed-order",
+      "killed": true,
+      "exit": 3,
+      "restored": true,
+      "greenControl": true
+    }
+  ]
+}

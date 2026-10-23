@@ -1,0 +1,45 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts (191 tests | 1 failed) 3036ms
+     × English: "junction box" with sparking that stopped, ceased, quit or ended stays quiet 12ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts > P419-kael-emergency-electrical-spark: a spark that has already stopped is a resolved report, not a live hazard > English: "junction box" with sparking that stopped, ceased, quit or ended stays quiet
+AssertionError: [P419-kael-emergency-electrical-spark] a spark reported beside wired electrical equipment is routed to the electrical hazard guidance whatever the word order, accents or language, while a negated, past, hypothetical, resolved, quoted, mis-toned or non-electrical spark, a spark named only as a product feature or something to avoid, and equipment that is only warm, stay quiet, unless the customer is trying to stop a spark that is happening or says where it comes from
+authority: governance/RULES.md #7 (an emergency classification is not a workflow gate) | governance/RULES.md #8 (a measurement states its sample and its limits) | KAWA_01 six-service diagnostic DX-02 (frozen ELEC-S4 step 4 transcript was missed by the shared gate)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts
+next:      P405-kael-emergency-signal-matrix, P410-kael-emergency-phrase-sets, P408-kael-case-emergency-all-fields
+detail:    7 sentences with junction box: expected [ …(4) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "\"The junction box has stopped sparking.\" -> electrical_water",
++   "\"The junction box stopped sparking after the electrician fixed it.\" -> electrical_water",
++   "\"The junction box ceased sparking on its own.\" -> electrical_water",
++   "\"The junction box quit sparking once I switched it off.\" -> electrical_water",
++ ]
+
+ ❯ src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts:287:98
+    285|   it.each(EN_FIXTURES)('English: "%s" with sparking that stopped, ceas…
+    286|     const rows = ENDED_SPARK_CARRIERS.map((carrier) => [carrier(fixtur…
+    287|     expect(misrouted(rows, null), pillarWhy(PILLAR, `${rows.length} se…
+       |                                                                                                  ^
+    288|   })
+    289|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  1 failed | 215 passed (216)
+   Start at  21:07:05
+   Duration  3.72s (transform 424ms, setup 0ms, import 562ms, tests 4.47s, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts src/__tests__/unit/kael-emergency-phrase-sets-pillar.test.ts src/__tests__/unit/kael-emergency-electrical-spark-pillar.test.ts

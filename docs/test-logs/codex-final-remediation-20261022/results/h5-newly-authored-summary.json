@@ -1,0 +1,454 @@
+{
+ "schema": "nestscout.h5.standard_eval_summary.v1",
+ "rows": 330,
+ "table": [
+  {
+   "group": "development:ALL",
+   "n": 298,
+   "positives": 179,
+   "negatives": 119,
+   "TP": 159,
+   "FN": 20,
+   "WRONG_ROUTE": 0,
+   "FP": 0,
+   "TN": 119,
+   "recall": 0.888,
+   "recall_ci95": [
+    0.834,
+    0.926
+   ],
+   "false_positive_rate": 0,
+   "fp_ci95": [
+    0,
+    0.031
+   ]
+  },
+  {
+   "group": "development:clear",
+   "n": 267,
+   "positives": 154,
+   "negatives": 113,
+   "TP": 154,
+   "FN": 0,
+   "WRONG_ROUTE": 0,
+   "FP": 0,
+   "TN": 113,
+   "recall": 1,
+   "recall_ci95": [
+    0.976,
+    1
+   ],
+   "false_positive_rate": 0,
+   "fp_ci95": [
+    0,
+    0.033
+   ]
+  },
+  {
+   "group": "development:pinned-contestable",
+   "n": 31,
+   "positives": 25,
+   "negatives": 6,
+   "TP": 5,
+   "FN": 20,
+   "WRONG_ROUTE": 0,
+   "FP": 0,
+   "TN": 6,
+   "recall": 0.2,
+   "recall_ci95": [
+    0.089,
+    0.391
+   ],
+   "false_positive_rate": 0,
+   "fp_ci95": [
+    0,
+    0.39
+   ]
+  },
+  {
+   "group": "fresh:ALL",
+   "n": 32,
+   "positives": 16,
+   "negatives": 16,
+   "TP": 16,
+   "FN": 0,
+   "WRONG_ROUTE": 0,
+   "FP": 0,
+   "TN": 16,
+   "recall": 1,
+   "recall_ci95": [
+    0.806,
+    1
+   ],
+   "false_positive_rate": 0,
+   "fp_ci95": [
+    0,
+    0.194
+   ]
+  },
+  {
+   "group": "fresh:new-positive-control",
+   "n": 16,
+   "positives": 16,
+   "negatives": 0,
+   "TP": 16,
+   "FN": 0,
+   "WRONG_ROUTE": 0,
+   "FP": 0,
+   "TN": 0,
+   "recall": 1,
+   "recall_ci95": [
+    0.806,
+    1
+   ],
+   "false_positive_rate": null,
+   "fp_ci95": null
+  },
+  {
+   "group": "fresh:new-negative-control",
+   "n": 16,
+   "positives": 0,
+   "negatives": 16,
+   "TP": 0,
+   "FN": 0,
+   "WRONG_ROUTE": 0,
+   "FP": 0,
+   "TN": 16,
+   "recall": null,
+   "recall_ci95": null,
+   "false_positive_rate": 0,
+   "fp_ci95": [
+    0,
+    0.194
+   ]
+  }
+ ],
+ "handler_flags_off": {
+  "n": 330,
+  "positives": 195,
+  "negatives": 135,
+  "TP": 175,
+  "FN": 20,
+  "WRONG_ROUTE": 0,
+  "FP": 0,
+  "TN": 135
+ },
+ "handler_flags_on": {
+  "n": 330,
+  "positives": 195,
+  "negatives": 135,
+  "TP": 175,
+  "FN": 20,
+  "WRONG_ROUTE": 0,
+  "FP": 0,
+  "TN": 135
+ },
+ "parity": {
+  "classifier_route_differs": {
+   "count": 0,
+   "rows": []
+  },
+  "handler_route_differs": {
+   "count": 0,
+   "rows": []
+  },
+  "handler_numbers_dropped": {
+   "count": 0,
+   "rows": []
+  },
+  "handler_missing_guidance": {
+   "count": 0,
+   "rows": []
+  },
+  "handler_not_2xx": {
+   "count": 0,
+   "rows": []
+  }
+ },
+ "max_classifier_ms": 37.85,
+ "max_handler_ms": 56.9,
+ "pathological_timing": [
+  {
+   "shape": "repeated mixed hazard and negation sentences (capped at the 5000-character field limit)",
+   "length": 5000,
+   "ms": 4.3,
+   "route": "none"
+  },
+  {
+   "shape": "repeated mixed hazard and negation sentences",
+   "length": 36400,
+   "ms": 108.2,
+   "route": "none"
+  },
+  {
+   "shape": "one long unbroken run of letters (capped at the 5000-character field limit)",
+   "length": 5000,
+   "ms": 3.3,
+   "route": "none"
+  },
+  {
+   "shape": "one long unbroken run of letters",
+   "length": 60000,
+   "ms": 199.5,
+   "route": "none"
+  },
+  {
+   "shape": "one long run of cue words without separators (capped at the 5000-character field limit)",
+   "length": 5000,
+   "ms": 3,
+   "route": "none"
+  },
+  {
+   "shape": "one long run of cue words without separators",
+   "length": 60000,
+   "ms": 192.6,
+   "route": "none"
+  },
+  {
+   "shape": "many short clauses (capped at the 5000-character field limit)",
+   "length": 5000,
+   "ms": 4,
+   "route": "none"
+  },
+  {
+   "shape": "many short clauses",
+   "length": 72000,
+   "ms": 283.8,
+   "route": "none"
+  },
+  {
+   "shape": "accent-heavy (capped at the 5000-character field limit)",
+   "length": 5000,
+   "ms": 3.8,
+   "route": "fire"
+  },
+  {
+   "shape": "accent-heavy",
+   "length": 49500,
+   "ms": 144.9,
+   "route": "fire"
+  }
+ ],
+ "misses": [
+  {
+   "id": "H1-008",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "fire"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "o cam bi chay den, dang bao khoi"
+  },
+  {
+   "id": "H1-089",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Mình ngửi thấy mùi khét nhẹ từ ổ cắm khi bật bàn ủi"
+  },
+  {
+   "id": "H1-090",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Ổ điện bị chập, nổ lốp bốp một cái"
+  },
+  {
+   "id": "H1-091",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Có mùi khét từ tủ lạnh"
+  },
+  {
+   "id": "H1-092",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Rò điện, chạm vào vỏ máy giặt thấy tê tê"
+  },
+  {
+   "id": "H1-093",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Máy nóng bất thường và có mùi nhựa cháy"
+  },
+  {
+   "id": "H1-095",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Nghe tiếng nổ lớn trong tủ điện"
+  },
+  {
+   "id": "H1-096",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "gas"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Hơi gas ngửi hơi nhẹ sau khi thay bình, chắc không sao"
+  },
+  {
+   "id": "H1-097",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "medical"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Con mình hít phải khói bếp, ho nhiều"
+  },
+  {
+   "id": "H1-099",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Ổ cắm nóng ran và hơi đổi màu"
+  },
+  {
+   "id": "H2-063",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Bình nước nóng của em có mùi cháy nhẹ mỗi khi bật"
+  },
+  {
+   "id": "H2-065",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Ổ cắm có vết cháy xém nhỏ, vẫn dùng được"
+  },
+  {
+   "id": "H2-066",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "gas"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Em ngửi thấy mùi trứng thối gần bếp, hay là gas"
+  },
+  {
+   "id": "H2-069",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Máy sấy đang bốc mùi khét và nóng ran"
+  },
+  {
+   "id": "H2-070",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Cầu dao nhảy liên tục, có tiếng nổ lách tách"
+  },
+  {
+   "id": "H3-068",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Dây điện ngoài ban công bị hở lớp cách điện, cần thay"
+  },
+  {
+   "id": "H3-070",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "gas"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Bếp gas hay có mùi thoang thoảng mỗi khi bật"
+  },
+  {
+   "id": "H4-055",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Em ngửi thấy mùi khét lẹt từ cầu dao tổng, có thể sắp cháy"
+  },
+  {
+   "id": "H4-056",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Bình nóng lạnh rò nước xuống sàn nhà tắm, sàn hơi tê tê khi chân ướt"
+  },
+  {
+   "id": "H4-058",
+   "set": "development",
+   "class": "pinned-contestable",
+   "expected": [
+    "electrical_water"
+   ],
+   "classifier": "none",
+   "verdict": "FN",
+   "text": "Có tiếng nổ nhỏ trong bảng điện và mùi lạ, nhưng đèn vẫn sáng bình thường"
+  }
+ ]
+}

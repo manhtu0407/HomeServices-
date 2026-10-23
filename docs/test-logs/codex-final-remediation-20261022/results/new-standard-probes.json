@@ -1,0 +1,294 @@
+{
+  "schema": "nestscout.h5.new_standard_probes.v1",
+  "provenance": "Authored after the classifier changes. First run recorded separately. Not blind or independent. No sealed H5 read or used.",
+  "rows": [
+    {
+      "id": "N-001",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "fire"
+      ],
+      "text": "Tại kho cuối hành lang, khói đen mù mịt đang tràn qua khe cửa."
+    },
+    {
+      "id": "N-002",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "fire"
+      ],
+      "text": "Can ho ben tren dang boc lua, toi va be da ra ngoai."
+    },
+    {
+      "id": "N-003",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "fire"
+      ],
+      "text": "Chuông báo động mới thay pin nhưng khói đen đang lan từ phòng ngủ."
+    },
+    {
+      "id": "N-004",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "fire"
+      ],
+      "text": "Tôi đã dùng bình chữa cháy mà lửa vẫn chưa tắt trong kho."
+    },
+    {
+      "id": "N-005",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "electrical_water"
+      ],
+      "text": "Dây điện âm trần nóng chảy và mùi khét lan sang phòng khách."
+    },
+    {
+      "id": "N-006",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "medical"
+      ],
+      "text": "Người thợ chạm tay vào vòi sen rồi bị giật ngã."
+    },
+    {
+      "id": "N-007",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "medical"
+      ],
+      "text": "Me toi bi ngat, goi khong tinh o phong khach."
+    },
+    {
+      "id": "N-008",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "police"
+      ],
+      "text": "Người giao hàng rút dao dọa tôi trước cửa căn hộ."
+    },
+    {
+      "id": "N-009",
+      "class": "new-positive-control",
+      "lang": "en",
+      "expected": [
+        "electrical_water"
+      ],
+      "text": "The extension cable under the sink keeps sparking in standing water."
+    },
+    {
+      "id": "N-010",
+      "class": "new-positive-control",
+      "lang": "en",
+      "expected": [
+        "medical"
+      ],
+      "text": "They mixed ammonia and bleach while cleaning and are coughing in the hallway."
+    },
+    {
+      "id": "N-011",
+      "class": "new-positive-control",
+      "lang": "en",
+      "expected": [
+        "gas"
+      ],
+      "text": "There is a strong smell of cooking gas behind the pantry door."
+    },
+    {
+      "id": "N-012",
+      "class": "new-positive-control",
+      "lang": "en",
+      "expected": [
+        "uncertain"
+      ],
+      "text": "The cable is sparking and the technician is unconscious beside it."
+    },
+    {
+      "id": "N-013",
+      "class": "new-negative-control",
+      "lang": "en",
+      "expected": [
+        "none"
+      ],
+      "text": "No one got shocked; please inspect the ceiling switch tomorrow."
+    },
+    {
+      "id": "N-014",
+      "class": "new-negative-control",
+      "lang": "en",
+      "expected": [
+        "none"
+      ],
+      "text": "Nobody was electrocuted. We only need the light switch replaced."
+    },
+    {
+      "id": "N-015",
+      "class": "new-negative-control",
+      "lang": "en",
+      "expected": [
+        "none"
+      ],
+      "text": "Please mount a gas leak sensor by the pantry door."
+    },
+    {
+      "id": "N-016",
+      "class": "new-negative-control",
+      "lang": "en",
+      "expected": [
+        "none"
+      ],
+      "text": "We need a gas leak detector and a fire extinguisher for prevention."
+    },
+    {
+      "id": "N-017",
+      "class": "new-negative-control",
+      "lang": "vi",
+      "expected": [
+        "none"
+      ],
+      "text": "Tôi bị giật mình vì tiếng cửa sập, chỉ cần thay tay nắm cửa."
+    },
+    {
+      "id": "N-018",
+      "class": "new-negative-control",
+      "lang": "vi",
+      "expected": [
+        "none"
+      ],
+      "text": "Bà không bị ngất, chỉ nhờ vệ sinh ghế phòng khách."
+    },
+    {
+      "id": "N-019",
+      "class": "new-negative-control",
+      "lang": "vi",
+      "expected": [
+        "none"
+      ],
+      "text": "Hôm qua khói đen tràn ra cửa kho nhưng thợ đã sửa xong."
+    },
+    {
+      "id": "N-020",
+      "class": "new-negative-control",
+      "lang": "en",
+      "expected": [
+        "none"
+      ],
+      "text": "The extension cord has stopped sparking since we replaced it."
+    },
+    {
+      "id": "N-021",
+      "class": "new-negative-control",
+      "lang": "vi",
+      "expected": [
+        "none"
+      ],
+      "text": "Không có người cầm dao dọa tôi, chỉ cần sửa khóa tủ."
+    },
+    {
+      "id": "N-022",
+      "class": "new-negative-control",
+      "lang": "vi",
+      "expected": [
+        "none"
+      ],
+      "text": "Không thấy khói đen trong kho, máy lạnh chạy bình thường."
+    },
+    {
+      "id": "N-023",
+      "class": "new-negative-control",
+      "lang": "vi",
+      "expected": [
+        "none"
+      ],
+      "text": "Nếu dây điện nóng chảy thì có phải gọi cứu hộ không?"
+    },
+    {
+      "id": "N-024",
+      "class": "new-negative-control",
+      "lang": "en",
+      "expected": [
+        "none"
+      ],
+      "text": "Nobody is coughing and no gas leak exists; install a gas leak detector."
+    },
+    {
+      "id": "N-025",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "fire"
+      ],
+      "text": "Nhà kho đang bốc khói. Không có ai bị thương."
+    },
+    {
+      "id": "N-026",
+      "class": "new-positive-control",
+      "lang": "en",
+      "expected": [
+        "gas"
+      ],
+      "text": "A gas leak alarm is installed but the propane cylinder is leaking right now."
+    },
+    {
+      "id": "N-027",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "medical"
+      ],
+      "text": "Aptomat chống giật đã lắp, người nhà vẫn bị giật khi mở vòi sen."
+    },
+    {
+      "id": "N-028",
+      "class": "new-positive-control",
+      "lang": "vi",
+      "expected": [
+        "fire"
+      ],
+      "text": "may lanh no tung roi boc khoi trang qua cua so."
+    },
+    {
+      "id": "N-029",
+      "class": "new-negative-control",
+      "lang": "en",
+      "expected": [
+        "none"
+      ],
+      "text": "Yesterday the cleaner mixed bleach and ammonia; everyone is fine now."
+    },
+    {
+      "id": "N-030",
+      "class": "new-negative-control",
+      "lang": "vi",
+      "expected": [
+        "none"
+      ],
+      "text": "Đã hết rồi, không còn khói đen; nhờ thợ kiểm tra lại nguồn điện."
+    },
+    {
+      "id": "N-031",
+      "class": "new-negative-control",
+      "lang": "en",
+      "expected": [
+        "none"
+      ],
+      "text": "Please replace a spark-proof cover on the extension cable."
+    },
+    {
+      "id": "N-032",
+      "class": "new-negative-control",
+      "lang": "vi",
+      "expected": [
+        "none"
+      ],
+      "text": "Nha toi can lap binh chua chay va dau bao khoi, khong co lua."
+    }
+  ]
+}

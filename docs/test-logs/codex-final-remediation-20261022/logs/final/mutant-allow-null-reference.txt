@@ -1,0 +1,7 @@
+mutant_exit=3
+
+ERROR:  null bank-reference field 1 bypassed verification: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000101","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T14:45:37.061689+00:00","event_id_out":"fa95c955-d0d0-4891-87f3-781b243e9c87","version_out":3,"generated_at_out":"2026-10-22T14:45:37.061582+00:00"}
+CONTEXT:  PL/pgSQL function inline_code_block line 14 at RAISE
+
+restore_exit=0
+control_exit=0

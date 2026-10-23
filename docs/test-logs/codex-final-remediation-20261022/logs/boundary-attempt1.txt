@@ -1,0 +1,1184 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'abd9120f-1d08-4f67-b6ef-98ca4a971826',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '000837ad-e896-42a0-9736-3a4e139491ff',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+kael_chat boundary decline {
+  sessionId: '39800000-0000-4000-8000-000000000001',
+  reason: 'out_of_scope',
+  signalCount: 1
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (29 tests | 5 failed) 237ms
+     × refuses unsupported work: Ổ cắm bếp bị lỏng và tủ lạnh cũng không lạnh, nhờ thợ sửa cả hai. 18ms
+     × refuses unsupported work: Nhờ thợ kiểm tra cầu dao, cả bếp từ nhà mình cũng không nóng nữa. 3ms
+     × keeps supported work open: Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối. 1ms
+     × delivers visible emergency guidance and metadata before the refusal, flags=false 126ms
+     × delivers visible emergency guidance and metadata before the refusal, flags=true 10ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts (112 tests | 36 failed) 482ms
+     × Ổ cắm phòng khách bị lỏng, nhờ thợ sửa. (vi) is accepted with the flag off and on 10ms
+     × O cam phong khach bi long, nho tho sua. (vi) is accepted with the flag off and on 2ms
+     × Ổ CẮM PHÒNG KHÁCH BỊ LỎNG, NHỜ THỢ SỬA. (vi) is accepted with the flag off and on 2ms
+     × Đèn phòng ngủ chập chờn, nhờ thợ kiểm tra. (vi) is accepted with the flag off and on 2ms
+     × Den phong ngu chap chon, nho tho kiem tra. (vi) is accepted with the flag off and on 2ms
+     × ĐÈN PHÒNG NGỦ CHẬP CHỜN, NHỜ THỢ KIỂM TRA. (vi) is accepted with the flag off and on 1ms
+     × Nhờ thợ thay công tắc đèn hành lang. (vi) is accepted with the flag off and on 1ms
+     × Nho tho thay cong tac den hanh lang. (vi) is accepted with the flag off and on 1ms
+     × NHỜ THỢ THAY CÔNG TẮC ĐÈN HÀNH LANG. (vi) is accepted with the flag off and on 1ms
+     × Aptomat trong nhà hay nhảy, nhờ thợ kiểm tra tủ điện. (vi) is accepted with the flag off and on 2ms
+     × Aptomat trong nha hay nhay, nho tho kiem tra tu dien. (vi) is accepted with the flag off and on 1ms
+     × APTOMAT TRONG NHÀ HAY NHẢY, NHỜ THỢ KIỂM TRA TỦ ĐIỆN. (vi) is accepted with the flag off and on 1ms
+     × Cần đi lại dây điện cho phòng bếp mới. (vi) is accepted with the flag off and on 1ms
+     × Can di lai day dien cho phong bep moi. (vi) is accepted with the flag off and on 1ms
+     × CẦN ĐI LẠI DÂY ĐIỆN CHO PHÒNG BẾP MỚI. (vi) is accepted with the flag off and on 1ms
+     × The outlet in the living room is loose, please repair it. (en) is accepted with the flag off and on 1ms
+     × The outlet in the living room is loose, please repair it. (en) is accepted with the flag off and on 1ms
+     × THE OUTLET IN THE LIVING ROOM IS LOOSE, PLEASE REPAIR IT. (en) is accepted with the flag off and on 1ms
+     × The breaker keeps tripping, please inspect the panel. (en) is accepted with the flag off and on 1ms
+     × The breaker keeps tripping, please inspect the panel. (en) is accepted with the flag off and on 1ms
+     × THE BREAKER KEEPS TRIPPING, PLEASE INSPECT THE PANEL. (en) is accepted with the flag off and on 1ms
+     × Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối. (vi) is accepted with the flag off and on 1ms
+     × Dien nha minh luc co luc khong, khong biet do tu dien hay do may giat, tho truoc noi mot dang gio minh cung roi. (vi) is accepted with the flag off and on 1ms
+     × ĐIỆN NHÀ MÌNH LÚC CÓ LÚC KHÔNG, KHÔNG BIẾT DO TỦ ĐIỆN HAY DO MÁY GIẶT, THỢ TRƯỚC NÓI MỘT ĐẰNG GIỜ MÌNH CŨNG RỐI. (vi) is accepted with the flag off and on 1ms
+     × Ổ cắm bếp bị lỏng, máy giặt và tủ lạnh vẫn chạy bình thường. (vi) is accepted with the flag off and on 1ms
+     × O cam bep bi long, may giat va tu lanh van chay binh thuong. (vi) is accepted with the flag off and on 1ms
+     × Ổ CẮM BẾP BỊ LỎNG, MÁY GIẶT VÀ TỦ LẠNH VẪN CHẠY BÌNH THƯỜNG. (vi) is accepted with the flag off and on 1ms
+     × Ổ cắm gần bếp từ hay bị nóng, nhờ thợ kiểm tra. (vi) is accepted with the flag off and on 1ms
+     × O cam gan bep tu hay bi nong, nho tho kiem tra. (vi) is accepted with the flag off and on 1ms
+     × Ổ CẮM GẦN BẾP TỪ HAY BỊ NÓNG, NHỜ THỢ KIỂM TRA. (vi) is accepted with the flag off and on 1ms
+     × Không cần sửa máy giặt, chỉ cần thay công tắc đèn. (vi) is accepted with the flag off and on 2ms
+     × Khong can sua may giat, chi can thay cong tac den. (vi) is accepted with the flag off and on 1ms
+     × KHÔNG CẦN SỬA MÁY GIẶT, CHỈ CẦN THAY CÔNG TẮC ĐÈN. (vi) is accepted with the flag off and on 2ms
+     × Mình đã sửa xong máy giặt rồi, giờ nhờ thay ổ cắm bị lỏng. (vi) is accepted with the flag off and on 2ms
+     × Minh da sua xong may giat roi, gio nho thay o cam bi long. (vi) is accepted with the flag off and on 1ms
+     × MÌNH ĐÃ SỬA XONG MÁY GIẶT RỒI, GIỜ NHỜ THAY Ổ CẮM BỊ LỎNG. (vi) is accepted with the flag off and on 1ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts (254 tests | 3 failed) 1312ms
+     × "Máy sấy nhà mình chạy mãi mà quần áo vẫn còn ướt." (wanted: refuse) is decided correctly 9ms
+     × "Lò vi sóng dùng được hai tháng rồi tự nhiên đơ, không bấm được nút nào." (wanted: refuse) is decided correctly 1ms
+     × "Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối." (wanted: open) is decided correctly 1ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 44 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Ổ cắm phòng khách bị lỏng, nhờ thợ sửa. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Ổ cắm phòng khách bị lỏng, nhờ thợ sửa.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > O cam phong khach bi long, nho tho sua. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "O cam phong khach bi long, nho tho sua.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Ổ CẮM PHÒNG KHÁCH BỊ LỎNG, NHỜ THỢ SỬA. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Ổ CẮM PHÒNG KHÁCH BỊ LỎNG, NHỜ THỢ SỬA.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Đèn phòng ngủ chập chờn, nhờ thợ kiểm tra. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Đèn phòng ngủ chập chờn, nhờ thợ kiểm tra.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Den phong ngu chap chon, nho tho kiem tra. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Den phong ngu chap chon, nho tho kiem tra.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > ĐÈN PHÒNG NGỦ CHẬP CHỜN, NHỜ THỢ KIỂM TRA. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "ĐÈN PHÒNG NGỦ CHẬP CHỜN, NHỜ THỢ KIỂM TRA.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Nhờ thợ thay công tắc đèn hành lang. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Nhờ thợ thay công tắc đèn hành lang.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Nho tho thay cong tac den hanh lang. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Nho tho thay cong tac den hanh lang.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > NHỜ THỢ THAY CÔNG TẮC ĐÈN HÀNH LANG. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "NHỜ THỢ THAY CÔNG TẮC ĐÈN HÀNH LANG.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Aptomat trong nhà hay nhảy, nhờ thợ kiểm tra tủ điện. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Aptomat trong nhà hay nhảy, nhờ thợ kiểm tra tủ điện.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Aptomat trong nha hay nhay, nho tho kiem tra tu dien. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Aptomat trong nha hay nhay, nho tho kiem tra tu dien.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > APTOMAT TRONG NHÀ HAY NHẢY, NHỜ THỢ KIỂM TRA TỦ ĐIỆN. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "APTOMAT TRONG NHÀ HAY NHẢY, NHỜ THỢ KIỂM TRA TỦ ĐIỆN.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Cần đi lại dây điện cho phòng bếp mới. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Cần đi lại dây điện cho phòng bếp mới.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Can di lai day dien cho phong bep moi. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Can di lai day dien cho phong bep moi.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > CẦN ĐI LẠI DÂY ĐIỆN CHO PHÒNG BẾP MỚI. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "CẦN ĐI LẠI DÂY ĐIỆN CHO PHÒNG BẾP MỚI.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > The outlet in the living room is loose, please repair it. (en) is accepted with the flag off and on
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > The outlet in the living room is loose, please repair it. (en) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "The outlet in the living room is loose, please repair it.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > THE OUTLET IN THE LIVING ROOM IS LOOSE, PLEASE REPAIR IT. (en) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "THE OUTLET IN THE LIVING ROOM IS LOOSE, PLEASE REPAIR IT.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > The breaker keeps tripping, please inspect the panel. (en) is accepted with the flag off and on
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > The breaker keeps tripping, please inspect the panel. (en) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "The breaker keeps tripping, please inspect the panel.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > THE BREAKER KEEPS TRIPPING, PLEASE INSPECT THE PANEL. (en) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "THE BREAKER KEEPS TRIPPING, PLEASE INSPECT THE PANEL.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Điện nhà mình lúc có lúc không, không biết do tủ điện hay do máy giặt, thợ trước nói một đằng giờ mình cũng rối.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Dien nha minh luc co luc khong, khong biet do tu dien hay do may giat, tho truoc noi mot dang gio minh cung roi. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Dien nha minh luc co luc khong, khong biet do tu dien hay do may giat, tho truoc noi mot dang gio minh cung roi.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > ĐIỆN NHÀ MÌNH LÚC CÓ LÚC KHÔNG, KHÔNG BIẾT DO TỦ ĐIỆN HAY DO MÁY GIẶT, THỢ TRƯỚC NÓI MỘT ĐẰNG GIỜ MÌNH CŨNG RỐI. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "ĐIỆN NHÀ MÌNH LÚC CÓ LÚC KHÔNG, KHÔNG BIẾT DO TỦ ĐIỆN HAY DO MÁY GIẶT, THỢ TRƯỚC NÓI MỘT ĐẰNG GIỜ MÌNH CŨNG RỐI.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Ổ cắm bếp bị lỏng, máy giặt và tủ lạnh vẫn chạy bình thường. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Ổ cắm bếp bị lỏng, máy giặt và tủ lạnh vẫn chạy bình thường.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > O cam bep bi long, may giat va tu lanh van chay binh thuong. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "O cam bep bi long, may giat va tu lanh van chay binh thuong.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Ổ CẮM BẾP BỊ LỎNG, MÁY GIẶT VÀ TỦ LẠNH VẪN CHẠY BÌNH THƯỜNG. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Ổ CẮM BẾP BỊ LỎNG, MÁY GIẶT VÀ TỦ LẠNH VẪN CHẠY BÌNH THƯỜNG.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Ổ cắm gần bếp từ hay bị nóng, nhờ thợ kiểm tra. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Ổ cắm gần bếp từ hay bị nóng, nhờ thợ kiểm tra.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > O cam gan bep tu hay bi nong, nho tho kiem tra. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "O cam gan bep tu hay bi nong, nho tho kiem tra.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[27/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Ổ CẮM GẦN BẾP TỪ HAY BỊ NÓNG, NHỜ THỢ KIỂM TRA. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Ổ CẮM GẦN BẾP TỪ HAY BỊ NÓNG, NHỜ THỢ KIỂM TRA.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[28/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Không cần sửa máy giặt, chỉ cần thay công tắc đèn. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Không cần sửa máy giặt, chỉ cần thay công tắc đèn.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[29/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Khong can sua may giat, chi can thay cong tac den. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Khong can sua may giat, chi can thay cong tac den.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[30/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > KHÔNG CẦN SỬA MÁY GIẶT, CHỈ CẦN THAY CÔNG TẮC ĐÈN. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "KHÔNG CẦN SỬA MÁY GIẶT, CHỈ CẦN THAY CÔNG TẮC ĐÈN.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[31/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Mình đã sửa xong máy giặt rồi, giờ nhờ thay ổ cắm bị lỏng. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Mình đã sửa xong máy giặt rồi, giờ nhờ thay ổ cắm bị lỏng.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[32/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > Minh da sua xong may giat roi, gio nho thay o cam bi long. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "Minh da sua xong may giat roi, gio nho thay o cam bi long.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[33/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts > P422-kael-boundary-electrical-flag-parity: a supported request stays open the same way with the flag off and on > MÌNH ĐÃ SỬA XONG MÁY GIẶT RỒI, GIỜ NHỜ THAY Ổ CẮM BỊ LỎNG. (vi) is accepted with the flag off and on
+AssertionError: [P422-kael-boundary-electrical-flag-parity] turning the electrical playbook on never lets through a request the boundary refuses with it off: an unsupported appliance or connection request on an electrical Case is refused the same way with the flag off and on in every written form, a supported electrical request and a supported request that only mentions an appliance stay open the same way, a request that explicitly excludes an unsupported topic stays open and one that excludes something else does not, the flagged routing policy only adds refusals and never removes one, a message that mixes a supported and an unsupported request is decided identically with the flag off and on, and a hazard reported beside an unsupported request is still answered with the shared gate numbers whichever way the flag is set
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #7 (an emergency classification is not a workflow gate and never advances money-impacting state) | KAWA_01 six-service diagnostic DX-01 (the flagged electrical path returned ok before the keyword gate ran)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P421-kael-boundary-requested-work, P420-kael-case-emergency-playbook-precedence, P406-kael-case-emergency-intake
+detail:    "MÌNH ĐÃ SỬA XONG MÁY GIẶT RỒI, GIỜ NHỜ THAY Ổ CẮM BỊ LỎNG.": expected [ 'ok', 'ok' ] to deeply equal [ 'out_of_scope', 'out_of_scope' ]
+
+- Expected
++ Received
+
+  [
+-   "out_of_scope",
+-   "out_of_scope",
++   "ok",
++   "ok",
+  ]
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts:132:120
+    130|     '%s (%s) is accepted with the flag off and on',
+    131|     (text, language) => {
+    132|       expect([verdict(text, 'off', language), verdict(text, 'on', lang…
+       |                                                                                                                        ^
+    133|     },
+    134|   )
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[34/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Ổ cắm bếp bị lỏng và tủ lạnh cũng không lạnh, nhờ thợ sửa cả hai.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Ổ cắm bếp bị lỏng và tủ lạnh cũng không lạnh, nhờ thợ sửa cả hai.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:51:83
+     49|     for (const service of services) for (const enabled of [false, true…
+     50|       const result = boundary(text, service, enabled)
+     51|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     52|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     53|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[35/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Nhờ thợ kiểm tra cầu dao, cả bếp từ nhà mình cũng không nóng nữa.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Nhờ thợ kiểm tra cầu dao, cả bếp từ nhà mình cũng không nóng nữa.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:51:83
+     49|     for (const service of services) for (const enabled of [false, true…
+     50|       const result = boundary(text, service, enabled)
+     51|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     52|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     53|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[36/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps supported work open: Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:56:116
+     54|   })
+     55|   it.each(supported)('keeps supported work open: %s', (text) => {
+     56|     for (const enabled of [false, true]) expect(boundary(text, 'electr…
+       |                                                                                                                    ^
+     57|   })
+     58|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[37/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+AssertionError: expected 3 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 3
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:66:28
+     64|     const replies = world.db.tables.kael_chat_turns.filter((turn) => t…
+     65|     expect(result.status).toBe(200)
+     66|     expect(replies.length).toBe(1)
+       |                            ^
+     67|     expect(String(replies[0]?.text_content)).toContain('112')
+     68|     expect(String(replies[0]?.text_content)).toContain('114')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[38/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: previously pinned incorrect decisions now meet the requested-work policy > "Máy sấy nhà mình chạy mãi mà quần áo vẫn còn ướt." (wanted: refuse) is decided correctly
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    known miss: "Máy sấy nhà mình chạy mãi mà quần áo vẫn còn ướt.": expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:480:78
+    478|   it.each([...KNOWN_MISSES])('"%s" (wanted: %s) is decided correctly',…
+    479|     const got = decide('handyman', text, 'off')
+    480|     expect(got.ok, pillarWhy(PILLAR, `known miss: ${JSON.stringify(tex…
+       |                                                                              ^
+    481|   })
+    482| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[39/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: previously pinned incorrect decisions now meet the requested-work policy > "Lò vi sóng dùng được hai tháng rồi tự nhiên đơ, không bấm được nút nào." (wanted: refuse) is decided correctly
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    known miss: "Lò vi sóng dùng được hai tháng rồi tự nhiên đơ, không bấm được nút nào.": expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:480:78
+    478|   it.each([...KNOWN_MISSES])('"%s" (wanted: %s) is decided correctly',…
+    479|     const got = decide('handyman', text, 'off')
+    480|     expect(got.ok, pillarWhy(PILLAR, `known miss: ${JSON.stringify(tex…
+       |                                                                              ^
+    481|   })
+    482| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[40/44]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts > P421-kael-boundary-requested-work: previously pinned incorrect decisions now meet the requested-work policy > "Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối." (wanted: open) is decided correctly
+AssertionError: [P421-kael-boundary-requested-work] an unsupported appliance or topic closes a Case only when the customer is asking for that work to be done, whether they name a fault, ask for a repair or inspection, or both; the same word as a suspected cause, a location, a neighbour, a building fixture, a negated or finished request or a healthy appliance inside a supported request leaves the Case active and asks its next question, finished work excuses only the repair it describes so a new request in the same sentence is still refused, a genuine unsupported request is still refused, and the decision is the same with the playbook flag off and on
+authority: governance/RULES.md #6 (Kael declines unsupported services politely and answers the six active services) | governance/RULES.md #8 (a refusal is explicit, never a silent drop of a valid request) | KAWA_01 six-service diagnostic DX-01 (a keyword mention closed three valid Cases permanently)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts
+next:      P406-kael-case-emergency-intake, P413-kael-approval-boundary, P420-kael-case-emergency-playbook-precedence
+detail:    known miss: "Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối.": expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts:480:78
+    478|   it.each([...KNOWN_MISSES])('"%s" (wanted: %s) is decided correctly',…
+    479|     const got = decide('handyman', text, 'off')
+    480|     expect(got.ok, pillarWhy(PILLAR, `known miss: ${JSON.stringify(tex…
+       |                                                                              ^
+    481|   })
+    482| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[41/44]⎯
+
+
+ Test Files  3 failed (3)
+      Tests  44 failed | 351 passed (395)
+   Start at  21:23:18
+   Duration  7.45s (transform 13.21s, setup 0ms, import 16.80s, tests 2.03s, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts

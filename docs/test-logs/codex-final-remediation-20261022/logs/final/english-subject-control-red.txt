@@ -1,0 +1,68 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts (25 tests | 2 failed) 59ms
+     × My fridge was fine but now broken. asks for ["tu lanh"] (a same-subject contrast still describes an appliance fault) 9ms
+     × My washing machine and its motor are broken. asks for ["may giat"] (a component of the same appliance is faulty) 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > My fridge was fine but now broken. asks for ["tu lanh"] (a same-subject contrast still describes an appliance fault)
+AssertionError: [P431-kael-requested-work-english-negation] English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a same-subject contrast still describes an appliance fault: "My fridge was fine but now broken.": expected [] to deeply equal [ 'tu lanh' ]
+
+- Expected
++ Received
+
+- [
+-   "tu lanh",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:63:85
+     61| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     62|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     63|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     64|   })
+     65| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > My washing machine and its motor are broken. asks for ["may giat"] (a component of the same appliance is faulty)
+AssertionError: [P431-kael-requested-work-english-negation] English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    a component of the same appliance is faulty: "My washing machine and its motor are broken.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:63:85
+     61| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     62|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     63|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     64|   })
+     65| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 23 passed (25)
+   Start at  03:54:43
+   Duration  602ms (transform 117ms, setup 0ms, import 161ms, tests 59ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts

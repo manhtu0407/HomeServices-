@@ -1,0 +1,1 @@
+work plan ok: 6 slices declared (6 closed, 0 pending), 151 files changed inside the declared read-window

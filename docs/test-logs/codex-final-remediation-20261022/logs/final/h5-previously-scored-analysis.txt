@@ -1,0 +1,25 @@
+development:ALL                          n=298 pos=179 TP=159 FN=20 WR=0 | neg=119 FP=0 TN=119 recall=0.888 [0.834,0.926] fpr=0
+development:clear                        n=267 pos=154 TP=154 FN=0 WR=0 | neg=113 FP=0 TN=113 recall=1 [0.976,1] fpr=0
+development:pinned-contestable           n=31 pos=25 TP=5 FN=20 WR=0 | neg=6 FP=0 TN=6 recall=0.2 [0.089,0.391] fpr=0
+fresh:ALL                                n=92 pos=57 TP=57 FN=0 WR=0 | neg=35 FP=0 TN=35 recall=1 [0.937,1] fpr=0
+fresh:positive-vi                        n=20 pos=20 TP=20 FN=0 WR=0 | neg=0 FP=0 TN=0 recall=1 [0.839,1] 
+fresh:positive-en                        n=10 pos=10 TP=10 FN=0 WR=0 | neg=0 FP=0 TN=0 recall=1 [0.722,1] 
+fresh:positive-no-diacritics             n=10 pos=10 TP=10 FN=0 WR=0 | neg=0 FP=0 TN=0 recall=1 [0.722,1] 
+fresh:negation                           n=10 pos=0 TP=0 FN=0 WR=0 | neg=10 FP=0 TN=10  fpr=0
+fresh:completed-incident                 n=8 pos=0 TP=0 FN=0 WR=0 | neg=8 FP=0 TN=8  fpr=0
+fresh:prevention-product                 n=10 pos=0 TP=0 FN=0 WR=0 | neg=10 FP=0 TN=10  fpr=0
+fresh:prevention-word-real-hazard        n=6 pos=6 TP=6 FN=0 WR=0 | neg=0 FP=0 TN=0 recall=1 [0.61,1] 
+fresh:multi-clause-mixed                 n=12 pos=11 TP=11 FN=0 WR=0 | neg=1 FP=0 TN=1 recall=1 [0.741,1] fpr=0
+fresh:routine-near-miss                  n=6 pos=0 TP=0 FN=0 WR=0 | neg=6 FP=0 TN=6  fpr=0
+handler off {"n":390,"positives":236,"negatives":154,"TP":216,"FN":20,"WRONG_ROUTE":0,"FP":0,"TN":154}
+handler on  {"n":390,"positives":236,"negatives":154,"TP":216,"FN":20,"WRONG_ROUTE":0,"FP":0,"TN":154}
+parity classifier_route_differs 0
+parity handler_route_differs 0
+parity handler_numbers_dropped 0
+parity handler_missing_guidance 0
+parity handler_not_2xx 0
+max classifier ms 39.12 max handler ms 70
+pathological [{"shape":"repeated mixed hazard and negation sentences (capped at the 5000-character field limit)","length":5000,"ms":6.7,"route":"none"},{"shape":"repeated mixed hazard and negation sentences","length":36400,"ms":100.8,"route":"none"},{"shape":"one long unbroken run of letters (capped at the 5000-character field limit)","length":5000,"ms":3.6,"route":"none"},{"shape":"one long unbroken run of letters","length":60000,"ms":191.7,"route":"none"},{"shape":"one long run of cue words without separators (capped at the 5000-character field limit)","length":5000,"ms":3.7,"route":"none"},{"shape":"one long run of cue words without separators","length":60000,"ms":196.8,"route":"none"},{"shape":"many short clauses (capped at the 5000-character field limit)","length":5000,"ms":3.1,"route":"none"},{"shape":"many short clauses","length":72000,"ms":275.1,"route":"none"},{"shape":"accent-heavy (capped at the 5000-character field limit)","length":5000,"ms":3.4,"route":"fire"},{"shape":"accent-heavy","length":49500,"ms":126.8,"route":"fire"}]
+misses 20
+
+

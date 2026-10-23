@@ -1,0 +1,7 @@
+mutant_exit=3
+
+ERROR:  actor d6910000-0000-4000-8000-000000000001 reached the base reconciliation function
+CONTEXT:  PL/pgSQL function inline_code_block line 27 at RAISE
+
+restore_exit=0
+control_exit=0

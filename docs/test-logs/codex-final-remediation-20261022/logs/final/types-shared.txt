@@ -1,0 +1,6 @@
+
+> @nestscout/shared@0.1.0 type-check C:\ns-fix\b4\packages\shared
+> tsc --noEmit
+
+
+

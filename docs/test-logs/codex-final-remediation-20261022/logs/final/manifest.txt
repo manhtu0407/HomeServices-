@@ -1,0 +1,3 @@
+harness manifest ok: 52 repository skills, 11 runtime tools, 1 provider adapters, 2 routers; sha256:a475dd1aae0fa7e3ea5dc39032912f7a353c42ad27a8d64abfe601e753415708
+
+

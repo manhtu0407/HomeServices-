@@ -1,0 +1,4 @@
+psql:/tmp/reference-race-red2.sql:12: NOTICE:  extension "dblink" already exists, skipping
+CREATE EXTENSION
+psql:/tmp/reference-race-red2.sql:18: ERROR:  duplicate key value violates unique constraint "users_email_key"
+DETAIL:  Key (email)=(bank-reference-final-customer@example.test) already exists.

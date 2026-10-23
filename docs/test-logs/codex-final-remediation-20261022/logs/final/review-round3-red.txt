@@ -1,0 +1,147 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts (22 tests | 4 failed) 60ms
+     × My fridge works fine but the outlet is broken. Please fix the outlet. asks for no unsupported work (another subject after but) 41ms
+     × My washing machine is fine and the outlet is broken. Please fix the outlet. asks for no unsupported work (another subject after and) 5ms
+     × My dishwasher works fine while the faucet is leaking. Please repair the faucet. asks for no unsupported work (another subject after while) 1ms
+     × Please repair the outlet and my washing machine. asks for ["may giat"] (coordinated appliance work is still requested) 1ms
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (41 tests | 2 failed) 280ms
+     × fallback preserves explicit exclusions without ignoring requested work, flags=false 10ms
+     × fallback preserves explicit exclusions without ignoring requested work, flags=true 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > My fridge works fine but the outlet is broken. Please fix the outlet. asks for no unsupported work (another subject after but)
+AssertionError: [P431-kael-requested-work-english-negation] English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    another subject after but: "My fridge works fine but the outlet is broken. Please fix the outlet.": expected [ 'tu lanh' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "tu lanh",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:54:85
+     52| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     53|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     54|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     55|   })
+     56| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > My washing machine is fine and the outlet is broken. Please fix the outlet. asks for no unsupported work (another subject after and)
+AssertionError: [P431-kael-requested-work-english-negation] English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    another subject after and: "My washing machine is fine and the outlet is broken. Please fix the outlet.": expected [ 'may giat' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "may giat",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:54:85
+     52| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     53|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     54|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     55|   })
+     56| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: a refusal covers the appliance and its fault > My dishwasher works fine while the faucet is leaking. Please repair the faucet. asks for no unsupported work (another subject after while)
+AssertionError: [P431-kael-requested-work-english-negation] English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    another subject after while: "My dishwasher works fine while the faucet is leaking. Please repair the faucet.": expected [ 'may rua bat' ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "may rua bat",
++ ]
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:54:85
+     52| describe(`${PILLAR.id}: a refusal covers the appliance and its fault`,…
+     53|   it.each(REFUSED)('%s asks for no unsupported work (%s)', (text, labe…
+     54|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     55|   })
+     56| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts > P431-kael-requested-work-english-negation: the work that is asked for next is still requested > Please repair the outlet and my washing machine. asks for ["may giat"] (coordinated appliance work is still requested)
+AssertionError: [P431-kael-requested-work-english-negation] English action refusals suppress the excluded appliance and its described fault, negated broken/faulty adjectives are not faults, and genuine nonfunctioning predicates or separately requested repairs still identify the unsupported appliance
+authority: governance/RULES.md #6 (an unsupported topic closes a Case only when the customer asks for that work) | KAWA_01 six-service diagnostic DX-01 (a mention is not a request) | PR 406 review (Codex P2 on the English negation of a described fault)
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P429-kael-boundary-language-supply
+detail:    coordinated appliance work is still requested: "Please repair the outlet and my washing machine.": expected [] to deeply equal [ 'may giat' ]
+
+- Expected
++ Received
+
+- [
+-   "may giat",
+- ]
++ []
+
+ ❯ src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts:60:85
+     58| describe(`${PILLAR.id}: the work that is asked for next is still reque…
+     59|   it.each(STILL_REQUESTED)('%s asks for %j (%s)', (text, wanted, label…
+     60|     expect(requested(text), pillarWhy(PILLAR, `${label}: ${JSON.string…
+       |                                                                                     ^
+     61|   })
+     62| })
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > fallback preserves explicit exclusions without ignoring requested work, flags=false
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > fallback preserves explicit exclusions without ignoring requested work, flags=true
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Đèn không sáng, không bao gồm sửa wifi.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:82:87
+     80|       'The light is broken, not included repair the dryer.',
+     81|     ]) {
+     82|       expect(hasUnsupportedRepairIntent(text, 'electrical'), pillarWhy…
+       |                                                                                       ^
+     83|       expect(buildFallbackIntent('electrical', [], text, enabled).serv…
+     84|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  6 failed | 57 passed (63)
+   Start at  03:51:15
+   Duration  6.69s (transform 4.81s, setup 0ms, import 6.00s, tests 340ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/unit/kael-requested-work-english-negation-pillar.test.ts src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts

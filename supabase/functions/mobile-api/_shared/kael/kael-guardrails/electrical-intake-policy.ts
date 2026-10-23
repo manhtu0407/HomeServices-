@@ -5,6 +5,7 @@ import type {
 } from "../learning/performance-profiles.ts";
 import type { KaelEstimate } from "../contracts/types.ts";
 import { scanServiceIntakeSafetySignals } from "./service-intake-safety-policy.ts";
+import { detectRequestedApplianceWork } from "./requested-work.ts";
 
 export type RequiredSlotPolicy = {
   readonly serviceType: "electrical";
@@ -203,19 +204,26 @@ export function applyHardRoutingPolicy(input: {
     };
   }
 
+  const incidentalFixtureClauses = new Set(policyClauses(text).filter((rawClause) =>
+    !/\b(?:tv|tivi|ti vi|television)\b/.test(rawClause) &&
+    /\b(?:is|are|was|were)(?: (?:currently|now|still|just|also)){0,2} (?:standing |sitting |placed |located |positioned )?(?:right |directly |immediately )?(?:next to|near|beside|behind) (?:the |my |a |an )?(?:outlet|socket|switch|breaker|faucet|tap|pipe)\b/.test(rawClause) &&
+    detectRequestedApplianceWork(rawClause, "electrical").size === 0
+  ).map(withoutPolicyNegations));
   const hasInternalApplianceFault = policyClauses(affirmative).some((clause) => {
     const portableAppliance = /\b(?:tv|tivi|ti vi|television|may giat|tu lanh|lo vi song|may say|may rua bat|may rua chen|washing machine|refrigerator|fridge|microwave|dryer|dishwasher)\b/.test(clause);
     const appliance = portableAppliance || /\b(?:bep tu|induction cooktop|binh nong lanh|may nuoc nong|water heater)\b/.test(clause);
     const genericPortableFault = portableAppliance && /\b(?:hong|broken)\b/.test(clause);
-    const explicitInternalFault = /\b(?:bao loi|ma loi|loi e[0-9]+|appliance_not_heating|appliance_no_picture|appliance_not_running|hvac_not_running|bo mach|mach dieu khien|control board|error code|error e[0-9]+|shows error|internal fault)\b/.test(clause);
+    const explicitInternalFault = /\b(?:bao loi|ma loi|loi e[0-9]+|appliance_not_heating|appliance_no_picture|bo mach|mach dieu khien|control board|error code|error e[0-9]+|shows error|internal fault)\b/.test(clause);
+    const genericRunningFault = /\b(?:appliance_not_running|hvac_not_running)\b/.test(clause);
     const internalPortableHazard = portableAppliance && (
       /\b(?:boc khoi|phat khoi|smoke|smoking)\b[^.;,]{0,35}\b(?:ben trong|long may|inside|internal)\b/.test(clause) ||
       /\b(?:toe lua|tia lua|spark|sparking)\b[^.;,]{0,35}\b(?:bo mach|ben trong|control board|inside|internal)\b/.test(clause)
     );
+    if (appliance && incidentalFixtureClauses.has(clause) && !explicitInternalFault && !internalPortableHazard) return false;
     const externalElectricalWork = /\b(?:o cam|o dien|cau dao|aptomat|atomat|cb|day dien|duong dien|mach dien|nguon cap|outlet|socket|breaker|wiring|power supply)\b/.test(clause) &&
       /\b(?:hong|loi|dut|chay|nong|sua|kiem tra|thay|lap|repair|inspect|replace|install|fault|damaged)\b/.test(clause);
     const explicitlyNormalElectricalWork = /\b(?:o cam|o dien|cau dao|aptomat|atomat|cb|day dien|duong dien|mach dien|nguon cap|outlet|socket|breaker|wiring|power supply)\b[^.;,]{0,35}\b(?:van|dang)?\s*(?:binh thuong|hoat dong tot|works normally|working normally|works fine|is fine)\b/.test(clause);
-    return appliance && (genericPortableFault || explicitInternalFault || internalPortableHazard) &&
+    return appliance && (genericPortableFault || genericRunningFault || explicitInternalFault || internalPortableHazard) &&
       (!externalElectricalWork || explicitlyNormalElectricalWork);
   });
   if (hasInternalApplianceFault && !hasElectricalInfrastructureContext(input.text)) {

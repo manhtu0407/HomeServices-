@@ -1,0 +1,918 @@
+{
+  "schema": "nestscout.codex-final.six-service-matrix.v1",
+  "tierLimit": "T0 and local T1. Generic SQL checks parameterized for six service fixtures are not six complete E2E journeys.",
+  "services": {
+    "electrical": [
+      {
+        "id": "J01",
+        "name": "basic_intake_accepted",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J02",
+        "name": "service_profile_resolved",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J03",
+        "name": "no_offer_before_quote_ready",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J04",
+        "name": "offer_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J05",
+        "name": "evidence_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J06",
+        "name": "job_lifecycle_legal_path",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J07",
+        "name": "job_lifecycle_illegal_refused",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J08",
+        "name": "customer_gates_hold",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J09",
+        "name": "scope_change_gate",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J10",
+        "name": "cancel_and_rematch",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J11",
+        "name": "worker_accept_is_worker_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J12",
+        "name": "payment_skip_edge",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J13",
+        "name": "worker_ui_stage_projection",
+        "t0Off": "INVENTORY",
+        "t0On": "INVENTORY",
+        "final": "INVENTORY",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J14",
+        "name": "payment_rail_and_callback",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J15",
+        "name": "atomicity_rls_concurrency",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      }
+    ],
+    "plumbing": [
+      {
+        "id": "J01",
+        "name": "basic_intake_accepted",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J02",
+        "name": "service_profile_resolved",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J03",
+        "name": "no_offer_before_quote_ready",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J04",
+        "name": "offer_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J05",
+        "name": "evidence_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J06",
+        "name": "job_lifecycle_legal_path",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J07",
+        "name": "job_lifecycle_illegal_refused",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J08",
+        "name": "customer_gates_hold",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J09",
+        "name": "scope_change_gate",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J10",
+        "name": "cancel_and_rematch",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J11",
+        "name": "worker_accept_is_worker_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J12",
+        "name": "payment_skip_edge",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J13",
+        "name": "worker_ui_stage_projection",
+        "t0Off": "INVENTORY",
+        "t0On": "INVENTORY",
+        "final": "INVENTORY",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J14",
+        "name": "payment_rail_and_callback",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J15",
+        "name": "atomicity_rls_concurrency",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      }
+    ],
+    "cleaning": [
+      {
+        "id": "J01",
+        "name": "basic_intake_accepted",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J02",
+        "name": "service_profile_resolved",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J03",
+        "name": "no_offer_before_quote_ready",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J04",
+        "name": "offer_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J05",
+        "name": "evidence_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J06",
+        "name": "job_lifecycle_legal_path",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J07",
+        "name": "job_lifecycle_illegal_refused",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J08",
+        "name": "customer_gates_hold",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J09",
+        "name": "scope_change_gate",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J10",
+        "name": "cancel_and_rematch",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J11",
+        "name": "worker_accept_is_worker_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J12",
+        "name": "payment_skip_edge",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J13",
+        "name": "worker_ui_stage_projection",
+        "t0Off": "INVENTORY",
+        "t0On": "INVENTORY",
+        "final": "INVENTORY",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J14",
+        "name": "payment_rail_and_callback",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J15",
+        "name": "atomicity_rls_concurrency",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      }
+    ],
+    "hvac": [
+      {
+        "id": "J01",
+        "name": "basic_intake_accepted",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J02",
+        "name": "service_profile_resolved",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J03",
+        "name": "no_offer_before_quote_ready",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J04",
+        "name": "offer_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J05",
+        "name": "evidence_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J06",
+        "name": "job_lifecycle_legal_path",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J07",
+        "name": "job_lifecycle_illegal_refused",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J08",
+        "name": "customer_gates_hold",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J09",
+        "name": "scope_change_gate",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J10",
+        "name": "cancel_and_rematch",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J11",
+        "name": "worker_accept_is_worker_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J12",
+        "name": "payment_skip_edge",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J13",
+        "name": "worker_ui_stage_projection",
+        "t0Off": "INVENTORY",
+        "t0On": "INVENTORY",
+        "final": "INVENTORY",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J14",
+        "name": "payment_rail_and_callback",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J15",
+        "name": "atomicity_rls_concurrency",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      }
+    ],
+    "upholstery": [
+      {
+        "id": "J01",
+        "name": "basic_intake_accepted",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J02",
+        "name": "service_profile_resolved",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J03",
+        "name": "no_offer_before_quote_ready",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J04",
+        "name": "offer_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J05",
+        "name": "evidence_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J06",
+        "name": "job_lifecycle_legal_path",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J07",
+        "name": "job_lifecycle_illegal_refused",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J08",
+        "name": "customer_gates_hold",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J09",
+        "name": "scope_change_gate",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J10",
+        "name": "cancel_and_rematch",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J11",
+        "name": "worker_accept_is_worker_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J12",
+        "name": "payment_skip_edge",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J13",
+        "name": "worker_ui_stage_projection",
+        "t0Off": "INVENTORY",
+        "t0On": "INVENTORY",
+        "final": "INVENTORY",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J14",
+        "name": "payment_rail_and_callback",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J15",
+        "name": "atomicity_rls_concurrency",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      }
+    ],
+    "handyman": [
+      {
+        "id": "J01",
+        "name": "basic_intake_accepted",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J02",
+        "name": "service_profile_resolved",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J03",
+        "name": "no_offer_before_quote_ready",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J04",
+        "name": "offer_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J05",
+        "name": "evidence_decision_is_customer_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J06",
+        "name": "job_lifecycle_legal_path",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J07",
+        "name": "job_lifecycle_illegal_refused",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J08",
+        "name": "customer_gates_hold",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J09",
+        "name": "scope_change_gate",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J10",
+        "name": "cancel_and_rematch",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J11",
+        "name": "worker_accept_is_worker_only",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J12",
+        "name": "payment_skip_edge",
+        "t0Off": "PASS",
+        "t0On": "PASS",
+        "final": "PASS",
+        "tier": "T0+T1-corroboration",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J13",
+        "name": "worker_ui_stage_projection",
+        "t0Off": "INVENTORY",
+        "t0On": "INVENTORY",
+        "final": "INVENTORY",
+        "tier": "T0",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J14",
+        "name": "payment_rail_and_callback",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      },
+      {
+        "id": "J15",
+        "name": "atomicity_rls_concurrency",
+        "t0Off": "BLOCKED",
+        "t0On": "BLOCKED",
+        "final": "PASS",
+        "tier": "T1",
+        "serviceFixtureBank": 0,
+        "serviceFixtureAccept": 0
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+
+ Test Files  4 passed (4)
+      Tests  748 passed (748)
+   Start at  03:55:11
+   Duration  6.18s (transform 5.09s, setup 0ms, import 6.25s, tests 650ms, environment 0ms)
+

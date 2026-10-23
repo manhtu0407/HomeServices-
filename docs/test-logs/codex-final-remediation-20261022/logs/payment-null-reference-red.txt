@@ -1,0 +1,22 @@
+BEGIN
+SET
+INSERT 0 6
+UPDATE 1
+UPDATE 2
+UPDATE 1
+INSERT 0 1
+INSERT 0 2
+INSERT 0 1
+DO
+SET
+SET
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+DO
+psql:/tmp/manual-bank-review.sql:438: ERROR:  null bank-reference field 1 bypassed verification: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000101","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T14:36:26.405607+00:00","event_id_out":"87e55f68-a57f-4fe4-b0a4-c45631ba9e23","version_out":3,"generated_at_out":"2026-10-22T14:36:26.405443+00:00"}
+CONTEXT:  PL/pgSQL function inline_code_block line 14 at RAISE

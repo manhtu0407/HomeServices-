@@ -1,0 +1,551 @@
+# OCR review plan
+
+Worktree: C:/ns-fix/b4 (linked worktree)
+Branch: claude/nestscout-four-blocker-20261022
+Base: origin/main (merge-base 7e59b91085825a11168b2b2e1c68225a2dcc17f0)
+Review: full, no earlier review recorded
+From: origin/main
+Snapshot: 9609675a1e85b316aabb8af6545b0c5e5ac02988
+
+72 reviewable files, 100887 changed lines, 30 batches.
+Coverage contract: every file below ends the review as reviewed or skipped with a reason. Review each file against the rule group of its batch, and report only what the diff supports.
+
+## Batch 1 of 30: rule group 2 (system: **/*.{json,json5}), 3 files, 24 changed lines
+
+- config/harness/access-matrix.json (modified, +2/-2)
+- config/harness/manifest.json (modified, +1/-1)
+- config/harness/migration-inventory.json (modified, +16/-2)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 config/harness/access-matrix.json config/harness/manifest.json config/harness/migration-inventory.json
+
+## Batch 2 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 797 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/h5-before-summary.json (added, +797/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/codex-final-remediation-20261022/results/h5-before-summary.json
+
+## Batch 3 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 15397 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/h5-before.json (added, +15397/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/codex-final-remediation-20261022/results/h5-before.json
+
+## Batch 4 of 30: rule group 2 (system: **/*.{json,json5}), 4 files, 681 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/results/new-standard-probes.json (added, +294/-0)
+- docs/test-logs/kawa-four-blocker-20261022/file-digests.json (added, +115/-0)
+- docs/test-logs/kawa-four-blocker-20261022/results/compare-with-r2b.json (added, +60/-0)
+- docs/test-logs/kawa-four-blocker-20261022/results/final-pass-summary.json (added, +212/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/codex-final-remediation-20261022/results/new-standard-probes.json docs/test-logs/kawa-four-blocker-20261022/file-digests.json docs/test-logs/kawa-four-blocker-20261022/results/compare-with-r2b.json docs/test-logs/kawa-four-blocker-20261022/results/final-pass-summary.json
+
+## Batch 5 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 15397 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/h5/raw-candidate.json (added, +15397/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/h5/raw-candidate.json
+
+## Batch 6 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 15327 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/h5/raw-main.json (added, +15327/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/h5/raw-main.json
+
+## Batch 7 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 797 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/h5/summary-candidate.json (added, +797/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/h5/summary-candidate.json
+
+## Batch 8 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 961 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/h5/summary-main.json (added, +961/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/h5/summary-main.json
+
+## Batch 9 of 30: rule group 2 (system: **/*.{json,json5}), 2 files, 570 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/dx03-language.json (added, +118/-0)
+- docs/test-logs/kawa-four-blocker-20261022/results/post/dx03-persisted.json (added, +452/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/dx03-language.json docs/test-logs/kawa-four-blocker-20261022/results/post/dx03-persisted.json
+
+## Batch 10 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 4988 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/handler.json (added, +4988/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/handler.json
+
+## Batch 11 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 1390 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/journey-flags-on.json (added, +1390/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/journey-flags-on.json
+
+## Batch 12 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 1390 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/journey.json (added, +1390/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/journey.json
+
+## Batch 13 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 15343 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/matrix-flags-on.json (added, +15343/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/matrix-flags-on.json
+
+## Batch 14 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 15365 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/matrix.json (added, +15365/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/matrix.json
+
+## Batch 15 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 569 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/supp-c6b-flags-on.json (added, +569/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/supp-c6b-flags-on.json
+
+## Batch 16 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 569 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/supp-c6b.json (added, +569/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/supp-c6b.json
+
+## Batch 17 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 5430 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/post/triplet.json (added, +5430/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/post/triplet.json
+
+## Batch 18 of 30: rule group 2 (system: **/*.{json,json5}), 5 files, 36 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/red-first-summary.json (added, +32/-0)
+- docs/test-logs/kawa-four-blocker-20261022/results/red-first/green-on-candidate-kael-boundary-electrical-flag-parity-pillar.test.ts.json (added, +1/-0)
+- docs/test-logs/kawa-four-blocker-20261022/results/red-first/green-on-candidate-kael-boundary-requested-work-pillar.test.ts.json (added, +1/-0)
+- docs/test-logs/kawa-four-blocker-20261022/results/red-first/red-on-8e859073-kael-boundary-electrical-flag-parity-pillar.test.ts.json (added, +1/-0)
+- docs/test-logs/kawa-four-blocker-20261022/results/red-first/red-on-8e859073-kael-boundary-requested-work-pillar.test.ts.json (added, +1/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/red-first-summary.json docs/test-logs/kawa-four-blocker-20261022/results/red-first/green-on-candidate-kael-boundary-electrical-flag-parity-pillar.test.ts.json docs/test-logs/kawa-four-blocker-20261022/results/red-first/green-on-candidate-kael-boundary-requested-work-pillar.test.ts.json docs/test-logs/kawa-four-blocker-20261022/results/red-first/red-on-8e859073-kael-boundary-electrical-flag-parity-pillar.test.ts.json docs/test-logs/kawa-four-blocker-20261022/results/red-first/red-on-8e859073-kael-boundary-requested-work-pillar.test.ts.json
+
+## Batch 19 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 854 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/results/s5-matrix.json (added, +854/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/results/s5-matrix.json
+
+## Batch 20 of 30: rule group 2 (system: **/*.{json,json5}), 1 files, 851 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/scripts/h5/fresh-probes-20261022.json (added, +851/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/scripts/h5/fresh-probes-20261022.json
+
+## Batch 21 of 30: rule group 3 (system: **/*.{ts,js,tsx,jsx,mjs,cjs}), 8 files, 624 changed lines
+
+- docs/test-logs/codex-final-remediation-20261022/scripts/reproduce.mjs (added, +38/-0)
+- docs/test-logs/codex-final-remediation-20261022/scripts/run-candidate.mjs (added, +121/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/compare-with-r2b.mjs (added, +56/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/final-pass.mjs (added, +62/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/h5/analyse.mjs (added, +92/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/h5/make-probes.mjs (added, +132/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/h5/zz-h5-standard-eval-pillar.test.ts (added, +99/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/make-digests.mjs (added, +24/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/codex-final-remediation-20261022/scripts/reproduce.mjs docs/test-logs/codex-final-remediation-20261022/scripts/run-candidate.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/compare-with-r2b.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/final-pass.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/h5/analyse.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/h5/make-probes.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/h5/zz-h5-standard-eval-pillar.test.ts docs/test-logs/kawa-four-blocker-20261022/scripts/make-digests.mjs
+
+## Batch 22 of 30: rule group 3 (system: **/*.{ts,js,tsx,jsx,mjs,cjs}), 8 files, 454 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/scripts/make-s5-matrix.mjs (added, +107/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/probes/boundary-flag-parity.mjs (added, +67/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/probes/qr-probe.mjs (added, +9/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/probes/wrong-rows.mjs (added, +15/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/red-first.mjs (added, +53/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/reproduce.mjs (added, +38/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/run-candidate.mjs (added, +121/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/secret-scan.mjs (added, +44/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/scripts/make-s5-matrix.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/probes/boundary-flag-parity.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/probes/qr-probe.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/probes/wrong-rows.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/red-first.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/reproduce.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/run-candidate.mjs docs/test-logs/kawa-four-blocker-20261022/scripts/secret-scan.mjs
+
+## Batch 23 of 30: rule group 3 (system: **/*.{ts,js,tsx,jsx,mjs,cjs}), 1 files, 11 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/list-migrations.mjs (added, +11/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/scripts/t1/list-migrations.mjs
+
+## Batch 24 of 30: rule group 4 (system: default), 8 files, 465 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/.gitattributes (added, +1/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/h5/run-eval.sh (added, +11/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/apply.sh (added, +9/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/confirm-accept-concurrency.sql (added, +141/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/mutations.sh (added, +65/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/patch.sql (added, +40/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/payment-concurrency.sql (added, +163/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/run-t1.sh (added, +35/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/.gitattributes docs/test-logs/kawa-four-blocker-20261022/scripts/h5/run-eval.sh docs/test-logs/kawa-four-blocker-20261022/scripts/t1/apply.sh docs/test-logs/kawa-four-blocker-20261022/scripts/t1/confirm-accept-concurrency.sql docs/test-logs/kawa-four-blocker-20261022/scripts/t1/mutations.sh docs/test-logs/kawa-four-blocker-20261022/scripts/t1/patch.sql docs/test-logs/kawa-four-blocker-20261022/scripts/t1/payment-concurrency.sql docs/test-logs/kawa-four-blocker-20261022/scripts/t1/run-t1.sh
+
+## Batch 25 of 30: rule group 4 (system: default), 2 files, 28 changed lines
+
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/status-writers.sql (added, +7/-0)
+- docs/test-logs/kawa-four-blocker-20261022/scripts/t1/up.sh (added, +21/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 docs/test-logs/kawa-four-blocker-20261022/scripts/t1/status-writers.sql docs/test-logs/kawa-four-blocker-20261022/scripts/t1/up.sh
+
+## Batch 26 of 30: rule group 4 (system: default), 1 files, 884 changed lines
+
+- supabase/tests/manual_bank_reconciliation_behavior_verification.sql (added, +884/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 supabase/tests/manual_bank_reconciliation_behavior_verification.sql
+
+## Batch 27 of 30: rule group 4 (system: default), 3 files, 652 changed lines
+
+- supabase/tests/manual_bank_reference_concurrency_verification.sql (added, +185/-0)
+- supabase/tests/six_service_confirmation_gate_verification.sql (added, +303/-0)
+- supabase/tests/worker_accept_authority_verification.sql (added, +164/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 supabase/tests/manual_bank_reference_concurrency_verification.sql supabase/tests/six_service_confirmation_gate_verification.sql supabase/tests/worker_accept_authority_verification.sql
+
+## Batch 28 of 30: rule group 5 (project: supabase/functions/mobile-api/_shared/kael/**), 5 files, 102 changed lines
+
+- supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts (modified, +3/-21)
+- supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts (modified, +14/-5)
+- supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts (modified, +33/-13)
+- supabase/functions/mobile-api/_shared/kael/pipeline/utils.ts (modified, +3/-3)
+- supabase/functions/mobile-api/_shared/kael/tools/intent.ts (modified, +2/-5)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 supabase/functions/mobile-api/_shared/kael/kael-guardrails/boundary-guard.ts supabase/functions/mobile-api/_shared/kael/kael-guardrails/emergency-guidance.ts supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts supabase/functions/mobile-api/_shared/kael/pipeline/utils.ts supabase/functions/mobile-api/_shared/kael/tools/intent.ts
+
+## Batch 29 of 30: rule group 1 (project: apps/api/**), 4 files, 436 changed lines
+
+- apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts (added, +299/-0)
+- apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (added, +85/-0)
+- apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts (modified, +4/-7)
+- apps/api/src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts (added, +41/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-electrical-flag-parity-pillar.test.ts apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts apps/api/src/__tests__/kael-edge-runtime/domains/kael-boundary-requested-work-pillar.test.ts apps/api/src/__tests__/unit/kael-emergency-standard-remediation-pillar.test.ts
+
+## Batch 30 of 30: rule group 6 (project: supabase/migrations/**), 2 files, 495 changed lines
+
+- supabase/migrations/20261022100000_reopen_reconciled_manual_bank_ledger.sql (added, +243/-0)
+- supabase/migrations/20261022141232_control_bank_reference_race.sql (added, +252/-0)
+
+diff: node scripts/run.mjs run-node scripts/ocr-review.mjs diff --from 7e59b91085825a11168b2b2e1c68225a2dcc17f0 --to 9609675a1e85b316aabb8af6545b0c5e5ac02988 supabase/migrations/20261022100000_reopen_reconciled_manual_bank_ledger.sql supabase/migrations/20261022141232_control_bank_reference_race.sql
+
+## Rule group 1 (project: apps/api/**)
+
+## System-Specific Rules (Mandatory)
+
+#### Obvious Typos or Spelling Errors
+- Spelling errors in variable names, function names, component names, or Props property names
+- Strings in log or error messages containing spelling errors that affect readability
+
+#### Dead Code
+- Code blocks that will never be executed (e.g., branches where the condition is always false, code after a return statement)
+- Variables that are declared but never read or referenced
+- Large blocks of commented-out code (with no apparent intent to retain)
+
+#### Code Quality Checks
+- **Duplicate Code**: Check for common logic that can be extracted
+- **Code Comments**: Complex business logic should have clear explanatory comments (avoid commenting obvious code)
+- **Hardcoding**: Business-related hardcoded strings are prohibited, especially URL paths and business numbers; simple UI text may be relaxed
+- **Variable Declarations**: Using `var` is strictly prohibited; use `let` or `const`
+- **Equality Comparisons**: Using `==` and `!=` is prohibited; use strict equality `===` and `!==`
+- **TypeScript Types**: Avoid using `any` type; if necessary, provide a comment explaining the reason
+- **Null Checks**: Perform null checks when accessing values or destructuring to avoid null pointer exceptions
+- **Ternary Expressions**: Nested ternary expressions are not allowed
+
+#### React Best Practices
+- **Hooks Usage**: Verify compliance with Hooks rules (only call at the top level, only call in React functions)
+- **State Management**: Ensure state is placed at the appropriate level; avoid unnecessary state lifting
+- **Side Effect Handling**: Verify useEffect correctly handles dependencies and cleanup functions
+- **Performance Optimization**: Verify proper use of React.memo, useMemo, useCallback (based on performance analysis; avoid over-optimization)
+- **Render Side Effects**: Side effects in React component render methods are strictly prohibited (e.g., API calls, DOM manipulation)
+- **Inline Styles**: Avoid using inline `style` attributes, except for dynamic styles
+- **Inner Components**: Declaring new components inside a component is prohibited; use render methods instead (e.g., `renderItem`, not `<Item/>`)
+
+#### Async Handling Standards
+- **Error Handling**: Async functions must include proper error handling with user-friendly error messages
+- **Prefer async/await**: Prefer async/await over Promises; callback hell is prohibited
+- **Async in Loops**: Distinguish between independent async operations (use `Promise.all` for parallelism) and dependent async operations (use sequential execution); prefer `Promise.all` for performance
+
+#### Code Security Checks
+- **XSS Protection**: Verify that user input is properly escaped
+- **innerHTML Safety**: Using innerHTML to directly insert user input is prohibited; use textContent or apply XSS protection
+- **Code Injection Protection**: Using eval(), Function() constructor, and string argument forms of setTimeout/setInterval is strictly prohibited
+- **Dangerous Methods**: Using document.write() is prohibited as it causes page reflow and security issues
+- **Sensitive Information**: Check whether API keys or sensitive data are exposed
+- **Prototype Chain Safety**: Modifying native object prototypes (e.g., Array.prototype, Object.prototype) is prohibited
+
+---
+
+## User-Specific Rules (Mandatory)
+
+apps/api is reference, parity, admin and support code, not the mobile runtime (RULES.md #0). Flag new user-facing product behavior added here instead of the Edge mobile-api. No secrets in code or logs (RULES.md #1, #9). Every network call has a timeout and at most 2 retries (RULES.md #10).
+
+## Rule group 2 (system: **/*.{json,json5})
+
+Check JSON files for spelling errors in json-keys; ignore the content of json-values.
+
+## Rule group 3 (system: **/*.{ts,js,tsx,jsx,mjs,cjs})
+
+#### Obvious Typos or Spelling Errors
+- Spelling errors in variable names, function names, component names, or Props property names
+- Strings in log or error messages containing spelling errors that affect readability
+
+#### Dead Code
+- Code blocks that will never be executed (e.g., branches where the condition is always false, code after a return statement)
+- Variables that are declared but never read or referenced
+- Large blocks of commented-out code (with no apparent intent to retain)
+
+#### Code Quality Checks
+- **Duplicate Code**: Check for common logic that can be extracted
+- **Code Comments**: Complex business logic should have clear explanatory comments (avoid commenting obvious code)
+- **Hardcoding**: Business-related hardcoded strings are prohibited, especially URL paths and business numbers; simple UI text may be relaxed
+- **Variable Declarations**: Using `var` is strictly prohibited; use `let` or `const`
+- **Equality Comparisons**: Using `==` and `!=` is prohibited; use strict equality `===` and `!==`
+- **TypeScript Types**: Avoid using `any` type; if necessary, provide a comment explaining the reason
+- **Null Checks**: Perform null checks when accessing values or destructuring to avoid null pointer exceptions
+- **Ternary Expressions**: Nested ternary expressions are not allowed
+
+#### React Best Practices
+- **Hooks Usage**: Verify compliance with Hooks rules (only call at the top level, only call in React functions)
+- **State Management**: Ensure state is placed at the appropriate level; avoid unnecessary state lifting
+- **Side Effect Handling**: Verify useEffect correctly handles dependencies and cleanup functions
+- **Performance Optimization**: Verify proper use of React.memo, useMemo, useCallback (based on performance analysis; avoid over-optimization)
+- **Render Side Effects**: Side effects in React component render methods are strictly prohibited (e.g., API calls, DOM manipulation)
+- **Inline Styles**: Avoid using inline `style` attributes, except for dynamic styles
+- **Inner Components**: Declaring new components inside a component is prohibited; use render methods instead (e.g., `renderItem`, not `<Item/>`)
+
+#### Async Handling Standards
+- **Error Handling**: Async functions must include proper error handling with user-friendly error messages
+- **Prefer async/await**: Prefer async/await over Promises; callback hell is prohibited
+- **Async in Loops**: Distinguish between independent async operations (use `Promise.all` for parallelism) and dependent async operations (use sequential execution); prefer `Promise.all` for performance
+
+#### Code Security Checks
+- **XSS Protection**: Verify that user input is properly escaped
+- **innerHTML Safety**: Using innerHTML to directly insert user input is prohibited; use textContent or apply XSS protection
+- **Code Injection Protection**: Using eval(), Function() constructor, and string argument forms of setTimeout/setInterval is strictly prohibited
+- **Dangerous Methods**: Using document.write() is prohibited as it causes page reflow and security issues
+- **Sensitive Information**: Check whether API keys or sensitive data are exposed
+- **Prototype Chain Safety**: Modifying native object prototypes (e.g., Array.prototype, Object.prototype) is prohibited
+
+## Rule group 4 (system: default)
+
+#### Correctness
+Is the logic correct? Are there missing boundary conditions?
+Are exceptions handled properly?
+Is it thread-safe in concurrent scenarios?
+
+#### Security
+Are there security vulnerabilities such as SQL injection or XSS?
+Is sensitive information handled correctly?
+Is permission validation complete?
+
+#### Performance
+Are there obvious performance issues (e.g., N+1 queries, unnecessary loops)?
+Are resources properly released?
+
+#### Maintainability
+Is the code clear and easy to understand?
+Do names accurately express intent?
+Does it follow the project’s existing code style and architecture patterns?
+
+#### Test Coverage
+Do critical logic paths have corresponding test cases?
+Do test cases cover boundary conditions?
+
+## Rule group 5 (project: supabase/functions/mobile-api/_shared/kael/**)
+
+## System-Specific Rules (Mandatory)
+
+#### Obvious Typos or Spelling Errors
+- Spelling errors in variable names, function names, component names, or Props property names
+- Strings in log or error messages containing spelling errors that affect readability
+
+#### Dead Code
+- Code blocks that will never be executed (e.g., branches where the condition is always false, code after a return statement)
+- Variables that are declared but never read or referenced
+- Large blocks of commented-out code (with no apparent intent to retain)
+
+#### Code Quality Checks
+- **Duplicate Code**: Check for common logic that can be extracted
+- **Code Comments**: Complex business logic should have clear explanatory comments (avoid commenting obvious code)
+- **Hardcoding**: Business-related hardcoded strings are prohibited, especially URL paths and business numbers; simple UI text may be relaxed
+- **Variable Declarations**: Using `var` is strictly prohibited; use `let` or `const`
+- **Equality Comparisons**: Using `==` and `!=` is prohibited; use strict equality `===` and `!==`
+- **TypeScript Types**: Avoid using `any` type; if necessary, provide a comment explaining the reason
+- **Null Checks**: Perform null checks when accessing values or destructuring to avoid null pointer exceptions
+- **Ternary Expressions**: Nested ternary expressions are not allowed
+
+#### React Best Practices
+- **Hooks Usage**: Verify compliance with Hooks rules (only call at the top level, only call in React functions)
+- **State Management**: Ensure state is placed at the appropriate level; avoid unnecessary state lifting
+- **Side Effect Handling**: Verify useEffect correctly handles dependencies and cleanup functions
+- **Performance Optimization**: Verify proper use of React.memo, useMemo, useCallback (based on performance analysis; avoid over-optimization)
+- **Render Side Effects**: Side effects in React component render methods are strictly prohibited (e.g., API calls, DOM manipulation)
+- **Inline Styles**: Avoid using inline `style` attributes, except for dynamic styles
+- **Inner Components**: Declaring new components inside a component is prohibited; use render methods instead (e.g., `renderItem`, not `<Item/>`)
+
+#### Async Handling Standards
+- **Error Handling**: Async functions must include proper error handling with user-friendly error messages
+- **Prefer async/await**: Prefer async/await over Promises; callback hell is prohibited
+- **Async in Loops**: Distinguish between independent async operations (use `Promise.all` for parallelism) and dependent async operations (use sequential execution); prefer `Promise.all` for performance
+
+#### Code Security Checks
+- **XSS Protection**: Verify that user input is properly escaped
+- **innerHTML Safety**: Using innerHTML to directly insert user input is prohibited; use textContent or apply XSS protection
+- **Code Injection Protection**: Using eval(), Function() constructor, and string argument forms of setTimeout/setInterval is strictly prohibited
+- **Dangerous Methods**: Using document.write() is prohibited as it causes page reflow and security issues
+- **Sensitive Information**: Check whether API keys or sensitive data are exposed
+- **Prototype Chain Safety**: Modifying native object prototypes (e.g., Array.prototype, Object.prototype) is prohibited
+
+---
+
+## User-Specific Rules (Mandatory)
+
+Edge kael layer (governance/STRUCTURES.md section 4.5, RULES.md #2 to #7). Enforce:
+- kael/ may reach platform/ only. It must not import domains/ or http/.
+- AI providers are called only through kael/kael-providers/provider-client.ts callAI with the spend gate. Provider hosts (Anthropic, OpenAI, Perplexity, DeepSeek) appear only inside kael-providers/. Model IDs come from the per-task ladder in kael/agents/agentic-harness.ts; do not hardcode a new model ID at a call site (RULES.md #2).
+- Raw model output never reaches a user or sets workflow or money state. It is schema-validated first (RULES.md #3), and an autonomous transition carries a server-validated KaelAutonomyDecision (RULES.md #7).
+- Price content keeps the Vietnamese disclaimer (RULES.md #4). Unsupported services are politely declined, not analyzed (RULES.md #6).
+- No PII or keys in logs (RULES.md #9). Every provider call has a timeout and at most 2 retries (RULES.md #10).
+
+## Rule group 6 (project: supabase/migrations/**)
+
+## System-Specific Rules (Mandatory)
+
+#### Correctness
+Is the logic correct? Are there missing boundary conditions?
+Are exceptions handled properly?
+Is it thread-safe in concurrent scenarios?
+
+#### Security
+Are there security vulnerabilities such as SQL injection or XSS?
+Is sensitive information handled correctly?
+Is permission validation complete?
+
+#### Performance
+Are there obvious performance issues (e.g., N+1 queries, unnecessary loops)?
+Are resources properly released?
+
+#### Maintainability
+Is the code clear and easy to understand?
+Do names accurately express intent?
+Does it follow the project’s existing code style and architecture patterns?
+
+#### Test Coverage
+Do critical logic paths have corresponding test cases?
+Do test cases cover boundary conditions?
+
+---
+
+## User-Specific Rules (Mandatory)
+
+Database migration (protocol kael-supabase, governance/protocols/ai-data-security.md section 14). Enforce:
+- A schema change arrives as a new migration file. A diff that modifies an existing migration is a defect unless it is provably unmerged.
+- A schema change comes with regenerated types under packages/shared/src/types/database/** and RLS positive and negative tests for each actor (customer, worker, admin) under supabase/tests/. Flag a diff that lacks either.
+- A table that stores personal data is classified (RULES.md Security Invariants: PII Handling).
+- A test that only greps SQL text proves nothing (docs/test-debt-ledger.md).
+
+## Not reviewed by OCR
+
+These changed files were not selected by OCR. Review them by hand or state that they were not reviewed.
+
+- apps/api/src/__tests__/kael-edge-runtime/fixtures/emergency-phrases/development-h1.json (default_path)
+- apps/api/src/__tests__/kael-edge-runtime/fixtures/emergency-phrases/development-h2.json (default_path)
+- apps/mobile/.env.example (unsupported_ext)
+- docs/test-logs/INDEX.md (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/boundary-attempt1.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/boundary-attempt2.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/boundary-fixture-verified.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/boundary-policy-focused.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/boundary-red.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/boundary-verified.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/h5-attempt1.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/h5-attempt2.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/h5-before.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/h5-complete.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/h5-fixed.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/h5-new-probes-first-run.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/h5-standard-red.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/ocr-plan.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/payment-null-reference-red.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/payment-race-green.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/payment-race-green2.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/payment-race-red.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/payment-race-red2.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/payment-race-red3.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/payment-review-green.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/postgres-baseline-replay.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/supply-fallback-green.txt (unsupported_ext)
+- docs/test-logs/codex-final-remediation-20261022/logs/supply-fallback-red.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/README.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/REPORT.md (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/commands.jsonl (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final-commands.jsonl (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final-pass-stdout.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/api-full-suite.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/edge-check-docker-pinned-deno.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/harness-manifest-check.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/harness-verify.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-added-hygiene-working.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-artifact-text-assertions.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-authority.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-baseline.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-comments-full.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-comments-working.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-edge-db.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-protocol-routes.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-reuse-ladder.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-runner-parity.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-skill-contracts.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-skills-sync.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-source-residue.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-structure.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-test-collection.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-test-integrity-working.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-work-plan-coverage.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/lint-workflow-cost.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/matrix-and-drivers.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/pillar-registry-check.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/red-first.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/test-mobile.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/test-shared.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/type-check-api.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/type-check-mobile.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/final/type-check-shared.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-dx03-language.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-dx03-persisted.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-handler.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-journey-flags-on.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-journey.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-matrix-flags-on.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-matrix.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-supp-c6b-flags-on.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-supp-c6b.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/post-triplet.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/reproduce-post-stdout.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/secret-scan/changed-and-new-files.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/secret-scan/commit-range.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/secret-scan/positive-control.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/secret-scan/scanner-version.log.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1-mutations-stdout.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1-run-stdout.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1/confirm-accept-concurrency.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1/environment.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1/mutations.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1/payment-concurrency.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1/rebuild.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1/sql-suite.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/logs/t1/status-writers.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/results/h5/ITEMISED.md (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/results/h5/PREREGISTRATION.md (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/results/qr-builder-probe.txt (unsupported_ext)
+- docs/test-logs/kawa-four-blocker-20261022/results/s5-matrix.md (unsupported_ext)
+- governance/protocols/test-pillars.md (unsupported_ext)
+
+## When the review is finished
+
+node scripts/run.mjs run-node scripts/ocr-review.mjs mark --snapshot 9609675a1e85b316aabb8af6545b0c5e5ac02988 --base origin/main
+

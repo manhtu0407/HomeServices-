@@ -12,7 +12,6 @@
 import type { ServiceType } from "../../../../_shared/domain.ts";
 import {
   applyHardRoutingPolicy,
-  hasElectricalInfrastructureContext,
   prependDeterministicSafetyGuidance,
   scanIntakeSafetySignals,
   type HardRoutingPolicyDecision,
@@ -151,6 +150,10 @@ const SERVICE_KEYWORDS: Record<ServiceType, readonly string[]> = {
     "bong den",
     "atomat",
     "aptomat",
+    "cb",
+    "rcbo",
+    "rccb",
+    "mcb",
     "mat dien",
     "chap dien",
     "ro dien",
@@ -383,11 +386,8 @@ export function detectOutOfScope(
   selectedService?: ServiceType,
 ): { detected: boolean; signals: string[] } {
   const normalized = normalize(text);
-  if (selectedService === "electrical" && hasElectricalInfrastructureContext(text)) {
-    return { detected: false, signals: [] };
-  }
   const signals: string[] = [];
-  const requestedAppliances = detectRequestedApplianceWork(text);
+  const requestedAppliances = detectRequestedApplianceWork(text, selectedService);
   for (const keyword of OUT_OF_SCOPE_KEYWORDS) {
     if (keyword === "may bom" && isSupportedWaterPumpMention(normalized)) {
       continue;
@@ -398,7 +398,7 @@ export function detectOutOfScope(
     if (APPLIANCE_REQUEST_KEYWORDS.includes(keyword) && !requestedAppliances.has(keyword)) {
       continue;
     }
-    if (containsKeyword(normalized, keyword)) {
+    if (APPLIANCE_REQUEST_KEYWORDS.includes(keyword) ? requestedAppliances.has(keyword) : containsKeyword(normalized, keyword)) {
       signals.push(`oos:${keyword}`);
       if (signals.length >= 3) break;
     }
@@ -552,21 +552,7 @@ export function evaluateMessageBoundary(
     };
   }
 
-  // The flagged electrical path uses the high-precision deterministic policy
-  // above and leaves ambiguous cases to the structured intent model. The broad
-  // legacy keyword gate remains byte-for-byte available when the flag is off.
-  if (electricalPolicyEnabled) return { ok: true };
-
-  // detectOutOfScope carries an escape for electrical infrastructure, but this call erased the
-  // argument that reaches it, so the one guard written to stop a live fault being declined could
-  // never run on the electrical path. The argument stays erased for the keyword gate itself, which
-  // is deliberately byte-for-byte legacy; only the escape is restored.
-  const electricalHazard = selectedService === "electrical" &&
-    hasElectricalInfrastructureContext(trimmed);
-  const outOfScope = electricalHazard ? { detected: false, signals: [] } : detectOutOfScope(
-    trimmed,
-    selectedService === "electrical" ? undefined : selectedService ?? undefined,
-  );
+  const outOfScope = detectOutOfScope(trimmed, selectedService ?? undefined);
   if (outOfScope.detected) {
     return {
       ok: false,

@@ -15,7 +15,7 @@ import {
   scrubCustomerCaseContextForLLM,
   timed,
 } from "../pipeline/utils.ts";
-import { applyHardRoutingPolicy, hasElectricalInfrastructureContext } from "../kael-guardrails/electrical-intake-policy.ts";
+import { applyHardRoutingPolicy } from "../kael-guardrails/electrical-intake-policy.ts";
 
 export async function classifyIntent(
   serviceType: string,
@@ -325,10 +325,7 @@ export function buildFallbackIntent(
       suggested_service: hardRoute.suggestedService,
     };
   }
-  const supportedElectricalContext = electricalPlaybookEnabled &&
-    serviceType === "electrical" &&
-    hasElectricalInfrastructureContext(description);
-  if (hasUnsupportedRepairIntent(description) && !supportedElectricalContext) {
+  if (hasUnsupportedRepairIntent(description, serviceType)) {
     return {
       service_type: "unsupported",
       problem_slug: "unsupported",

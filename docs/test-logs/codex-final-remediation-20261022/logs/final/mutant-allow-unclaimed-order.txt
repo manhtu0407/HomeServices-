@@ -1,0 +1,7 @@
+mutant_exit=3
+
+ERROR:  an unclaimed QR order was confirmed as paid: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000101","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T14:45:40.856021+00:00","event_id_out":"e80d3563-74a4-4f4b-85b4-a43d238a1c72","version_out":3,"generated_at_out":"2026-10-22T14:45:40.853952+00:00"}
+CONTEXT:  PL/pgSQL function inline_code_block line 14 at RAISE
+
+restore_exit=0
+control_exit=0

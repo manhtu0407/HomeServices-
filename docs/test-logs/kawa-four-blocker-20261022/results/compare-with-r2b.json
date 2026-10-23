@@ -1,0 +1,60 @@
+{
+ "r2b": "kawa-remediation-r2b-20261022/results/post",
+ "candidate": "results/post",
+ "matrices": {
+  "matrix.json": {
+   "same_matrix_hash": true,
+   "scenarios": 30,
+   "r2b": {
+    "PASS": 30
+   },
+   "candidate": {
+    "PASS": 30
+   },
+   "changed": []
+  },
+  "matrix-flags-on.json": {
+   "same_matrix_hash": true,
+   "scenarios": 30,
+   "r2b": {
+    "PASS": 30
+   },
+   "candidate": {
+    "PASS": 30
+   },
+   "changed": []
+  },
+  "supp-c6b.json": {
+   "same_matrix_hash": true,
+   "scenarios": 1,
+   "r2b": {
+    "PASS": 1
+   },
+   "candidate": {
+    "PASS": 1
+   },
+   "changed": []
+  },
+  "supp-c6b-flags-on.json": {
+   "same_matrix_hash": true,
+   "scenarios": 1,
+   "r2b": {
+    "PASS": 1
+   },
+   "candidate": {
+    "PASS": 1
+   },
+   "changed": []
+  }
+ },
+ "journeys": {
+  "journey.json": {
+   "entries": 12,
+   "changed": []
+  },
+  "journey-flags-on.json": {
+   "entries": 12,
+   "changed": []
+  }
+ }
+}

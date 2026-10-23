@@ -1,0 +1,7 @@
+mutant_exit=3
+
+ERROR:  the exact payment after reconciliation was not verified: {"ok":false,"error_code":"WORKER_LEDGER_INVALID","outcome":null,"job_id":"d6910000-0000-4000-8000-000000000104","status":null,"payment_status":null,"hold_until":null,"event_id_out":null,"version_out":3,"generated_at_out":"2026-10-22T14:45:32.038061+00:00"}
+CONTEXT:  PL/pgSQL function inline_code_block line 31 at RAISE
+
+restore_exit=0
+control_exit=0

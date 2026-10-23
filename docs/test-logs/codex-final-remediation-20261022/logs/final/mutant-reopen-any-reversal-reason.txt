@@ -1,0 +1,7 @@
+mutant_exit=3
+
+ERROR:  a credit reversed for another reason was reopened: {"ok":true,"error_code":null,"outcome":"paid","job_id":"d6910000-0000-4000-8000-000000000106","status":"paid","payment_status":"manual_verified","hold_until":"2026-10-23T14:45:34.527649+00:00","event_id_out":"a20d79a7-b6b3-4f33-b6d8-b42fcf1d563d","version_out":4,"generated_at_out":"2026-10-22T14:45:34.527518+00:00"}
+CONTEXT:  PL/pgSQL function inline_code_block line 10 at RAISE
+
+restore_exit=0
+control_exit=0

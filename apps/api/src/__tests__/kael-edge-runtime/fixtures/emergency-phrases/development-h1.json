@@ -617,7 +617,7 @@
    "text": "Máy nước nóng bị rò điện, em sờ vào bị giật",
    "expected": "medical",
    "kind": "judgement",
-   "currently": null
+   "currently": "medical"
   }
  ],
  "status": "development",

@@ -1,0 +1,550 @@
+
+ RUN  v4.1.6 C:/ns-fix/b4/apps/api
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-flash',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000009',
+  latencyMs: 1
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+AI provider transport success; structured validation pending {
+  provider: 'deepseek',
+  model: 'deepseek-v4-pro',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000028',
+  latencyMs: 0
+}
+
+stdout | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+AI provider transport success; structured validation pending {
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  inputTokens: 40,
+  outputTokens: 12,
+  costUsd: '0.000300',
+  latencyMs: 0
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: '2b6f2fea-8eb3-4e63-b5d2-2729d9fd707a',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+stderr | src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+kael_turn_trace {
+  schema: 'kael_turn_trace.v1',
+  correlation_id: 'c591a58e-145e-4daa-adbb-ae5684864d08',
+  route: 'case_emergency',
+  stage: 'emergency_gate',
+  outcome: 'emergency_advice',
+  service_code: 'electrical',
+  case_phase: 'analysis',
+  permission_reason: 'EMERGENCY_ELECTRICAL_WATER',
+  gate_entry: 'turn',
+  emergency_gate_version: 'case_emergency_gate.v2',
+  edge_release_id: 'unreleased'
+}
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts (29 tests | 20 failed) 319ms
+     × refuses unsupported work: Please fix my washing machine. 25ms
+     × refuses unsupported work: Could you repair the refrigerator? 4ms
+     × refuses unsupported work: Please service our dishwasher. 1ms
+     × refuses unsupported work: The microwave door is stuck. 1ms
+     × refuses unsupported work: Our dryer is broken. 1ms
+     × refuses unsupported work: Please check the induction hob. 1ms
+     × refuses unsupported work: Can someone repair the wifi router? 13ms
+     × refuses unsupported work: Máy giặt kẹt cửa. 3ms
+     × refuses unsupported work: May giat ket cua. 1ms
+     × refuses unsupported work: The outlet needs repair and please fix my fridge too. 1ms
+     × refuses unsupported work: Ổ cắm bếp bị lỏng và tủ lạnh cũng không lạnh, nhờ thợ sửa cả hai. 1ms
+     × refuses unsupported work: Nhờ thợ kiểm tra cầu dao, cả bếp từ nhà mình cũng không nóng nữa. 1ms
+     × refuses unsupported work: Please repair my water heater and replace the outlet. 1ms
+     × refuses unsupported work: Máy giặt không bấm được nút khởi động. 1ms
+     × keeps supported work open: Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối. 1ms
+     × keeps the deterministic intent fallback consistent: Please fix my washing machine. 1ms
+     × keeps the deterministic intent fallback consistent: Can someone repair the wifi router? 0ms
+     × keeps the deterministic intent fallback consistent: Please service our dishwasher. 0ms
+     × delivers visible emergency guidance and metadata before the refusal, flags=false 219ms
+     × delivers visible emergency guidance and metadata before the refusal, flags=true 23ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 20 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Please fix my washing machine.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Please fix my washing machine.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Could you repair the refrigerator?
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Could you repair the refrigerator?: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Please service our dishwasher.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Please service our dishwasher.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: The microwave door is stuck.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: The microwave door is stuck.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Our dryer is broken.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Our dryer is broken.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Please check the induction hob.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Please check the induction hob.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Can someone repair the wifi router?
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Can someone repair the wifi router?: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Máy giặt kẹt cửa.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Máy giặt kẹt cửa.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: May giat ket cua.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: May giat ket cua.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: The outlet needs repair and please fix my fridge too.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: The outlet needs repair and please fix my fridge too.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Ổ cắm bếp bị lỏng và tủ lạnh cũng không lạnh, nhờ thợ sửa cả hai.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Ổ cắm bếp bị lỏng và tủ lạnh cũng không lạnh, nhờ thợ sửa cả hai.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Nhờ thợ kiểm tra cầu dao, cả bếp từ nhà mình cũng không nóng nữa.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Nhờ thợ kiểm tra cầu dao, cả bếp từ nhà mình cũng không nóng nữa.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Please repair my water heater and replace the outlet.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Please repair my water heater and replace the outlet.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > refuses unsupported work: Máy giặt không bấm được nút khởi động.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    electrical flag=false: Máy giặt không bấm được nút khởi động.: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:50:83
+     48|     for (const service of services) for (const enabled of [false, true…
+     49|       const result = boundary(text, service, enabled)
+     50|       expect(result.ok, pillarWhy(PILLAR, `${service} flag=${enabled}:…
+       |                                                                                   ^
+     51|       if (!result.ok) expect(result.reason).toBe('out_of_scope')
+     52|     }
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps supported work open: Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Đường ống nước nóng nối với bình nóng lạnh bị rò ở mối nối.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:55:116
+     53|   })
+     54|   it.each(supported)('keeps supported work open: %s', (text) => {
+     55|     for (const enabled of [false, true]) expect(boundary(text, 'electr…
+       |                                                                                                                    ^
+     56|   })
+     57|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps the deterministic intent fallback consistent: Please fix my washing machine.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Please fix my washing machine.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:58:71
+     56|   })
+     57|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+     58|     expect(hasUnsupportedRepairIntent(text), pillarWhy(PILLAR, text)).…
+       |                                                                       ^
+     59|   })
+     60|   it.each([false, true])('delivers visible emergency guidance and meta…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps the deterministic intent fallback consistent: Can someone repair the wifi router?
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Can someone repair the wifi router?: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:58:71
+     56|   })
+     57|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+     58|     expect(hasUnsupportedRepairIntent(text), pillarWhy(PILLAR, text)).…
+       |                                                                       ^
+     59|   })
+     60|   it.each([false, true])('delivers visible emergency guidance and meta…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > keeps the deterministic intent fallback consistent: Please service our dishwasher.
+AssertionError: [P429-kael-boundary-language-supply] English and Vietnamese unsupported appliance requests cannot hide behind a supported supply repair, while exclusions, finished work and incidental equipment stay open in both flag states and a genuine emergency speaks first
+authority: governance/RULES.md #6 | governance/RULES.md #7
+target:    supabase/functions/mobile-api/_shared/kael/kael-guardrails/requested-work.ts
+next:      P421-kael-boundary-requested-work, P422-kael-boundary-electrical-flag-parity, P420-kael-case-emergency-playbook-precedence
+detail:    Please service our dishwasher.: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:58:71
+     56|   })
+     57|   it.each(['Please fix my washing machine.', 'Can someone repair the w…
+     58|     expect(hasUnsupportedRepairIntent(text), pillarWhy(PILLAR, text)).…
+       |                                                                       ^
+     59|   })
+     60|   it.each([false, true])('delivers visible emergency guidance and meta…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/20]⎯
+
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=false
+ FAIL  src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts > P429-kael-boundary-language-supply > delivers visible emergency guidance and metadata before the refusal, flags=true
+AssertionError: expected 3 to be 1 // Object.is equality
+
+- Expected
++ Received
+
+- 1
++ 3
+
+ ❯ src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts:65:28
+     63|     const replies = world.db.tables.kael_chat_turns.filter((turn) => t…
+     64|     expect(result.status).toBe(200)
+     65|     expect(replies.length).toBe(1)
+       |                            ^
+     66|     expect(String(replies[0]?.text_content)).toContain('112')
+     67|     expect(String(replies[0]?.text_content)).toContain('114')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/20]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  20 failed | 9 passed (29)
+   Start at  21:17:56
+   Duration  9.41s (transform 6.85s, setup 0ms, import 8.34s, tests 319ms, environment 0ms)
+
+undefined
+C:\ns-fix\b4\apps\api:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 1: vitest run src/__tests__/kael-edge-runtime/domains/kael-boundary-language-supply-pillar.test.ts

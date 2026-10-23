@@ -1,0 +1,3 @@
+* -text
+# Preserve verbatim command output, including PostgreSQL padding and CRLF.
+logs/** -whitespace
