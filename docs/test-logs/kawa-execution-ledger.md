@@ -828,3 +828,35 @@ Local HEAD 910bad7d, remote PR #403 still 062db160, latest main 111988b0. Four-f
 NEEDS OWNER APPROVAL / merge NO-GO: Docker updater timeout 124 closes current Edge lane; known authority/mobile lint debt reproduced; ship exits 1 for uncommitted source; two memory conflicts and latest-main 167-line zero-comment incompatibility remain. Backend main-push deployment is enabled without a Production approval rule; containment is proposed, not enforced. Session and merged memory are review-only pending Tu approval. [Full report](kawa-01-integration-readiness-evidence/report.md).
 
 - 2026-10-21: [KAWA_01 owner-approved integration checkpoint](kawa-01-owner-integration-evidence/report.md) — exact protected memory approved/applied, Backend release disabled and verified, 167 comment lines aligned with identical AST; fresh Edge/API/Mobile checks recorded; final commit/CI and explicit owner merge approval remain required.
+
+
+## 2026-10-23 - KAWA02 read-only release audit and W04 entry checkpoint
+
+BASELINE/CANDIDATE HEAD: `4ee3a732d5ddd724d5055465664f8d5c1b0af0ce`, branch `codex/kawa02-audit-execution-20261023`, isolated `C:\ns-fix\kawa02`; clean before documentation. No new commit SHA. Primary dirty work preserved.
+
+AUDIT: DRIFT_DETECTED. Active registered SHA e8b95d2122a8ce802c5504630a778f6e51daa72f, revision51, no candidate. Edge mobile-api361/matching145 versus attested355/139; bundle hashes match older attestations but current IDs unattested. Source bundle lacks PR405/406 complete changes. Production canonical migrations lack exactly 20261022100000 and 20261022141232; actual reconciliation body lacks both fixes. All265 scanned RPC names exist, semantics not proven. Main CI green; main release-quality39877323191 fails generated type comparison (cmp EOF byte561408, exit1). No hosted changes.
+
+PREPARATION/T0: source/owner/contract/RPC/capability map verified; offline frozen dependency install exit0; 10 existing Safety/Approval files2497/2497 plus 3 payment files27/27, all exit0. Structure, migration inventory465, source RPC and actual hosted RPC-name comparison exit0. No new module tests, T1/T2/native/model acceptance claimed. H5 remains historical11/29 REPRODUCTION; not rerun.
+
+GATES/OUTCOME: W04 BLOCKED/NEEDS_OPERATOR (limited entry acceptance and proposed-path approval pending); W05 NOT_RUN dependency-blocked; W06 BLOCKED on prerequisites plus server-owner/migration review; W07/W08 NOT_RUN. User authorizes preparation, not implicit completion of Plan01 gates. No code/registry/traffic/persistence change. Existing live Plan.md and protected memory unchanged; evidence ledger remains this file.
+
+ROLLBACK: no runtime/DB change to reverse. Documentation-only additions are explicitly inventoried; do not reset or remove unrelated work. No rollback rehearsal or exactly-once claim. COST actual paid calls0, spend0, model evaluation NOT_RUN. No commit/push/PR/merge/deploy/migration/release dispatch/secret/flag/payment/push action.
+
+[Audit](../audit/KAWA02_BACKEND_RELEASE_AUDIT.md) · [Acceptance report, command evidence and owner decisions](kawa02-release-entry-audit-20261023/report.md). NEXT: owner decision; then W04 only. Stop before Plan03.
+
+
+## 2026-10-23 - W04 authorized local checkpoint
+
+Owner approved limited W04/W05 entry and exact proposed paths in the chat; prior entry BLOCKED checkpoint remains historical. W04 T0 VERIFIED: 31 focused cases pass (strict top-level red1 -> green31), three registry mutants killed, restored source hashes saved in w04-checkpoint.json. Full API before the last strict-only correction: 5724 Vitest pass/6skip and115 Node pass/1skip, exit0. Shared/API types and structure pass; no policy/role/RPC/executor/route integration. Registry pins owner, six-service policy and generated capability snapshot; mutating capability proposals require customer-appropriate approval path. General cycles rejected; only explicit bounded retry self loops supported. disableRegistration rollback preserves immutable versions. No commit/candidate SHA; source snapshot at baseline4ee3a732. W05 now eligible; W06 remains outside approval. Final full-suite verification will bind the final combined candidate separately.
+
+
+## 2026-10-23 - W05 and final W04/W05 local acceptance checkpoint
+
+Owner-approved local W04/W05 complete at T0: P43231/31,P43331/31; six mutants killed and exact source restored. Final API dispatcher exit0:5755 Vitest pass/7skip,115 Node pass/1skip; follow-up Vitest JSON5756pass/6skip reflects the read-only implicit loopback catalog becoming reachable, not additional module/T1 acceptance. Shared189pass; API/shared types and selected hygiene/structure/collection/registry gates exit0. After owner reopened Docker, version/doctor passed; mobile-api Deno1/1 and compatibility4/4; direct Deno check of all3 new module files exit0. No live route imports, DB/model/tool calls or business effects. OCR source snapshot7a10e16b reviewed/marked; policy/RPC/payment/v1 owners preserved.
+
+W04 VERIFIED T0; W05 VERIFIED T0; W06 BLOCKED/NEEDS_OPERATOR on separate server-owner/migration approval and verified isolated PostgreSQL G1; W07/W08 NOT_RUN. Native/paid/hosted and H5 independent acceptance not claimed. No Git publication/hosted changes. No protected memory write. [Current report and exact command/source evidence](kawa02-w04-w05-20261023/report.md). Stop before W06/Plan03.
+
+
+## 2026-10-23 - W04/W05 publication authorization
+
+Owner now explicitly authorizes scoped commit/push/PR and subsequent separate W06 additive local implementation. Existing source/twin hashes verified; closure62/62,APItypes,Deno pass; ten ship machine gates green, precommit git-state pending. Pinned Gitleaks scan0 findings after disclosed checksum/test-name presentation redaction; no source/assertion/gate change. Prior blocked and no-publication statements are historical. No merge/hosted execution. [Publication checkpoint](kawa02-w04-w05-publication-20261023/report.md).

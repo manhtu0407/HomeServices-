@@ -1,0 +1,53 @@
+{
+  "observed_at_utc": "2026-10-23T01:26:25.665634+00:00",
+  "source": "observed tool process completions; command outputs transcribed, not rerun",
+  "initial_docker_version_attempt": {
+    "session": 90645,
+    "exit_code": 1,
+    "message": "stable Docker Desktop update failed (exit -1; stdout=(empty); stderr=(empty)); no automatic retry"
+  },
+  "after_owner_reopened_docker": [
+    {
+      "session": 67173,
+      "command": "corepack pnpm docker:version:ensure",
+      "exit_code": 0,
+      "output": "docker_version=Docker version 29.9.2, build a82e528; compose_version=Docker Compose version v5.6.1; strategy=latest-stable result=updated-or-current update_attempts=1"
+    },
+    {
+      "session": 59650,
+      "command": "corepack pnpm db:local:doctor --profile lean",
+      "exit_code": 0,
+      "output": "daemon reachable (server 29.9.2); RAM 1.12GB informational; disk 69.09GB; ports55321-55324 free; preflight passed"
+    },
+    {
+      "session": 33738,
+      "command": "corepack pnpm edge:check --only mobile-api",
+      "exit_code": 0,
+      "output": "edge check: discovered=7 selected=1 checked=1 failed=0; request-runtime-pillar 4 passed,0failed"
+    },
+    {
+      "session": 73025,
+      "command": "docker compose run --rm --pull never deno check --config supabase/functions/mobile-api/deno.json supabase/functions/_shared/contracts/workflow-definition.ts supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts",
+      "exit_code": 0,
+      "output": "Check workflow-definition.ts; Check workflow-registry.ts; Check workflow-shadow-planner.ts"
+    }
+  ],
+  "ocr": {
+    "snapshot": "7a10e16b044d81f57d702019a95bf08be4180737",
+    "reviewable": 19,
+    "excluded_manual": 60,
+    "batches": 10,
+    "findings": [],
+    "mark_exit_code": 0,
+    "check_reason": "nothing new since the last review at the source checkpoint"
+  },
+  "policy_preservation": {
+    "existing_domain_rpc_owners": "unchanged",
+    "platform_bank_manual": "unchanged",
+    "hosted_changes": 0,
+    "paid_calls": 0,
+    "new_execution_routes": 0,
+    "new_migrations": 0,
+    "production_release": false
+  }
+}

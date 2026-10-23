@@ -1,0 +1,36 @@
+{
+  "package": "W05",
+  "status": "VERIFIED_T0",
+  "baseline": "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce",
+  "candidate_commit": null,
+  "source_snapshot": [
+    {
+      "path": "packages/shared/src/contracts/workflow-definition.ts",
+      "sha256": "64dbdd11b2ba15daff95bae79f6fdf10a2778e5842c470522a34532159226074"
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/workflow-definition.ts",
+      "sha256": "64dbdd11b2ba15daff95bae79f6fdf10a2778e5842c470522a34532159226074"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+      "sha256": "48f5dfc3654af927231b0a0bf16502b41ea40d7158948b97d3c510535943e3df"
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts",
+      "sha256": "d856408ad58b204c55ccac3b45fb8c4e1ba2b80603718f80c2159e3f94394bb1"
+    },
+    {
+      "path": "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+      "sha256": "c89fe971988e34ce053d818a7903813b57918a00f8d0c634dbaa995b6c140d09"
+    },
+    {
+      "path": "apps/api/src/__tests__/unit/workflow-shadow-planner-pillar.test.ts",
+      "sha256": "baae30bdb4b7a25da37be0f5759e400a1fd2f032ccbe1268b7d7b745f54962d3"
+    }
+  ],
+  "focused_passed": 62,
+  "mutants_killed": 6,
+  "durable_tiers": "NOT_RUN",
+  "created_at": "2026-10-23T01:26:25.665634+00:00"
+}

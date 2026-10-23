@@ -1,0 +1,740 @@
+{
+  "repo": {
+    "root": "C:/ns-fix/kawa02",
+    "head": "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce",
+    "branch": "codex/kawa02-audit-execution-20261023",
+    "linkedWorktree": true
+  },
+  "base": "origin/main",
+  "mergeBase": "4ee3a732d5ddd724d5055465664f8d5c1b0af0ce",
+  "from": "origin/main",
+  "incremental": false,
+  "reason": "no earlier review recorded",
+  "snapshot": "7a10e16b044d81f57d702019a95bf08be4180737",
+  "tree": "ad8449b4e6ba7751c3ec08ffd6e5a7c12eb7958d",
+  "warnings": [],
+  "reviewable": [
+    {
+      "path": "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+      "status": "added",
+      "insertions": 152,
+      "deletions": 0
+    },
+    {
+      "path": "apps/api/src/__tests__/unit/workflow-shadow-planner-pillar.test.ts",
+      "status": "added",
+      "insertions": 202,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/baseline-safety-approval.json",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/collect-evidence.py",
+      "status": "added",
+      "insertions": 83,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/deployed-mobile-api-manifest.json",
+      "status": "added",
+      "insertions": 1892,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/file-digests.json",
+      "status": "added",
+      "insertions": 337,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/final-audit.py",
+      "status": "added",
+      "insertions": 34,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/final-hosted-snapshot.json",
+      "status": "added",
+      "insertions": 27,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/hosted-rpc-names.json",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/migration-comparison.json",
+      "status": "added",
+      "insertions": 11,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/payment-regression.json",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/preservation.json",
+      "status": "added",
+      "insertions": 8,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/production-readonly-audit.json",
+      "status": "added",
+      "insertions": 2085,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/source-comparison.json",
+      "status": "added",
+      "insertions": 697,
+      "deletions": 0
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/work-plan.json",
+      "status": "added",
+      "insertions": 71,
+      "deletions": 0
+    },
+    {
+      "path": "packages/shared/src/contracts/workflow-definition.ts",
+      "status": "added",
+      "insertions": 140,
+      "deletions": 0
+    },
+    {
+      "path": "supabase/functions/_shared/contracts/workflow-definition.ts",
+      "status": "added",
+      "insertions": 140,
+      "deletions": 0
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+      "status": "added",
+      "insertions": 77,
+      "deletions": 0
+    },
+    {
+      "path": "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts",
+      "status": "added",
+      "insertions": 119,
+      "deletions": 0
+    }
+  ],
+  "excluded": [
+    {
+      "path": "apps/mobile/.env.example",
+      "status": "deleted",
+      "insertions": 0,
+      "deletions": 24,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/audit/KAWA02_BACKEND_RELEASE_AUDIT.md",
+      "status": "added",
+      "insertions": 107,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/INDEX.md",
+      "status": "modified",
+      "insertions": 2,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa-execution-ledger.md",
+      "status": "modified",
+      "insertions": 20,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/baseline-safety-approval.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/baseline-safety-approval.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/branch-protection.stderr.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/branch-protection.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/commands.jsonl",
+      "status": "added",
+      "insertions": 26,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/deployments.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/deployments.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/edge-db-source.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/edge-db-source.stdout.txt",
+      "status": "added",
+      "insertions": 5,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/final-diff-check.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/final-diff-check.stdout.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/final-repo-status.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/final-repo-status.stdout.txt",
+      "status": "added",
+      "insertions": 5,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/final-workplan.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/final-workplan.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/github-releases.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/github-releases.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/last-deployment-status.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/last-deployment-status.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/latest-quality-failure-log.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/latest-quality-failure-log.stdout.txt",
+      "status": "added",
+      "insertions": 17,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/main-ci.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/main-ci.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/main-release-quality.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/main-release-quality.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/migration-inventory.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/migration-inventory.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/owner-decisions.md",
+      "status": "added",
+      "insertions": 34,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/pr405.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/pr405.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/pr406.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/pr406.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/prior-quality-failure-log.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/prior-quality-failure-log.stdout.txt",
+      "status": "added",
+      "insertions": 36936,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/prior-release-quality.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/prior-release-quality.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/production-env-variables.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/production-env-variables.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/production-protection.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/production-protection.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/protected-doc-preservation.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/protected-doc-preservation.stdout.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/release-switch.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/release-switch.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/report.md",
+      "status": "added",
+      "insertions": 117,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/rpc-name-compatibility.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/rpc-name-compatibility.stdout.txt",
+      "status": "added",
+      "insertions": 271,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/rulesets.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/rulesets.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/runtime-source-preservation.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/runtime-source-preservation.stdout.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/structure.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/structure.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/workplan.stderr.txt",
+      "status": "added",
+      "insertions": 0,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "docs/test-logs/kawa02-release-entry-audit-20261023/workplan.stdout.txt",
+      "status": "added",
+      "insertions": 1,
+      "deletions": 0,
+      "exclude_reason": "unsupported_ext"
+    },
+    {
+      "path": "governance/protocols/test-pillars.md",
+      "status": "modified",
+      "insertions": 3,
+      "deletions": 1,
+      "exclude_reason": "unsupported_ext"
+    }
+  ],
+  "unlisted": [],
+  "groups": [
+    {
+      "group_id": 1,
+      "source": "project",
+      "pattern": "apps/api/**",
+      "files": [
+        "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+        "apps/api/src/__tests__/unit/workflow-shadow-planner-pillar.test.ts"
+      ],
+      "rule": "## System-Specific Rules (Mandatory)\n\n#### Obvious Typos or Spelling Errors\n- Spelling errors in variable names, function names, component names, or Props property names\n- Strings in log or error messages containing spelling errors that affect readability\n\n#### Dead Code\n- Code blocks that will never be executed (e.g., branches where the condition is always false, code after a return statement)\n- Variables that are declared but never read or referenced\n- Large blocks of commented-out code (with no apparent intent to retain)\n\n#### Code Quality Checks\n- **Duplicate Code**: Check for common logic that can be extracted\n- **Code Comments**: Complex business logic should have clear explanatory comments (avoid commenting obvious code)\n- **Hardcoding**: Business-related hardcoded strings are prohibited, especially URL paths and business numbers; simple UI text may be relaxed\n- **Variable Declarations**: Using `var` is strictly prohibited; use `let` or `const`\n- **Equality Comparisons**: Using `==` and `!=` is prohibited; use strict equality `===` and `!==`\n- **TypeScript Types**: Avoid using `any` type; if necessary, provide a comment explaining the reason\n- **Null Checks**: Perform null checks when accessing values or destructuring to avoid null pointer exceptions\n- **Ternary Expressions**: Nested ternary expressions are not allowed\n\n#### React Best Practices\n- **Hooks Usage**: Verify compliance with Hooks rules (only call at the top level, only call in React functions)\n- **State Management**: Ensure state is placed at the appropriate level; avoid unnecessary state lifting\n- **Side Effect Handling**: Verify useEffect correctly handles dependencies and cleanup functions\n- **Performance Optimization**: Verify proper use of React.memo, useMemo, useCallback (based on performance analysis; avoid over-optimization)\n- **Render Side Effects**: Side effects in React component render methods are strictly prohibited (e.g., API calls, DOM manipulation)\n- **Inline Styles**: Avoid using inline `style` attributes, except for dynamic styles\n- **Inner Components**: Declaring new components inside a component is prohibited; use render methods instead (e.g., `renderItem`, not `<Item/>`)\n\n#### Async Handling Standards\n- **Error Handling**: Async functions must include proper error handling with user-friendly error messages\n- **Prefer async/await**: Prefer async/await over Promises; callback hell is prohibited\n- **Async in Loops**: Distinguish between independent async operations (use `Promise.all` for parallelism) and dependent async operations (use sequential execution); prefer `Promise.all` for performance\n\n#### Code Security Checks\n- **XSS Protection**: Verify that user input is properly escaped\n- **innerHTML Safety**: Using innerHTML to directly insert user input is prohibited; use textContent or apply XSS protection\n- **Code Injection Protection**: Using eval(), Function() constructor, and string argument forms of setTimeout/setInterval is strictly prohibited\n- **Dangerous Methods**: Using document.write() is prohibited as it causes page reflow and security issues\n- **Sensitive Information**: Check whether API keys or sensitive data are exposed\n- **Prototype Chain Safety**: Modifying native object prototypes (e.g., Array.prototype, Object.prototype) is prohibited\n\n---\n\n## User-Specific Rules (Mandatory)\n\napps/api is reference, parity, admin and support code, not the mobile runtime (RULES.md #0). Flag new user-facing product behavior added here instead of the Edge mobile-api. No secrets in code or logs (RULES.md #1, #9). Every network call has a timeout and at most 2 retries (RULES.md #10)."
+    },
+    {
+      "group_id": 2,
+      "source": "system",
+      "pattern": "**/*.{json,json5}",
+      "files": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023/baseline-safety-approval.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/deployed-mobile-api-manifest.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/file-digests.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/final-hosted-snapshot.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/hosted-rpc-names.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/migration-comparison.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/payment-regression.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/preservation.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/production-readonly-audit.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/source-comparison.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/work-plan.json"
+      ],
+      "rule": "Check JSON files for spelling errors in json-keys; ignore the content of json-values."
+    },
+    {
+      "group_id": 3,
+      "source": "system",
+      "pattern": "**/*.{py,pyi,ipynb}",
+      "files": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023/collect-evidence.py",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/final-audit.py"
+      ],
+      "rule": "> Favor precision over recall: only raise an issue when you are confident it is a real defect, and stay silent when the surrounding context is unclear — a false alarm costs more reviewer trust than a missed minor issue. Treat security and correctness findings as blocking, and style or idiom suggestions as non-blocking.\n\n#### Obvious Typos or Spelling Errors\n- Spelling errors in variable, function, class, or module names at their declaration sites; do not report spelling errors at reference sites, as these are determined by the declaration\n- Strings in log messages or exception messages containing spelling errors that affect readability\n\n#### Dead Code\n- Code blocks that can never be reached (e.g., branches where the condition is always false, code after a `return`, `raise`, `break`, or `continue`)\n- Variables, imports, or function parameters that are declared but never read or referenced\n- Large blocks of commented-out code with no apparent intent to preserve\n- Do not report unused imports, variables, or parameters in `.pyi` stub files; a stub declares an interface it never executes, so re-exported imports, annotation-only declarations, and unreferenced parameter names are expected rather than dead\n\n#### Mutable Default Arguments and Shared State\n- Mutable default arguments such as `def f(x=[])` or `def f(x={})`; the default is created once and shared across every call. Default to `None` and build the value inside the body\n- Class-level mutable attributes shared unintentionally across instances when a per-instance value was intended\n- Module-level mutable globals (lists, dicts, caches) mutated across requests or threads, retaining state in ways that surprise the caller\n- Closures that capture a loop variable by reference and all end up seeing its final value\n- Do not report when the function never mutates the argument, or when the shared default is a deliberate, documented cache or sentinel\n\n#### Boundary and Edge-Case Handling\n- Empty inputs assumed to be non-empty: indexing `xs[0]`, `max()`/`min()`, or slicing without first handling the empty `list`, `str`, `dict`, or iterator\n- Off-by-one and out-of-range access on indices, ranges, or slices, especially at the first/last element\n- `None` reaching code that assumes a value, when an upstream call or default can legitimately return `None` (confirm the data source with `file_read` before flagging)\n- Comparing floats for exact equality with `==`; use `math.isclose` or an explicit tolerance, since floating-point results are not exact\n- Integer/float and division assumptions: unintended truncation with `//`, or `ZeroDivisionError` when a divisor can be zero\n- Heterogeneous or unexpected element types in a collection that the code assumes are uniform (e.g., mixing `None`, numbers, and strings)\n- Dictionary access by key without handling the missing-key case (`d[k]` vs `d.get(k)`), or set/dict operations that assume a key is present\n- Do not report edge cases that a caller or type contract has already ruled out, or inputs that cannot occur given validated boundaries upstream\n\n#### Error Handling and Exceptions\n- Bare `except:` swallows everything, including `KeyboardInterrupt` and `SystemExit`; catch `except Exception` at minimum, and prefer the specific exception types you expect\n- `except Exception` that is still broader than the failure being handled; narrow it to the exceptions actually raised by the guarded call\n- Exceptions caught and silently discarded (`pass`) without logging or re-raising\n- Original traceback lost when re-raising; prefer `raise NewError(...) from err` to preserve the cause\n- Broad `try` blocks that wrap far more than the line that can actually fail, hiding where the error originates\n- `assert` used for runtime validation of external input — assertions are stripped under `python -O`\n\n#### Identity and Equality Comparisons\n- Using `is`/`is not` to compare against literals such as strings, numbers, or tuples; this relies on implementation-specific interning rather than value equality — use `==` (a real correctness risk)\n- Comparing against `True`/`False` with `==`, where a truthy-but-not-`True` value (e.g. `1`, a non-empty container) would compare unequal; prefer a plain truthiness check\n- Reserve `is` for identity checks against singletons and sentinels\n- Comparing against `None` with `==`/`!=` rather than `is`/`is not` is a style preference; report as minor, not blocking\n\n#### Resource Management\n- Files, sockets, locks, or database connections opened without a `with` statement, risking leaks on early return or exception\n- Context managers available but bypassed in favor of manual `open()`/`close()` pairs\n- Resources acquired in a `try` whose `finally` cleanup is missing or incomplete on the error path\n- Iterators or generators holding resources open longer than necessary\n- Do not report short-lived scripts, or handles already managed by an enclosing `with` or framework-managed lifecycle (confirm the surrounding scope with `file_read` before flagging)\n\n#### Performance\nConfirm data scale and that the code is on a hot path before flagging:\n- Building strings with `+=` in a loop instead of accumulating in a list and `\"\".join(...)`, or using an f-string\n- Repeated membership tests against a `list` where a `set` or `dict` would turn O(n) lookups into O(1)\n- Building a full list when a generator would avoid holding everything in memory\n- Recomputing inside a loop a value that is invariant across iterations (e.g., compiling a regex, attribute lookups in hot paths)\n- Passing an eagerly formatted f-string to `logging` (e.g., `logging.info(f\"...\")`) instead of `logging.info(\"%s\", value)`, which defeats lazy formatting when the level is disabled\n\n#### Concurrency and Async\nOnly flag concurrency issues when there is evidence of multi-threaded, multi-process, or async invocation (confirm the call context before reporting):\n- CPU-bound work parallelized with `threading` under the GIL where `multiprocessing` or a process pool is the right tool (traditional CPython; free-threaded builds excepted); I/O-bound work is the case threads actually help\n- Check-then-act races on shared state without a `Lock`, or non-atomic compound updates assumed to be atomic\n- Blocking calls (synchronous I/O, `time.sleep`, `requests`, CPU-heavy work) inside `async def`, stalling the event loop; use the async equivalent or run them in an executor\n- `asyncio` tasks created and never awaited, so exceptions are swallowed and the work may be garbage-collected before it finishes\n- Shared mutable state across threads or tasks without synchronization or a thread-safe structure\n\nDo not report local variables (each thread has its own), read-only access to shared data, or code with no evidence of concurrent use.\n\n#### Security-Sensitive Code\nValidate the data source before flagging; confirm the input is actually attacker-controlled rather than a trusted constant:\n- `eval`, `exec`, or `compile` on untrusted input; this is arbitrary code execution\n- `subprocess` with `shell=True` built from unsanitized input; pass an argument list and avoid the shell\n- `pickle`, `marshal`, or `yaml.load` (without `SafeLoader`) on untrusted data; deserialization can execute arbitrary code\n- SQL built by string concatenation or f-strings instead of parameterized queries\n- Secrets, tokens, passwords, or PII written to logs or committed in source\n- Weak or misused cryptography (`hashlib.md5`/`sha1` for passwords, `random` for security tokens); use `secrets` and vetted libraries\n- Untrusted file paths joined without validation, allowing path traversal"
+    },
+    {
+      "group_id": 4,
+      "source": "project",
+      "pattern": "packages/shared/src/contracts/**",
+      "files": [
+        "packages/shared/src/contracts/workflow-definition.ts"
+      ],
+      "rule": "## System-Specific Rules (Mandatory)\n\n#### Obvious Typos or Spelling Errors\n- Spelling errors in variable names, function names, component names, or Props property names\n- Strings in log or error messages containing spelling errors that affect readability\n\n#### Dead Code\n- Code blocks that will never be executed (e.g., branches where the condition is always false, code after a return statement)\n- Variables that are declared but never read or referenced\n- Large blocks of commented-out code (with no apparent intent to retain)\n\n#### Code Quality Checks\n- **Duplicate Code**: Check for common logic that can be extracted\n- **Code Comments**: Complex business logic should have clear explanatory comments (avoid commenting obvious code)\n- **Hardcoding**: Business-related hardcoded strings are prohibited, especially URL paths and business numbers; simple UI text may be relaxed\n- **Variable Declarations**: Using `var` is strictly prohibited; use `let` or `const`\n- **Equality Comparisons**: Using `==` and `!=` is prohibited; use strict equality `===` and `!==`\n- **TypeScript Types**: Avoid using `any` type; if necessary, provide a comment explaining the reason\n- **Null Checks**: Perform null checks when accessing values or destructuring to avoid null pointer exceptions\n- **Ternary Expressions**: Nested ternary expressions are not allowed\n\n#### React Best Practices\n- **Hooks Usage**: Verify compliance with Hooks rules (only call at the top level, only call in React functions)\n- **State Management**: Ensure state is placed at the appropriate level; avoid unnecessary state lifting\n- **Side Effect Handling**: Verify useEffect correctly handles dependencies and cleanup functions\n- **Performance Optimization**: Verify proper use of React.memo, useMemo, useCallback (based on performance analysis; avoid over-optimization)\n- **Render Side Effects**: Side effects in React component render methods are strictly prohibited (e.g., API calls, DOM manipulation)\n- **Inline Styles**: Avoid using inline `style` attributes, except for dynamic styles\n- **Inner Components**: Declaring new components inside a component is prohibited; use render methods instead (e.g., `renderItem`, not `<Item/>`)\n\n#### Async Handling Standards\n- **Error Handling**: Async functions must include proper error handling with user-friendly error messages\n- **Prefer async/await**: Prefer async/await over Promises; callback hell is prohibited\n- **Async in Loops**: Distinguish between independent async operations (use `Promise.all` for parallelism) and dependent async operations (use sequential execution); prefer `Promise.all` for performance\n\n#### Code Security Checks\n- **XSS Protection**: Verify that user input is properly escaped\n- **innerHTML Safety**: Using innerHTML to directly insert user input is prohibited; use textContent or apply XSS protection\n- **Code Injection Protection**: Using eval(), Function() constructor, and string argument forms of setTimeout/setInterval is strictly prohibited\n- **Dangerous Methods**: Using document.write() is prohibited as it causes page reflow and security issues\n- **Sensitive Information**: Check whether API keys or sensitive data are exposed\n- **Prototype Chain Safety**: Modifying native object prototypes (e.g., Array.prototype, Object.prototype) is prohibited\n\n---\n\n## User-Specific Rules (Mandatory)\n\nContract twin (governance/STRUCTURES.md section 4.5). The request/response contracts exist as two hand-maintained twins: packages/shared/src/contracts/** and supabase/functions/_shared/contracts/**. A change to one side needs the mirrored change to the other in the same diff. Flag a diff that touches only one side: drift fails the contract-parity tests."
+    },
+    {
+      "group_id": 5,
+      "source": "project",
+      "pattern": "supabase/functions/_shared/contracts/**",
+      "files": [
+        "supabase/functions/_shared/contracts/workflow-definition.ts"
+      ],
+      "rule": "## System-Specific Rules (Mandatory)\n\n#### Obvious Typos or Spelling Errors\n- Spelling errors in variable names, function names, component names, or Props property names\n- Strings in log or error messages containing spelling errors that affect readability\n\n#### Dead Code\n- Code blocks that will never be executed (e.g., branches where the condition is always false, code after a return statement)\n- Variables that are declared but never read or referenced\n- Large blocks of commented-out code (with no apparent intent to retain)\n\n#### Code Quality Checks\n- **Duplicate Code**: Check for common logic that can be extracted\n- **Code Comments**: Complex business logic should have clear explanatory comments (avoid commenting obvious code)\n- **Hardcoding**: Business-related hardcoded strings are prohibited, especially URL paths and business numbers; simple UI text may be relaxed\n- **Variable Declarations**: Using `var` is strictly prohibited; use `let` or `const`\n- **Equality Comparisons**: Using `==` and `!=` is prohibited; use strict equality `===` and `!==`\n- **TypeScript Types**: Avoid using `any` type; if necessary, provide a comment explaining the reason\n- **Null Checks**: Perform null checks when accessing values or destructuring to avoid null pointer exceptions\n- **Ternary Expressions**: Nested ternary expressions are not allowed\n\n#### React Best Practices\n- **Hooks Usage**: Verify compliance with Hooks rules (only call at the top level, only call in React functions)\n- **State Management**: Ensure state is placed at the appropriate level; avoid unnecessary state lifting\n- **Side Effect Handling**: Verify useEffect correctly handles dependencies and cleanup functions\n- **Performance Optimization**: Verify proper use of React.memo, useMemo, useCallback (based on performance analysis; avoid over-optimization)\n- **Render Side Effects**: Side effects in React component render methods are strictly prohibited (e.g., API calls, DOM manipulation)\n- **Inline Styles**: Avoid using inline `style` attributes, except for dynamic styles\n- **Inner Components**: Declaring new components inside a component is prohibited; use render methods instead (e.g., `renderItem`, not `<Item/>`)\n\n#### Async Handling Standards\n- **Error Handling**: Async functions must include proper error handling with user-friendly error messages\n- **Prefer async/await**: Prefer async/await over Promises; callback hell is prohibited\n- **Async in Loops**: Distinguish between independent async operations (use `Promise.all` for parallelism) and dependent async operations (use sequential execution); prefer `Promise.all` for performance\n\n#### Code Security Checks\n- **XSS Protection**: Verify that user input is properly escaped\n- **innerHTML Safety**: Using innerHTML to directly insert user input is prohibited; use textContent or apply XSS protection\n- **Code Injection Protection**: Using eval(), Function() constructor, and string argument forms of setTimeout/setInterval is strictly prohibited\n- **Dangerous Methods**: Using document.write() is prohibited as it causes page reflow and security issues\n- **Sensitive Information**: Check whether API keys or sensitive data are exposed\n- **Prototype Chain Safety**: Modifying native object prototypes (e.g., Array.prototype, Object.prototype) is prohibited\n\n---\n\n## User-Specific Rules (Mandatory)\n\nContract twin (governance/STRUCTURES.md section 4.5). The request/response contracts exist as two hand-maintained twins: supabase/functions/_shared/contracts/** and packages/shared/src/contracts/**. A change to one side needs the mirrored change to the other in the same diff. Flag a diff that touches only one side: drift fails the contract-parity tests."
+    },
+    {
+      "group_id": 6,
+      "source": "project",
+      "pattern": "supabase/functions/mobile-api/_shared/kael/**",
+      "files": [
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts"
+      ],
+      "rule": "## System-Specific Rules (Mandatory)\n\n#### Obvious Typos or Spelling Errors\n- Spelling errors in variable names, function names, component names, or Props property names\n- Strings in log or error messages containing spelling errors that affect readability\n\n#### Dead Code\n- Code blocks that will never be executed (e.g., branches where the condition is always false, code after a return statement)\n- Variables that are declared but never read or referenced\n- Large blocks of commented-out code (with no apparent intent to retain)\n\n#### Code Quality Checks\n- **Duplicate Code**: Check for common logic that can be extracted\n- **Code Comments**: Complex business logic should have clear explanatory comments (avoid commenting obvious code)\n- **Hardcoding**: Business-related hardcoded strings are prohibited, especially URL paths and business numbers; simple UI text may be relaxed\n- **Variable Declarations**: Using `var` is strictly prohibited; use `let` or `const`\n- **Equality Comparisons**: Using `==` and `!=` is prohibited; use strict equality `===` and `!==`\n- **TypeScript Types**: Avoid using `any` type; if necessary, provide a comment explaining the reason\n- **Null Checks**: Perform null checks when accessing values or destructuring to avoid null pointer exceptions\n- **Ternary Expressions**: Nested ternary expressions are not allowed\n\n#### React Best Practices\n- **Hooks Usage**: Verify compliance with Hooks rules (only call at the top level, only call in React functions)\n- **State Management**: Ensure state is placed at the appropriate level; avoid unnecessary state lifting\n- **Side Effect Handling**: Verify useEffect correctly handles dependencies and cleanup functions\n- **Performance Optimization**: Verify proper use of React.memo, useMemo, useCallback (based on performance analysis; avoid over-optimization)\n- **Render Side Effects**: Side effects in React component render methods are strictly prohibited (e.g., API calls, DOM manipulation)\n- **Inline Styles**: Avoid using inline `style` attributes, except for dynamic styles\n- **Inner Components**: Declaring new components inside a component is prohibited; use render methods instead (e.g., `renderItem`, not `<Item/>`)\n\n#### Async Handling Standards\n- **Error Handling**: Async functions must include proper error handling with user-friendly error messages\n- **Prefer async/await**: Prefer async/await over Promises; callback hell is prohibited\n- **Async in Loops**: Distinguish between independent async operations (use `Promise.all` for parallelism) and dependent async operations (use sequential execution); prefer `Promise.all` for performance\n\n#### Code Security Checks\n- **XSS Protection**: Verify that user input is properly escaped\n- **innerHTML Safety**: Using innerHTML to directly insert user input is prohibited; use textContent or apply XSS protection\n- **Code Injection Protection**: Using eval(), Function() constructor, and string argument forms of setTimeout/setInterval is strictly prohibited\n- **Dangerous Methods**: Using document.write() is prohibited as it causes page reflow and security issues\n- **Sensitive Information**: Check whether API keys or sensitive data are exposed\n- **Prototype Chain Safety**: Modifying native object prototypes (e.g., Array.prototype, Object.prototype) is prohibited\n\n---\n\n## User-Specific Rules (Mandatory)\n\nEdge kael layer (governance/STRUCTURES.md section 4.5, RULES.md #2 to #7). Enforce:\n- kael/ may reach platform/ only. It must not import domains/ or http/.\n- AI providers are called only through kael/kael-providers/provider-client.ts callAI with the spend gate. Provider hosts (Anthropic, OpenAI, Perplexity, DeepSeek) appear only inside kael-providers/. Model IDs come from the per-task ladder in kael/agents/agentic-harness.ts; do not hardcode a new model ID at a call site (RULES.md #2).\n- Raw model output never reaches a user or sets workflow or money state. It is schema-validated first (RULES.md #3), and an autonomous transition carries a server-validated KaelAutonomyDecision (RULES.md #7).\n- Price content keeps the Vietnamese disclaimer (RULES.md #4). Unsupported services are politely declined, not analyzed (RULES.md #6).\n- No PII or keys in logs (RULES.md #9). Every provider call has a timeout and at most 2 retries (RULES.md #10)."
+    }
+  ],
+  "batches": [
+    {
+      "id": 1,
+      "groupId": 2,
+      "source": "system",
+      "pattern": "**/*.{json,json5}",
+      "files": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023/baseline-safety-approval.json"
+      ],
+      "lines": 1
+    },
+    {
+      "id": 2,
+      "groupId": 2,
+      "source": "system",
+      "pattern": "**/*.{json,json5}",
+      "files": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023/deployed-mobile-api-manifest.json"
+      ],
+      "lines": 1892
+    },
+    {
+      "id": 3,
+      "groupId": 2,
+      "source": "system",
+      "pattern": "**/*.{json,json5}",
+      "files": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023/file-digests.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/final-hosted-snapshot.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/hosted-rpc-names.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/migration-comparison.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/payment-regression.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/preservation.json"
+      ],
+      "lines": 385
+    },
+    {
+      "id": 4,
+      "groupId": 2,
+      "source": "system",
+      "pattern": "**/*.{json,json5}",
+      "files": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023/production-readonly-audit.json"
+      ],
+      "lines": 2085
+    },
+    {
+      "id": 5,
+      "groupId": 2,
+      "source": "system",
+      "pattern": "**/*.{json,json5}",
+      "files": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023/source-comparison.json",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/work-plan.json"
+      ],
+      "lines": 768
+    },
+    {
+      "id": 6,
+      "groupId": 1,
+      "source": "project",
+      "pattern": "apps/api/**",
+      "files": [
+        "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+        "apps/api/src/__tests__/unit/workflow-shadow-planner-pillar.test.ts"
+      ],
+      "lines": 354
+    },
+    {
+      "id": 7,
+      "groupId": 3,
+      "source": "system",
+      "pattern": "**/*.{py,pyi,ipynb}",
+      "files": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023/collect-evidence.py",
+        "docs/test-logs/kawa02-release-entry-audit-20261023/final-audit.py"
+      ],
+      "lines": 117
+    },
+    {
+      "id": 8,
+      "groupId": 6,
+      "source": "project",
+      "pattern": "supabase/functions/mobile-api/_shared/kael/**",
+      "files": [
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts"
+      ],
+      "lines": 196
+    },
+    {
+      "id": 9,
+      "groupId": 4,
+      "source": "project",
+      "pattern": "packages/shared/src/contracts/**",
+      "files": [
+        "packages/shared/src/contracts/workflow-definition.ts"
+      ],
+      "lines": 140
+    },
+    {
+      "id": 10,
+      "groupId": 5,
+      "source": "project",
+      "pattern": "supabase/functions/_shared/contracts/**",
+      "files": [
+        "supabase/functions/_shared/contracts/workflow-definition.ts"
+      ],
+      "lines": 140
+    }
+  ],
+  "totals": {
+    "reviewable": 19,
+    "excluded": 60,
+    "lines": 6078
+  }
+}

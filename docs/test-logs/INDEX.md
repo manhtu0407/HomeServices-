@@ -59,3 +59,9 @@ Newest test reports first.
 - 2026-10-21: [KAWA_01 final closure and integration readiness](kawa-01-integration-readiness-evidence/report.md) — scoped SSE/recovery repair verified at T0; NEEDS OWNER APPROVAL, merge/release NO-GO; protected memory and release containment proposals unapplied.
 
 - 2026-10-21: [KAWA_01 owner-approved integration checkpoint](kawa-01-owner-integration-evidence/report.md) — exact protected memory approved/applied, Backend release disabled and verified, 167 comment lines aligned with identical AST; fresh Edge/API/Mobile checks recorded; final commit/CI and explicit owner merge approval remain required.
+
+- 2026-10-23: [KAWA02 release and entry audit](kawa02-release-entry-audit-20261023/report.md) - DRIFT_DETECTED; 2524 focused T0 passes; W04 blocked on explicit entry/path approval; no hosted or Git publication changes.
+
+- 2026-10-23: [KAWA02 approved W04/W05 local implementation](kawa02-w04-w05-20261023/report.md) - 62 focused tests,six mutants,full API/shared/types and Deno verified; no live adapter/deploy; W06 awaits separate owner/schema approval.
+
+- 2026-10-23: [W04/W05 publication checkpoint](kawa02-w04-w05-publication-20261023/report.md) - exact-source verification,scoped authorization and scanner remediation; separate W06 follows.

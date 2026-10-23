@@ -1,0 +1,4 @@
+
+> @nestscout/shared@0.1.0 type-check C:\ns-fix\kawa02\packages\shared
+> tsc --noEmit
+

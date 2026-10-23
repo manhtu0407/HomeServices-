@@ -1,0 +1,139 @@
+{
+  "mission": "KAWA02 read-only audit plus explicitly approved sequential W04/W05 local implementation",
+  "slices": [
+    {
+      "id": "release-audit",
+      "domain": "review",
+      "reach": "E",
+      "status": "closed",
+      "scope": [
+        "docs/audit/KAWA02_BACKEND_RELEASE_AUDIT.md"
+      ],
+      "read": [
+        "AGENTS.md",
+        "CLAUDE.md",
+        "governance",
+        "docs",
+        "supabase",
+        "packages",
+        "apps",
+        ".github",
+        "config",
+        "scripts",
+        ".claude/MEMORY.md"
+      ],
+      "skills": [
+        "kael-work-router",
+        "kael-subagent-orchestration",
+        "kael-backend-parity",
+        "kael-backend-structure",
+        "kael-security-sweep",
+        "kael-codebase-memory",
+        "kael-docker"
+      ],
+      "gate": "Live named Production SELECT-only catalogs/receipts plus actual bundle-file comparison and GitHub logs",
+      "dropped": []
+    },
+    {
+      "id": "entry-evidence",
+      "domain": "docs",
+      "reach": "E",
+      "status": "closed",
+      "scope": [
+        "docs/test-logs/kawa02-release-entry-audit-20261023",
+        "docs/test-logs/kawa-execution-ledger.md",
+        "docs/test-logs/INDEX.md"
+      ],
+      "read": [
+        "docs",
+        "governance",
+        "supabase",
+        "packages",
+        "apps",
+        ".agents/skills",
+        ".claude/MEMORY.md",
+        "docker"
+      ],
+      "skills": [
+        "kael-core-hygiene",
+        "karpathy-guidelines"
+      ],
+      "gate": "2497 Safety/Approval plus27 payment T0 passes; entry gate accurately BLOCKED; no implementation claim",
+      "dropped": []
+    },
+    {
+      "id": "w04",
+      "domain": "ai",
+      "reach": "X",
+      "status": "closed",
+      "scope": [
+        "packages/shared/src/contracts/workflow-definition.ts",
+        "supabase/functions/_shared/contracts/workflow-definition.ts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+        "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+        "governance/protocols/test-pillars.md"
+      ],
+      "read": [
+        "packages/shared/src/contracts",
+        "supabase/functions/_shared/contracts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline",
+        "supabase/functions/mobile-api/_shared/platform/authz",
+        "apps/api/src/__tests__",
+        "governance",
+        "docs"
+      ],
+      "skills": [
+        "kael-tdd",
+        "kael-ai-boundary",
+        "kael-security-sweep",
+        "kael-backend-structure",
+        "kael-backend-parity",
+        "kael-core-hygiene",
+        "karpathy-guidelines",
+        "kael-codebase-memory"
+      ],
+      "gate": "31 focused pass; 3 mutants killed; types/structure/full API pass with final snapshot caveat",
+      "dropped": []
+    },
+    {
+      "id": "w05",
+      "domain": "ai",
+      "reach": "X",
+      "status": "closed",
+      "scope": [
+        "packages/shared/src/contracts/workflow-definition.ts",
+        "supabase/functions/_shared/contracts/workflow-definition.ts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-registry.ts",
+        "supabase/functions/mobile-api/_shared/kael/pipeline/workflow-shadow-planner.ts",
+        "apps/api/src/__tests__/unit/workflow-definition-registry-pillar.test.ts",
+        "apps/api/src/__tests__/unit/workflow-shadow-planner-pillar.test.ts",
+        "docs/test-logs/kawa02-w04-w05-20261023",
+        "governance/protocols/test-pillars.md"
+      ],
+      "read": [
+        "apps/api/src/__tests__",
+        "supabase/functions/mobile-api/_shared/kael/pipeline",
+        "supabase/functions/_shared/contracts",
+        "packages/shared/src/contracts",
+        "governance",
+        "docs"
+      ],
+      "skills": [
+        "kael-tdd",
+        "kael-ai-boundary",
+        "kael-security-sweep",
+        "kael-backend-structure",
+        "kael-backend-parity",
+        "kael-core-hygiene",
+        "karpathy-guidelines"
+      ],
+      "gate": "62focused,6mutants,full API/shared/types,Deno3modules,mobile-api1/1+4compat,OCRsource reviewed; W06blocked",
+      "dropped": []
+    }
+  ],
+  "deviations": [
+    "Historical approval-pending evidence retained; new human approval unlocks only W04/W05.",
+    "Generated pillar index updated by canonical registry command; no checker or baseline changed.",
+    "Full API before strict-only correction and final verification are distinguished by source hashes."
+  ]
+}

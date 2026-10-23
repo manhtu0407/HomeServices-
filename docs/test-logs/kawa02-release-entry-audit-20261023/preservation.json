@@ -1,0 +1,8 @@
+{
+  "historical_ledger_prefix_preserved": true,
+  "normalization": "CRLF to LF only",
+  "new_source_files": [],
+  "nested_agent_instructions": [
+    "AGENTS.md"
+  ]
+}

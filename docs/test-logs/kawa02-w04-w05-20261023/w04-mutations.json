@@ -1,0 +1,20 @@
+[
+  {
+    "name": "version-overwrite",
+    "exit_code": 1,
+    "failed": 1,
+    "killed": true
+  },
+  {
+    "name": "approval-path",
+    "exit_code": 1,
+    "failed": 1,
+    "killed": true
+  },
+  {
+    "name": "role-check",
+    "exit_code": 1,
+    "failed": 2,
+    "killed": true
+  }
+]
