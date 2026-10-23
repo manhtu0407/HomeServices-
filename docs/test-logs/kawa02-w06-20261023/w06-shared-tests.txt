@@ -1,0 +1,16 @@
+
+> nestscout@0.1.0 test:shared C:\ns-fix\kawa02
+> node scripts/run.mjs run-package-script @nestscout/shared test
+
+
+> @nestscout/shared@0.1.0 test C:\ns-fix\kawa02\packages\shared
+> vitest run
+
+
+ RUN  v4.1.6 C:/ns-fix/kawa02/packages/shared
+
+
+ Test Files  10 passed (10)
+      Tests  189 passed (189)
+   Start at  09:38:24
+   Duration  1.39s (transform 3.64s, setup 0ms, import 6.31s, tests 376ms, environment 1ms)

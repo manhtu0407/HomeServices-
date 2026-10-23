@@ -1,0 +1,3 @@
+PASS  six_service_confirmation_gate_verification.sql
+
+sql verification: discovered=1 executed=1 passed=1 failed=0 stopped_early=false

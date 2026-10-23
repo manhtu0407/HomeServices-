@@ -1,0 +1,38 @@
+[
+  {
+    "file": "supabase/migrations/20261023020137_kael_workflow_durable_checkpoints.sql",
+    "sha256": "0979fe2d2e0c455841b838834dd37eb8bf99c69ddf4cf2d20033c322f74968df"
+  },
+  {
+    "file": "supabase/functions/mobile-api/_shared/domains/kael-chat/workflow-checkpoints.ts",
+    "sha256": "4f9d2089f24ff260139a32ce36a0718eb1f93356b0e84f05931edf4f40ef232b"
+  },
+  {
+    "file": "apps/api/src/__tests__/unit/workflow-durable-checkpoints-pillar.test.ts",
+    "sha256": "5b2d02d809f6e6f0fa980660ef1324efe7a138a44f173d039e96989f9f05dd08"
+  },
+  {
+    "file": "supabase/tests/workflow_durable_checkpoints_verification.sql",
+    "sha256": "0606ef610daea61869b2915c209cfef3dee7f553a6571a430c02d20112571365"
+  },
+  {
+    "file": "supabase/tests/workflow_checkpoint_concurrency_verification.sql",
+    "sha256": "ee83b9acb9ada29b4f3f82f7ca5879339742b1e86cff6efdf37fda39cc157ba1"
+  },
+  {
+    "file": "packages/shared/src/types/database/functions.database.types.ts",
+    "sha256": "510fb0cd7c4bff2a5f05dedec5c1e2bd8c3f4f152bcd80989290f5fd336b77c6"
+  },
+  {
+    "file": "config/harness/migration-inventory.json",
+    "sha256": "68327360d4a528b094a8be7b3877d86c801f3a903cf1598a3503190b1923f12e"
+  },
+  {
+    "file": "config/harness/access-matrix.json",
+    "sha256": "8596e7541469eb1b2026325549d3b26ca834a264c031465d53f24882fbf265f2"
+  },
+  {
+    "file": "governance/protocols/test-pillars.md",
+    "sha256": "1edc8bb8b07dbbe287d6bea9b3d4d960126ffd9b351e8d8774ca8d22310cb74a"
+  }
+]

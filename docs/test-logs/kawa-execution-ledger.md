@@ -860,3 +860,18 @@ W04 VERIFIED T0; W05 VERIFIED T0; W06 BLOCKED/NEEDS_OPERATOR on separate server-
 ## 2026-10-23 - W04/W05 publication authorization
 
 Owner now explicitly authorizes scoped commit/push/PR and subsequent separate W06 additive local implementation. Existing source/twin hashes verified; closure62/62,APItypes,Deno pass; ten ship machine gates green, precommit git-state pending. Pinned Gitleaks scan0 findings after disclosed checksum/test-name presentation redaction; no source/assertion/gate change. Prior blocked and no-publication statements are historical. No merge/hosted execution. [Publication checkpoint](kawa02-w04-w05-publication-20261023/report.md).
+
+## 2026-10-23 — W04/W05 publication and W06 local persistence checkpoint
+
+The owner explicitly authorized W04/W05 publication and a separate additive, isolated local W06 slice. W04/W05 candidate `e1e0cabbc7432240fc3d8a81f83bb08b8b5c7138` is PR #407; reviewer `kouuuuuuuuu` requested, no merge. Ordinary CI (including workspace/database) succeeded; the separate release quality workflow failed `Verify immutable main identity`, run 39887287811. This is not green merge readiness.
+
+W06 local T0/T1 VERIFIED: P43436 + P43231 + P43331 = 98 focused passes; API5791/7skip plus Node115/1skip; Shared189; API/shared types and direct Deno pass. Unique local project `nestscout-kawa06-20261023`, DB61322/API61321, fresh canonical456-migration replay. P435/P436 plus seven existing SQL regression scripts pass. Real CAS races, idempotency/conflict controls, ordered events, bounded retry/deadline, forced transaction rollback, process restart, interrupted connection and discarded-result replay passed; actual local REST adapter recovery passed. Three mutations caught and source restored. New private tables/RPC only; strict metadata shape, no broad grants, no approval/executor/outbox or live route integration. No FK added to existing resource tables, preserving existing Case/account deletion. [Checkpoint and evidence](kawa02-w06-20261023/report.md).
+
+W06 branch is stacked on the exact W04/W05 candidate. The publication head, PR and clean pre-push/scan receipts are recorded in the operator report after commit. W07/W08 NOT_RUN; no merge/hosted changes/paid calls/real actor actions/release/KAWA_03. Backend drift and historical H5 remain separate unresolved release gates. Existing live Plan and protected memory are unchanged; memory draft awaits owner approval.
+
+
+## 2026-10-23 — Final W06 review remediation on existing PR408
+
+Both reported P2 defects reproduced RED on `6d71e0b5`: invalid failure transition and historical Case scope denial after the existing confirmation RPC attaches a Job. GREEN fixes keep immutable historical bindings, current ownership, CAS, hash-based replay and effect boundaries. Focused101/API5795+Node115/shared189 pass; nine real PostgreSQL scripts and fresh456 replay pass; process restart/interruption/discarded create+transition output recovery and real adapter failure branch pass. All old assertions retained. [Review remediation and raw red/green receipts](kawa02-w06-remediation-20261023/report.md).
+
+PR407 remains a separate identity-gate investigation; the owner approved one diagnostic line that prints dirty paths before the unchanged clean-tree assertion. Publication and Actions conclusions belong to the operator report. No merge/hosted mutation/W07/W08. Protected memory remains unchanged pending approval.

@@ -1,0 +1,124 @@
+[
+  {
+    "name": "structure",
+    "command": [
+      "node",
+      "scripts/lint-structure.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 1.79
+  },
+  {
+    "name": "baseline",
+    "command": [
+      "node",
+      "scripts/check-structure-baseline.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.83
+  },
+  {
+    "name": "comments",
+    "command": [
+      "node",
+      "scripts/check-comment-discipline.mjs",
+      "--working"
+    ],
+    "exitCode": 0,
+    "seconds": 1.18
+  },
+  {
+    "name": "added-hygiene",
+    "command": [
+      "node",
+      "scripts/check-added-source-hygiene.mjs",
+      "--working"
+    ],
+    "exitCode": 0,
+    "seconds": 0.93
+  },
+  {
+    "name": "test-integrity",
+    "command": [
+      "node",
+      "scripts/check-test-integrity.mjs",
+      "--working"
+    ],
+    "exitCode": 0,
+    "seconds": 0.27
+  },
+  {
+    "name": "test-collection",
+    "command": [
+      "node",
+      "scripts/check-test-collection.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.19
+  },
+  {
+    "name": "workplan",
+    "command": [
+      "node",
+      "scripts/check-work-plan.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.17
+  },
+  {
+    "name": "migration-inventory",
+    "command": [
+      "node",
+      "scripts/harness/migration-inventory.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.44
+  },
+  {
+    "name": "access-matrix",
+    "command": [
+      "node",
+      "scripts/harness/access-matrix.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 10.9
+  },
+  {
+    "name": "capabilities",
+    "command": [
+      "node",
+      "scripts/harness/capability-registry.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.22
+  },
+  {
+    "name": "privileged",
+    "command": [
+      "node",
+      "scripts/harness/check-privileged-clients.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.15
+  },
+  {
+    "name": "pillars",
+    "command": [
+      "node",
+      "scripts/harness/pillar-registry.mjs"
+    ],
+    "exitCode": 0,
+    "seconds": 0.59
+  },
+  {
+    "name": "rpc-parity",
+    "command": [
+      "node",
+      "scripts/check-edge-db-contract.mjs",
+      "--functions",
+      ".scratch/w06-remediation/rpc-names.json"
+    ],
+    "exitCode": 0,
+    "seconds": 1.14
+  }
+]

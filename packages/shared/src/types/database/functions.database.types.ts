@@ -3253,6 +3253,7 @@ export type DatabaseFunctions = {
         Args: { p_key: string; p_now?: string; p_scope: string }
         Returns: boolean
       }
+      kael_workflow_checkpoint_v1: { Args: { p_request: Json }; Returns: Json }
       list_confirmation_matching_outbox_incidents: {
         Args: { p_limit?: number }
         Returns: {

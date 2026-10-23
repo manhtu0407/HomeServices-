@@ -1,0 +1,3 @@
+PASS  manual_bank_reconciliation_behavior_verification.sql
+
+sql verification: discovered=1 executed=1 passed=1 failed=0 stopped_early=false

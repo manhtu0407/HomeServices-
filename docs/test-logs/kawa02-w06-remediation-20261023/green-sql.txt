@@ -1,0 +1,7 @@
+
+> nestscout@0.1.0 db:local:test C:\ns-fix\kawa02
+> node scripts/run.mjs docker/scripts/run-sql-tests "--container" "supabase_db_nestscout-kawa06-20261023" "--filter" "workflow_durable_checkpoints_verification.sql"
+
+PASS  workflow_durable_checkpoints_verification.sql
+
+sql verification: discovered=1 executed=1 passed=1 failed=0 stopped_early=false

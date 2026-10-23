@@ -2,8 +2,8 @@
   "version": "1.0.0",
   "source": {
     "migrationRoot": "supabase/migrations",
-    "migrationCount": 465,
-    "migrationDigest": "9374bb768854ad9a288c68be585e3c372651d6a464b4f196a7b7bc2945319b3d"
+    "migrationCount": 466,
+    "migrationDigest": "c5418cf0812915e6de69179b5e2c11259e2fddd760f4094273670dc982c5dc1c"
   },
   "actors": [
     "anonymous",
@@ -5625,6 +5625,14 @@
     },
     {
       "signature": "is_circuit_open(text, text, timestamp with time zone)",
+      "securityDefiner": true,
+      "fixedSearchPath": true,
+      "executeRoles": [
+        "service_role"
+      ]
+    },
+    {
+      "signature": "kael_workflow_checkpoint_v1(jsonb)",
       "securityDefiner": true,
       "fixedSearchPath": true,
       "executeRoles": [

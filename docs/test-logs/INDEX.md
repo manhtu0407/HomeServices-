@@ -65,3 +65,5 @@ Newest test reports first.
 - 2026-10-23: [KAWA02 approved W04/W05 local implementation](kawa02-w04-w05-20261023/report.md) - 62 focused tests,six mutants,full API/shared/types and Deno verified; no live adapter/deploy; W06 awaits separate owner/schema approval.
 
 - 2026-10-23: [W04/W05 publication checkpoint](kawa02-w04-w05-publication-20261023/report.md) - exact-source verification,scoped authorization and scanner remediation; separate W06 follows.
+
+- [KAWA02 W06 durable persistence local T0/T1 checkpoint](kawa02-w06-20261023/report.md) — private additive schema; CAS, replay, restart and actor isolation; separate stacked publication.

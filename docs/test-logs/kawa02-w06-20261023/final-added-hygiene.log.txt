@@ -1,0 +1,1 @@
+check-added-source-hygiene: pass --working, --diff <ref>, or --rev <sha>.

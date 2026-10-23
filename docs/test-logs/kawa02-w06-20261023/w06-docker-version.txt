@@ -1,0 +1,7 @@
+
+> nestscout@0.1.0 docker:version:ensure C:\ns-fix\kawa02
+> node scripts/run.mjs docker/scripts/ensure-version
+
+docker_version=Docker version 29.9.2, build a82e528
+compose_version=Docker Compose version v5.6.1
+strategy=latest-stable result=updated-or-current update_attempts=1

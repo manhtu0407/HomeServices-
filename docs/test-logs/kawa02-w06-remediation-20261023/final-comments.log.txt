@@ -1,0 +1,4 @@
+comment-discipline: clean — no note-banner comments found.
+warning: in the working copy of 'config/harness/access-matrix.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'config/harness/migration-inventory.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/test-logs/kawa-execution-ledger.md', CRLF will be replaced by LF the next time Git touches it

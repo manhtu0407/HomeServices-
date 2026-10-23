@@ -1,0 +1,32 @@
+[
+  {
+    "file": "durable_confirmation_matching_verification.sql",
+    "exitCode": 0,
+    "seconds": 1.12
+  },
+  {
+    "file": "six_service_confirmation_gate_verification.sql",
+    "exitCode": 0,
+    "seconds": 0.97
+  },
+  {
+    "file": "manual_bank_reconciliation_behavior_verification.sql",
+    "exitCode": 0,
+    "seconds": 1.01
+  },
+  {
+    "file": "manual_bank_reference_concurrency_verification.sql",
+    "exitCode": 0,
+    "seconds": 8.51
+  },
+  {
+    "file": "account_deletion_verification.sql",
+    "exitCode": 0,
+    "seconds": 0.98
+  },
+  {
+    "file": "staging_security_verification.sql",
+    "exitCode": 0,
+    "seconds": 1.0
+  }
+]

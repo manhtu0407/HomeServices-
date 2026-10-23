@@ -5,7 +5,7 @@
     "immutableThroughVersion": "20260904113000",
     "sha256": "12da2bac288e0e718e61a27653e8cba9ffdb13b8e9900979407d41e1217b2077"
   },
-  "migrationCount": 465,
+  "migrationCount": 466,
   "migrationEquivalences": {
     "version": "1.0.0",
     "groups": [
@@ -102,10 +102,10 @@
       }
     ]
   },
-  "migrationsSha256": "48203ae04aef620adda0d6731086ae86b326689ef0df6b6c3b7d7746f6a3e02b",
+  "migrationsSha256": "fdeb17b06d204751451825d025fc52c80bb1ddae349c2d06afecc63102e5a383",
   "databaseTypes": {
     "file": "packages/shared/src/types/database",
-    "sha256": "e91abb2c693df49897a6652798f230ed94e32cad54732be7471069a5f1bb857f"
+    "sha256": "62d0e00c86475d03bd359fe71ab55f5481dcd144bc342929aa7eca79ac7e521f"
   },
   "entries": [
     {
@@ -3362,6 +3362,13 @@
       "file": "supabase/migrations/20261022141232_control_bank_reference_race.sql",
       "sha256": "a540c241657ac535c94b6bc4bfcb6eddfa4de711e72b3f9af12bf81887a85b50",
       "bytes": 12662
+    },
+    {
+      "version": "20261023020137",
+      "name": "kael_workflow_durable_checkpoints",
+      "file": "supabase/migrations/20261023020137_kael_workflow_durable_checkpoints.sql",
+      "sha256": "9e0a745c0f0444b8eccce08f9b841a5735541709327e6d62c150b52b8821ba30",
+      "bytes": 22565
     }
   ]
 }

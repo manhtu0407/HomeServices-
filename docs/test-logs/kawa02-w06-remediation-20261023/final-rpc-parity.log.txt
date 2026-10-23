@@ -1,0 +1,4 @@
+rpc names found: 266 (228 literal, 38 resolved from a local const)
+unscannable call sites: 0
+
+all 266 scannable rpc names exist in the target database
